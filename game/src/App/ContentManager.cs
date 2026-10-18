@@ -63,15 +63,14 @@ public sealed class ContentManager
     {
         if (Draft == null)
         {
-            Draft = TryLoadAutosave() ?? Published.Clone();
+            Draft = Published.Clone();
+            ContentValidator.Validate(Draft);
             DraftDirty = false;
         }
         return Draft;
     }
 
     public bool HasAutosave => File.Exists(Path.Combine(AutosaveRoot, ContentIO.RulesFile));
-
-    private ContentDatabase? TryLoadAutosave() => null; // the editor asks explicitly (see RestoreAutosave)
 
     public ContentLoadResult? RestoreAutosave()
     {

@@ -41,13 +41,13 @@ public partial class CameraRig : Node3D
 
     public float YawDeg => Mathf.RadToDeg(_yaw);
 
-    public void Frame(Rect2 boardRect)
+    public void Frame(Rect2 boardRect, bool fitAll = false)
     {
         Bounds = boardRect.Grow(2);
         _pivot = new Vector3(boardRect.GetCenter().X, 0, boardRect.GetCenter().Y);
         float size = Math.Max(boardRect.Size.X, boardRect.Size.Y * 1.4f);
         MaxDistance = Math.Max(MaxDistance, size * 1.6f);
-        _targetDistance = Distance = Math.Clamp(size * 0.75f, MinDistance, 22);
+        _targetDistance = Distance = fitAll ? Math.Clamp(size * 1.25f, MinDistance, MaxDistance) : Math.Clamp(size * 0.75f, MinDistance, 22);
         UpdateTransform();
     }
 

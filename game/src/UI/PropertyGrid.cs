@@ -310,7 +310,7 @@ public partial class PropertyGrid : VBoxContainer
         }
         if (type.IsEnum)
         {
-            var ob = new OptionButton { FocusMode = FocusModeEnum.None };
+            var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
             var names = Enum.GetNames(type);
             for (int i = 0; i < names.Length; i++) ob.AddItem(Names.Of(type, names[i]), i);
             ob.Selected = Array.IndexOf(names, value?.ToString() ?? names[0]);
@@ -334,7 +334,7 @@ public partial class PropertyGrid : VBoxContainer
 
     public OptionButton RefOption(EdRefAttribute refAttr, string current, Action<string> set, bool allowEmptyOverride = false)
     {
-        var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false };
+        var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
         var ids = new List<string>();
         if (refAttr.AllowEmpty || allowEmptyOverride || string.IsNullOrEmpty(current))
         {

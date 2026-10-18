@@ -38,6 +38,9 @@ public partial class BoardView : Node3D
     public BattleMap? Map => _map;
     public IReadOnlyDictionary<int, UnitView> Views => _views;
 
+    /// <summary>Inside an editor SubViewport (glow off: it washes the image out there).</summary>
+    public bool Embedded { get; set; }
+
     public override void _Ready()
     {
         AddChild(Rig);
@@ -72,6 +75,11 @@ public partial class BoardView : Node3D
             AdjustmentEnabled = true,
             AdjustmentSaturation = 1.05f,
         };
+        if (Embedded)
+        {
+            env.GlowEnabled = false;
+            env.SsaoEnabled = false;
+        }
         _env = new WorldEnvironment { Environment = env, Name = "Env" };
         AddChild(_env);
         _sun = new DirectionalLight3D
@@ -115,7 +123,7 @@ public partial class BoardView : Node3D
         FrameCamera();
     }
 
-    public void FrameCamera()
+    public void FrameCamera(bool fitAll = false)
     {
         if (_map == null || _map.Count == 0) return;
         float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue;
@@ -127,7 +135,7 @@ public partial class BoardView : Node3D
             minZ = Math.Min(minZ, p.Z);
             maxZ = Math.Max(maxZ, p.Z);
         }
-        Rig.Frame(new Rect2(minX, minZ, maxX - minX, maxZ - minZ));
+        Rig.Frame(new Rect2(minX, minZ, maxX - minX, maxZ - minZ), fitAll || Embedded);
     }
 
     public void RebuildTerrain()
