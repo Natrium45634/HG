@@ -24,6 +24,7 @@ public enum DefCategory
     MoveCategory,
     MapTemplate,
     Layer,
+    Element,
 }
 
 /// <summary>Base class of every content definition.</summary>
@@ -101,6 +102,7 @@ public sealed class TargetFilterDef
 public sealed class ControlFlagsDef
 {
     [Ed("Нельзя двигаться", "Обездвиживание")] public bool BlocksMovement { get; set; }
+    [Ed("Нельзя лечить", "Лечение не действует")] public bool BlocksHealing { get; set; }
     [Ed("Нельзя действовать", "Оглушение: никаких действий")] public bool BlocksActions { get; set; }
     [Ed("Нельзя использовать навыки", "Немота")] public bool BlocksSkills { get; set; }
     [Ed("Нельзя атаковать")] public bool BlocksAttacks { get; set; }
@@ -113,7 +115,7 @@ public sealed class ControlFlagsDef
     [Ed("Прерывает подготовку", "При наложении прерывает подготовку навыка")] public bool InterruptsCast { get; set; }
 
     [JsonIgnore]
-    public bool Any => BlocksMovement || BlocksActions || BlocksSkills || BlocksAttacks || BlocksTurning
+    public bool Any => BlocksHealing || BlocksMovement || BlocksActions || BlocksSkills || BlocksAttacks || BlocksTurning
                        || BlocksApRegen || Blind || Invisible || Fear || MindControl || InterruptsCast;
 
     public void OrWith(ControlFlagsDef o)
@@ -129,12 +131,13 @@ public sealed class ControlFlagsDef
         Fear |= o.Fear;
         MindControl |= o.MindControl;
         InterruptsCast |= o.InterruptsCast;
+        BlocksHealing |= o.BlocksHealing;
     }
 
     public void Clear()
     {
         BlocksMovement = BlocksActions = BlocksSkills = BlocksAttacks = BlocksTurning = false;
-        BlocksApRegen = Blind = Invisible = Fear = MindControl = InterruptsCast = false;
+        BlocksApRegen = Blind = Invisible = Fear = MindControl = InterruptsCast = BlocksHealing = false;
     }
 }
 

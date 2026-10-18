@@ -88,6 +88,12 @@ public sealed class SkillDef : Def
 
     [Ed("Прерывание", Group = "Прерывание")] public InterruptDef Interrupt { get; set; } = new();
 
+    [Ed("Может критовать", Group = "Урон")] public bool CanCrit { get; set; } = true;
+    [Ed("Бонус шанса крита"), EdRange(-1, 1)] public double CritChanceBonus { get; set; }
+    [Ed("Крит без доп. урона", "Крит не увеличивает урон — только эффекты крита", Group = "Урон")] public bool CritNoExtraDamage { get; set; }
+    [Ed("Эффекты крита", "Применяются к цели при критическом ударе", Group = "Урон")] public List<SkillEffectDef> CritEffects { get; set; } = new();
+    [Ed("Пробивает щиты", Group = "Урон")] public bool PiercesShields { get; set; }
+
     [Ed("Этапы", "Каждый этап — область и эффекты, со своей задержкой", Group = "Этапы")]
     public List<SkillStageDef> Stages { get; set; } = new();
 
@@ -182,6 +188,8 @@ public enum EffectType
     ChangeFacing,
     ModifyResource,
     ModifyAp,
+    Shield,
+    RemoveShield,
     ChangeTerrain,
     AddCellEffect,
     RemoveCellEffect,
@@ -205,7 +213,7 @@ public sealed class SkillEffectDef
 
     [Ed("На кого действует"),
      EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.RemoveStatus, EffectType.Push,
-         EffectType.Pull, EffectType.ChangeFacing, EffectType.ModifyResource, EffectType.ModifyAp)]
+         EffectType.Pull, EffectType.ChangeFacing, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield, EffectType.RemoveShield)]
     public TargetFilterDef Filter { get; set; } = TargetFilterDef.EnemiesOnly();
 
     [Ed("Шанс"), EdRange(0, 1)] public double Chance { get; set; } = 1;
@@ -218,15 +226,15 @@ public sealed class SkillEffectDef
     [Ed("Тип урона"), EdRef(DefCategory.DamageType, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.Damage)]
     public string DamageType { get; set; } = "physical";
 
-    [Ed("Величина", "Урон/лечение/очки состояния/изменение ресурса"),
-     EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.ModifyResource, EffectType.ModifyAp)]
+    [Ed("Величина", "Урон/лечение/очки состояния/изменение ресурса/объём щита"),
+     EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield)]
     public double Amount { get; set; } = 10;
 
     [Ed("Масштаб от характеристики", "Величина += характеристика исполнителя × коэффициент"), EdRef(DefCategory.Stat),
-     EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal)]
+     EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.Shield)]
     public string ScalingStat { get; set; } = "";
 
-    [Ed("Коэффициент масштаба"), EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal)]
+    [Ed("Коэффициент масштаба"), EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.Shield)]
     public double ScalingFactor { get; set; }
 
     [Ed("Формула", "Необязательно. Заменяет величину. Переменные: amount, caster_*, target_*, level"),
@@ -234,11 +242,20 @@ public sealed class SkillEffectDef
      EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal)]
     public string Formula { get; set; } = "";
 
+    [Ed("Режим лечения", "Фиксированное, % от максимума или % от недостающего здоровья (величина — проценты)"), EdShowIf(nameof(Type), EffectType.Heal)]
+    public HealMode HealMode { get; set; } = HealMode.Flat;
+
+    [Ed("Щит", "Объём — «Величина», длительность — «Длительность»"), EdShowIf(nameof(Type), EffectType.Shield)]
+    public ShieldSpecDef Shield { get; set; } = new();
+
+    [Ed("Название снимаемого щита", "Пусто — все щиты"), EdShowIf(nameof(Type), EffectType.RemoveShield)]
+    public string ShieldName { get; set; } = "";
+
     [Ed("Состояние"), EdRef(DefCategory.Status, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.RemoveStatus)]
     public string Status { get; set; } = "";
 
     [Ed("Длительность, с", "0 = по умолчанию"), EdRange(0, 3600),
-     EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.AddCellEffect, EffectType.Summon, EffectType.ChangeTerrain)]
+     EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.AddCellEffect, EffectType.Summon, EffectType.ChangeTerrain, EffectType.Shield)]
     public double Duration { get; set; }
 
     [Ed("Расстояние"), EdRange(1, 20), EdShowIf(nameof(Type), EffectType.Push, EffectType.Pull)]
@@ -280,7 +297,9 @@ public sealed class SkillEffectDef
         return Type switch
         {
             EffectType.Damage => $"Урон {Amount:0.#} ({DamageType})",
-            EffectType.Heal => $"Лечение {Amount:0.#}",
+            EffectType.Heal => HealMode == HealMode.Flat ? $"Лечение {Amount:0.#}" : $"Лечение {Amount:0.#}% {(HealMode == HealMode.PercentMax ? "от максимума" : "от недостающего")}",
+            EffectType.Shield => $"Щит «{Shield.Name}» {Amount:0.#}",
+            EffectType.RemoveShield => string.IsNullOrEmpty(ShieldName) ? "Снять щиты" : $"Снять щит «{ShieldName}»",
             EffectType.ApplyStatus => $"Состояние {Status} ({Amount:0.#})",
             EffectType.RemoveStatus => $"Снять {Status}",
             EffectType.Push => $"Толчок на {Distance}",

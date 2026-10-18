@@ -39,8 +39,35 @@ public static class ContentDefaults
         Max = 20, ShowInPanel = true,
     };
 
+    /// <summary>The four basic elements (TZ part 2 §11.1); advanced ones are content.</summary>
+    public static IEnumerable<ElementDef> BasicElements()
+    {
+        yield return new ElementDef { Id = "fire", Name = "Огонь", Tier = ElementTier.Basic, Color = "#ff7a2e", Icon = "О" };
+        yield return new ElementDef { Id = "water", Name = "Вода", Tier = ElementTier.Basic, Color = "#3f8cff", Icon = "В" };
+        yield return new ElementDef { Id = "wind", Name = "Ветер", Tier = ElementTier.Basic, Color = "#9fe0d0", Icon = "Вт" };
+        yield return new ElementDef { Id = "earth", Name = "Земля", Tier = ElementTier.Basic, Color = "#a7864a", Icon = "З" };
+    }
+
+    private static IEnumerable<StatDef> DamageStats()
+    {
+        yield return new StatDef { Id = Stats.HealReceived, Name = "Получаемое лечение", Description = "Доля: 0.2 = +20 % лечения", Min = -1, Max = 5, Format = StatFormat.Percent, ShowInPanel = false };
+        yield return new StatDef { Id = Stats.CritResist, Name = "Защита от критов", Min = 0, Max = 1, Format = StatFormat.Percent, ShowInPanel = false };
+        yield return new StatDef { Id = Stats.CritBonus, Name = "Фикс. бонус крита", Min = 0, Max = 1000, ShowInPanel = false };
+    }
+
     public static void Ensure(ContentDatabase db, List<ContentIssue> issues)
     {
+        if (db.Table(DefCategory.Element).Count == 0)
+        {
+            foreach (var e in BasicElements()) db.Add(e);
+            issues.Add(new ContentIssue(IssueSeverity.Info, "elements.json", "", "Элементы не заданы — добавлены базовые: огонь, вода, ветер, земля"));
+        }
+        foreach (var sd in DamageStats())
+            if (db.Stat(sd.Id) == null)
+            {
+                db.Add(sd);
+                issues.Add(new ContentIssue(IssueSeverity.Info, "stats.json", "", $"Добавлена характеристика «{sd.Name}»"));
+            }
         if (db.Table(DefCategory.Layer).Count == 0)
         {
             foreach (var l in Layers()) db.Add(l);

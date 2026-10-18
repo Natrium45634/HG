@@ -84,6 +84,15 @@ public sealed class CellEffectSystem
         _sim.Map.Touch(def.BlocksLoS || def.BlocksMovement || Math.Abs(def.MoveCostAdd) > 1e-9);
 
     /// <summary>Adds (or stacks) an effect. duration 0 = definition default. Returns the instance or null if not allowed.</summary>
+    /// <summary>Damage source of a cell effect instance: terrain/map hazards vs effects created by skills, synergies, elements.</summary>
+    private static DamageSource SourceOf(CellEffectInstance e) => e.Origin switch
+    {
+        EffectOrigin.Terrain or EffectOrigin.MapStart => DamageSource.Terrain,
+        EffectOrigin.Synergy => DamageSource.Synergy,
+        EffectOrigin.Scenario => DamageSource.Scenario,
+        _ => DamageSource.CellEffect,
+    };
+
     public CellEffectInstance? Add(Cell cell, CellEffectDef def, int level, double duration, int source, int generation, int chainDepth,
         EffectOrigin origin = EffectOrigin.Skill)
     {
@@ -221,12 +230,14 @@ public sealed class CellEffectSystem
     public void OnUnitEntered(Unit u, Cell cell)
     {
         foreach (var e in cell.Effects.ToList())
+            _sim.Statuses.OnEnteredCellEffect(u, e.Def.Id);
+        foreach (var e in cell.Effects.ToList())
         {
             if (!u.Alive) return;
             if (e.Def.OnEnter.Count == 0 || UnitImmune(u, e.Def)) continue;
             if (e.Def.ConsumeOnEnter)
                 _sim.Emit(SimEventType.TrapTriggered, LogLevel.Normal, $"{cell.Coord}: срабатывает «{e.Def.DisplayName}» под {u.Name}", e.SourceUnit, u.Id, cell.Coord);
-            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnEnter, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName);
+            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnEnter, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName, SourceOf(e));
             if (e.Def.ConsumeOnEnter)
             {
                 if (e.Level > 1) e.Level--;
@@ -241,7 +252,7 @@ public sealed class CellEffectSystem
         {
             if (!u.Alive) return;
             if (e.Def.OnExit.Count == 0 || UnitImmune(u, e.Def)) continue;
-            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnExit, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (выход)");
+            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnExit, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (выход)", SourceOf(e));
         }
     }
 
@@ -264,7 +275,7 @@ public sealed class CellEffectSystem
                 var key = (u.Id, e.Def.Id);
                 if (_adjacentApplied.TryGetValue(key, out var last) && _sim.Tick - last < interval) continue;
                 _adjacentApplied[key] = _sim.Tick;
-                _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnAdjacent, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (рядом)");
+                _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnAdjacent, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (рядом)", SourceOf(e));
             }
         }
     }
@@ -297,7 +308,7 @@ public sealed class CellEffectSystem
                         foreach (var u in cell.Occupants.ToArray())
                         {
                             if (!u.Alive || UnitImmune(u, e.Def)) continue;
-                            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnTick, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName);
+                            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnTick, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName, SourceOf(e));
                         }
                     }
                 }
@@ -415,7 +426,7 @@ public sealed class CellEffectSystem
             foreach (var c in area)
             foreach (var u in c.Occupants.ToArray())
                 if (u.Alive)
-                    _sim.Combat.ApplyDirect(source, u, syn.UnitEffects, 1.0, syn.DisplayName);
+                    _sim.Combat.ApplyDirect(source, u, syn.UnitEffects, 1.0, syn.DisplayName, DamageSource.Synergy);
 
         foreach (var id in syn.AddEffects)
         {

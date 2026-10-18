@@ -193,10 +193,11 @@ public sealed class KnowledgeSystem
             foreach (var dt in _sim.Content.All<DamageTypeDef>())
             {
                 if (!all && !k.ObservedDamageTypes.Contains(dt.Id)) continue;
-                double r = u.Resist(dt.Id);
-                bool immune = u.IsImmuneTo(dt.Id, Array.Empty<string>()) || r >= 1;
-                if (immune) resist.Add((dt.DisplayName, "иммунитет"));
-                else if (Math.Abs(r) > 1e-9) resist.Add((dt.DisplayName, r > 0 ? $"−{r * 100:0}% урона" : $"+{-r * 100:0}% урона (уязвимость)"));
+                // Same numbers the damage pipeline uses: V % (negative — resistance, positive — vulnerability).
+                double v = _sim.Damage.ModifierPercent(u, dt.Id);
+                bool immune = _sim.Damage.IsImmune(u, dt.Id) || v <= -100;
+                if (immune) resist.Add((dt.DisplayName, _sim.Damage.IsImmune(u, dt.Id) ? "иммунитет" : $"{v:+0;-0} % — урон не проходит"));
+                else if (Math.Abs(v) > 0.5) resist.Add((dt.DisplayName, v < 0 ? $"{v:0} % урона (сопротивление)" : $"+{v:0} % урона (уязвимость)"));
                 else if (!all) resist.Add((dt.DisplayName, "обычный урон"));
             }
         }

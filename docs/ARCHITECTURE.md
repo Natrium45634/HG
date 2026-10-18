@@ -178,7 +178,7 @@ HG/
 | `Sim/BlockingSystem` | связи блокирования | `BlockingTests`, `BlockingWalkTests` |
 | `Sim/KnowledgeSystem` | что игрок знает о врагах | `InfoDisclosureTests` |
 | `CombatSystem.SectorFor`, `VisionSystem.InZone` | модели взгляда, зоны обнаружения | `FacingModelTests` |
-| `Sim/DamagePipeline` | единый расчёт урона, щиты, поглощение, отражение | `DamageTests` |
+| `Sim/DamagePipeline`, `Content/DamageTaxonomy` | единый расчёт урона, щиты, поглощение, отражение; иерархия типов и элементов | `ResistanceTests`, `DamageMechanicsTests`, `ElementTests` |
 | `Sim/AutoAttackSystem` | автоатаки | `AutoAttackTests` |
 | `Sim/Objectives`, `Sim/Conditions`, `Sim/SpawnWarnings` | цели сценария, дерево условий, маркеры появления | `ObjectiveTests`, `SpawnMarkerTests` |
 | `Content/Library`, `Content/Packages` | версии, история, надёжная запись, пакеты `.hexpack` | `LibraryTests`, `PackageTests` |

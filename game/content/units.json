@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "kind": "units",
   "items": [
     {
@@ -32,7 +32,19 @@
         "power": 3,
         "block_limit": 3
       },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": {
+        "bonuses": [{ "match": "crushing", "percent": 15 }],
+        "conversions": []
+      },
       "statusResistances": {},
       "immunities": [],
       "resources": [],
@@ -109,7 +121,16 @@
         "accuracy": 0.05,
         "evasion": 0.15
       },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "ammo", "max": 20, "start": 20, "regen": 0 }],
@@ -172,7 +193,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 70, "move_speed": 1.4, "ap_max": 12, "ap_regen": 1, "detection_range": 7 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "mana", "max": 70, "start": 70, "regen": 1.5 }],
@@ -235,12 +265,21 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 85, "move_speed": 1.4, "ap_max": 10, "ap_regen": 1, "detection_range": 7 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "mana", "max": 80, "start": 80, "regen": 2 }],
       "basicAttack": "strike",
-      "skills": ["heal", "consecrate", "blinding_flash", "barrier", "grav_lift"],
+      "skills": ["heal", "consecrate", "blinding_flash", "barrier", "grav_lift", "aegis"],
       "passives": ["second_wind"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
@@ -309,7 +348,16 @@
         "tremor_sense": 1,
         "block_limit": 1
       },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "mana", "max": 30, "start": 30, "regen": 0.5 }],
@@ -372,7 +420,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 50, "move_speed": 1.7, "ap_max": 8, "ap_regen": 1, "detection_range": 7, "evasion": 0.15 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [],
@@ -435,7 +492,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 40, "move_speed": 1.6, "ap_max": 8, "ap_regen": 1, "detection_range": 8 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "ammo", "max": 15, "start": 15, "regen": 0 }],
@@ -506,7 +572,26 @@
         "armor": 3,
         "power": 4
       },
-      "resistances": {},
+      "defense": {
+        "modifiers": [{ "match": "cat:Physical", "percent": -15 }, { "match": "el:fire", "percent": 25 }],
+        "immune": [],
+        "flatReductions": [{ "match": "slashing", "amount": 2 }],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [
+          {
+            "match": "cat:Physical",
+            "percent": 20,
+            "type": "Original",
+            "fixedType": "",
+            "base": "HealthLost",
+            "affectsPeriodic": false,
+            "meleeOnly": true
+          }
+        ],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [],
@@ -569,7 +654,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 60, "move_speed": 1.4, "ap_max": 10, "ap_regen": 1, "detection_range": 8 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "mana", "max": 70, "start": 70, "regen": 1.5 }],
@@ -632,7 +726,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 55, "move_speed": 2.4, "ap_max": 8, "ap_regen": 1.2, "detection_range": 8, "evasion": 0.2 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [],
@@ -703,7 +806,21 @@
         "armor": 6,
         "block_limit": 2
       },
-      "resistances": { "electric": -0.5, "fire": 0.3, "poison": 1 },
+      "defense": {
+        "modifiers": [
+          { "match": "crushing", "percent": 25 },
+          { "match": "piercing", "percent": -50 },
+          { "match": "electric", "percent": 50 },
+          { "match": "fire", "percent": -30 }
+        ],
+        "immune": ["poison"],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": ["poison", "bleeding", "tag:gas"],
       "resources": [],
@@ -766,7 +883,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 40, "move_speed": 2.6, "ap_max": 8, "ap_regen": 1.5, "detection_range": 9 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [],
@@ -837,7 +963,26 @@
         "evasion": 0.1,
         "accuracy": 0.05
       },
-      "resistances": {},
+      "defense": {
+        "modifiers": [{ "match": "el:earth", "percent": -100 }],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [
+          {
+            "match": "el:lightning",
+            "percent": 50,
+            "capPerHit": 0,
+            "into": "Health",
+            "resource": "",
+            "affectsPeriodic": true,
+            "order": "AfterShields"
+          }
+        ],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [],
@@ -900,7 +1045,16 @@
         "layout": "Cluster"
       },
       "stats": { "hp_max": 70, "ap_max": 8, "ap_regen": 1, "move_speed": 2, "detection_range": 6, "armor": 2 },
-      "resistances": {},
+      "defense": {
+        "modifiers": [{ "match": "el:earth", "percent": -60 }, { "match": "el:water", "percent": 50 }],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": true
+      },
+      "offense": { "bonuses": [], "conversions": [] },
       "statusResistances": {},
       "immunities": [],
       "resources": [],

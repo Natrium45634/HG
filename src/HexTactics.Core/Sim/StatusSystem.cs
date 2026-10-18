@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HexTactics.Core.Content;
 
 namespace HexTactics.Core.Sim;
@@ -63,6 +64,7 @@ public sealed class StatusSystem
             return false;
         }
         double resist = ResistanceTo(target, def);
+        int countBefore = target.Statuses.Count(x => x.Def == def);
         bool changed;
         if (def.Kind == StatusKind.Accumulating)
             changed = ApplyAccumulating(target, def, amount * (1.0 - resist), sourceUnit);
@@ -76,6 +78,14 @@ public sealed class StatusSystem
             changed = ApplyTimed(target, def, amount, duration, sourceUnit);
         }
         if (!changed) return false;
+
+        // Periodic power fixed at (re)application; optional immediate first tick for a new instance.
+        var applied = target.Statuses.LastOrDefault(x => x.Def == def);
+        if (applied != null)
+        {
+            TakeSnapshot(target, applied);
+            if (def.TickOnApply && target.Statuses.Count(x => x.Def == def) > countBefore) PeriodicTick(target, applied);
+        }
 
         foreach (var c in def.Cancels)
         {
@@ -296,9 +306,71 @@ public sealed class StatusSystem
                 if (inst.TickTimer >= _sim.TicksFor(level.TickInterval))
                 {
                     inst.TickTimer = 0;
-                    _sim.Combat.ApplyDirect(_sim.GetUnit(inst.SourceUnit), u, level.OnTick, 1.0, inst.Def.DisplayName);
+                    PeriodicTick(u, inst);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// One DoT/HoT tick (docs/DECISIONS_2.md §29): effects of the level with the source's current power or
+    /// the snapshot taken at application; a status with a tick count ends after its last tick.
+    /// </summary>
+    private void PeriodicTick(Unit u, StatusInstance inst)
+    {
+        var level = inst.Level;
+        if (level == null || level.OnTick.Count == 0) return;
+        int li = inst.LevelIndex;
+        Func<int, double?>? fixedAmounts = inst.Def.Power == PeriodicPower.Snapshot && inst.Snapshot != null
+            ? i => inst.Snapshot.TryGetValue((li, i), out var v) ? v : null
+            : null;
+        _sim.Combat.ApplyDirect(_sim.GetUnit(inst.SourceUnit), u, level.OnTick, 1.0, inst.Def.DisplayName, DamageSource.Periodic, fixedAmounts);
+        inst.TicksDone++;
+        if (inst.Def.TickCount > 0 && inst.TicksDone >= inst.Def.TickCount && u.Statuses.Contains(inst))
+            Remove(u, inst, $"все тики ({inst.Def.TickCount})");
+    }
+
+    /// <summary>Snapshot of periodic amounts at application (source stats now), for «по моменту наложения».</summary>
+    private void TakeSnapshot(Unit target, StatusInstance inst)
+    {
+        if (inst.Def.Power != PeriodicPower.Snapshot) return;
+        var src = _sim.GetUnit(inst.SourceUnit);
+        inst.Snapshot = new Dictionary<(int, int), double>();
+        for (int l = 0; l < inst.Def.Levels.Count; l++)
+        {
+            var ticks = inst.Def.Levels[l].OnTick;
+            for (int i = 0; i < ticks.Count; i++)
+                if (ticks[i].Type is EffectType.Damage or EffectType.Heal or EffectType.Shield)
+                    inst.Snapshot[(l, i)] = _sim.Combat.EffectAmount(ticks[i], src, target, 1.0);
+        }
+    }
+
+    private void RemoveWhere(Unit u, Func<StatusRemoveDef, bool> pred, string reason)
+    {
+        if (u.Statuses.Count == 0) return;
+        foreach (var inst in u.Statuses.ToArray())
+            if (inst.Def.RemoveOn.Any(pred) && u.Statuses.Contains(inst))
+                Remove(u, inst, reason);
+    }
+
+    public void OnMoved(Unit u) => RemoveWhere(u, r => r.When == StatusRemoveTrigger.Moved, "движение");
+
+    public void OnHealed(Unit u) => RemoveWhere(u, r => r.When == StatusRemoveTrigger.Healed, "лечение");
+
+    public void OnDamaged(Unit u, string damageType) =>
+        RemoveWhere(u, r => r.When == StatusRemoveTrigger.DamagedBy && _sim.Damage.Taxonomy.Matches(r.Damage, damageType), "урон");
+
+    public void OnEnteredCellEffect(Unit u, string cellEffect) =>
+        RemoveWhere(u, r => r.When == StatusRemoveTrigger.EnteredCellEffect && r.CellEffect == cellEffect, "эффект клетки");
+
+    public void OnSourceDied(Unit dead)
+    {
+        foreach (var u in _sim.Units)
+        {
+            if (!u.Alive || u.Statuses.Count == 0) continue;
+            foreach (var inst in u.Statuses.ToArray())
+                if (inst.SourceUnit == dead.Id && inst.Def.RemoveOn.Any(r => r.When == StatusRemoveTrigger.SourceDied) && u.Statuses.Contains(inst))
+                    Remove(u, inst, $"источник {dead.Name} погиб");
         }
     }
 
@@ -307,16 +379,27 @@ public sealed class StatusSystem
     {
         u.Stats.ClearModifiers();
         u.Flags.Clear();
+        u.Defenses.Clear();
+        u.Offenses.Clear();
+        if (!u.Def.Defense.IsEmpty) u.Defenses.Add(u.Def.Defense);
+        if (!u.Def.Offense.IsEmpty) u.Offenses.Add(u.Def.Offense);
         foreach (var p in u.Passives)
+        {
+            // Defense/offense of passives act permanently (like their stat modifiers).
+            if (!p.Defense.IsEmpty) u.Defenses.Add(p.Defense);
+            if (!p.Offense.IsEmpty) u.Offenses.Add(p.Offense);
             if (p.Trigger == PassiveTrigger.Always)
                 foreach (var m in p.StatMods)
                     u.Stats.AddModifier(m);
+        }
         foreach (var s in u.Statuses)
         {
             var level = s.Level;
             if (level == null) continue;
             foreach (var m in level.StatMods) u.Stats.AddModifier(m);
             u.Flags.OrWith(level.Flags);
+            if (!level.Defense.IsEmpty) u.Defenses.Add(level.Defense);
+            if (!level.Offense.IsEmpty) u.Offenses.Add(level.Offense);
         }
         if (u.Defending)
         {

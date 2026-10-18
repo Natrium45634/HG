@@ -44,6 +44,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_layers_melee_vs_flyer", BattleLayersMeleeVsFlyer));
         _tests.Add(("battle_stack_select_and_enemy_info", BattleStackAndEnemyInfo));
         _tests.Add(("battle_blocking_display", BattleBlockingDisplay));
+        _tests.Add(("battle_shield_and_damage", BattleShieldAndDamage));
+        _tests.Add(("editor_element_inheritance", EditorElementInheritance));
         _ = Run();
     }
 
@@ -58,7 +60,15 @@ public partial class UiTestRunner : Node
             _current = name;
             try
             {
-                await body();
+                // A test that stops progressing fails instead of hanging the run.
+                var task = body();
+                ulong started = Time.GetTicksMsec();
+                while (!task.IsCompleted)
+                {
+                    if (Time.GetTicksMsec() - started > 120_000) throw new TimeoutException("тест не завершился за 120 с");
+                    await Frames(1);
+                }
+                await task;
                 GD.Print($"PASS {name}");
             }
             catch (Exception e)
@@ -463,5 +473,36 @@ public partial class UiTestRunner : Node
         Check(bs.Board.ViewOf(knight).BlockText.StartsWith("Блок 1/3"), $"у рыцаря должна быть подпись «Блок 1/3», а не «{bs.Board.ViewOf(knight).BlockText}»");
         Check(bs.Board.ViewOf(goblin).BlockText == "заблокирован", "у гоблина должна быть подпись «заблокирован»");
         Check(LabelVisible("Блок 1/3 — держит: Гоблин"), "панель рыцаря должна показывать, кого он держит");
+    }
+
+    /// <summary>The priestess shields the knight: the HP bar shows the shield, a hit is absorbed by it first.</summary>
+    private async Task BattleShieldAndDamage()
+    {
+        var bs = await OpenBattle("facility_breach");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        var priestess = bs.Sim.Units.First(u => u.Def.Id == "priestess");
+        Check(priestess.KnowsSkill("aegis"), "у жрицы должен быть «Щит веры»");
+        Check(bs.Sim.Enqueue(priestess, Command.Skill("aegis", null, knight.Id), -1, true) == null, "щит не встал в очередь");
+        for (int i = 0; i < 200 && knight.ShieldTotal <= 0; i++) bs.Sim.Step();
+        Check(knight.ShieldTotal > 0, "рыцарь не получил щит");
+        bs.Select(knight);
+        await Frames(15);
+        Check(Find<UI.Bar>(GetTree().Root).Any(b => b.IsVisibleInTree() && b.Caption.Contains("щит")), "полоса здоровья должна показывать щит");
+        double hp = knight.Hp, shield = knight.ShieldTotal;
+        bs.Sim.Combat.DealDamage(null, knight, 10, "magic", null, "тест");
+        Check(knight.Hp == hp && knight.ShieldTotal < shield, "урон должен сначала уйти в щит");
+        var last = bs.Sim.Damage.Recent[^1].Result;
+        Check(last.Shielded > 0 && last.Steps.Any(s => s.Name == "щиты"), "разбор урона должен содержать шаг «щиты»");
+    }
+
+    /// <summary>The element editor shows which fields are inherited and from whom.</summary>
+    private async Task EditorElementInheritance()
+    {
+        await OpenEditor("elements");
+        var panel = Find<DefListPanel>(GetTree().Root).First();
+        panel.Select("ice");
+        await Frames(6);
+        Check(LabelVisible("унаследовано от «Вода»"), "редактор должен показать поле, унаследованное ледом от воды");
+        Check(LabelVisible("задано здесь"), "редактор должен отличать собственные поля");
     }
 }

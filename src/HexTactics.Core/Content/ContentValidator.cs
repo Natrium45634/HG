@@ -42,8 +42,10 @@ public static class ContentValidator
                 issues.Add(new ContentIssue(IssueSeverity.Error, Src(owner), path, $"Ссылка на несуществующий объект {CatName(cat)} '{value}'"));
         });
 
-        // Numeric ranges from [EdRange].
+        // Numeric ranges from [EdRange]; damage matches ("*", type, el:, cat:, tag:).
         foreach (var d in db.AllDefs()) CheckRanges(d, d, d.Id, issues, 0);
+        foreach (var d in db.AllDefs()) CheckDamageMatches(db, d, d, d.Id, issues, 0);
+        CheckHierarchies(db, issues);
         CheckRanges(null, db.Rules, "rules", issues, 0);
 
         CheckRules(db, issues);
@@ -99,6 +101,7 @@ public static class ContentValidator
         DefCategory.MoveCategory => "категория движения",
         DefCategory.MapTemplate => "шаблон карты",
         DefCategory.Layer => "слой",
+        DefCategory.Element => "элемент",
         _ => c.ToString(),
     };
 
@@ -149,6 +152,77 @@ public static class ContentValidator
             }
             if (value.GetType().IsClass && value.GetType().Namespace?.StartsWith("HexTactics.Core.Content") == true)
                 CheckRanges(owner, value, p, issues, depth + 1);
+        }
+    }
+
+    private static void CheckDamageMatches(ContentDatabase db, Def owner, object obj, string path, List<ContentIssue> issues, int depth)
+    {
+        if (depth > 16) return;
+        foreach (var prop in ReferenceWalker.PropsOf(obj.GetType()))
+        {
+            object? value;
+            try
+            {
+                value = prop.GetValue(obj);
+            }
+            catch
+            {
+                continue;
+            }
+            if (value == null || value is string && prop.GetCustomAttribute<EdDamageMatchAttribute>() == null) continue;
+            string p = path + "." + prop.Name;
+            if (prop.GetCustomAttribute<EdDamageMatchAttribute>() != null)
+            {
+                var values = value is string one ? new[] { one } : value is IEnumerable<string> many ? many.ToArray() : Array.Empty<string>();
+                foreach (var m in values)
+                    if (!DamageTaxonomy.IsKnownMatch(db, m))
+                        issues.Add(Err(owner, p, $"Неизвестный тип урона, элемент или категория '{m}'"));
+                continue;
+            }
+            if (value is IList list)
+            {
+                for (int i = 0; i < list.Count; i++)
+                    if (list[i] is { } item && item.GetType().IsClass && item is not string)
+                        CheckDamageMatches(db, owner, item, $"{p}[{i}]", issues, depth + 1);
+                continue;
+            }
+            if (value.GetType().IsClass && value.GetType().Namespace?.StartsWith("HexTactics.Core.Content") == true)
+                CheckDamageMatches(db, owner, value, p, issues, depth + 1);
+        }
+    }
+
+    /// <summary>Parents of elements and damage types must not form cycles.</summary>
+    private static void CheckHierarchies(ContentDatabase db, List<ContentIssue> issues)
+    {
+        foreach (var e in db.All<ElementDef>())
+        {
+            var seen = new HashSet<string> { e.Id };
+            var cur = e.Parent;
+            while (!string.IsNullOrEmpty(cur) && db.Element(cur) is { } pe)
+            {
+                if (!seen.Add(cur))
+                {
+                    issues.Add(Err(e, "Parent", $"Цикл наследования элементов: {string.Join(" → ", seen)} → {cur}"));
+                    break;
+                }
+                cur = pe.Parent;
+            }
+        }
+        foreach (var t in db.All<DamageTypeDef>())
+        {
+            var seen = new HashSet<string> { t.Id };
+            var cur = t.Parent;
+            while (!string.IsNullOrEmpty(cur) && db.DamageType(cur) is { } pt)
+            {
+                if (!seen.Add(cur))
+                {
+                    issues.Add(Err(t, "Parent", $"Цикл родительских типов урона: {string.Join(" → ", seen)} → {cur}"));
+                    break;
+                }
+                cur = pt.Parent;
+            }
+            if (t.Kind == DamageCategory.Custom && string.IsNullOrWhiteSpace(t.CustomCategory))
+                issues.Add(Warn(t, "CustomCategory", "Пользовательская категория без имени — модификаторы «категория: …» к ней не применить"));
         }
     }
 
@@ -227,9 +301,6 @@ public static class ContentValidator
             if (sd != null && (kv.Value < sd.Min || kv.Value > sd.Max))
                 issues.Add(Err(u, $"Stats[{kv.Key}]", $"Значение {kv.Value} вне диапазона характеристики [{sd.Min}; {sd.Max}]"));
         }
-        foreach (var kv in u.Resistances)
-            if (kv.Value < -1 || kv.Value > 1)
-                issues.Add(Err(u, $"Resistances[{kv.Key}]", "Сопротивление должно быть в [-1; 1]"));
         var resIds = new HashSet<string>();
         foreach (var r in u.Resources)
         {

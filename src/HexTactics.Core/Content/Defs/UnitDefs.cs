@@ -26,11 +26,14 @@ public static class Stats
     public const string HealPower = "heal_power";
     /// <summary>How many enemy slots the unit can hold back (blocking, part 2 §27).</summary>
     public const string BlockLimit = "block_limit";
+    public const string HealReceived = "heal_received";
+    public const string CritResist = "crit_resist";
+    public const string CritBonus = "crit_bonus";
 
     public static readonly string[] All =
     {
         HpMax, MoveSpeed, ApMax, ApRegen, DetectionRange, Accuracy, Evasion, BlockChance, BlockReduction,
-        Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit,
+        Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit, HealReceived, CritResist, CritBonus,
     };
 }
 
@@ -59,14 +62,6 @@ public sealed class ResourceDef : Def
     [Ed("Максимум по умолчанию"), EdRange(0, 100000)] public double DefaultMax { get; set; } = 100;
     [Ed("Восстановление/с по умолчанию"), EdRange(-1000, 1000)] public double DefaultRegen { get; set; }
     [Ed("Показывать шкалу")] public bool ShowBar { get; set; } = true;
-}
-
-public sealed class DamageTypeDef : Def
-{
-    [JsonIgnore] public override DefCategory Category => DefCategory.DamageType;
-
-    [Ed("Цвет"), EdColor] public string Color { get; set; } = "#d0d0d0";
-    [Ed("Учитывает броню", "Броня вычитается из урона этого типа")] public bool ArmorApplies { get; set; }
 }
 
 public enum FactionShape
@@ -147,8 +142,10 @@ public sealed class UnitDef : Def
     [Ed("Характеристики", "Отсутствующие берутся по умолчанию из определения характеристики", Group = "Характеристики"), EdKeyRef(DefCategory.Stat)]
     public Dictionary<string, double> Stats { get; set; } = new();
 
-    [Ed("Сопротивления", "Тип урона → доля (0.5 = −50% урона, −0.5 = уязвимость, 1 = иммунитет)", Group = "Характеристики"), EdKeyRef(DefCategory.DamageType)]
-    public Dictionary<string, double> Resistances { get; set; } = new();
+    [Ed("Защита от урона", "Сопротивления и уязвимости (−500…+500 %), иммунитеты, снижение, преобразование, поглощение, отражение", Group = "Урон")]
+    public DefenseDef Defense { get; set; } = new();
+    [Ed("Атака", "Бонусы наносимого урона по типам и преобразование", Group = "Урон")]
+    public OffenseDef Offense { get; set; } = new();
 
     [Ed("Сопротивления состояниям", "Состояние → доля снижения накопления/шанса", Group = "Характеристики"), EdKeyRef(DefCategory.Status)]
     public Dictionary<string, double> StatusResistances { get; set; } = new();
@@ -203,6 +200,8 @@ public sealed class PassiveDef : Def
 
     [Ed("Срабатывание")] public PassiveTrigger Trigger { get; set; } = PassiveTrigger.Always;
     [Ed("Модификаторы характеристик", "Действуют постоянно")] public List<StatModDef> StatMods { get; set; } = new();
+    [Ed("Защита от урона", "Действует постоянно")] public DefenseDef Defense { get; set; } = new();
+    [Ed("Атака", "Бонусы урона, действуют постоянно")] public OffenseDef Offense { get; set; } = new();
     [Ed("Шанс"), EdRange(0, 1)] public double Chance { get; set; } = 1;
     [Ed("Перезарядка, с"), EdRange(0, 3600)] public double Cooldown { get; set; }
     [Ed("Интервал, с", "Для периодического срабатывания"), EdRange(0.05, 3600), EdShowIf(nameof(Trigger), PassiveTrigger.Periodic)]

@@ -60,6 +60,7 @@ public partial class PropertyGrid : VBoxContainer
     {
         Ui.ClearChildren(this);
         _conditional.Clear();
+        _inheritHints.Clear();
         if (_target == null) return;
         BuildObject(this, _target, _depth == 0);
         UpdateVisibility();
@@ -69,6 +70,90 @@ public partial class PropertyGrid : VBoxContainer
     {
         PropertyChanged?.Invoke(owner, prop);
         Changed?.Invoke();
+        RefreshInheritHints();
+    }
+
+    // ------------------------------------------------------------------ inheritance hints (elements, damage types)
+
+    private readonly List<(IInheritable Owner, string Prop, Label Hint)> _inheritHints = new();
+
+    private void AddInheritHint(VBoxContainer parent, object owner, PropertyInfo prop)
+    {
+        if (owner is not IInheritable inh || prop.GetCustomAttribute<EdInheritAttribute>() == null || _db == null) return;
+        var h = Ui.HBox(4);
+        h.AddChild(Ui.Spacer(LabelWidth));
+        var label = Ui.Label("", 12, Ui.TextDim, wrap: true).Expand();
+        h.AddChild(label);
+        parent.AddChild(h);
+        _inheritHints.Add((inh, prop.Name, label));
+        RefreshInheritHints();
+    }
+
+    private void RefreshInheritHints()
+    {
+        if (_db == null) return;
+        foreach (var (owner, prop, label) in _inheritHints)
+        {
+            if (!GodotObject.IsInstanceValid(label)) continue;
+            var text = owner.InheritedHint(_db, prop) ?? "";
+            label.Text = text.Length > 0 ? "↳ " + text : "";
+            label.AddThemeColorOverride("font_color", text.StartsWith("унаследовано") ? new Color(0.62f, 0.8f, 1f) : Ui.TextDim);
+        }
+    }
+
+    // ------------------------------------------------------------------ damage matches ("*", type, el:, cat:, tag:)
+
+    public OptionButton MatchOption(string current, Action<string> set)
+    {
+        var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
+        var options = _db != null ? DamageTaxonomy.MatchOptions(_db) : new List<(string, string)> { ("*", "любой урон") };
+        var ids = options.Select(o => o.Item1).ToList();
+        foreach (var (_, label) in options) ob.AddItem(label);
+        if (!string.IsNullOrEmpty(current) && !ids.Contains(current))
+        {
+            ids.Add(current);
+            ob.AddItem(current.StartsWith("tag:", StringComparison.Ordinal) ? $"тег: {current[4..]}" : $"⚠ {current} (не найден)");
+        }
+        ob.Selected = Math.Max(0, ids.IndexOf(string.IsNullOrEmpty(current) ? "*" : current));
+        ob.TooltipText = "Любой урон, тип урона (и его потомки), элемент (и его потомки) или категория";
+        ob.ItemSelected += idx => set(ids[(int)idx]);
+        return ob;
+    }
+
+    private Control MatchList(VBoxContainer parent, object owner, PropertyInfo prop, EdAttribute ed, List<string> list)
+    {
+        var row = Row(parent, ed);
+        var col = Ui.VBox(3).Expand();
+        row.AddChild(col);
+        void Fill()
+        {
+            Ui.ClearChildren(col);
+            for (int i = 0; i < list.Count; i++)
+            {
+                int idx = i;
+                var h = Ui.HBox(4);
+                h.AddChild(MatchOption(list[i], v =>
+                {
+                    list[idx] = v;
+                    RaiseChanged(owner, prop.Name);
+                }).Expand());
+                h.AddChild(Ui.Button("✕", () =>
+                {
+                    list.RemoveAt(idx);
+                    RaiseChanged(owner, prop.Name);
+                    Fill();
+                }, "Удалить"));
+                col.AddChild(h);
+            }
+            col.AddChild(Ui.Button("+ добавить", () =>
+            {
+                list.Add("*");
+                RaiseChanged(owner, prop.Name);
+                Fill();
+            }));
+        }
+        Fill();
+        return row;
     }
 
     private static IEnumerable<PropertyInfo> EditableProps(Type t) =>
@@ -184,8 +269,20 @@ public partial class PropertyGrid : VBoxContainer
                 prop.SetValue(owner, value);
             }
             var list = (IList)value!;
+            if (itemType == typeof(string) && prop.GetCustomAttribute<EdDamageMatchAttribute>() != null)
+                return MatchList(parent, owner, prop, ed, (List<string>)list);
             if (itemType == typeof(string))
-                return refAttr != null ? RefList(parent, owner, prop, ed, (List<string>)list, refAttr) : TagList(parent, owner, prop, ed, (List<string>)list);
+            {
+                var c = refAttr != null ? RefList(parent, owner, prop, ed, (List<string>)list, refAttr) : TagList(parent, owner, prop, ed, (List<string>)list);
+                AddInheritHint(parent, owner, prop);
+                return c;
+            }
+            if (itemType.IsClass && prop.GetCustomAttribute<EdInheritAttribute>() != null)
+            {
+                var c = ObjectList(parent, owner, prop, ed, list, itemType);
+                AddInheritHint(parent, owner, prop);
+                return c;
+            }
             if (itemType == typeof(double)) return NumberList(parent, owner, prop, ed, (List<double>)list);
             if (itemType.IsClass) return ObjectList(parent, owner, prop, ed, list, itemType);
             return null;
@@ -230,16 +327,24 @@ public partial class PropertyGrid : VBoxContainer
             Fill();
             return row;
         }
-        editor = ScalarEditor(type, value, prop, v =>
-        {
-            prop.SetValue(owner, v);
-            RaiseChanged(owner, prop.Name);
-            if (prop.PropertyType.IsEnum || prop.PropertyType == typeof(bool)) UpdateVisibility();
-        }, refAttr);
+        if (type == typeof(string) && prop.GetCustomAttribute<EdDamageMatchAttribute>() != null)
+            editor = MatchOption((string?)value ?? "*", v =>
+            {
+                prop.SetValue(owner, v);
+                RaiseChanged(owner, prop.Name);
+            });
+        else
+            editor = ScalarEditor(type, value, prop, v =>
+            {
+                prop.SetValue(owner, v);
+                RaiseChanged(owner, prop.Name);
+                if (prop.PropertyType.IsEnum || prop.PropertyType == typeof(bool)) UpdateVisibility();
+            }, refAttr);
         editor.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         if (!string.IsNullOrEmpty(ed.Tip)) editor.TooltipText = ed.Tip;
         row.AddChild(editor);
         if (prop.GetCustomAttribute<EdFormulaAttribute>() is { } fa) AddFormulaHelpers(parent, owner, prop, fa, (LineEdit)editor);
+        AddInheritHint(parent, owner, prop);
         bool locked = prop.GetCustomAttribute<EdReadOnlyAttribute>() != null
                       || (owner is Def def && prop.Name == nameof(Def.Id) && IdLocked?.Invoke(def) == true);
         if (ReadOnly || locked) SetReadOnly(editor);

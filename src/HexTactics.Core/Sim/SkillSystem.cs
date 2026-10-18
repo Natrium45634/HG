@@ -35,6 +35,8 @@ public sealed class SkillCast
     public bool Interrupted { get; set; }
     /// <summary>The player side saw the caster when the preparation started (telegraph may be shown).</summary>
     public bool VisibleToPlayer { get; set; }
+    /// <summary>Damage source for the pipeline rules: a command skill or an auto-attack.</summary>
+    public DamageSource Source { get; init; } = DamageSource.Skill;
 
     public double Progress(long now) => ReleaseTick <= StartTick ? 1.0 : Math.Clamp((double)(now - StartTick) / (ReleaseTick - StartTick), 0, 1);
 }
@@ -428,18 +430,24 @@ public sealed class SkillSystem
             int dist = HexCoord.Distance(origin, t.Unit.Pos);
             double amount = _sim.Combat.EffectAmount(e, caster, t.Unit, 1.0, dist);
             if (e.Type == EffectType.Damage)
-                _sim.Combat.DealDamage(caster, t.Unit, amount, e.DamageType, t.Roll, cause, deferred);
+                _sim.Combat.DealDamage(caster, t.Unit, amount, e.DamageType, t.Roll, cause, deferred, cast.Source, skill);
             else
             {
                 if (t.Roll?.Crit == true && _sim.Rules.Combat.HealCanCrit) amount *= caster.Stat(Stats.CritMult);
-                _sim.Combat.Heal(caster, t.Unit, amount * (1.0 + caster.Stat(Stats.HealPower)), cause);
+                _sim.Combat.Heal(caster, t.Unit, amount, cause, e.HealMode);
             }
         }
 
-        // 7. Statuses.
+        // Crit effects (once per target, also for crits without extra damage).
+        if (skill.CritEffects.Count > 0)
+            foreach (var t in entries)
+                if (t.Roll?.Crit == true && t.Unit.Alive)
+                    _sim.Combat.ApplyDirect(caster, t.Unit, skill.CritEffects, 1.0, cause + " (крит)", cast.Source);
+
+        // 7. Statuses and shields.
         foreach (var t in entries)
         foreach (var e in t.Effects)
-            if ((e.Type == EffectType.ApplyStatus || e.Type == EffectType.RemoveStatus) && Passes(t, e))
+            if ((e.Type is EffectType.ApplyStatus or EffectType.RemoveStatus or EffectType.Shield or EffectType.RemoveShield) && Passes(t, e))
                 _sim.Combat.ApplyUnitEffect(e, caster, t.Unit, origin, 1.0, cause);
 
         // 8. Displacement, facing, resources/AP.

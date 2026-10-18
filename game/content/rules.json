@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "kind": "rules",
   "rules": {
     "time": {
@@ -85,6 +85,146 @@
       "healCanCrit": false,
       "hitFormula": "",
       "damageFormula": ""
+    },
+    "damage": {
+      "minTotalPercent": -500,
+      "maxTotalPercent": 500,
+      "sources": [
+        {
+          "source": "Skill",
+          "rollHit": false,
+          "canCrit": true,
+          "attackerBonuses": true,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": true,
+          "elementEffects": true
+        },
+        {
+          "source": "AutoAttack",
+          "rollHit": false,
+          "canCrit": true,
+          "attackerBonuses": true,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": true,
+          "elementEffects": true
+        },
+        {
+          "source": "Periodic",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        },
+        {
+          "source": "CellEffect",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        },
+        {
+          "source": "Terrain",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        },
+        {
+          "source": "Synergy",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        },
+        {
+          "source": "Reflection",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": false,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": false
+        },
+        {
+          "source": "Fall",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": false,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": false
+        },
+        {
+          "source": "Scenario",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        },
+        {
+          "source": "Passive",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        },
+        {
+          "source": "Other",
+          "rollHit": false,
+          "canCrit": false,
+          "attackerBonuses": false,
+          "armor": true,
+          "shields": true,
+          "absorption": true,
+          "reflection": false,
+          "elementEffects": true
+        }
+      ],
+      "reflectMaxDepth": 1,
+      "crit": {
+        "meleeBonus": 0,
+        "rangedBonus": 0,
+        "spellBonus": 0,
+        "flankBonus": 0.05,
+        "rearBonus": 0.1,
+        "minMultiplier": 1.1
+      },
+      "overhealToShieldPercent": 0,
+      "overhealShieldMaxPercent": 30,
+      "overhealShieldDuration": 8,
+      "adminBreakdown": true
     },
     "vision": {
       "updateInterval": 0.25,

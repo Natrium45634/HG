@@ -388,7 +388,7 @@ public partial class BattleScreen : Node
         switch (e.Type)
         {
             case SimEventType.Damage when e.Value > 0:
-                Board.FloatText(pos.Value, $"-{e.Value:0}", Ui.Parse(_db.Get<DamageTypeDef>(e.DamageType)?.Color, Ui.Bad).Lightened(0.1f), 1.1f);
+                Board.FloatText(pos.Value, $"-{e.Value:0}", Ui.Parse(Sim.Damage.Taxonomy.ColorOf(e.DamageType), Ui.Bad).Lightened(0.1f), 1.1f);
                 if (target != null) Board.ViewOf(target).Flash();
                 break;
             case SimEventType.Heal:

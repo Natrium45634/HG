@@ -389,6 +389,8 @@ public partial class BattleHud : Control
     private void BuildDiag()
     {
         _diagText = Ui.Label("", 12, new Color(0.8f, 0.9f, 1f));
+        _diagText.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _diagText.CustomMinimumSize = new Vector2(520, 0);
         _diagPanel = Track(Ui.PanelBox(_diagText, new Color(0.05f, 0.06f, 0.08f, 0.85f), 8));
         _diagPanel.Visible = false;
         AddChild(_diagPanel);
@@ -705,7 +707,8 @@ public partial class BattleHud : Control
         _unitName.AddThemeColorOverride("font_color", fcol.Lightened(0.25f));
         var rel = Sim.Options.PlayerFactions.Select(pf => _bs.Db.RelationOf(pf, u.FactionId)).FirstOrDefault();
         _unitSub.Text = $"{faction?.DisplayName ?? u.FactionId} · {Names.Of(rel)} · {u.Def.CreatureCategory} · {u.LayerDef.DisplayName.ToLowerInvariant()} слой · взгляд: {u.Facing.RuName()}" + (u.AiControlled ? " · ИИ" : "");
-        _hp.Set(u.Hp, u.HpMax, $"HP {u.Hp:0}/{u.HpMax:0}");
+        double shield = u.ShieldTotal;
+        _hp.Set(u.Hp, u.HpMax, $"HP {u.Hp:0}/{u.HpMax:0}" + (shield > 0.5 ? $"  · щит {shield:0}" : ""));
         _hp.FillColor = u.HpFraction > 0.5 ? Ui.HpColor : u.HpFraction > 0.25 ? Ui.Warn : Ui.Bad;
         bool mine = Sim.CanPlayerCommand(u);
         double reserved = mine ? u.ReservedAp : 0;
@@ -853,7 +856,7 @@ public partial class BattleHud : Control
             _intel.AddChild(Ui.Label("Известные реакции на урон:", 12, Ui.TextDim));
             if (info.Resistances.Count == 0) _intel.AddChild(Ui.Label("  особых сопротивлений не замечено", 12, Ui.Text));
             foreach (var (name, value) in info.Resistances)
-                _intel.AddChild(Ui.Label($"  {name}: {value}", 12, value.Contains("уязв") ? Ui.Good : value.StartsWith("−") || value.StartsWith("имм") ? Ui.Warn : Ui.Text));
+                _intel.AddChild(Ui.Label($"  {name}: {value}", 12, value.Contains("уязв") ? Ui.Good : value.Contains("сопрот") || value.Contains("имм") || value.Contains("не проходит") ? Ui.Warn : Ui.Text));
         }
         else
         {
@@ -883,6 +886,7 @@ public partial class BattleHud : Control
             var row = Ui.HBox(4, Ui.Label(sd.DisplayName, 12, Ui.TextDim).Expand(), Ui.Label(val + mod, 12, Math.Abs(v - b) > 1e-6 ? (v > b ? Ui.Good : Ui.Bad) : Ui.Text));
             _statsBox.AddChild(row);
         }
+        foreach (var line in Sim.Damage.DefenseSummary(u)) _statsBox.AddChild(Ui.Label(line, 12, Ui.Text, wrap: true));
         if (u.Passives.Count > 0) _statsBox.AddChild(Ui.Label("Пассивные: " + string.Join(", ", u.Passives.Select(p => p.DisplayName)), 12, Ui.TextDim, wrap: true));
         if (u.Def.Immunities.Count > 0) _statsBox.AddChild(Ui.Label("Иммунитеты: " + string.Join(", ", u.Def.Immunities), 12, Ui.TextDim, wrap: true));
     }
@@ -1118,6 +1122,16 @@ public partial class BattleHud : Control
             $"путей {Sim.Pathfinder.TotalSearches} · LoS {Sim.Los.Checks} (кэш {Sim.Los.CacheHits}) · видимость {Sim.Vision.Recomputes}",
         };
         foreach (var kv in Sim.Profiler.RecentMsPerTick.OrderByDescending(k => k.Value)) lines.Add($"  {kv.Key}: {kv.Value:0.000} мс/тик");
+        if (_bs.Admin && Sim.Damage.Recent.Count > 0)
+        {
+            // Damage breakdown of the last hits (TZ part 2 §11.8).
+            lines.Add("Разбор урона (последние удары):");
+            foreach (var (tick, a, t, r) in Sim.Damage.Recent.TakeLast(3))
+            {
+                string who = $"{Sim.GetUnit(a)?.Name ?? "—"} → {Sim.GetUnit(t)?.Name ?? "?"}";
+                lines.Add($"  {tick * Sim.Dt:0.0} с {who}: {r.ShortBreakdown()}");
+            }
+        }
         _diagText.Text = string.Join("\n", lines);
     }
 }

@@ -19,6 +19,7 @@ public partial class UnitView : Node3D
     private readonly Node3D _body = new() { Name = "Body" };
     private readonly Node3D _bars = new() { Name = "Bars" };
     private MeshInstance3D _hpFill = null!;
+    private MeshInstance3D _shieldFill = null!;
     private MeshInstance3D _apFill = null!;
     private MeshInstance3D _apReserve = null!;
     private Label3D _status = null!;
@@ -213,6 +214,8 @@ public partial class UnitView : Node3D
         }
         Q(new Color(0.05f, 0.05f, 0.06f, 0.85f), new Vector3(0, 0, 0), new Vector3(BarWidth + 0.06f, 0.2f, 1), 10);
         _hpFill = Q(Ui.HpColor, new Vector3(0, 0.04f, 0), new Vector3(BarWidth, 0.08f, 1), 11);
+        // Shield: a light strip over the health bar (share of max health, capped at the bar width).
+        _shieldFill = Q(new Color(0.6f, 0.88f, 1f), new Vector3(0, 0.1f, 0), new Vector3(0.01f, 0.035f, 1), 12);
         _apFill = Q(Ui.ApColor, new Vector3(0, -0.055f, 0), new Vector3(BarWidth, 0.05f, 1), 11);
         _apReserve = Q(Ui.ReserveColor, new Vector3(0, -0.055f, 0), new Vector3(0.01f, 0.05f, 1), 12);
         _status = new Label3D
@@ -408,6 +411,13 @@ public partial class UnitView : Node3D
         float hpf = (float)Math.Clamp(u.HpFraction, 0, 1);
         _hpFill.Scale = new Vector3(Math.Max(0.001f, BarWidth * hpf), 0.08f, 1);
         _hpFill.Position = new Vector3(-BarWidth / 2 + BarWidth * hpf / 2, 0.04f, 0);
+        float shf = u.HpMax <= 0 ? 0 : (float)Math.Clamp(u.ShieldTotal / u.HpMax, 0, 1);
+        _shieldFill.Visible = shf > 0.001f;
+        if (_shieldFill.Visible)
+        {
+            _shieldFill.Scale = new Vector3(BarWidth * shf, 0.035f, 1);
+            _shieldFill.Position = new Vector3(-BarWidth / 2 + BarWidth * shf / 2, 0.1f, 0);
+        }
         ((StandardMaterial3D)_hpFill.MaterialOverride).AlbedoColor = hpf > 0.5f ? Ui.HpColor : hpf > 0.25f ? Ui.Warn : Ui.Bad;
         float apf = (float)Math.Clamp(u.ApMax <= 0 ? 0 : u.Ap / u.ApMax, 0, 1);
         _apFill.Scale = new Vector3(Math.Max(0.001f, BarWidth * apf), 0.05f, 1);

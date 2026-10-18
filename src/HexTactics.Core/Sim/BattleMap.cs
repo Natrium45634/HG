@@ -15,6 +15,8 @@ public enum EffectOrigin
     Spread,
     Scenario,
     Corpse,
+    /// <summary>Created by element damage (an element's cell effects or an interaction).</summary>
+    Element,
 }
 
 /// <summary>Runtime instance of a cell effect (fire, poison...).</summary>

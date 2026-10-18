@@ -19,6 +19,7 @@ public static class ContentMigrator
         [0] = V0ToV1,
         [1] = V1ToV2,
         [2] = V2ToV3,
+        [3] = V3ToV4,
     };
 
     public static JsonObject? Migrate(JsonNode node, string expectedKind, out List<string> notes, out string? error)
@@ -172,6 +173,39 @@ public static class ContentMigrator
         notes.Add($"v2→v3: «несколько юнитов на клетке» = {allow} → режим {(allow ? "AllowAll" : "ByUnitType")}");
     }
 
+    /// <summary>
+    /// v3 → v4 (unified damage, docs/DECISIONS_2.md §29): unit resistances as fractions
+    /// ({"fire": 0.5}) become defense modifiers in percent ({"match": "fire", "percent": -50});
+    /// 1 and more — immunity. Computed fields written by older builds are dropped.
+    /// </summary>
+    private static void V3ToV4(JsonObject root, string kind, List<string> notes)
+    {
+        int dropped = DropComputed(root);
+        if (dropped > 0) notes.Add($"v3→v4: удалено служебных полей: {dropped}");
+        if (kind != "units" || root["items"] is not JsonArray items) return;
+        int converted = 0;
+        foreach (var n in items)
+        {
+            if (n is not JsonObject u || u["resistances"] is not JsonObject res) continue;
+            u.Remove("resistances");
+            if (res.Count == 0) continue;
+            var defense = u["defense"] as JsonObject ?? new JsonObject();
+            var mods = defense["modifiers"] as JsonArray ?? new JsonArray();
+            var immune = defense["immune"] as JsonArray ?? new JsonArray();
+            foreach (var kv in res)
+            {
+                double f = kv.Value is JsonValue v && v.TryGetValue<double>(out var d) ? d : 0;
+                if (f >= 1) immune.Add(kv.Key);
+                else if (Math.Abs(f) > 1e-9) mods.Add(new JsonObject { ["match"] = kv.Key, ["percent"] = Math.Round(-f * 100, 2) });
+                converted++;
+            }
+            defense["modifiers"] = mods;
+            defense["immune"] = immune;
+            u["defense"] = defense;
+        }
+        if (converted > 0) notes.Add($"v3→v4: сопротивления ({converted}) переведены в проценты: 0.5 → −50 %, 1 → иммунитет");
+    }
+
     private static int DropComputed(JsonNode? node)
     {
         int n = 0;
@@ -179,6 +213,10 @@ public static class ContentMigrator
         {
             case JsonObject o:
                 if (o.Remove("displayName")) n++;
+                if (o.Remove("usesChosenDirection")) n++;
+                if (o.Remove("targetsUnits")) n++;
+                if (o.Remove("hasFacing")) n++;
+                if (o.Remove("isEmpty")) n++;
                 if (o["blocksMovement"] != null && o["interruptsCast"] != null && o.Remove("any")) n++;
                 foreach (var kv in o.ToArray()) n += DropComputed(kv.Value);
                 break;

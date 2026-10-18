@@ -14,6 +14,17 @@ public sealed class ResourceState
 }
 
 /// <summary>Runtime status instance on a unit.</summary>
+public sealed class ShieldInstance
+{
+    public int Id { get; init; }
+    public ShieldSpecDef Spec { get; init; } = new();
+    public double Amount { get; set; }
+    public double Max { get; set; }
+    /// <summary>-1 — until depleted.</summary>
+    public long ExpiresTick { get; set; } = -1;
+    public int SourceUnit { get; init; } = -1;
+}
+
 public sealed class StatusInstance
 {
     public StatusDef Def { get; init; } = null!;
@@ -29,6 +40,10 @@ public sealed class StatusInstance
     public int SourceUnit { get; set; } = -1;
     /// <summary>Points gained this tick (to show "accumulating" in UI).</summary>
     public double LastGain { get; set; }
+    /// <summary>Periodic ticks done (for statuses with a tick count).</summary>
+    public int TicksDone { get; set; }
+    /// <summary>Snapshot power: amounts of OnTick effects fixed at application (by level index and effect index).</summary>
+    public Dictionary<(int Level, int Effect), double>? Snapshot { get; set; }
 
     public StatusLevelDef? Level => LevelIndex >= 0 && LevelIndex < Def.Levels.Count ? Def.Levels[LevelIndex] : null;
 
@@ -58,7 +73,6 @@ public sealed class StatBlock
     {
         _db = db;
         foreach (var kv in def.Stats) _base[kv.Key] = kv.Value;
-        foreach (var kv in def.Resistances) _base[ResistStat(kv.Key)] = kv.Value;
     }
 
     public static string ResistStat(string damageType) => "resist_" + damageType;
@@ -189,7 +203,25 @@ public sealed class Unit
 
     public double Stat(string id) => Stats.Get(id);
 
-    public double Resist(string damageType) => Math.Clamp(Stats.Get(StatBlock.ResistStat(damageType)), -1.0, 1.0);
+    /// <summary>Legacy resistance stat resist_&lt;type&gt; as a fraction (0.5 = −50 % damage); part of the modifier sum.</summary>
+    public double ResistStat(string damageType) => Stats.Get(StatBlock.ResistStat(damageType));
+
+    /// <summary>Shields (separate absorption pools), highest priority first.</summary>
+    public List<ShieldInstance> Shields { get; } = new();
+    public double ShieldTotal
+    {
+        get
+        {
+            double s = 0;
+            foreach (var x in Shields) s += x.Amount;
+            return s;
+        }
+    }
+
+    /// <summary>Defensive/offensive blocks in effect: the unit type, passives and status levels (rebuilt with modifiers).</summary>
+    public List<DefenseDef> Defenses { get; } = new();
+    public List<OffenseDef> Offenses { get; } = new();
+    public long LastDamagedTick { get; internal set; } = -1;
 
     public double ReservedAp => Queue.ReservedAp;
     public double FreeAp => Ap - ReservedAp;

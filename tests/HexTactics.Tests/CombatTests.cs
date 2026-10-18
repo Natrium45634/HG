@@ -111,31 +111,39 @@ public class CombatTests
         return (sim, att, def);
     }
 
+    /// <summary>Damage dealt through the unified pipeline; the target is restored afterwards.</summary>
+    private static double Hit(Simulation sim, Unit att, Unit def, double amount, string type)
+    {
+        double hp = def.Hp;
+        double dealt = sim.Combat.DealDamage(att, def, amount, type, null, "тест");
+        def.Hp = hp;
+        return dealt;
+    }
+
     [Fact]
     public void Resistances_Vulnerabilities_Immunity()
     {
         var (sim, att, def) = Duel(db =>
         {
             var d = db.Unit("dummy")!;
-            d.Resistances["fire"] = 0.5;
-            d.Resistances["ice"] = -0.5;
-            d.Resistances["poison"] = 1.0;
+            d.Defense.Modifiers.Add(new DamageModDef { Match = "fire", Percent = -50 });
+            d.Defense.Modifiers.Add(new DamageModDef { Match = "ice", Percent = 50 });
+            d.Defense.Immune.Add("poison");
         });
-        Assert.Equal(10, sim.Combat.ComputeDamage(att, def, 20, "fire", null).Final);
-        Assert.Equal(30, sim.Combat.ComputeDamage(att, def, 20, "ice", null).Final);
-        var imm = sim.Combat.ComputeDamage(att, def, 20, "poison", null);
-        Assert.True(imm.Immune);
-        Assert.Equal(0, imm.Final);
+        Assert.Equal(10, Hit(sim, att, def, 20, "fire"));
+        Assert.Equal(30, Hit(sim, att, def, 20, "ice"));
+        Assert.Equal(0, Hit(sim, att, def, 20, "poison"));
+        Assert.True(sim.Damage.Recent[^1].Result.Immune);
     }
 
     [Fact]
     public void Armor_ReducesPhysical_WithMinimumFraction()
     {
         var (sim, att, def) = Duel(db => db.Unit("dummy")!.Stats[Stats.Armor] = 8);
-        Assert.Equal(12, sim.Combat.ComputeDamage(att, def, 20, "physical", null).Final);
-        // 10 - 8 = 2 < 10 * 0.2 = 2 → 2; 5 - 8 < 1 → min fraction 1.
-        Assert.Equal(1, sim.Combat.ComputeDamage(att, def, 5, "physical", null).Final);
-        Assert.Equal(20, sim.Combat.ComputeDamage(att, def, 20, "fire", null).Final); // fire ignores armor
+        Assert.Equal(12, Hit(sim, att, def, 20, "physical"));
+        // 5 - 8 < 5 * 0.2 = 1 → min fraction 1.
+        Assert.Equal(1, Hit(sim, att, def, 5, "physical"));
+        Assert.Equal(20, Hit(sim, att, def, 20, "fire")); // fire ignores armor
     }
 
     [Fact]

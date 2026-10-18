@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "kind": "skills",
   "items": [
     {
@@ -35,6 +35,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -55,11 +60,23 @@
               "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "slashing",
               "amount": 10,
               "scalingStat": "power",
               "scalingFactor": 1,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -116,6 +133,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -136,11 +158,23 @@
               "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "piercing",
               "amount": 9,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -197,6 +231,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -217,11 +256,23 @@
               "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "piercing",
               "amount": 7,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -244,6 +295,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "bleeding",
               "duration": 0,
               "distance": 1,
@@ -300,6 +363,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -320,11 +388,23 @@
               "filter": { "enemies": true, "allies": true, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "slashing",
               "amount": 9,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -381,6 +461,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -401,11 +486,23 @@
               "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "crushing",
               "amount": 5,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -428,6 +525,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -450,6 +559,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "stunned",
               "duration": 1.2,
               "distance": 1,
@@ -506,6 +627,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -531,6 +657,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -553,6 +691,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "burning",
               "duration": 0,
               "distance": 1,
@@ -575,6 +725,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -631,6 +793,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -656,6 +823,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -678,6 +857,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "chilled",
               "duration": 0,
               "distance": 1,
@@ -700,6 +891,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -756,6 +959,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -781,6 +989,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -803,6 +1023,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "shocked",
               "duration": 0,
               "distance": 1,
@@ -859,6 +1091,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -884,6 +1121,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -940,6 +1189,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": false,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -965,6 +1219,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1021,6 +1287,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1046,6 +1317,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1102,6 +1385,46 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0.25,
+      "critNoExtraDamage": false,
+      "critEffects": [
+        {
+          "type": "ApplyStatus",
+          "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
+          "chance": 1,
+          "requiresHit": false,
+          "damageType": "physical",
+          "amount": 1,
+          "scalingStat": "",
+          "scalingFactor": 0,
+          "formula": "",
+          "healMode": "Flat",
+          "shield": {
+            "name": "Щит",
+            "protects": [],
+            "priority": 0,
+            "regenPerSecond": 0,
+            "regenDelay": 2,
+            "stacking": "Refresh",
+            "ignoresPeriodic": false,
+            "color": "#8fd8ff"
+          },
+          "shieldName": "",
+          "status": "bleeding",
+          "duration": 0,
+          "distance": 1,
+          "facing": "TowardSource",
+          "setDirection": "E",
+          "resource": "",
+          "terrain": "",
+          "cellEffect": "",
+          "level": 1,
+          "obstacleDamage": 1000,
+          "summonUnit": ""
+        }
+      ],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1127,6 +1450,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1183,6 +1518,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "Тень",
@@ -1208,6 +1548,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 2,
               "distance": 1,
@@ -1249,6 +1601,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1271,6 +1635,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1293,6 +1669,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1349,6 +1737,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1375,6 +1768,18 @@
                     "scalingStat": "",
                     "scalingFactor": 0,
                     "formula": "",
+                    "healMode": "Flat",
+                    "shield": {
+                      "name": "Щит",
+                      "protects": [],
+                      "priority": 0,
+                      "regenPerSecond": 0,
+                      "regenDelay": 2,
+                      "stacking": "Refresh",
+                      "ignoresPeriodic": false,
+                      "color": "#8fd8ff"
+                    },
+                    "shieldName": "",
                     "status": "",
                     "duration": 0,
                     "distance": 1,
@@ -1397,6 +1802,18 @@
                     "scalingStat": "",
                     "scalingFactor": 0,
                     "formula": "",
+                    "healMode": "Flat",
+                    "shield": {
+                      "name": "Щит",
+                      "protects": [],
+                      "priority": 0,
+                      "regenPerSecond": 0,
+                      "regenDelay": 2,
+                      "stacking": "Refresh",
+                      "ignoresPeriodic": false,
+                      "color": "#8fd8ff"
+                    },
+                    "shieldName": "",
                     "status": "stunned",
                     "duration": 1.5,
                     "distance": 1,
@@ -1424,11 +1841,23 @@
               "filter": { "enemies": true, "allies": true, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "earth",
               "amount": 7,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1485,6 +1914,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1505,11 +1939,23 @@
               "filter": { "enemies": true, "allies": true, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "water",
               "amount": 3,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1532,6 +1978,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1554,6 +2012,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1576,6 +2046,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1632,6 +2114,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1661,6 +2148,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1717,6 +2216,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1742,6 +2246,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "invisible",
               "duration": 0,
               "distance": 1,
@@ -1798,6 +2314,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1823,6 +2344,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "fear",
               "duration": 0,
               "distance": 1,
@@ -1845,6 +2378,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "shielded",
               "duration": 0,
               "distance": 1,
@@ -1901,6 +2446,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -1926,6 +2476,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "mind_control",
               "duration": 5,
               "distance": 1,
@@ -1982,6 +2544,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2007,6 +2574,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "blinded",
               "duration": 0,
               "distance": 1,
@@ -2063,6 +2642,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2088,6 +2672,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "rooted",
               "duration": 3,
               "distance": 1,
@@ -2144,6 +2740,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2169,6 +2770,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2225,6 +2838,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2250,6 +2868,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2306,6 +2936,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2331,6 +2966,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 30,
               "distance": 1,
@@ -2387,6 +3034,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2412,6 +3064,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2434,6 +3098,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2490,6 +3166,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2515,6 +3196,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2571,6 +3264,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2596,6 +3294,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2613,11 +3323,23 @@
               "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "physical",
+              "damageType": "crushing",
               "amount": 6,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2674,6 +3396,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2699,6 +3426,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2755,6 +3494,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2780,6 +3524,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -2836,6 +3592,11 @@
         "refund": 0.5,
         "cooldownOnInterrupt": false
       },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
       "stages": [
         {
           "name": "",
@@ -2861,6 +3622,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "levitation",
               "duration": 0,
               "distance": 1,
@@ -2882,6 +3655,104 @@
       "color": "#a98bff",
       "vfx": "Glow",
       "icon": "⇡",
+      "isHarmful": false
+    },
+    {
+      "id": "aegis",
+      "name": "Щит веры",
+      "description": "Щит на союзника: поглощает 40 урона (свет усиливает), 8 с",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Support",
+      "apCost": 3,
+      "resourceCosts": [{ "resource": "mana", "amount": 10 }],
+      "targeting": "Unit",
+      "rangeMin": 0,
+      "rangeMax": 5,
+      "ranged": true,
+      "requiresLoS": true,
+      "validTargets": { "enemies": false, "allies": true, "neutrals": false, "self": true },
+      "allowEmptyCell": true,
+      "hitMode": "AlwaysHit",
+      "targetLayers": [],
+      "casterLayers": [],
+      "prepTime": 0.6,
+      "recoveryTime": 0.3,
+      "cooldown": 10,
+      "faceTarget": true,
+      "telegraph": true,
+      "interrupt": {
+        "byDamage": true,
+        "chanceOnDamage": 0.3,
+        "byControl": true,
+        "byForcedMove": true,
+        "refund": 0.5,
+        "cooldownOnInterrupt": false
+      },
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
+      "stages": [
+        {
+          "name": "",
+          "delay": 0,
+          "area": {
+            "shape": "Single",
+            "size": 1,
+            "innerRadius": 1,
+            "angle": 120,
+            "chainJumps": 3,
+            "chainRange": 2,
+            "includeCenter": false,
+            "cells": []
+          },
+          "effects": [
+            {
+              "type": "Shield",
+              "filter": { "enemies": false, "allies": true, "neutrals": false, "self": true },
+              "chance": 1,
+              "requiresHit": false,
+              "damageType": "physical",
+              "amount": 40,
+              "scalingStat": "heal_power",
+              "scalingFactor": 20,
+              "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит веры",
+                "protects": [],
+                "priority": 1,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
+              "status": "",
+              "duration": 8,
+              "distance": 1,
+              "facing": "TowardSource",
+              "setDirection": "E",
+              "resource": "",
+              "terrain": "",
+              "cellEffect": "",
+              "level": 1,
+              "obstacleDamage": 1000,
+              "summonUnit": ""
+            }
+          ],
+          "maxTargets": 0,
+          "blockedByObstacles": true,
+          "pierce": true
+        }
+      ],
+      "color": "#8fd8ff",
+      "vfx": "Glow",
+      "icon": "Щ",
       "isHarmful": false
     }
   ]

@@ -17,6 +17,7 @@ public sealed class RulesDef
     [Ed("Обнаружение и неожиданность")] public DetectionRules Detection { get; set; } = new();
     [Ed("Раскрытие информации о врагах")] public InfoDisclosureDef Info { get; set; } = new();
     [Ed("Бой")] public CombatRules Combat { get; set; } = new();
+    [Ed("Расчёт урона", "Единый порядок для всех источников и его исключения")] public DamageRulesDef Damage { get; set; } = new();
     [Ed("Видимость")] public VisionRules Vision { get; set; } = new();
     [Ed("Очередь команд")] public QueueRules Queue { get; set; } = new();
     [Ed("Ограничения")] public LimitRules Limits { get; set; } = new();

@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "kind": "damage_types",
   "items": [
     {
@@ -9,8 +9,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Physical",
+      "customCategory": "",
+      "parent": "",
+      "element": "",
       "color": "#d8d8d8",
-      "armorApplies": true
+      "icon": "",
+      "armorApplies": true,
+      "ignoresShields": false
     },
     {
       "id": "fire",
@@ -19,8 +25,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "fire",
       "color": "#ff7a2a",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     },
     {
       "id": "ice",
@@ -29,8 +41,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "ice",
       "color": "#8fd8ff",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     },
     {
       "id": "electric",
@@ -39,8 +57,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "lightning",
       "color": "#ffe04a",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     },
     {
       "id": "poison",
@@ -49,8 +73,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "poison",
       "color": "#7ad04a",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     },
     {
       "id": "magic",
@@ -59,8 +89,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Magical",
+      "customCategory": "",
+      "parent": "",
+      "element": "",
       "color": "#c08aff",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     },
     {
       "id": "true",
@@ -69,8 +105,14 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Custom",
+      "customCategory": "чистый",
+      "parent": "",
+      "element": "",
       "color": "#ff4a6a",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     },
     {
       "id": "acid",
@@ -79,8 +121,158 @@
       "tags": [],
       "group": "",
       "version": 1,
+      "kind": "Environment",
+      "customCategory": "",
+      "parent": "poison",
+      "element": "poison",
       "color": "#9be22d",
-      "armorApplies": false
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
+    },
+    {
+      "id": "slashing",
+      "name": "Режущий",
+      "description": "Мечи, топоры, когти",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Physical",
+      "customCategory": "",
+      "parent": "physical",
+      "element": "",
+      "color": "",
+      "icon": "",
+      "armorApplies": true,
+      "ignoresShields": false
+    },
+    {
+      "id": "crushing",
+      "name": "Дробящий",
+      "description": "Молоты, удары щитом, камни",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Physical",
+      "customCategory": "",
+      "parent": "physical",
+      "element": "",
+      "color": "",
+      "icon": "",
+      "armorApplies": true,
+      "ignoresShields": false
+    },
+    {
+      "id": "piercing",
+      "name": "Колющий",
+      "description": "Стрелы, копья, укусы",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Physical",
+      "customCategory": "",
+      "parent": "physical",
+      "element": "",
+      "color": "",
+      "icon": "",
+      "armorApplies": true,
+      "ignoresShields": false
+    },
+    {
+      "id": "water",
+      "name": "Водный",
+      "description": "Волны и струи",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "water",
+      "color": "",
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
+    },
+    {
+      "id": "wind",
+      "name": "Воздушный",
+      "description": "Порывы ветра",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "wind",
+      "color": "",
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
+    },
+    {
+      "id": "earth",
+      "name": "Земляной",
+      "description": "Камни и толчки",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Elemental",
+      "customCategory": "",
+      "parent": "",
+      "element": "earth",
+      "color": "",
+      "icon": "",
+      "armorApplies": true,
+      "ignoresShields": false
+    },
+    {
+      "id": "light",
+      "name": "Световой",
+      "description": "Святой свет",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Magical",
+      "customCategory": "",
+      "parent": "",
+      "element": "light",
+      "color": "",
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
+    },
+    {
+      "id": "void",
+      "name": "Пустота",
+      "description": "Разрушение сущности",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Magical",
+      "customCategory": "",
+      "parent": "",
+      "element": "void",
+      "color": "",
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
+    },
+    {
+      "id": "bleed",
+      "name": "Кровотечение",
+      "description": "Периодический урон без брони и элемента",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Periodic",
+      "customCategory": "",
+      "parent": "",
+      "element": "",
+      "color": "#c8323c",
+      "icon": "",
+      "armorApplies": false,
+      "ignoresShields": false
     }
   ]
 }

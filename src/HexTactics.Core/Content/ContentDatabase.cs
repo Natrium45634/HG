@@ -90,6 +90,7 @@ public sealed class ContentDatabase
     {
         (DefCategory.Stat, typeof(StatDef), "stats.json"),
         (DefCategory.Resource, typeof(ResourceDef), "resources.json"),
+        (DefCategory.Element, typeof(ElementDef), "elements.json"),
         (DefCategory.DamageType, typeof(DamageTypeDef), "damage_types.json"),
         (DefCategory.Faction, typeof(FactionDef), "factions.json"),
         (DefCategory.Layer, typeof(LayerDef), "layers.json"),
@@ -205,6 +206,8 @@ public sealed class ContentDatabase
     public FactionDef? Faction(string id) => Get<FactionDef>(id);
     public StatDef? Stat(string id) => Get<StatDef>(id);
     public LayerDef? Layer(string id) => Get<LayerDef>(id);
+    public ElementDef? Element(string id) => Get<ElementDef>(id);
+    public DamageTypeDef? DamageType(string id) => Get<DamageTypeDef>(id);
 
     /// <summary>Relation of faction a towards faction b.</summary>
     public Relation RelationOf(string a, string b)

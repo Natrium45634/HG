@@ -68,7 +68,7 @@ public sealed class FallSystem
                 }
                 _sim.Relocate(u, back.Value);
                 _sim.Emit(SimEventType.Displaced, LogLevel.Normal, $"{u.Name} выбирается на {back.Value}", -1, u.Id, back.Value);
-                if (pit.FallDamage > 0) _sim.Combat.DealDamage(source, u, pit.FallDamage, string.IsNullOrEmpty(pit.DamageType) ? "true" : pit.DamageType, null, why);
+                if (pit.FallDamage > 0) _sim.Combat.DealDamage(source, u, pit.FallDamage, string.IsNullOrEmpty(pit.DamageType) ? "true" : pit.DamageType, null, why, null, DamageSource.Fall);
                 break;
             }
         }

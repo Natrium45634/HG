@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "kind": "statuses",
   "items": [
     {
@@ -15,6 +15,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Snapshot",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 3,
       "levels": [
@@ -24,6 +28,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -35,6 +40,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -47,6 +62,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -68,6 +95,7 @@
           "statMods": [{ "stat": "accuracy", "add": -0.1, "mul": 0 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -79,6 +107,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -91,6 +129,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -116,6 +166,7 @@
           ],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -127,6 +178,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -139,6 +200,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -155,6 +228,7 @@
           "onEnter": []
         }
       ],
+      "element": "poison",
       "immuneCreatureCategories": ["construct"],
       "cancels": [],
       "blockedBy": [],
@@ -175,6 +249,13 @@
       "reapply": "Intensify",
       "maxStacks": 3,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [
+        { "when": "DamagedBy", "damage": "el:water", "cellEffect": "" },
+        { "when": "EnteredCellEffect", "damage": "*", "cellEffect": "wet" }
+      ],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -184,6 +265,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -195,6 +277,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -207,6 +299,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -228,6 +332,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -239,6 +344,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -251,6 +366,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -272,6 +399,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -283,6 +411,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -295,6 +433,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -311,6 +461,7 @@
           "onEnter": []
         }
       ],
+      "element": "fire",
       "immuneCreatureCategories": [],
       "cancels": ["chilled"],
       "blockedBy": [],
@@ -331,6 +482,10 @@
       "reapply": "Stack",
       "maxStacks": 5,
       "maxDuration": 30,
+      "tickCount": 6,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -340,6 +495,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -351,6 +507,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -358,11 +524,23 @@
               "filter": { "enemies": true, "allies": true, "neutrals": true, "self": true },
               "chance": 1,
               "requiresHit": true,
-              "damageType": "true",
+              "damageType": "bleed",
               "amount": 2,
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -379,6 +557,7 @@
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": ["construct"],
       "cancels": [],
       "blockedBy": [],
@@ -399,6 +578,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -408,6 +591,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": true,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -419,11 +603,22 @@
             "mindControl": false,
             "interruptsCast": true
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -444,6 +639,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -453,6 +652,7 @@
           "statMods": [{ "stat": "accuracy", "add": -0.3, "mul": 0 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -464,11 +664,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -489,6 +700,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -498,6 +713,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": true,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -509,11 +725,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -534,6 +761,10 @@
       "reapply": "ReplaceIfStronger",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -543,6 +774,7 @@
           "statMods": [{ "stat": "move_speed", "add": 0, "mul": -0.4 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -554,11 +786,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -579,6 +822,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 8,
       "levels": [
@@ -588,6 +835,7 @@
           "statMods": [{ "stat": "move_speed", "add": 0, "mul": -0.3 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -599,6 +847,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
@@ -609,6 +867,7 @@
           "statMods": [{ "stat": "move_speed", "add": 0, "mul": -0.6 }, { "stat": "ap_regen", "add": 0, "mul": -0.4 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -620,6 +879,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
@@ -630,6 +899,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": true,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -641,11 +911,22 @@
             "mindControl": false,
             "interruptsCast": true
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "ice",
       "immuneCreatureCategories": ["construct"],
       "cancels": ["burning"],
       "blockedBy": [],
@@ -666,6 +947,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -675,6 +960,7 @@
           "statMods": [{ "stat": "accuracy", "add": -0.1, "mul": 0 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -686,11 +972,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -711,6 +1008,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -720,6 +1021,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": true,
             "blocksAttacks": false,
@@ -731,11 +1033,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -756,6 +1069,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -769,6 +1086,7 @@
           ],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -780,11 +1098,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -805,6 +1134,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -814,6 +1147,7 @@
           "statMods": [{ "stat": "armor", "add": 5, "mul": 0 }, { "stat": "resist_magic", "add": 0.2, "mul": 0 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -825,11 +1159,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -850,6 +1195,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -859,6 +1208,7 @@
           "statMods": [{ "stat": "stealth", "add": 0.5, "mul": 0 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -870,11 +1220,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -895,6 +1256,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -909,6 +1274,7 @@
           ],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -920,11 +1286,22 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -945,6 +1322,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -954,6 +1335,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -965,11 +1347,22 @@
             "mindControl": true,
             "interruptsCast": true
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": ["construct"],
       "cancels": [],
       "blockedBy": [],
@@ -990,6 +1383,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -999,6 +1396,7 @@
           "statMods": [{ "stat": "ap_regen", "add": 0, "mul": -0.5 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -1010,11 +1408,22 @@
             "mindControl": false,
             "interruptsCast": true
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "lightning",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -1035,6 +1444,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -1044,6 +1457,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -1055,6 +1469,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -1067,6 +1491,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "PercentMax",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1083,6 +1519,7 @@
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -1103,6 +1540,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 8,
       "levels": [
@@ -1112,6 +1553,7 @@
           "statMods": [{ "stat": "accuracy", "add": -0.05, "mul": 0 }],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -1123,6 +1565,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
@@ -1133,6 +1585,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -1144,6 +1597,16 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
             {
@@ -1156,6 +1619,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "",
               "duration": 0,
               "distance": 1,
@@ -1180,6 +1655,18 @@
               "scalingStat": "",
               "scalingFactor": 0,
               "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
               "status": "burning",
               "duration": 0,
               "distance": 1,
@@ -1195,6 +1682,7 @@
           ]
         }
       ],
+      "element": "fire",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
@@ -1215,6 +1703,10 @@
       "reapply": "Refresh",
       "maxStacks": 1,
       "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
       "maxPoints": 100,
       "decayPerSecond": 2,
       "levels": [
@@ -1224,6 +1716,7 @@
           "statMods": [],
           "flags": {
             "blocksMovement": false,
+            "blocksHealing": false,
             "blocksActions": false,
             "blocksSkills": false,
             "blocksAttacks": false,
@@ -1235,16 +1728,88 @@
             "mindControl": false,
             "interruptsCast": false
           },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
           "onEnter": []
         }
       ],
+      "element": "",
       "immuneCreatureCategories": [],
       "cancels": [],
       "blockedBy": [],
       "color": "#a98bff",
       "icon": "⇡",
+      "showBar": true
+    },
+    {
+      "id": "wet",
+      "name": "Мокрый",
+      "description": "Промок: молния бьёт сильнее, огонь — слабее",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Timed",
+      "negative": true,
+      "duration": 6,
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [],
+          "flags": {
+            "blocksMovement": false,
+            "blocksHealing": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "offense": { "bonuses": [], "conversions": [] },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "element": "water",
+      "immuneCreatureCategories": [],
+      "cancels": ["burning"],
+      "blockedBy": [],
+      "color": "#4aa8ff",
+      "icon": "М",
       "showBar": true
     }
   ]

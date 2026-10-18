@@ -44,6 +44,8 @@ public sealed class CellEffectDef : Def
 {
     [JsonIgnore] public override DefCategory Category => DefCategory.CellEffect;
 
+    [Ed("Элемент", "Для взаимодействий элементов (лава — огонь, лужа — вода…)", Group = "Основное"), EdRef(DefCategory.Element)]
+    public string Element { get; set; } = "";
     [Ed("Длительность, с", "0 = постоянный", Group = "Время"), EdRange(0, 36000)] public double Duration { get; set; } = 8;
     [Ed("Интервал тика, с", Group = "Время"), EdRange(0.05, 3600)] public double TickInterval { get; set; } = 1;
 
@@ -119,6 +121,28 @@ public sealed class SynergyDef : Def
     [Ed("Сообщение журнала")] public string LogText { get; set; } = "";
 }
 
+public enum PeriodicPower
+{
+    [Ed("Текущая (характеристики источника сейчас)")] Current,
+    [Ed("По моменту наложения")] Snapshot,
+}
+
+public enum StatusRemoveTrigger
+{
+    [Ed("Владелец переместился")] Moved,
+    [Ed("Получен урон типа")] DamagedBy,
+    [Ed("Получено лечение")] Healed,
+    [Ed("Вошёл в эффект клетки")] EnteredCellEffect,
+    [Ed("Источник погиб")] SourceDied,
+}
+
+public sealed class StatusRemoveDef
+{
+    [Ed("Условие")] public StatusRemoveTrigger When { get; set; } = StatusRemoveTrigger.Moved;
+    [Ed("Тип урона / элемент", "Для «получен урон типа»"), EdDamageMatch, EdShowIf(nameof(When), StatusRemoveTrigger.DamagedBy)] public string Damage { get; set; } = "*";
+    [Ed("Эффект клетки"), EdRef(DefCategory.CellEffect), EdShowIf(nameof(When), StatusRemoveTrigger.EnteredCellEffect)] public string CellEffect { get; set; } = "";
+}
+
 public enum StatusKind
 {
     Timed,
@@ -141,6 +165,8 @@ public sealed class StatusLevelDef
     [Ed("Порог очков", "Для накопительных; для временных — номер стака"), EdRange(0, 100000)] public double Threshold { get; set; }
     [Ed("Модификаторы характеристик")] public List<StatModDef> StatMods { get; set; } = new();
     [Ed("Флаги контроля")] public ControlFlagsDef Flags { get; set; } = new();
+    [Ed("Защита от урона", "Сопротивления, щиты-поглощение, отражение на время уровня")] public DefenseDef Defense { get; set; } = new();
+    [Ed("Атака", "Бонусы урона на время уровня")] public OffenseDef Offense { get; set; } = new();
     [Ed("Интервал тика, с"), EdRange(0.05, 3600)] public double TickInterval { get; set; } = 1;
     [Ed("Эффекты тика", "Урон, лечение и т. п. по владельцу")] public List<SkillEffectDef> OnTick { get; set; } = new();
     [Ed("Эффекты при достижении уровня")] public List<SkillEffectDef> OnEnter { get; set; } = new();
@@ -161,6 +187,12 @@ public sealed class StatusDef : Def
     public int MaxStacks { get; set; } = 1;
     [Ed("Макс. длительность, с", "Для продления", Group = "Временное"), EdRange(0, 36000), EdShowIf(nameof(Kind), StatusKind.Timed)]
     public double MaxDuration { get; set; } = 30;
+    [Ed("Число тиков", "0 — тики идут всё время действия; иначе состояние снимается после стольких тиков", Group = "Периодическое"), EdRange(0, 10000)]
+    public int TickCount { get; set; }
+    [Ed("Сила эффекта", "По моменту наложения (снимок характеристик источника) или текущая", Group = "Периодическое")]
+    public PeriodicPower Power { get; set; } = PeriodicPower.Current;
+    [Ed("Первый тик сразу", Group = "Периодическое")] public bool TickOnApply { get; set; }
+    [Ed("Снимается при", "Условия снятия", Group = "Периодическое")] public List<StatusRemoveDef> RemoveOn { get; set; } = new();
 
     [Ed("Макс. очков", Group = "Накопление"), EdRange(1, 100000), EdShowIf(nameof(Kind), StatusKind.Accumulating)]
     public double MaxPoints { get; set; } = 100;
@@ -170,6 +202,8 @@ public sealed class StatusDef : Def
     [Ed("Уровни", "Для накопительных — по порогам очков; для временных — по стакам (1, 2…)", Group = "Уровни")]
     public List<StatusLevelDef> Levels { get; set; } = new();
 
+    [Ed("Элемент", "Для взаимодействий элементов (например, «Мокрый» — вода)", Group = "Взаимодействия"), EdRef(DefCategory.Element)]
+    public string Element { get; set; } = "";
     [Ed("Иммунные категории существ", Group = "Взаимодействия")] public List<string> ImmuneCreatureCategories { get; set; } = new();
     [Ed("Снимает состояния", "При наложении снимает указанные", Group = "Взаимодействия"), EdRef(DefCategory.Status)]
     public List<string> Cancels { get; set; } = new();

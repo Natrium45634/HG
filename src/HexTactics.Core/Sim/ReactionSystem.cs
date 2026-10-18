@@ -111,12 +111,12 @@ public sealed class ReactionSystem
         {
             case PassiveAction.EffectsOnSelf:
                 _sim.Emit(SimEventType.Reaction, p.Trigger == PassiveTrigger.Periodic ? LogLevel.Detail : LogLevel.Normal, $"{owner.Name}: «{p.DisplayName}»", owner.Id);
-                _sim.Combat.ApplyDirect(owner, owner, p.Effects, 1.0, p.DisplayName);
+                _sim.Combat.ApplyDirect(owner, owner, p.Effects, 1.0, p.DisplayName, DamageSource.Passive);
                 fired = true;
                 break;
             case PassiveAction.EffectsOnSource:
                 _sim.Emit(SimEventType.Reaction, LogLevel.Normal, $"{owner.Name}: «{p.DisplayName}» → {source!.Name}", owner.Id, source.Id);
-                _sim.Combat.ApplyDirect(owner, source, p.Effects, 1.0, p.DisplayName);
+                _sim.Combat.ApplyDirect(owner, source, p.Effects, 1.0, p.DisplayName, DamageSource.Passive);
                 fired = true;
                 break;
             case PassiveAction.CounterAttack:

@@ -62,6 +62,7 @@ public sealed class Simulation
         Statuses = new StatusSystem(this);
         CellEffects = new CellEffectSystem(this);
         Combat = new CombatSystem(this);
+        Damage = new DamagePipeline(this);
         Skills = new SkillSystem(this);
         Commands = new CommandSystem(this);
         Falls = new FallSystem(this);
@@ -101,6 +102,8 @@ public sealed class Simulation
     public StatusSystem Statuses { get; }
     public CellEffectSystem CellEffects { get; }
     public CombatSystem Combat { get; }
+    /// <summary>The unified damage pipeline (docs/DECISIONS_2.md §29).</summary>
+    public DamagePipeline Damage { get; }
     public SkillSystem Skills { get; }
     public CommandSystem Commands { get; }
     public FallSystem Falls { get; }
@@ -258,6 +261,7 @@ public sealed class Simulation
         var from = Map.Get(u.Pos);
         from?.Occupants.Remove(u);
         if (from != null && from.Coord != to) CellEffects.OnUnitExited(u, from);
+        bool moved = u.Pos != to;
         u.Pos = to;
         var cell = Map.Get(to);
         if (cell != null)
@@ -265,6 +269,7 @@ public sealed class Simulation
             cell.Occupants.Add(u);
             cell.Reservations.Remove(u);
         }
+        if (moved) Statuses.OnMoved(u);
         Vision.MarkDirty();
         Map.Touch(false);
         if (cell == null) return true;
@@ -452,6 +457,7 @@ public sealed class Simulation
                 r.Current = Math.Clamp(r.Current + r.Regen * Dt, 0, r.Max);
             }
             Statuses.UpdateUnit(u);
+            Damage.UpdateShields(u);
             Reactions.UpdatePeriodic(u);
             // Standing over a pit (rescue status expired, layer changed): fall now.
             if (u.Alive && u.StepTo == null)

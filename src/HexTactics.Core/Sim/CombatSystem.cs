@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HexTactics.Core.Content;
 using HexTactics.Core.Expr;
 using HexTactics.Core.Hex;
@@ -42,16 +43,6 @@ public sealed class AttackRoll
         if (Crit) parts.Add("КРИТ");
         return string.Join(", ", parts);
     }
-}
-
-public sealed class DamageBreakdown
-{
-    public double Raw { get; init; }
-    public double AfterMultipliers { get; init; }
-    public double Armor { get; init; }
-    public double Resist { get; init; }
-    public double Final { get; init; }
-    public bool Immune { get; init; }
 }
 
 /// <summary>Combat math and the generic unit-effect executor used by skills, statuses, cells and passives.</summary>
@@ -250,7 +241,8 @@ public sealed class CombatSystem
         bool crit = false;
         if (hit)
         {
-            pCrit = Math.Clamp(attacker.Stat(Stats.CritChance) + (surprise ? Rules.Detection.SurpriseCrit : 0), 0, 1);
+            // Crit chance: attacker, skill, attack kind and sector bonuses, target protection (docs/DECISIONS_2.md §29).
+            pCrit = _sim.Damage.CritChance(attacker, target, skill, sector, surprise);
             if (pCrit > 0) crit = _sim.Rng.Chance(pCrit);
         }
 
@@ -286,90 +278,50 @@ public sealed class CombatSystem
 
     // ------------------------------------------------------------------ damage & healing
 
-    public DamageBreakdown ComputeDamage(Unit? attacker, Unit target, double raw, string damageType, AttackRoll? roll)
+    /// <summary>Custom damage formula of the rules (replaces steps 5–7 of the pipeline when set).</summary>
+    public double? CustomDamage(double raw, double armor, double resist, bool crit, bool surprise, bool block)
     {
-        double mult = 1.0;
-        bool crit = roll?.Crit == true, surprise = roll?.Surprise == true, block = roll?.Blocked == true;
-        if (crit) mult *= attacker?.Stat(Stats.CritMult) ?? 1.5;
-        if (surprise) mult *= Rules.Detection.SurpriseDamageMul;
-        if (block) mult *= 1.0 - Math.Clamp(target.Stat(Stats.BlockReduction), 0, 1);
-        double dmg = raw * mult;
-        var dt = _sim.Content.Get<DamageTypeDef>(damageType);
-        double armor = dt?.ArmorApplies == true ? Math.Max(0, target.Stat(Stats.Armor)) : 0;
-        double resist = target.Resist(damageType);
-        double before = dmg;
         var f = DamageFormula();
-        if (f != null)
+        if (f == null) return null;
+        return f.Evaluate(name => name switch
         {
-            dmg = f.Evaluate(name => name switch
-            {
-                "raw" => before,
-                "armor" => armor,
-                "resist" => resist,
-                "crit" => crit ? 1 : 0,
-                "surprise" => surprise ? 1 : 0,
-                "block" => block ? 1 : 0,
-                _ => 0,
-            });
-        }
-        else
-        {
-            if (armor > 0) dmg = Math.Max(dmg - armor, dmg * Rules.Combat.MinArmorFraction);
-            dmg *= 1.0 - resist;
-        }
-        bool immune = resist >= 1.0 || target.IsImmuneTo(damageType, Array.Empty<string>());
-        double final = immune ? 0 : Math.Max(0, Math.Round(dmg, MidpointRounding.AwayFromZero));
-        if (!immune && before > 0 && final < Rules.Combat.MinDamageOnHit) final = Rules.Combat.MinDamageOnHit;
-        return new DamageBreakdown { Raw = raw, AfterMultipliers = before, Armor = armor, Resist = resist, Final = final, Immune = immune };
+            "raw" => raw,
+            "armor" => armor,
+            "resist" => resist,
+            "crit" => crit ? 1 : 0,
+            "surprise" => surprise ? 1 : 0,
+            "block" => block ? 1 : 0,
+            _ => 0,
+        });
     }
 
     /// <summary>
-    /// Deals damage. Interrupt checks of the target's preparation happen here unless
-    /// deferredInterrupts is given (skill resolution checks them in its own phase).
-    /// Returns the damage actually dealt.
+    /// Deals damage through the unified pipeline (<see cref="DamagePipeline"/>). Interrupt checks of the
+    /// target's preparation happen here unless deferredInterrupts is given (skill resolution checks them
+    /// in its own phase). Returns the health actually removed.
     /// </summary>
     public double DealDamage(Unit? source, Unit target, double raw, string damageType, AttackRoll? roll, string cause,
-        List<(Unit Target, bool Surprise)>? deferredInterrupts = null)
+        List<(Unit Target, bool Surprise)>? deferredInterrupts = null, DamageSource kind = DamageSource.Other, SkillDef? skill = null)
     {
         if (!target.Alive) return 0;
-        var b = ComputeDamage(source, target, raw, damageType, roll);
-        var dtName = _sim.Content.Get<DamageTypeDef>(damageType)?.DisplayName ?? damageType;
-        if (b.Immune)
+        if (kind == DamageSource.Other && roll != null) kind = DamageSource.Skill;
+        var r = _sim.Damage.Apply(new DamageRequest
         {
-            _sim.Knowledge.OnDamageObserved(source, target, damageType);
-            _sim.Emit(SimEventType.Damage, LogLevel.Normal, $"{target.Name}: иммунитет к урону «{dtName}» ({cause})", source?.Id ?? -1, target.Id, target.Pos, 0, damageType);
-            return 0;
-        }
-        _sim.Knowledge.OnDamageObserved(source, target, damageType);
-        double dmg = b.Final;
-        if (dmg <= 0) return 0;
-        target.Hp -= dmg;
-        string detail = $"{dmg:0} ({dtName}{(b.Armor > 0 ? $", броня {b.Armor:0.#}" : "")}{(b.Resist != 0 ? $", сопр. {b.Resist:P0}" : "")})";
-        _sim.Emit(SimEventType.Damage, LogLevel.Normal,
-            source != null && source != target ? $"{source.Name} наносит {target.Name} {detail} — {cause}" : $"{target.Name} получает {detail} — {cause}",
-            source?.Id ?? -1, target.Id, target.Pos, dmg, damageType);
+            Attacker = source, Target = target, Amount = raw, DamageType = damageType, Source = kind, Skill = skill, Roll = roll,
+            Cause = cause, DeferredInterrupts = deferredInterrupts,
+        });
+        return r.HealthLost + r.Overkill;
+    }
 
-        _sim.Reactions.Enqueue(PassiveTrigger.OnDamaged, target, source);
-
-        if (target.Hp > 0)
+    /// <summary>After a hit the target survived: low-HP passives and interruption of its preparation.</summary>
+    internal void OnDamagedAlive(Unit target, Unit? source, AttackRoll? roll, List<(Unit Target, bool Surprise)>? deferredInterrupts)
+    {
+        CheckLowHpPassives(target, source);
+        if (target.Casting != null && !target.Casting.Released)
         {
-            if (!target.CriticalReported && target.HpFraction < Rules.Autopause.CriticalHpFraction && _sim.IsPlayerFaction(target.FactionId))
-            {
-                target.CriticalReported = true;
-                if (Rules.Autopause.AllyCriticalDamage) _sim.RequestAutopause($"{target.Name}: критическое здоровье");
-            }
-            CheckLowHpPassives(target, source);
-            if (target.Casting != null && !target.Casting.Released)
-            {
-                if (deferredInterrupts != null) deferredInterrupts.Add((target, roll?.Surprise == true));
-                else TryDamageInterrupt(target, roll?.Surprise == true);
-            }
+            if (deferredInterrupts != null) deferredInterrupts.Add((target, roll?.Surprise == true));
+            else TryDamageInterrupt(target, roll?.Surprise == true);
         }
-        else
-        {
-            Kill(target, source, cause);
-        }
-        return dmg;
     }
 
     private void CheckLowHpPassives(Unit u, Unit? source)
@@ -397,15 +349,48 @@ public sealed class CombatSystem
         if (_sim.Rng.Chance(p)) _sim.Skills.Interrupt(target, InterruptCause.Damage, $"урон ({p:P0})");
     }
 
-    public double Heal(Unit? source, Unit target, double amount, string cause)
+    /// <summary>
+    /// Healing (docs/DECISIONS_2.md §29): flat, % of max or % of missing health; × (1 + heal power of the
+    /// source) × (1 + heal_received of the target); blocked by «нельзя лечить»; overheal may become a shield.
+    /// </summary>
+    public double Heal(Unit? source, Unit target, double amount, string cause, HealMode mode = HealMode.Flat, bool applyPower = true, bool overhealShield = true)
     {
         if (!target.Alive || amount <= 0) return 0;
+        double baseAmount = mode switch
+        {
+            HealMode.PercentMax => target.HpMax * amount / 100.0,
+            HealMode.PercentMissing => Math.Max(0, target.HpMax - target.Hp) * amount / 100.0,
+            _ => amount,
+        };
+        if (applyPower && source != null) baseAmount *= 1.0 + source.Stat(Stats.HealPower);
+        baseAmount *= Math.Max(0, 1.0 + target.Stat(Stats.HealReceived));
+        if (target.Flags.BlocksHealing)
+        {
+            _sim.Emit(SimEventType.Heal, LogLevel.Normal, $"{target.Name}: лечение не действует — {cause}", source?.Id ?? -1, target.Id, target.Pos, 0);
+            return 0;
+        }
+        if (baseAmount <= 0) return 0;
         double before = target.Hp;
-        target.Hp = Math.Min(target.HpMax, target.Hp + amount);
+        target.Hp = Math.Min(target.HpMax, target.Hp + baseAmount);
         double healed = target.Hp - before;
+        double over = baseAmount - healed;
+        var dr = Rules.Damage;
+        if (overhealShield && over > 0.5 && dr.OverhealToShieldPercent > 0)
+        {
+            double cap = target.HpMax * dr.OverhealShieldMaxPercent / 100.0;
+            double sh = Math.Min(over * dr.OverhealToShieldPercent / 100.0, cap);
+            var existing = target.Shields.FirstOrDefault(x => x.Spec.Name == "Избыточное лечение");
+            if (existing != null) sh = Math.Min(cap, existing.Amount + sh);
+            if (sh > 0)
+                _sim.Damage.AddShield(target, new ShieldSpecDef { Name = "Избыточное лечение", Stacking = ShieldStacking.Refresh, Color = "#b8ffb0" }, sh,
+                    dr.OverhealShieldDuration, source?.Id ?? -1);
+        }
         if (target.HpFraction >= Rules.Autopause.CriticalHpFraction) target.CriticalReported = false;
         if (healed > 0)
+        {
             _sim.Emit(SimEventType.Heal, LogLevel.Normal, $"{target.Name} восстанавливает {healed:0} HP — {cause}", source?.Id ?? -1, target.Id, target.Pos, healed);
+            _sim.Statuses.OnHealed(target);
+        }
         foreach (var p in target.Passives)
             if (p.Trigger == PassiveTrigger.OnLowHp && target.HpFraction >= p.HpThreshold)
                 target.LowHpTriggered = false;
@@ -429,6 +414,7 @@ public sealed class CombatSystem
         var cell = _sim.Map.Get(u.Pos);
         cell?.Occupants.Remove(u);
         _sim.Blocking.OnRemoved(u);
+        u.Shields.Clear();
         _sim.Map.Touch(false);
         _sim.Vision.MarkDirty(urgent: true);
 
@@ -453,6 +439,7 @@ public sealed class CombatSystem
                         break;
                     }
 
+        _sim.Statuses.OnSourceDied(u);
         if (Rules.Death.SummonsDieWithOwner)
             foreach (var s in _sim.Units)
                 if (s.Alive && s.SummonerId == u.Id)
@@ -549,6 +536,12 @@ public sealed class CombatSystem
                         _sim.Emit(SimEventType.ResourceChanged, LogLevel.Detail, $"{target.Name}: {r.Def.DisplayName} {r.Current - before:+0.#;-0.#} — {cause}", source?.Id ?? -1, target.Id);
                 }
                 break;
+            case EffectType.Shield:
+                _sim.Damage.AddShield(target, e.Shield, EffectAmount(e, source, target, scale), e.Duration, source?.Id ?? -1);
+                break;
+            case EffectType.RemoveShield:
+                _sim.Damage.RemoveShields(target, e.ShieldName, cause);
+                break;
             case EffectType.ModifyAp:
             {
                 double before = target.Ap;
@@ -594,21 +587,26 @@ public sealed class CombatSystem
     /// Direct effects without attack rolls (status ticks, cell effects, passives, synergies).
     /// Armor and resistances still apply to damage.
     /// </summary>
-    public void ApplyDirect(Unit? source, Unit target, IReadOnlyList<SkillEffectDef> effects, double scale, string cause)
+    /// <param name="kind">Damage source for the pipeline rules (periodic, cell effect, terrain, synergy, passive…).</param>
+    /// <param name="fixedAmounts">Snapshot amounts by effect index (periodic effects with power fixed at application).</param>
+    public void ApplyDirect(Unit? source, Unit target, IReadOnlyList<SkillEffectDef> effects, double scale, string cause,
+        DamageSource kind = DamageSource.Other, Func<int, double?>? fixedAmounts = null)
     {
         if (!target.Alive) return;
         var origin = source != null && source.Alive ? source.Pos : target.Pos;
-        foreach (var e in effects)
+        for (int i = 0; i < effects.Count; i++)
         {
+            var e = effects[i];
             if (!target.Alive) return;
             if (e.Chance < 1 && !_sim.Rng.Chance(e.Chance)) continue;
+            double Amount() => fixedAmounts?.Invoke(i) * scale ?? EffectAmount(e, source, target, scale);
             switch (e.Type)
             {
                 case EffectType.Damage:
-                    DealDamage(source, target, EffectAmount(e, source, target, scale), e.DamageType, null, cause);
+                    DealDamage(source, target, Amount(), e.DamageType, null, cause, null, kind);
                     break;
                 case EffectType.Heal:
-                    Heal(source, target, EffectAmount(e, source, target, scale) * (1.0 + (source?.Stat(Stats.HealPower) ?? 0)), cause);
+                    Heal(source, target, Amount(), cause, e.HealMode);
                     break;
                 default:
                     if (e.TargetsUnits) ApplyUnitEffect(e, source, target, origin, scale, cause);

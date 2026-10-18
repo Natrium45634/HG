@@ -110,6 +110,28 @@ public sealed class EdFormulaAttribute : Attribute
     }
 }
 
+/// <summary>
+/// String (or list) is a damage match: "*", a damage type id, "el:element", "cat:Category" or "tag:x"
+/// (docs/DECISIONS_2.md §29). The editor offers all of them in one list.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class EdDamageMatchAttribute : Attribute
+{
+}
+
+/// <summary>Empty value is inherited (from the parent element/type); the editor shows the inherited value and its origin.</summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class EdInheritAttribute : Attribute
+{
+}
+
+/// <summary>A definition whose empty fields are inherited from a parent.</summary>
+public interface IInheritable
+{
+    /// <summary>"унаследовано от «X»: value" for an empty field, null when the field is set or nothing is inherited.</summary>
+    string? InheritedHint(ContentDatabase db, string property);
+}
+
 public static class EdUtil
 {
     /// <summary>Evaluates [EdShowIf] for a property of the given object (true when no attribute).</summary>
