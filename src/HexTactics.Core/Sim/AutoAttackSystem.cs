@@ -55,11 +55,22 @@ public sealed class AutoAttackSystem
         return l;
     }
 
+    private readonly Dictionary<(int Unit, int Index), string> _skillOverride = new();
+
+    /// <summary>Changes the skill of an auto-attack at runtime (boss phases, scenario actions).</summary>
+    public void SetSkill(Unit u, int index, string skillId)
+    {
+        if (index < 0 || index >= u.Def.AutoAttacks.Count) return;
+        _skillOverride[(u.Id, index)] = skillId;
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: автоатака → «{_sim.Content.Skill(skillId)?.DisplayName ?? skillId}»", u.Id);
+    }
+
     /// <summary>The skill as used by the auto-attack: range, area and layer overrides on a private copy.</summary>
     public SkillDef? SkillOf(Unit u, int index)
     {
         var a = u.Def.AutoAttacks[index];
-        var baseSkill = string.IsNullOrEmpty(a.Skill) ? u.BasicAttack : u.Skills.FirstOrDefault(s => s.Id == a.Skill) ?? _sim.Content.Skill(a.Skill);
+        var id = _skillOverride.TryGetValue((u.Id, index), out var ov) ? ov : a.Skill;
+        var baseSkill = string.IsNullOrEmpty(id) ? u.BasicAttack : u.Skills.FirstOrDefault(s => s.Id == id) ?? _sim.Content.Skill(id);
         if (baseSkill == null) return null;
         if (a.Range <= 0 && a.AreaSize <= 0 && a.TargetLayers.Count == 0 && (!a.RequireLoS || baseSkill.RequiresLoS)) return baseSkill;
         var key = (u.Def.Id + "/" + baseSkill.Id, index);

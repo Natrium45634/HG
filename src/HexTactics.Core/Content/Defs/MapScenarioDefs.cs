@@ -51,6 +51,7 @@ public sealed class MapMarkerDef
     [Ed("Клетка")] public HexCoord C { get; set; }
     [Ed("Подпись")] public string Label { get; set; } = "";
     [Ed("Радиус"), EdRange(0, 20)] public int Radius { get; set; }
+    [Ed("Маркер предупреждения", "Показывать линию пути перед появлением врагов из этой точки")] public bool SpawnWarning { get; set; } = true;
 }
 
 public sealed class MapRulesDef
@@ -141,40 +142,106 @@ public sealed class WaveUnitDef
 {
     [Ed("Шаблон юнита"), EdRef(DefCategory.Unit, AllowEmpty = false)] public string Unit { get; set; } = "";
     [Ed("Количество"), EdRange(1, 100)] public int Count { get; set; } = 1;
+    [Ed("Метка-ID", "Для условий и целей (например, boss)")] public string Tag { get; set; } = "";
+    [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
+}
+
+public enum WaveStart
+{
+    [Ed("По времени")] Time,
+    [Ed("После зачистки предыдущей волны")] AfterPrevious,
+    [Ed("По условию (вход в область, устройство, событие…)")] OnCondition,
+    [Ed("Только действием триггера")] Manual,
 }
 
 public sealed class WaveDef
 {
     [Ed("Название")] public string Name { get; set; } = "Волна";
-    [Ed("Время начала, с"), EdRange(0, 36000)] public double Time { get; set; } = 30;
+    [Ed("Начало")] public WaveStart Start { get; set; } = WaveStart.Time;
+    [Ed("Время начала, с"), EdRange(0, 36000), EdShowIf(nameof(Start), WaveStart.Time)] public double Time { get; set; } = 30;
+    [Ed("Задержка, с", "После зачистки предыдущей / выполнения условия (маркер предупреждения добавляется сверху)"), EdRange(0, 3600),
+     EdShowIf(nameof(Start), WaveStart.AfterPrevious, WaveStart.OnCondition)]
+    public double Delay { get; set; }
+    [Ed("Условие начала"), EdShowIf(nameof(Start), WaveStart.OnCondition)] public ConditionDef StartCondition { get; set; } = new() { Type = ConditionType.UnitInArea };
     [Ed("Метка появления", "ID метки карты (точка появления)")] public string SpawnMarker { get; set; } = "";
+    [Ed("Доп. точки появления", "Враги распределяются по точкам по очереди")] public List<string> SpawnMarkers { get; set; } = new();
+    [Ed("Маршрут", "ID маршрута карты: враги идут по нему")] public string Route { get; set; } = "";
+    [Ed("Интервал появления, с", "Между врагами волны (0 — все сразу)"), EdRange(0, 600)] public double Interval { get; set; }
+    [Ed("Лимит одновременно живых", "0 — без лимита; остальные ждут свободного места"), EdRange(0, 500)] public int MaxAlive { get; set; }
     [Ed("Фракция"), EdRef(DefCategory.Faction, AllowEmpty = false)] public string Faction { get; set; } = "enemy";
     [Ed("Юниты")] public List<WaveUnitDef> Units { get; set; } = new();
+    [Ed("Своё условие завершения", "Иначе — волна зачищена, когда все её враги появились и уничтожены")] public bool CustomEnd { get; set; }
+    [Ed("Условие завершения"), EdShowIf(nameof(CustomEnd), true)] public ConditionDef EndCondition { get; set; } = new() { Type = ConditionType.TimeElapsed };
+    [Ed("При начале")] public List<TriggerActionDef> OnStart { get; set; } = new();
+    [Ed("При завершении")] public List<TriggerActionDef> OnEnd { get; set; } = new();
+    [Ed("Маркер предупреждения", "Линия будущего пути перед появлением")] public bool Warning { get; set; } = true;
+    [Ed("Мин. предупреждение, с", "0 — из правил"), EdRange(0, 600)] public double WarningSeconds { get; set; }
     [Ed("Сообщение")] public string Message { get; set; } = "";
+
+    public IEnumerable<string> AllSpawnMarkers()
+    {
+        if (!string.IsNullOrEmpty(SpawnMarker)) yield return SpawnMarker;
+        foreach (var m in SpawnMarkers)
+            if (!string.IsNullOrEmpty(m) && m != SpawnMarker)
+                yield return m;
+    }
 }
 
 public enum ConditionType
 {
-    AllEnemiesDead,
-    AllPlayerUnitsDead,
-    SurviveTime,
-    ReachMarker,
-    UnitDead,
-    UnitAlive,
-    KillCount,
-    TimeElapsed,
-    WaveSpawned,
+    [Ed("Все враги уничтожены")] AllEnemiesDead,
+    [Ed("Все юниты игрока погибли")] AllPlayerUnitsDead,
+    [Ed("Продержаться N с")] SurviveTime,
+    [Ed("Юнит игрока в метке")] ReachMarker,
+    [Ed("Юнит с меткой погиб")] UnitDead,
+    [Ed("Юнит с меткой жив")] UnitAlive,
+    [Ed("Уничтожено N врагов")] KillCount,
+    [Ed("Прошло N с")] TimeElapsed,
+    [Ed("Волна началась")] WaveSpawned,
+    // Part 2 (docs/DECISIONS_2.md §37): logic and new leaves.
+    [Ed("И (все вложенные)")] All,
+    [Ed("ИЛИ (хотя бы одно)")] Any,
+    [Ed("НЕ")] Not,
+    [Ed("По порядку (вложенные выполнены в заданном порядке)")] InOrder,
+    [Ed("Юнит стороны в области N с")] UnitInArea,
+    [Ed("Волна зачищена")] WaveCleared,
+    [Ed("Зачищено N волн")] WavesCleared,
+    [Ed("Цель выполнена")] ObjectiveCompleted,
+    [Ed("Цель провалена")] ObjectiveFailed,
+    [Ed("Флаг события установлен")] FlagSet,
+    [Ed("Здоровье ниже доли")] HpBelow,
+    [Ed("Пропущено N врагов")] EnemiesLeaked,
+    [Ed("Всегда")] Always,
+}
+
+public enum AreaSide
+{
+    [Ed("Игрок")] Player,
+    [Ed("Враги")] Enemy,
+    [Ed("Любая")] Any,
 }
 
 public sealed class ConditionDef
 {
     [Ed("Условие")] public ConditionType Type { get; set; } = ConditionType.AllEnemiesDead;
-    [Ed("Время, с"), EdShowIf(nameof(Type), ConditionType.SurviveTime, ConditionType.TimeElapsed)] public double Seconds { get; set; } = 60;
-    [Ed("Метка карты"), EdShowIf(nameof(Type), ConditionType.ReachMarker)] public string Marker { get; set; } = "";
-    [Ed("Метка юнита"), EdShowIf(nameof(Type), ConditionType.UnitDead, ConditionType.UnitAlive, ConditionType.ReachMarker)]
+    [Ed("Вложенные условия"), EdShowIf(nameof(Type), ConditionType.All, ConditionType.Any, ConditionType.Not, ConditionType.InOrder)]
+    public List<ConditionDef> Children { get; set; } = new();
+    [Ed("Время, с"), EdRange(0, 36000), EdShowIf(nameof(Type), ConditionType.SurviveTime, ConditionType.TimeElapsed, ConditionType.UnitInArea)]
+    public double Seconds { get; set; } = 60;
+    [Ed("Метка карты"), EdShowIf(nameof(Type), ConditionType.ReachMarker, ConditionType.UnitInArea)] public string Marker { get; set; } = "";
+    [Ed("Метка юнита", "Пусто — для «здоровье ниже» — сам владелец (босс)"),
+     EdShowIf(nameof(Type), ConditionType.UnitDead, ConditionType.UnitAlive, ConditionType.ReachMarker, ConditionType.HpBelow, ConditionType.UnitInArea)]
     public string UnitTag { get; set; } = "";
-    [Ed("Количество"), EdShowIf(nameof(Type), ConditionType.KillCount)] public int Count { get; set; } = 5;
-    [Ed("Волна (индекс)"), EdShowIf(nameof(Type), ConditionType.WaveSpawned)] public int Wave { get; set; }
+    [Ed("Сторона"), EdShowIf(nameof(Type), ConditionType.UnitInArea)] public AreaSide Side { get; set; } = AreaSide.Player;
+    [Ed("Количество"), EdRange(0, 100000), EdShowIf(nameof(Type), ConditionType.KillCount, ConditionType.WavesCleared, ConditionType.EnemiesLeaked)]
+    public int Count { get; set; } = 5;
+    [Ed("Категории врагов", "Для подсчёта убитых: категории существ или tag:тег; пусто — все"), EdShowIf(nameof(Type), ConditionType.KillCount)]
+    public List<string> Categories { get; set; } = new();
+    [Ed("Волна (индекс)"), EdRange(0, 1000), EdShowIf(nameof(Type), ConditionType.WaveSpawned, ConditionType.WaveCleared)] public int Wave { get; set; }
+    [Ed("Цель (ID)"), EdShowIf(nameof(Type), ConditionType.ObjectiveCompleted, ConditionType.ObjectiveFailed, ConditionType.EnemiesLeaked)]
+    public string Objective { get; set; } = "";
+    [Ed("Флаг"), EdShowIf(nameof(Type), ConditionType.FlagSet)] public string Flag { get; set; } = "";
+    [Ed("Доля здоровья"), EdRange(0, 1), EdShowIf(nameof(Type), ConditionType.HpBelow)] public double Fraction { get; set; } = 0.5;
 
     public string Describe() => Type switch
     {
@@ -184,31 +251,102 @@ public sealed class ConditionDef
         ConditionType.ReachMarker => $"Довести {(string.IsNullOrEmpty(UnitTag) ? "любого юнита" : UnitTag)} до «{Marker}»",
         ConditionType.UnitDead => $"Юнит «{UnitTag}» погиб",
         ConditionType.UnitAlive => $"Юнит «{UnitTag}» жив",
-        ConditionType.KillCount => $"Уничтожить {Count} врагов",
+        ConditionType.KillCount => $"Уничтожить {Count} врагов" + (Categories.Count > 0 ? $" ({string.Join(", ", Categories)})" : ""),
         ConditionType.TimeElapsed => $"Прошло {Seconds:0} с",
         ConditionType.WaveSpawned => $"Началась волна {Wave + 1}",
+        ConditionType.All => "Все: " + string.Join(" и ", Children.ConvertAll(c => c.Describe())),
+        ConditionType.Any => "Любое: " + string.Join(" или ", Children.ConvertAll(c => c.Describe())),
+        ConditionType.Not => "Не: " + string.Join(", ", Children.ConvertAll(c => c.Describe())),
+        ConditionType.InOrder => "По порядку: " + string.Join(" → ", Children.ConvertAll(c => c.Describe())),
+        ConditionType.UnitInArea => $"{(Side == AreaSide.Enemy ? "Враг" : Side == AreaSide.Player ? "Юнит игрока" : "Юнит")} в «{Marker}»" + (Seconds > 0 ? $" {Seconds:0} с" : ""),
+        ConditionType.WaveCleared => $"Волна {Wave + 1} зачищена",
+        ConditionType.WavesCleared => $"Зачищено волн: {Count}",
+        ConditionType.ObjectiveCompleted => $"Цель «{Objective}» выполнена",
+        ConditionType.ObjectiveFailed => $"Цель «{Objective}» провалена",
+        ConditionType.FlagSet => $"Событие «{Flag}»",
+        ConditionType.HpBelow => $"{(string.IsNullOrEmpty(UnitTag) ? "Здоровье" : $"Здоровье «{UnitTag}»")} ниже {Fraction:P0}",
+        ConditionType.EnemiesLeaked => $"Пропущено врагов: {Count}",
+        ConditionType.Always => "Всегда",
         _ => Type.ToString(),
     };
 }
 
 public enum TriggerActionType
 {
-    Message,
-    SpawnWave,
-    Autopause,
-    Victory,
-    Defeat,
-    AddCellEffect,
+    [Ed("Сообщение")] Message,
+    [Ed("Запустить волну")] SpawnWave,
+    [Ed("Автопауза")] Autopause,
+    [Ed("Победа")] Victory,
+    [Ed("Поражение")] Defeat,
+    [Ed("Эффект клетки в метке")] AddCellEffect,
+    // Part 2: events, objectives, map, units (boss phases use the same actions).
+    [Ed("Установить флаг события")] SetFlag,
+    [Ed("Выполнить цель")] CompleteObjective,
+    [Ed("Провалить цель")] FailObjective,
+    [Ed("Отменить волну")] CancelWave,
+    [Ed("Сменить местность")] ChangeTerrain,
+    [Ed("Призвать юнитов")] SummonUnits,
+    [Ed("Наложить состояние")] ApplyStatus,
+    [Ed("Снять состояние")] RemoveStatus,
+    [Ed("Добавить навык")] AddSkill,
+    [Ed("Убрать навык")] RemoveSkill,
+    [Ed("Навык автоатаки")] SetAutoAttackSkill,
+    [Ed("Профиль ИИ")] SetAiProfile,
+    [Ed("Лечение, % HP")] HealPercent,
+}
+
+public enum ActionTarget
+{
+    [Ed("Владелец (босс / источник события)")] Self,
+    [Ed("Юниты с меткой")] UnitTag,
+    [Ed("Все враги игрока")] Enemies,
+    [Ed("Все юниты игрока")] PlayerUnits,
 }
 
 public sealed class TriggerActionDef
 {
     [Ed("Действие")] public TriggerActionType Type { get; set; } = TriggerActionType.Message;
-    [Ed("Текст"), EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat)]
+    [Ed("Текст"), EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat, TriggerActionType.Autopause)]
     public string Text { get; set; } = "";
-    [Ed("Волна (индекс)"), EdShowIf(nameof(Type), TriggerActionType.SpawnWave)] public int Wave { get; set; }
+    [Ed("Волна (индекс)"), EdRange(0, 1000), EdShowIf(nameof(Type), TriggerActionType.SpawnWave, TriggerActionType.CancelWave)] public int Wave { get; set; }
     [Ed("Эффект клетки"), EdRef(DefCategory.CellEffect), EdShowIf(nameof(Type), TriggerActionType.AddCellEffect)] public string CellEffect { get; set; } = "";
-    [Ed("Метка карты"), EdShowIf(nameof(Type), TriggerActionType.AddCellEffect)] public string Marker { get; set; } = "";
+    [Ed("Метка карты", "Пусто — вокруг владельца"),
+     EdShowIf(nameof(Type), TriggerActionType.AddCellEffect, TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits)]
+    public string Marker { get; set; } = "";
+    [Ed("Радиус"), EdRange(0, 20), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits)] public int Radius { get; set; } = 1;
+    [Ed("Флаг"), EdShowIf(nameof(Type), TriggerActionType.SetFlag)] public string Flag { get; set; } = "";
+    [Ed("Цель (ID)"), EdShowIf(nameof(Type), TriggerActionType.CompleteObjective, TriggerActionType.FailObjective)] public string Objective { get; set; } = "";
+    [Ed("Местность"), EdRef(DefCategory.Terrain), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain)] public string Terrain { get; set; } = "";
+    [Ed("Юнит"), EdRef(DefCategory.Unit), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)] public string Unit { get; set; } = "";
+    [Ed("Количество"), EdRange(1, 100), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)] public int Count { get; set; } = 1;
+    [Ed("На кого"),
+     EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus, TriggerActionType.AddSkill, TriggerActionType.RemoveSkill,
+         TriggerActionType.SetAutoAttackSkill, TriggerActionType.SetAiProfile, TriggerActionType.HealPercent)]
+    public ActionTarget Target { get; set; } = ActionTarget.Self;
+    [Ed("Метка юнита"), EdShowIf(nameof(Target), ActionTarget.UnitTag)] public string UnitTag { get; set; } = "";
+    [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus)] public string Status { get; set; } = "";
+    [Ed("Величина", "Очки/стаки состояния, % лечения"), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.HealPercent)] public double Amount { get; set; } = 1;
+    [Ed("Навык"), EdRef(DefCategory.Skill), EdShowIf(nameof(Type), TriggerActionType.AddSkill, TriggerActionType.RemoveSkill, TriggerActionType.SetAutoAttackSkill)]
+    public string Skill { get; set; } = "";
+    [Ed("Автоатака (индекс)"), EdRange(0, 20), EdShowIf(nameof(Type), TriggerActionType.SetAutoAttackSkill)] public int AutoAttack { get; set; }
+    [Ed("Профиль ИИ"), EdRef(DefCategory.AiProfile), EdShowIf(nameof(Type), TriggerActionType.SetAiProfile)] public string AiProfile { get; set; } = "";
+
+    public string Describe() => Type switch
+    {
+        TriggerActionType.Message => $"Сообщение «{Text}»",
+        TriggerActionType.SpawnWave => $"Волна {Wave + 1}",
+        TriggerActionType.CancelWave => $"Отменить волну {Wave + 1}",
+        TriggerActionType.SetFlag => $"Флаг «{Flag}»",
+        TriggerActionType.CompleteObjective => $"Выполнить цель «{Objective}»",
+        TriggerActionType.FailObjective => $"Провалить цель «{Objective}»",
+        TriggerActionType.ChangeTerrain => $"Местность → {Terrain}",
+        TriggerActionType.SummonUnits => $"Призыв {Unit} ×{Count}",
+        TriggerActionType.ApplyStatus => $"Состояние {Status}",
+        TriggerActionType.AddSkill => $"+навык {Skill}",
+        TriggerActionType.RemoveSkill => $"−навык {Skill}",
+        TriggerActionType.SetAutoAttackSkill => $"Автоатака → {Skill}",
+        _ => Type.ToString(),
+    };
 }
 
 public sealed class TriggerDef
@@ -235,6 +373,10 @@ public sealed class ScenarioDef : Def
     [Ed("Волны", Group = "Волны")] public List<WaveDef> Waves { get; set; } = new();
     [Ed("Условия победы", "Любое выполненное — победа", Group = "Условия")] public List<ConditionDef> Victory { get; set; } = new() { new ConditionDef() };
     [Ed("Условия поражения", "Любое выполненное — поражение", Group = "Условия")] public List<ConditionDef> Defeat { get; set; } = new() { new ConditionDef { Type = ConditionType.AllPlayerUnitsDead } };
+    [Ed("Цели", "Типы сценариев: зачистка, оборона, босс, выживание, волны, сопровождение, захват, уничтожение, смешанные", Group = "Цели")]
+    public List<ObjectiveDef> Objectives { get; set; } = new();
+    [Ed("Логика целей", "Как обязательные цели дают победу", Group = "Цели")] public ObjectiveLogic ObjectiveLogic { get; set; } = ObjectiveLogic.AllRequired;
+    [Ed("Маркеры появления", Group = "Волны")] public ScenarioWarningsDef SpawnWarnings { get; set; } = new();
     [Ed("Триггеры", Group = "Триггеры")] public List<TriggerDef> Triggers { get; set; } = new();
     [Ed("Переопределение правил", "Ограничения сценария", Group = "Ограничения")] public ScenarioLimitsDef Limits { get; set; } = new();
 }

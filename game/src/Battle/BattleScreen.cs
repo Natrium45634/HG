@@ -529,6 +529,75 @@ public partial class BattleScreen : Node
         }
     }
 
+    /// <summary>
+    /// Spawn warnings (docs/DECISIONS_2.md §25): a white strip one third of a hex side wide above the
+    /// surface along the future path; it grows with the enemy's step timing (or runs as a comet) and is
+    /// gone one second before the enemy appears. Simulation time drives it: pause stops it, speed-up speeds it.
+    /// </summary>
+    private void DrawSpawnWarnings(OverlayLayer o)
+    {
+        var ws = Sim.Scenario.Warnings;
+        double now = Sim.Tick + (Driver.Paused ? 0 : Driver.Alpha);
+        float width = (float)Sim.Rules.SpawnWarnings.Width * Render.Board.HexSize;
+        var col = new Color(1f, 1f, 1f, 0.92f);
+        foreach (var w in ws.All)
+        {
+            if (!ws.IsActive(w, (long)now) || !ws.VisibleToPlayer(w) || w.Path.Count == 0) continue;
+            var (from, to) = ws.VisibleSpan(w, now);
+            Vector3 P(double cells)
+            {
+                int i = Math.Clamp((int)Math.Floor(cells), 0, w.Path.Count - 1);
+                int j = Math.Min(i + 1, w.Path.Count - 1);
+                float f = (float)(cells - i);
+                Vector3 A(HexCoord c) => Render.Board.Center(c, Render.Board.TopY(Sim.Map.Get(c)) + 0.09f);
+                return A(w.Path[i]).Lerp(A(w.Path[j]), f);
+            }
+            if (w.Path.Count == 1 || to - from < 1e-3)
+            {
+                o.Circle(P(0), 0.45f, width * 0.5f, col);
+                continue;
+            }
+            // Segment by segment (partial fog hides the parts over unseen cells).
+            double step = 0.25;
+            for (double a = from; a < to - 1e-6; a += step)
+            {
+                double b = Math.Min(to, a + step);
+                var cell = w.Path[Math.Clamp((int)Math.Round((a + b) / 2), 0, w.Path.Count - 1)];
+                if (!ws.CellVisible(w, cell)) continue;
+                o.Strip(P(a), P(b), width, col, true);
+            }
+            o.Disc(P(to), width * 0.75f, col);
+            o.Circle(P(0), 0.45f, 0.05f, new Color(1f, 1f, 1f, 0.6f));
+        }
+    }
+
+    /// <summary>Objective hexes on the map: defence (blue), capture zone (gold), escort goal (green).</summary>
+    private void DrawObjectives(OverlayLayer o)
+    {
+        foreach (var ob in Sim.Scenario.Objectives)
+        {
+            if (!ob.Def.ShowOnMap || ob.State is ObjectiveState.Completed or ObjectiveState.Failed) continue;
+            if (ob.State == ObjectiveState.Locked && ob.Def.HiddenUntilActive) continue;
+            var col = ob.Def.Kind switch
+            {
+                ObjectiveKind.Defend => new Color(0.4f, 0.75f, 1f, 0.9f),
+                ObjectiveKind.Capture => new Color(1f, 0.85f, 0.3f, 0.9f),
+                ObjectiveKind.Escort => new Color(0.45f, 1f, 0.55f, 0.9f),
+                _ => new Color(0.9f, 0.9f, 0.95f, 0.8f),
+            };
+            if (ob.State == ObjectiveState.Locked) col.A = 0.35f;
+            foreach (var c in Sim.Scenario.CellsOf(ob))
+            {
+                o.FillHex(c, new Color(col.R, col.G, col.B, 0.16f), 0.92f, 0.04f);
+                o.DashedRing(c, col);
+            }
+            if (ob.Def.Kind is ObjectiveKind.Destroy or ObjectiveKind.KillBoss or ObjectiveKind.Escort)
+                foreach (var u in Sim.Units)
+                    if (u.Alive && UnitVisible(u) && (string.IsNullOrEmpty(ob.Def.UnitTag) ? ob.Def.Kind == ObjectiveKind.KillBoss && u.Def.Boss.IsBoss : u.Tag == ob.Def.UnitTag))
+                        o.Circle(Board.UnitPos(u) + new Vector3(0, 0.05f, 0), 0.62f, 0.05f, ob.Def.Kind == ObjectiveKind.Escort ? col : new Color(1f, 0.35f, 0.3f, 0.9f));
+        }
+    }
+
     /// <summary>Chain between a blocker and every enemy it holds.</summary>
     private void DrawBlocking(OverlayLayer o)
     {
@@ -565,6 +634,8 @@ public partial class BattleScreen : Node
         DrawRecentAreas(o);
         DrawGhosts(o);
         DrawBlocking(o);
+        DrawSpawnWarnings(o);
+        DrawObjectives(o);
 
         if (_diag) DrawAiDebug(o);
 

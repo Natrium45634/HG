@@ -170,6 +170,8 @@ public sealed class UnitDef : Def
     [Ed("Блокирование (как блокирующий)", "Лимит — характеристика «Лимит блокирования»", Group = "Блокирование")] public BlockerDef Blocking { get; set; } = new();
     [Ed("Блокирование (как цель)", Group = "Блокирование")] public BlockableDef Blockable { get; set; } = new();
 
+    [Ed("Босс", "Фазы, смена навыков, особые условия", Group = "Босс")] public BossDef Boss { get; set; } = new();
+    [Ed("Маркер предупреждения", "Показывать линию пути перед появлением этого типа", Group = "Вид")] public bool SpawnWarning { get; set; } = true;
     [Ed("Внешний вид", Group = "Вид")] public UnitVisualDef Visual { get; set; } = new();
 }
 
@@ -245,4 +247,5 @@ public sealed class AiProfileDef : Def
     [Ed("Поворачиваться к угрозе", "Разворачиваться лицом к видимому врагу")] public bool FaceThreats { get; set; } = true;
     [Ed("Поднимать тревогу", "Сообщать союзникам о замеченном враге")] public bool Alert { get; set; } = true;
     [Ed("Наступать без обзора", "Если врагов не видно — идти к стартовой зоне игрока (или центру карты)")] public bool AdvanceWhenIdle { get; set; }
+    [Ed("Идти по маршруту, не отвлекаясь", "Враг волны идёт к цели маршрута и атакует только тех, кто его блокирует")] public bool RouteFocus { get; set; }
 }

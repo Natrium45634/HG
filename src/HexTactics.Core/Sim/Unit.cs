@@ -190,6 +190,11 @@ public sealed class Unit
     public AiState Ai { get; } = new();
 
     public int SummonerId { get; set; } = -1;
+    /// <summary>Route of a wave unit (map route points), and the next point index.</summary>
+    public List<HexCoord>? Route { get; set; }
+    public int RouteIndex { get; set; }
+    /// <summary>Wave index of a wave unit (-1 — placed by the scenario).</summary>
+    public int Wave { get; set; } = -1;
     public long ExpiresAtTick { get; set; } = -1;
 
     public int Kills { get; internal set; }

@@ -23,7 +23,8 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "defensive",
@@ -46,7 +47,8 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "hold",
@@ -69,7 +71,8 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "support",
@@ -92,7 +95,8 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "ranged",
@@ -115,7 +119,8 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "pursuer",
@@ -138,7 +143,8 @@
       "decisionInterval": 0.4,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "skittish",
@@ -161,7 +167,8 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false
+      "advanceWhenIdle": false,
+      "routeFocus": false
     },
     {
       "id": "hunter",
@@ -184,7 +191,32 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": true
+      "advanceWhenIdle": true,
+      "routeFocus": false
+    },
+    {
+      "id": "route_raider",
+      "name": "Налётчик (маршрут)",
+      "description": "Идёт по маршруту волны к цели, сражается только с теми, кто его блокирует",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "aggression": 0.9,
+      "targetPriority": "Nearest",
+      "preferredRange": 1,
+      "keepDistance": false,
+      "retreatHpFraction": 0,
+      "holdPosition": false,
+      "holdRadius": 2,
+      "pursue": true,
+      "support": false,
+      "supportHpThreshold": 0.6,
+      "hazardAvoidance": 4,
+      "decisionInterval": 0.3,
+      "faceThreats": true,
+      "alert": true,
+      "advanceWhenIdle": false,
+      "routeFocus": true
     }
   ]
 }

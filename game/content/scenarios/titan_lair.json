@@ -1,0 +1,222 @@
+{
+  "formatVersion": 4,
+  "kind": "scenario",
+  "scenario": {
+    "id": "titan_lair",
+    "name": "Логово титана",
+    "description": "Демонстрация босса: фазы через условия и действия (призыв, ярость, смена навыков и автоатаки, огненная земля), полоса здоровья босса, цели «убить босса» и «уничтожить пилоны».",
+    "tags": [],
+    "group": "",
+    "version": 1,
+    "map": "titan_lair",
+    "seed": 77,
+    "intro": "Хранитель недр: при 70 % здоровья призывает дронов, при 40 % впадает в ярость и поджигает землю. Пилоны питают логово — уничтожьте их для бонуса.",
+    "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
+    "units": [
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [-5, 2],
+        "facing": "E",
+        "tag": "hero",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "archer", "faction": "", "c": [-4, 1], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "mage", "faction": "", "c": [-5, 1], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "priestess",
+        "faction": "",
+        "c": [-4, 2],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "scout", "faction": "", "c": [-5, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "titan",
+        "faction": "",
+        "c": [0, 0],
+        "facing": "W",
+        "tag": "boss",
+        "aiProfile": "",
+        "name": ""
+      },
+      {
+        "unit": "pylon",
+        "faction": "",
+        "c": [3, -3],
+        "facing": "W",
+        "tag": "pylon",
+        "aiProfile": "",
+        "name": ""
+      },
+      {
+        "unit": "pylon",
+        "faction": "",
+        "c": [-1, 4],
+        "facing": "W",
+        "tag": "pylon",
+        "aiProfile": "",
+        "name": ""
+      }
+    ],
+    "waves": [],
+    "victory": [],
+    "defeat": [
+      {
+        "type": "AllPlayerUnitsDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "fraction": 0.5
+      }
+    ],
+    "objectives": [
+      {
+        "id": "boss",
+        "name": "Победить титана",
+        "description": "",
+        "kind": "KillBoss",
+        "required": true,
+        "priority": 0,
+        "dependsOn": [],
+        "timeLimit": 0,
+        "cells": [],
+        "marker": "",
+        "allowedLeaks": 0,
+        "countCategories": [],
+        "removeLeaked": true,
+        "protectTag": "",
+        "unitTag": "boss",
+        "count": 0,
+        "seconds": 60,
+        "resetOnLoss": false,
+        "waveCount": 0,
+        "complete": {
+          "type": "Always",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
+        "fail": {
+          "type": "Not",
+          "children": [
+            {
+              "type": "Always",
+              "children": [],
+              "seconds": 60,
+              "marker": "",
+              "unitTag": "",
+              "side": "Player",
+              "count": 5,
+              "categories": [],
+              "wave": 0,
+              "objective": "",
+              "flag": "",
+              "fraction": 0.5
+            }
+          ],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
+        "showOnMap": true,
+        "hiddenUntilActive": false
+      },
+      {
+        "id": "pylons",
+        "name": "Уничтожить пилоны",
+        "description": "",
+        "kind": "Destroy",
+        "required": false,
+        "priority": 1,
+        "dependsOn": [],
+        "timeLimit": 0,
+        "cells": [],
+        "marker": "",
+        "allowedLeaks": 0,
+        "countCategories": [],
+        "removeLeaked": true,
+        "protectTag": "",
+        "unitTag": "pylon",
+        "count": 0,
+        "seconds": 60,
+        "resetOnLoss": false,
+        "waveCount": 0,
+        "complete": {
+          "type": "Always",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
+        "fail": {
+          "type": "Not",
+          "children": [
+            {
+              "type": "Always",
+              "children": [],
+              "seconds": 60,
+              "marker": "",
+              "unitTag": "",
+              "side": "Player",
+              "count": 5,
+              "categories": [],
+              "wave": 0,
+              "objective": "",
+              "flag": "",
+              "fraction": 0.5
+            }
+          ],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
+        "showOnMap": true,
+        "hiddenUntilActive": false
+      }
+    ],
+    "objectiveLogic": "AllRequired",
+    "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "Show" },
+    "triggers": [],
+    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+  }
+}

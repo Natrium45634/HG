@@ -83,51 +83,228 @@
     "waves": [
       {
         "name": "Подкрепление",
+        "start": "Time",
         "time": 60,
+        "delay": 0,
+        "startCondition": {
+          "type": "UnitInArea",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
         "spawnMarker": "east_gate",
+        "spawnMarkers": [],
+        "route": "",
+        "interval": 0,
+        "maxAlive": 0,
         "faction": "enemy",
-        "units": [{ "unit": "goblin", "count": 3 }, { "unit": "goblin_archer", "count": 1 }],
+        "units": [
+          { "unit": "goblin", "count": 3, "tag": "", "aiProfile": "" },
+          { "unit": "goblin_archer", "count": 1, "tag": "", "aiProfile": "" }
+        ],
+        "customEnd": false,
+        "endCondition": {
+          "type": "TimeElapsed",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
+        "onStart": [],
+        "onEnd": [],
+        "warning": true,
+        "warningSeconds": 0,
         "message": "С востока подходят гоблины!"
       },
       {
         "name": "Стая",
+        "start": "Time",
         "time": 110,
+        "delay": 0,
+        "startCondition": {
+          "type": "UnitInArea",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
         "spawnMarker": "south",
+        "spawnMarkers": [],
+        "route": "",
+        "interval": 0,
+        "maxAlive": 0,
         "faction": "enemy",
-        "units": [{ "unit": "wolf", "count": 3 }],
+        "units": [{ "unit": "wolf", "count": 3, "tag": "", "aiProfile": "" }],
+        "customEnd": false,
+        "endCondition": {
+          "type": "TimeElapsed",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
+        "onStart": [],
+        "onEnd": [],
+        "warning": true,
+        "warningSeconds": 0,
         "message": "Из южного леса выбегает стая волков!"
       }
     ],
-    "victory": [{ "type": "AllEnemiesDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
-    "defeat": [
-      { "type": "AllPlayerUnitsDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 },
-      { "type": "UnitDead", "seconds": 60, "marker": "", "unitTag": "hero", "count": 5, "wave": 0 }
+    "victory": [
+      {
+        "type": "AllEnemiesDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "fraction": 0.5
+      }
     ],
+    "defeat": [
+      {
+        "type": "AllPlayerUnitsDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "fraction": 0.5
+      },
+      {
+        "type": "UnitDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "hero",
+        "side": "Player",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "fraction": 0.5
+      }
+    ],
+    "objectives": [],
+    "objectiveLogic": "AllRequired",
+    "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "AfterScouting" },
     "triggers": [
       {
         "name": "Совет",
-        "condition": { "type": "TimeElapsed", "seconds": 3, "marker": "", "unitTag": "", "count": 5, "wave": 0 },
+        "condition": {
+          "type": "TimeElapsed",
+          "children": [],
+          "seconds": 3,
+          "marker": "",
+          "unitTag": "",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
         "actions": [
           {
             "type": "Message",
             "text": "Совет: огонь взрывает ядовитые облака, а искра по воде бьёт всех, кто в ней стоит.",
             "wave": 0,
             "cellEffect": "",
-            "marker": ""
+            "marker": "",
+            "radius": 1,
+            "flag": "",
+            "objective": "",
+            "terrain": "",
+            "unit": "",
+            "count": 1,
+            "target": "Self",
+            "unitTag": "",
+            "status": "",
+            "amount": 1,
+            "skill": "",
+            "autoAttack": 0,
+            "aiProfile": ""
           }
         ],
         "once": true
       },
       {
         "name": "Босс пал",
-        "condition": { "type": "UnitDead", "seconds": 60, "marker": "", "unitTag": "boss", "count": 5, "wave": 0 },
+        "condition": {
+          "type": "UnitDead",
+          "children": [],
+          "seconds": 60,
+          "marker": "",
+          "unitTag": "boss",
+          "side": "Player",
+          "count": 5,
+          "categories": [],
+          "wave": 0,
+          "objective": "",
+          "flag": "",
+          "fraction": 0.5
+        },
         "actions": [
           {
             "type": "Message",
             "text": "Орк-громила повержен! Гоблины дрогнули.",
             "wave": 0,
             "cellEffect": "",
-            "marker": ""
+            "marker": "",
+            "radius": 1,
+            "flag": "",
+            "objective": "",
+            "terrain": "",
+            "unit": "",
+            "count": 1,
+            "target": "Self",
+            "unitTag": "",
+            "status": "",
+            "amount": 1,
+            "skill": "",
+            "autoAttack": 0,
+            "aiProfile": ""
           }
         ],
         "once": true

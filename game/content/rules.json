@@ -227,6 +227,16 @@
       "adminBreakdown": true
     },
     "autoAttacks": { "enabled": true, "playerUnits": true, "aiUnits": true, "protectedTag": "protected", "bossTag": "boss" },
+    "spawnWarnings": {
+      "enabled": true,
+      "minSeconds": 3,
+      "vanishBefore": 1,
+      "speedFactor": 1,
+      "width": 0.3333333333333333,
+      "mode": "Growing",
+      "cometCells": 3,
+      "fog": "Show"
+    },
     "vision": {
       "updateInterval": 0.25,
       "fogOfWar": true,

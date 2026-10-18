@@ -394,10 +394,38 @@
       { "c": [14, 15], "t": "grass", "h": 0 }
     ],
     "markers": [
-      { "id": "p1", "type": "PlayerStart", "c": [-2, 7], "label": "Старт отряда", "radius": 2 },
-      { "id": "east_gate", "type": "EnemySpawn", "c": [20, 6], "label": "Восточные ворота", "radius": 1 },
-      { "id": "south", "type": "EnemySpawn", "c": [14, 14], "label": "Южный лес", "radius": 1 },
-      { "id": "altar", "type": "Objective", "c": [15, 6], "label": "Алтарь", "radius": 0 }
+      {
+        "id": "p1",
+        "type": "PlayerStart",
+        "c": [-2, 7],
+        "label": "Старт отряда",
+        "radius": 2,
+        "spawnWarning": true
+      },
+      {
+        "id": "east_gate",
+        "type": "EnemySpawn",
+        "c": [20, 6],
+        "label": "Восточные ворота",
+        "radius": 1,
+        "spawnWarning": true
+      },
+      {
+        "id": "south",
+        "type": "EnemySpawn",
+        "c": [14, 14],
+        "label": "Южный лес",
+        "radius": 1,
+        "spawnWarning": true
+      },
+      {
+        "id": "altar",
+        "type": "Objective",
+        "c": [15, 6],
+        "label": "Алтарь",
+        "radius": 0,
+        "spawnWarning": true
+      }
     ],
     "routes": []
   }

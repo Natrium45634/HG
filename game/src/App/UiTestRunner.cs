@@ -47,6 +47,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_shield_and_damage", BattleShieldAndDamage));
         _tests.Add(("editor_element_inheritance", EditorElementInheritance));
         _tests.Add(("battle_autoattack_panel_toggle", BattleAutoAttackPanel));
+        _tests.Add(("battle_spawn_warning_and_objectives", BattleSpawnWarningObjectives));
+        _tests.Add(("editor_route_tool", EditorRouteTool));
         _ = Run();
     }
 
@@ -524,5 +526,54 @@ public partial class UiTestRunner : Node
         int fired = bs.Sim.AutoAttacks.StatesOf(archer).Sum(s => s.Fired);
         for (int i = 0; i < 80; i++) bs.Sim.Step();
         Check(bs.Sim.AutoAttacks.StatesOf(archer).Sum(s => s.Fired) == fired, "выключенная автоатака не должна срабатывать");
+    }
+
+    /// <summary>Gate defence: the objectives panel lists the goals; a warning line is active before the first wave and gone after the spawn.</summary>
+    private async Task BattleSpawnWarningObjectives()
+    {
+        var bs = await OpenBattle("gate_defense");
+        await Frames(10);
+        Check(LabelVisible("Удержать ядро") && LabelVisible("Отразить 3 волны"), "панель целей должна показывать цели сценария");
+        var ws = bs.Sim.Scenario.Warnings;
+        var w0 = bs.Sim.Scenario.Waves[0];
+        Check(w0.Planned.Count == 4, "первая волна должна запланировать 4 появления");
+        var first = ws.OfSpawn(w0.Planned[0].Id)!;
+        Check(first.Path.Count > 5, "линия должна идти по маршруту");
+        for (int i = 0; i < 400 && !ws.IsActive(first, bs.Sim.Tick); i++) bs.Sim.Step();
+        Check(ws.IsActive(first, bs.Sim.Tick) && ws.VisibleToPlayer(first), "маркер должен быть виден до появления");
+        await Frames(4);
+        while (bs.Sim.Tick < first.VanishTick) bs.Sim.Step();
+        Check(!ws.IsActive(first, bs.Sim.Tick), "маркер исчезает за секунду до появления");
+        Check(!bs.Sim.Units.Any(u => u.Wave == 0), "враг ещё не появился");
+        for (int i = 0; i < 40 && !bs.Sim.Units.Any(u => u.Wave == 0); i++) bs.Sim.Step();
+        Check(bs.Sim.Units.Any(u => u.Wave == 0), "враг должен появиться через секунду после исчезновения линии");
+        await Frames(10);
+        Check(LabelVisible("пропущено 0/3"), "прогресс обороны должен быть виден");
+    }
+
+    /// <summary>Map editor: the route tool adds points to a new route by clicking hexes.</summary>
+    private async Task EditorRouteTool()
+    {
+        await OpenEditor("maps");
+        var panel = Find<MapEditorPanel>(GetTree().Root).First();
+        panel.Select("arena");
+        await Frames(30);
+        var map = Main.Instance.Content.Draft!.Get<MapDef>("arena")!;
+        int routes = map.Routes.Count;
+        var tool = Find<Button>(panel).FirstOrDefault(b => b.Text == "Маршрут" && b.IsVisibleInTree());
+        Check(tool != null, "нет кнопки инструмента «Маршрут»");
+        await Click(tool!.GetGlobalRect().GetCenter());
+        await Frames(5);
+        Check(map.Routes.Count == routes + 1, $"инструмент «Маршрут» должен создать маршрут (нажата: {tool.ButtonPressed}, маршрутов {map.Routes.Count})");
+        var vp = Find<BoardViewport>(GetTree().Root).First();
+        foreach (var c in new[] { new HexCoord(2, 2), new HexCoord(4, 2) })
+        {
+            var cell = vp.Board.Map!.Get(c)!;
+            var local = vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(cell.Coord, Render.Board.PickY(cell)));
+            await Click(vp.GetGlobalRect().Position + local);
+        }
+        var route = map.Routes[^1];
+        Check(route.Points.Count == 2 && route.Points[0] == new HexCoord(2, 2) && route.Points[1] == new HexCoord(4, 2), $"точки маршрута: {string.Join(" ", route.Points)}");
+        Check(Main.Instance.Content.DraftDirty, "черновик не помечен изменённым");
     }
 }

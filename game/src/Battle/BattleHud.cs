@@ -96,6 +96,8 @@ public partial class BattleHud : Control
         BuildUnitPanel();
         BuildActionBar();
         BuildQueuePanel();
+        BuildObjectives();
+        BuildBossBar();
         BuildLog();
         BuildTooltip();
         BuildBanner();
@@ -125,6 +127,101 @@ public partial class BattleHud : Control
     }
 
     private PanelContainer? _topBar;
+
+    // ------------------------------------------------------------------ objectives and boss (TZ part 2 §4)
+
+    private PanelContainer _objPanel = null!;
+    private VBoxContainer _objList = null!;
+    private string _objKey = "";
+    private PanelContainer _bossPanel = null!;
+    private Label _bossName = null!;
+    private Bar _bossHp = null!;
+
+    private void BuildObjectives()
+    {
+        var box = Ui.VBox(4);
+        var head = Ui.HBox(4);
+        head.AddChild(Ui.Label("Цели", 16, Ui.Text).Expand());
+        _objList = Ui.VBox(3);
+        head.AddChild(Ui.Button("–", () => _objList.Visible = !_objList.Visible, "Свернуть"));
+        box.AddChild(head);
+        box.AddChild(_objList);
+        _objPanel = Track(Ui.PanelBox(box, null, 10));
+        _objPanel.CustomMinimumSize = new Vector2(320, 0);
+        _objPanel.Visible = false;
+        AddChild(_objPanel);
+    }
+
+    private void BuildBossBar()
+    {
+        var box = Ui.VBox(2);
+        _bossName = Ui.Label("", 15, new Color(1f, 0.6f, 0.5f));
+        _bossName.HorizontalAlignment = HorizontalAlignment.Center;
+        _bossHp = new Bar { FillColor = new Color(0.85f, 0.25f, 0.25f) }.MinSize(460, 16);
+        box.AddChild(_bossName);
+        box.AddChild(_bossHp);
+        _bossPanel = Track(Ui.PanelBox(box, new Color(0.08f, 0.05f, 0.06f, 0.85f), 6));
+        _bossPanel.Visible = false;
+        AddChild(_bossPanel);
+    }
+
+    private static string ObjIcon(ObjectiveState s) => s switch
+    {
+        ObjectiveState.Completed => "✓",
+        ObjectiveState.Failed => "✗",
+        ObjectiveState.Locked => "🔒",
+        _ => "•",
+    };
+
+    private void RefreshObjectives()
+    {
+        var obs = Sim.Scenario.Objectives;
+        _objPanel.Visible = obs.Count > 0;
+        if (obs.Count == 0) return;
+        string key = string.Join("|", obs.Select(o => $"{o.State}:{o.Progress}"));
+        if (key == _objKey) return;
+        _objKey = key;
+        Ui.ClearChildren(_objList);
+        var logic = Sim.Scenario.Def?.ObjectiveLogic ?? ObjectiveLogic.AllRequired;
+        if (logic != ObjectiveLogic.AllRequired) _objList.AddChild(Ui.Label(Names.Of(logic), 12, Ui.TextDim));
+        foreach (var o in obs)
+        {
+            if (o.State == ObjectiveState.Locked && o.Def.HiddenUntilActive) continue;
+            var col = o.State switch
+            {
+                ObjectiveState.Completed => Ui.Good,
+                ObjectiveState.Failed => Ui.Bad,
+                ObjectiveState.Locked => Ui.TextDim,
+                _ => Ui.Text,
+            };
+            string title = $"{ObjIcon(o.State)} {o.Def.Name}" + (o.Def.Required ? "" : " (дополнительная)");
+            var l = Ui.Label(title, 14, col, wrap: true);
+            l.TooltipText = string.IsNullOrEmpty(o.Def.Description) ? Names.Of(o.Def.Kind) : o.Def.Description;
+            _objList.AddChild(l);
+            string sub = o.State switch
+            {
+                ObjectiveState.Locked => "после: " + string.Join(", ", o.Def.DependsOn.Select(d => Sim.Scenario.Objective(d)?.Def.Name ?? d)),
+                ObjectiveState.Failed => o.Reason,
+                ObjectiveState.Completed => "",
+                _ => o.Progress,
+            };
+            if (sub.Length > 0) _objList.AddChild(Ui.Label("   " + sub, 12, Ui.TextDim, wrap: true));
+        }
+    }
+
+    private void RefreshBoss()
+    {
+        var boss = Sim.Units.FirstOrDefault(u => u.Alive && u.Def.Boss.IsBoss && _bs.UnitVisible(u));
+        _bossPanel.Visible = boss != null;
+        if (boss == null) return;
+        string phase = Sim.Scenario.PhaseOf(boss);
+        var info = Sim.Knowledge.GetInfo(boss);
+        _bossName.Text = (string.IsNullOrEmpty(boss.Def.Boss.Title) ? "" : boss.Def.Boss.Title + " · ") + info.Name + (phase.Length > 0 ? $" — {phase}" : "");
+        if (info.HealthField.Known) _bossHp.Set(info.Hp, info.HpMax, $"{info.Hp:0}/{info.HpMax:0}");
+        else _bossHp.Set(1, 1, "?");
+        _bossPanel.ResetSize();
+        _bossPanel.Position = new Vector2((Size.X - _bossPanel.Size.X) / 2, (_topBar?.GetGlobalRect().End.Y ?? 50) + 6);
+    }
 
     private T Track<T>(T c) where T : Control
     {
@@ -595,6 +692,7 @@ public partial class BattleHud : Control
         _actionPanel.Size = new Vector2(Math.Min(avail, 1030), 0);
         _actionPanel.Position = new Vector2(left + Math.Max(0, (avail - _actionPanel.Size.X) / 2), vp.Y - _actionPanel.Size.Y - 10);
         _queuePanel.Position = new Vector2(vp.X - _queuePanel.Size.X - 10, 64);
+        _objPanel.Position = new Vector2(vp.X - _objPanel.Size.X - 10, _queuePanel.Visible ? _queuePanel.GetRect().End.Y + 8 : 64);
         _banner.Position = new Vector2(vp.X * 0.2f, 64);
         _banner.Size = new Vector2(vp.X * 0.6f, 40);
         _outcome.Position = (vp - _outcome.Size) / 2;
@@ -634,6 +732,11 @@ public partial class BattleHud : Control
         if (slow) _refreshTimer = 0.2f;
 
         RefreshUnit(slow);
+        if (slow)
+        {
+            RefreshObjectives();
+            RefreshBoss();
+        }
         RefreshActions(slow);
         RefreshQueue();
         RefreshTooltip();

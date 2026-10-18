@@ -103,6 +103,30 @@ public partial class PropertyGrid : VBoxContainer
 
     // ------------------------------------------------------------------ damage matches ("*", type, el:, cat:, tag:)
 
+    /// <summary>Hex list as text "q,r; q,r" (objective hexes, route points).</summary>
+    private Control CoordList(VBoxContainer parent, object owner, PropertyInfo prop, EdAttribute ed, List<HexCoord> list)
+    {
+        var row = Row(parent, ed);
+        var le = new LineEdit { Text = string.Join("; ", list.Select(c => $"{c.Q},{c.R}")), PlaceholderText = "q,r; q,r …" }.Expand();
+        le.TooltipText = "Координаты гексов через «;», например 3,2; 4,2";
+        le.TextSubmitted += _ => le.ReleaseFocus();
+        le.FocusExited += () =>
+        {
+            var parsed = new List<HexCoord>();
+            foreach (var part in le.Text.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var xy = part.Split(',', StringSplitOptions.TrimEntries);
+                if (xy.Length == 2 && int.TryParse(xy[0], out var q) && int.TryParse(xy[1], out var r)) parsed.Add(new HexCoord(q, r));
+            }
+            list.Clear();
+            list.AddRange(parsed);
+            le.Text = string.Join("; ", list.Select(c => $"{c.Q},{c.R}"));
+            RaiseChanged(owner, prop.Name);
+        };
+        row.AddChild(le);
+        return row;
+    }
+
     public OptionButton MatchOption(string current, Action<string> set)
     {
         var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
@@ -284,6 +308,7 @@ public partial class PropertyGrid : VBoxContainer
                 return c;
             }
             if (itemType == typeof(double)) return NumberList(parent, owner, prop, ed, (List<double>)list);
+            if (itemType == typeof(HexCoord)) return CoordList(parent, owner, prop, ed, (List<HexCoord>)list);
             if (itemType.IsClass) return ObjectList(parent, owner, prop, ed, list, itemType);
             return null;
         }

@@ -1811,6 +1811,70 @@
       "color": "#4aa8ff",
       "icon": "М",
       "showBar": true
+    },
+    {
+      "id": "titan_fury",
+      "name": "Ярость титана",
+      "description": "Фаза босса: −25 % получаемого урона, +30 % наносимого",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Timed",
+      "negative": false,
+      "duration": 0,
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [],
+          "flags": {
+            "blocksMovement": false,
+            "blocksHealing": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "defense": {
+            "modifiers": [{ "match": "*", "percent": -25 }],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": true
+          },
+          "offense": {
+            "bonuses": [{ "match": "*", "percent": 30 }],
+            "conversions": []
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "element": "",
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#ff5a3c",
+      "icon": "Я",
+      "showBar": true
     }
   ]
 }

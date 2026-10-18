@@ -61,6 +61,8 @@ public sealed class CombatSystem
     }
 
     public Dictionary<string, int> KillsByFaction { get; } = new();
+    /// <summary>Every kill: killer faction (empty — no killer) and the victim (scenario conditions by category).</summary>
+    public List<(string KillerFaction, Unit Victim)> KillLog { get; } = new();
 
     private RulesDef Rules => _sim.Rules;
 
@@ -423,6 +425,7 @@ public sealed class CombatSystem
         if (Rules.Autopause.UnitDied && (_sim.IsPlayerFaction(u.BaseFactionId) || _sim.Vision.IsVisibleToPlayer(u) || _sim.Options.AdminMode))
             _sim.RequestAutopause($"{u.Name} погиб");
 
+        KillLog.Add((killer != null && killer != u ? killer.FactionId : "", u));
         if (killer != null && killer != u)
         {
             killer.Kills++;

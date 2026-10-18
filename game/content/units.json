@@ -117,6 +117,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Soldier", "color": "", "scale": 1, "symbol": "Р" }
     },
     {
@@ -222,6 +224,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "Л" }
     },
     {
@@ -295,6 +299,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "М" }
     },
     {
@@ -368,6 +374,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Mage", "color": "#e8e4d8", "scale": 1, "symbol": "Ж" }
     },
     {
@@ -452,6 +460,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "Р" }
     },
     {
@@ -525,6 +535,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "г" }
     },
     {
@@ -619,6 +631,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "л" }
     },
     {
@@ -710,6 +724,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Brute", "color": "", "scale": 1, "symbol": "О" }
     },
     {
@@ -783,6 +799,8 @@
         "canBypass": false,
         "whenBlocked": "Wait"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "ш" }
     },
     {
@@ -856,6 +874,8 @@
         "canBypass": false,
         "whenBlocked": "FindDetour"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "в" }
     },
     {
@@ -963,6 +983,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Construct", "color": "", "scale": 1, "symbol": "С" }
     },
     {
@@ -1036,6 +1058,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "о" }
     },
     {
@@ -1127,6 +1151,8 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Orb", "color": "#ff6b6b", "scale": 0.8, "symbol": "Д" }
     },
     {
@@ -1200,7 +1226,362 @@
         "canBypass": false,
         "whenBlocked": "AttackBlocker"
       },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
       "visual": { "shape": "Beast", "color": "#c98b4a", "scale": 0.9, "symbol": "З" }
+    },
+    {
+      "id": "titan",
+      "name": "Титан",
+      "description": "Босс: две фазы — призыв дронов и ярость с огненной землёй",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "construct",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 600,
+        "move_speed": 1,
+        "ap_max": 10,
+        "ap_regen": 0.9,
+        "detection_range": 6,
+        "armor": 6,
+        "power": 4,
+        "block_limit": 0
+      },
+      "defense": {
+        "modifiers": [{ "match": "el:fire", "percent": -30 }, { "match": "el:lightning", "percent": 25 }],
+        "immune": ["poison"],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "strike",
+      "skills": ["quake", "cleave"],
+      "passives": ["thick_hide"],
+      "startingStatuses": [],
+      "autoAttacks": [
+        {
+          "enabled": true,
+          "skill": "",
+          "range": 0,
+          "areaSize": 0,
+          "targets": { "enemies": true, "allies": false, "neutrals": false, "self": false },
+          "targetLayers": [],
+          "requireDetection": true,
+          "requireLoS": true,
+          "apCost": -1,
+          "interval": 2.5,
+          "selection": "Sequential",
+          "rules": [{ "rule": "BlockingMe", "tag": "", "weight": 1 }, { "rule": "Nearest", "tag": "", "weight": 1 }],
+          "randomTies": false,
+          "whileMoving": false,
+          "whenBlocking": true,
+          "whenBlocked": true,
+          "stopWhen": [],
+          "onShortage": "Skip"
+        }
+      ],
+      "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "heavy_guard",
+        "slotCost": 3,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
+      "boss": {
+        "isBoss": true,
+        "title": "Хранитель недр",
+        "phases": [
+          {
+            "name": "Пробуждение",
+            "when": {
+              "type": "HpBelow",
+              "children": [],
+              "seconds": 60,
+              "marker": "",
+              "unitTag": "",
+              "side": "Player",
+              "count": 5,
+              "categories": [],
+              "wave": 0,
+              "objective": "",
+              "flag": "",
+              "fraction": 0.7
+            },
+            "actions": [
+              {
+                "type": "SummonUnits",
+                "text": "",
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "adds",
+                "radius": 1,
+                "flag": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "drone",
+                "count": 2,
+                "target": "Self",
+                "unitTag": "",
+                "status": "",
+                "amount": 1,
+                "skill": "",
+                "autoAttack": 0,
+                "aiProfile": ""
+              },
+              {
+                "type": "SetFlag",
+                "text": "",
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "",
+                "radius": 1,
+                "flag": "titan_awake",
+                "objective": "",
+                "terrain": "",
+                "unit": "",
+                "count": 1,
+                "target": "Self",
+                "unitTag": "",
+                "status": "",
+                "amount": 1,
+                "skill": "",
+                "autoAttack": 0,
+                "aiProfile": ""
+              }
+            ],
+            "message": "Титан пробуждается и зовёт дронов!"
+          },
+          {
+            "name": "Ярость",
+            "when": {
+              "type": "HpBelow",
+              "children": [],
+              "seconds": 60,
+              "marker": "",
+              "unitTag": "",
+              "side": "Player",
+              "count": 5,
+              "categories": [],
+              "wave": 0,
+              "objective": "",
+              "flag": "",
+              "fraction": 0.4
+            },
+            "actions": [
+              {
+                "type": "ApplyStatus",
+                "text": "",
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "",
+                "radius": 1,
+                "flag": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "",
+                "count": 1,
+                "target": "Self",
+                "unitTag": "",
+                "status": "titan_fury",
+                "amount": 1,
+                "skill": "",
+                "autoAttack": 0,
+                "aiProfile": ""
+              },
+              {
+                "type": "AddSkill",
+                "text": "",
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "",
+                "radius": 1,
+                "flag": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "",
+                "count": 1,
+                "target": "Self",
+                "unitTag": "",
+                "status": "",
+                "amount": 1,
+                "skill": "meteor",
+                "autoAttack": 0,
+                "aiProfile": ""
+              },
+              {
+                "type": "SetAutoAttackSkill",
+                "text": "",
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "",
+                "radius": 1,
+                "flag": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "",
+                "count": 1,
+                "target": "Self",
+                "unitTag": "",
+                "status": "",
+                "amount": 1,
+                "skill": "cleave",
+                "autoAttack": 0,
+                "aiProfile": ""
+              },
+              {
+                "type": "AddCellEffect",
+                "text": "",
+                "wave": 0,
+                "cellEffect": "fire",
+                "marker": "",
+                "radius": 2,
+                "flag": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "",
+                "count": 1,
+                "target": "Self",
+                "unitTag": "",
+                "status": "",
+                "amount": 1,
+                "skill": "",
+                "autoAttack": 0,
+                "aiProfile": ""
+              }
+            ],
+            "message": "Ярость титана: земля вокруг пылает!"
+          }
+        ]
+      },
+      "spawnWarning": true,
+      "visual": { "shape": "Brute", "color": "#c8503c", "scale": 1.6, "symbol": "Т" }
+    },
+    {
+      "id": "pylon",
+      "name": "Энергопилон",
+      "description": "Неподвижный объект: цель «уничтожить»",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "construct",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 90,
+        "move_speed": 0,
+        "armor": 2,
+        "ap_max": 1,
+        "ap_regen": 0,
+        "detection_range": 3,
+        "block_limit": 0
+      },
+      "defense": {
+        "modifiers": [{ "match": "el:lightning", "percent": -80 }],
+        "immune": ["poison", "bleed"],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": true
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": ["poison", "bleeding", "tag:gas"],
+      "resources": [],
+      "basicAttack": "",
+      "skills": [],
+      "passives": [],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "hold",
+      "perception": {
+        "model": "None",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "FrontArc", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
+      "visual": { "shape": "Totem", "color": "#7ad0ff", "scale": 1.1, "symbol": "П" }
     }
   ]
 }

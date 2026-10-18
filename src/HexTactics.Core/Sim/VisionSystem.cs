@@ -15,6 +15,10 @@ public sealed class VisionSystem
     private readonly Simulation _sim;
     private readonly Dictionary<string, HashSet<int>> _visible = new();
     private readonly HashSet<HexCoord> _playerCells = new();
+    private readonly HashSet<HexCoord> _explored = new();
+
+    /// <summary>Cells the player side has ever seen («после разведки» for spawn warnings).</summary>
+    public bool IsExplored(HexCoord c) => !_sim.FogOfWar || _explored.Contains(c);
     private long _nextUpdate;
     private bool _changed = true;
     private bool _urgent = true;
@@ -246,6 +250,7 @@ public sealed class VisionSystem
             }
             foreach (var c in vc.Cells) _playerCells.Add(c);
         }
+        _explored.UnionWith(_playerCells);
     }
 
     private bool IsPlayerAlly(string faction)

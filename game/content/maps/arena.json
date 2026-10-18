@@ -183,8 +183,22 @@
       { "c": [-7, 6], "t": "sand", "h": 0 }
     ],
     "markers": [
-      { "id": "west", "type": "PlayerStart", "c": [-6, 3], "label": "Запад", "radius": 2 },
-      { "id": "east", "type": "EnemySpawn", "c": [6, -3], "label": "Восток", "radius": 2 }
+      {
+        "id": "west",
+        "type": "PlayerStart",
+        "c": [-6, 3],
+        "label": "Запад",
+        "radius": 2,
+        "spawnWarning": true
+      },
+      {
+        "id": "east",
+        "type": "EnemySpawn",
+        "c": [6, -3],
+        "label": "Восток",
+        "radius": 2,
+        "spawnWarning": true
+      }
     ],
     "routes": []
   }

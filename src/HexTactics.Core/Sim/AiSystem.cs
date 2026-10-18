@@ -98,6 +98,9 @@ public sealed class AiSystem
             }
         }
 
+        // Wave enemies with «идти по маршруту, не отвлекаясь» walk on (only blockers stop them, handled above).
+        if (p.RouteFocus && u.Route != null && FollowRoute(u)) return;
+
         var visible = _sim.Units.Where(e => e.Alive && _sim.IsHostile(u, e) && _sim.Vision.CanFactionSee(u.FactionId, e)).ToList();
         var cur = u.Queue.Current;
         bool busyMoving = cur != null && cur.Type == CommandType.Move && cur.Status != CommandStatus.Pending;
@@ -136,6 +139,9 @@ public sealed class AiSystem
         u.Ai.TargetUnitId = -1;
         if (busyMoving) return;
 
+        // A wave route: go point by point when no enemy is in reach.
+        if (u.Route != null && FollowRoute(u)) return;
+
         // Pursue last known enemy position.
         if (p.Pursue && u.Ai.KnownEnemies.Count > 0 && !p.HoldPosition)
         {
@@ -169,6 +175,23 @@ public sealed class AiSystem
             FaceTowards(u, k.Pos);
         }
         if (cur == null) Explain(u, "врагов не видно — ожидание");
+    }
+
+    /// <summary>Moves to the next point of the unit's route; false when the route is finished.</summary>
+    private bool FollowRoute(Unit u)
+    {
+        var route = u.Route!;
+        while (u.RouteIndex < route.Count)
+        {
+            var pt = route[u.RouteIndex];
+            int d = HexCoord.Distance(u.Pos, pt);
+            var cell = _sim.Map.Get(pt);
+            bool occupied = cell != null && cell.Occupants.Any(o => o != u && o.Alive && o.Layer == u.Layer);
+            if (d == 0 || (d == 1 && occupied && u.RouteIndex < route.Count - 1)) u.RouteIndex++;
+            else break;
+        }
+        if (u.RouteIndex >= route.Count) return false;
+        return MoveTo(u, route[u.RouteIndex], 0, $"идёт по маршруту: точка {u.RouteIndex + 1}/{route.Count}");
     }
 
     private HexCoord MapCenter()

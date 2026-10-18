@@ -115,9 +115,23 @@
       { "c": [-5, 4], "t": "floor", "h": 0 }
     ],
     "markers": [
-      { "id": "player", "type": "PlayerStart", "c": [-5, 2], "label": "Отряд", "radius": 1 },
-      { "id": "boss", "type": "EnemySpawn", "c": [0, 0], "label": "Босс", "radius": 0 },
-      { "id": "adds", "type": "EnemySpawn", "c": [5, -2], "label": "Подкрепления", "radius": 1 }
+      {
+        "id": "player",
+        "type": "PlayerStart",
+        "c": [-5, 2],
+        "label": "Отряд",
+        "radius": 1,
+        "spawnWarning": true
+      },
+      { "id": "boss", "type": "EnemySpawn", "c": [0, 0], "label": "Босс", "radius": 0, "spawnWarning": true },
+      {
+        "id": "adds",
+        "type": "EnemySpawn",
+        "c": [5, -2],
+        "label": "Подкрепления",
+        "radius": 1,
+        "spawnWarning": true
+      }
     ],
     "routes": []
   }

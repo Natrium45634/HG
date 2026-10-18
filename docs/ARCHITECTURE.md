@@ -180,7 +180,7 @@ HG/
 | `CombatSystem.SectorFor`, `VisionSystem.InZone` | модели взгляда, зоны обнаружения | `FacingModelTests` |
 | `Sim/DamagePipeline`, `Content/DamageTaxonomy` | единый расчёт урона, щиты, поглощение, отражение; иерархия типов и элементов | `ResistanceTests`, `DamageMechanicsTests`, `ElementTests` |
 | `Sim/AutoAttackSystem` | автоатаки (9 шагов, общий путь навыка и конвейер урона) | `AutoAttackTests` |
-| `Sim/Objectives`, `Sim/Conditions`, `Sim/SpawnWarnings` | цели сценария, дерево условий, маркеры появления | `ObjectiveTests`, `SpawnMarkerTests` |
+| `Sim/ScenarioSystem` (цели, дерево условий, действия, волны, фазы босса), `Sim/SpawnWarningSystem` | сценарии и маркеры появления | `ObjectiveTests`, `SpawnWarningTests` |
 | `Content/Library`, `Content/Packages` | версии, история, надёжная запись, пакеты `.hexpack` | `LibraryTests`, `PackageTests` |
 | `Content/AssetValidator` | проверка импортируемых ресурсов | `AssetTests` |
 

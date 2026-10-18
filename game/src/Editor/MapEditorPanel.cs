@@ -23,6 +23,7 @@ public enum MapTool
     RemoveCell,
     Select,
     Marker,
+    Route,
 }
 
 /// <summary>
@@ -52,6 +53,8 @@ public partial class MapEditorPanel : DefListPanel
     private readonly HashSet<HexCoord> _problemCells = new();
     private HexCoord? _lineStart;
     private MapMarkerDef? _selectedMarker;
+    private MapRouteDef? _selectedRoute;
+    private VBoxContainer _routeTab = null!;
     private bool _rebuildPending;
     private bool _structureChanged;
     private float _rebuildTimer;
@@ -79,7 +82,9 @@ public partial class MapEditorPanel : DefListPanel
         _selection.Clear();
         _problemCells.Clear();
         _selectedMarker = null;
+        _selectedRoute = _map.Routes.FirstOrDefault();
         _lineStart = null;
+        _toolButtons.Clear(); // the detail is rebuilt for every selected map
 
         var root = Ui.HBox(8).Expand(true, true);
         var left = Ui.VBox(6).Expand(true, true);
@@ -99,6 +104,7 @@ public partial class MapEditorPanel : DefListPanel
             (MapTool.RemoveCell, "− клетка", "Удалить клетки"),
             (MapTool.Select, "Выделение", "ЛКМ — выделить (Shift — добавить), правка свойств у всех выделенных"),
             (MapTool.Marker, "Метки", "ЛКМ — поставить метку, ПКМ — удалить"),
+            (MapTool.Route, "Маршрут", "ЛКМ — добавить точку выбранного маршрута, ПКМ — убрать точку (маршруты волн и маркеров появления)"),
         };
         foreach (var (t, label, tip) in tools)
         {
@@ -155,6 +161,7 @@ public partial class MapEditorPanel : DefListPanel
         _tabs = new TabContainer { CustomMinimumSize = new Vector2(370, 0), SizeFlagsVertical = SizeFlags.ExpandFill };
         _cellTab = Tab("Клетки");
         _markerTab = Tab("Метки");
+        _routeTab = Tab("Маршруты");
         _propsTab = Tab("Свойства карты");
         _checkTab = Tab("Проверка");
         root.AddChild(_tabs);
@@ -164,6 +171,7 @@ public partial class MapEditorPanel : DefListPanel
             RebuildMap(true);
             RefreshCellTab();
             RefreshMarkerTab();
+            RefreshRouteTab();
             RefreshProps();
             RunCheck();
         }).CallDeferred();
@@ -187,8 +195,13 @@ public partial class MapEditorPanel : DefListPanel
         _tool = t;
         _lineStart = null;
         var all = Enum.GetValues<MapTool>();
-        for (int i = 0; i < _toolButtons.Count; i++) _toolButtons[i].ButtonPressed = all[i] == t;
+        for (int i = 0; i < _toolButtons.Count && i < all.Length; i++) _toolButtons[i].ButtonPressed = all[i] == t;
         if (t == MapTool.Marker) _tabs.CurrentTab = 1;
+        if (t == MapTool.Route)
+        {
+            _tabs.CurrentTab = 2;
+            if (_selectedRoute == null && _map != null) NewRoute();
+        }
         if (t == MapTool.Select) _tabs.CurrentTab = 0;
     }
 
@@ -257,6 +270,22 @@ public partial class MapEditorPanel : DefListPanel
                     (string.IsNullOrEmpty(m.Label) ? Names.Of(m.Type) : m.Label), col, 26);
             }
         }
+        if (_map != null)
+            foreach (var r in _map.Routes)
+            {
+                bool sel = r == _selectedRoute;
+                var col = sel ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.8f, 0.85f, 0.95f, 0.35f);
+                for (int i = 1; i < r.Points.Count; i++) o.Line(r.Points[i - 1], r.Points[i], col, sel ? 0.12f : 0.06f);
+                for (int i = 0; i < r.Points.Count; i++)
+                {
+                    o.Dot(r.Points[i], col, sel ? 0.16f : 0.1f);
+                    if (sel)
+                    {
+                        var pc = _battleMap?.Get(r.Points[i]);
+                        _view.Labels.Add(Render.Board.Center(r.Points[i], (pc == null ? 0 : Render.Board.SurfaceY(pc)) + 0.45f), $"{i + 1}", Colors.White, 28);
+                    }
+                }
+            }
         if (_view.HoverHex is HexCoord h)
         {
             int r = _tool is MapTool.Paint or MapTool.Raise or MapTool.Lower or MapTool.SetHeight or MapTool.AddCell or MapTool.RemoveCell ? (int)_brush.Value : 0;
@@ -339,6 +368,25 @@ public partial class MapEditorPanel : DefListPanel
             }
             MarkChanged();
             RefreshMarkerTab();
+            return;
+        }
+        if (_tool == MapTool.Route)
+        {
+            if (hex == null || _map == null) return;
+            if (_selectedRoute == null) NewRoute();
+            var pts = _selectedRoute!.Points;
+            if (mb.ButtonIndex == MouseButton.Right)
+            {
+                int i = pts.LastIndexOf(hex.Value);
+                if (i >= 0) pts.RemoveAt(i);
+                else if (pts.Count > 0) pts.RemoveAt(pts.Count - 1);
+            }
+            else if (cell != null && (pts.Count == 0 || pts[^1] != hex.Value))
+            {
+                pts.Add(hex.Value);
+            }
+            MarkChanged();
+            RefreshRouteTab();
             return;
         }
         if (_tool == MapTool.Line)
@@ -494,6 +542,60 @@ public partial class MapEditorPanel : DefListPanel
             _selection.Clear();
             RefreshCellTab();
         }));
+    }
+
+    private void NewRoute()
+    {
+        if (_map == null) return;
+        int i = _map.Routes.Count + 1;
+        while (_map.FindRoute("route" + i) != null) i++;
+        _selectedRoute = new MapRouteDef { Id = "route" + i, Name = $"Маршрут {i}" };
+        _map.Routes.Add(_selectedRoute);
+        MarkChanged();
+        RefreshRouteTab();
+    }
+
+    /// <summary>Routes of wave enemies (spawn warnings follow them): a list, the selected one's properties and points.</summary>
+    private void RefreshRouteTab()
+    {
+        if (!IsInstanceValid(_routeTab) || _map == null) return;
+        Ui.ClearChildren(_routeTab);
+        _routeTab.AddChild(Ui.Label("Инструмент «Маршрут»: ЛКМ — добавить точку, ПКМ — убрать. Путь между точками строится по правилам движения врага; волна сценария ссылается на маршрут по ID.", 13, Ui.TextDim, wrap: true));
+        _routeTab.AddChild(Ui.Button("+ Новый маршрут", NewRoute));
+        foreach (var r in _map.Routes)
+        {
+            var rr = r;
+            var b = Ui.Button($"«{r.Name}» [{r.Id}] — точек: {r.Points.Count}", () =>
+            {
+                _selectedRoute = rr;
+                RefreshRouteTab();
+            });
+            b.Alignment = HorizontalAlignment.Left;
+            if (r == _selectedRoute) b.AddThemeColorOverride("font_color", Ui.Accent);
+            _routeTab.AddChild(b);
+        }
+        if (_selectedRoute == null) return;
+        _routeTab.AddChild(Ui.Sep());
+        var grid = new PropertyGrid { LabelWidth = 120 };
+        grid.SetTarget(_selectedRoute, Ctx.Db);
+        grid.Changed += () => MarkChanged();
+        _routeTab.AddChild(grid);
+        _routeTab.AddChild(Ui.Label(_selectedRoute.Points.Count == 0 ? "Точек нет" : "Точки: " + string.Join(" → ", _selectedRoute.Points), 12, Ui.Text, wrap: true));
+        var row = Ui.HBox(6);
+        row.AddChild(Ui.Button("Очистить точки", () =>
+        {
+            _selectedRoute.Points.Clear();
+            MarkChanged();
+            RefreshRouteTab();
+        }));
+        row.AddChild(Ui.Button("Удалить маршрут", () =>
+        {
+            _map.Routes.Remove(_selectedRoute);
+            _selectedRoute = _map.Routes.FirstOrDefault();
+            MarkChanged();
+            RefreshRouteTab();
+        }));
+        _routeTab.AddChild(row);
     }
 
     private void RefreshMarkerTab()

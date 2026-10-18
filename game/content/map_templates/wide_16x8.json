@@ -152,8 +152,22 @@
       { "c": [12, 7], "t": "floor", "h": 0 }
     ],
     "markers": [
-      { "id": "player", "type": "PlayerStart", "c": [-1, 4], "label": "Отряд", "radius": 1 },
-      { "id": "enemy", "type": "EnemySpawn", "c": [13, 3], "label": "Противник", "radius": 1 }
+      {
+        "id": "player",
+        "type": "PlayerStart",
+        "c": [-1, 4],
+        "label": "Отряд",
+        "radius": 1,
+        "spawnWarning": true
+      },
+      {
+        "id": "enemy",
+        "type": "EnemySpawn",
+        "c": [13, 3],
+        "label": "Противник",
+        "radius": 1,
+        "spawnWarning": true
+      }
     ],
     "routes": []
   }

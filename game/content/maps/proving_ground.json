@@ -154,8 +154,22 @@
       { "c": [13, 9], "t": "dirt", "h": 0 }
     ],
     "markers": [
-      { "id": "start", "type": "PlayerStart", "c": [1, 4], "label": "Старт", "radius": 1 },
-      { "id": "spawn", "type": "EnemySpawn", "c": [12, 6], "label": "Мишени", "radius": 1 }
+      {
+        "id": "start",
+        "type": "PlayerStart",
+        "c": [1, 4],
+        "label": "Старт",
+        "radius": 1,
+        "spawnWarning": true
+      },
+      {
+        "id": "spawn",
+        "type": "EnemySpawn",
+        "c": [12, 6],
+        "label": "Мишени",
+        "radius": 1,
+        "spawnWarning": true
+      }
     ],
     "routes": []
   }

@@ -428,22 +428,54 @@ public static class ContentValidator
             issues.Add(Err(s, "Sides", "Фракция указана в сторонах дважды"));
         if (!s.Sides.Any(x => x.Controller == SideController.Player))
             issues.Add(Warn(s, "Sides", "Нет стороны игрока — бой будет только наблюдаемым"));
+        var tags = new HashSet<string>(s.Units.Select(u => u.Tag).Concat(s.Waves.SelectMany(w => w.Units).Select(u => u.Tag)).Where(t => !string.IsNullOrEmpty(t)));
+        var objIds = new HashSet<string>();
+        foreach (var o in s.Objectives)
+            if (!objIds.Add(o.Id)) issues.Add(Err(s, "Objectives", $"ID цели '{o.Id}' повторяется"));
         for (int i = 0; i < s.Waves.Count; i++)
         {
             var w = s.Waves[i];
-            if (map.FindMarker(w.SpawnMarker) == null)
-                issues.Add(Err(s, $"Waves[{i}]", $"Метка появления '{w.SpawnMarker}' не найдена на карте"));
+            if (!w.AllSpawnMarkers().Any()) issues.Add(Err(s, $"Waves[{i}]", "Нет точки появления"));
+            foreach (var m in w.AllSpawnMarkers())
+                if (map.FindMarker(m) == null)
+                    issues.Add(Err(s, $"Waves[{i}]", $"Метка появления '{m}' не найдена на карте"));
+            if (!string.IsNullOrEmpty(w.Route) && map.FindRoute(w.Route) == null)
+                issues.Add(Err(s, $"Waves[{i}].Route", $"Маршрут '{w.Route}' не найден на карте"));
+            if (w.Start == WaveStart.AfterPrevious && i == 0) issues.Add(Warn(s, $"Waves[{i}]", "Первая волна «после предыдущей» начнётся сразу"));
         }
-        foreach (var c in s.Victory.Concat(s.Defeat).Concat(s.Triggers.Select(t => t.Condition)))
+        // Every condition anywhere: objectives, waves, triggers, boss phases of the units used.
+        IEnumerable<ConditionDef> Flatten(ConditionDef c) => new[] { c }.Concat(c.Children.SelectMany(Flatten));
+        var conds = s.Victory.Concat(s.Defeat).Concat(s.Triggers.Select(t => t.Condition))
+            .Concat(s.Waves.Where(w => w.Start == WaveStart.OnCondition).Select(w => w.StartCondition)).Concat(s.Waves.Where(w => w.CustomEnd).Select(w => w.EndCondition))
+            .Concat(s.Objectives.SelectMany(o => new[] { o.Complete, o.Fail })).SelectMany(Flatten).ToList();
+        foreach (var c in conds)
         {
-            if (c.Type == ConditionType.ReachMarker && map.FindMarker(c.Marker) == null)
+            if (c.Type is ConditionType.ReachMarker or ConditionType.UnitInArea && map.FindMarker(c.Marker) == null)
                 issues.Add(Err(s, "Conditions", $"Метка '{c.Marker}' не найдена на карте"));
-            if ((c.Type == ConditionType.UnitDead || c.Type == ConditionType.UnitAlive) && s.Units.All(u => u.Tag != c.UnitTag))
+            if ((c.Type == ConditionType.UnitDead || c.Type == ConditionType.UnitAlive) && !tags.Contains(c.UnitTag))
                 issues.Add(Err(s, "Conditions", $"Нет юнита с меткой '{c.UnitTag}'"));
-            if (c.Type == ConditionType.WaveSpawned && (c.Wave < 0 || c.Wave >= s.Waves.Count))
+            if (c.Type is ConditionType.WaveSpawned or ConditionType.WaveCleared && (c.Wave < 0 || c.Wave >= s.Waves.Count))
                 issues.Add(Err(s, "Conditions", $"Нет волны с индексом {c.Wave}"));
+            if (c.Type is ConditionType.ObjectiveCompleted or ConditionType.ObjectiveFailed && !objIds.Contains(c.Objective))
+                issues.Add(Err(s, "Conditions", $"Нет цели с ID '{c.Objective}'"));
+            if (c.Type is ConditionType.All or ConditionType.Any or ConditionType.Not or ConditionType.InOrder && c.Children.Count == 0 && c.Type != ConditionType.All)
+                issues.Add(Warn(s, "Conditions", $"Логическое условие «{c.Describe()}» без вложенных условий"));
         }
-        if (s.Victory.Count == 0) issues.Add(Warn(s, "Victory", "Нет условий победы"));
+        foreach (var o in s.Objectives)
+        {
+            foreach (var d in o.DependsOn)
+                if (!objIds.Contains(d)) issues.Add(Err(s, $"Objectives[{o.Id}].DependsOn", $"Нет цели с ID '{d}'"));
+            if (o.DependsOn.Contains(o.Id)) issues.Add(Err(s, $"Objectives[{o.Id}].DependsOn", "Цель зависит сама от себя"));
+            if (o.Kind is ObjectiveKind.Defend or ObjectiveKind.Capture && o.Cells.Count == 0 && map.FindMarker(o.Marker) == null)
+                issues.Add(Err(s, $"Objectives[{o.Id}]", "Нужны гексы цели или метка карты"));
+            if (o.Kind == ObjectiveKind.Escort && map.FindMarker(o.Marker) == null) issues.Add(Err(s, $"Objectives[{o.Id}]", "Нужна метка назначения"));
+            if (o.Kind is ObjectiveKind.Escort or ObjectiveKind.Destroy && !tags.Contains(o.UnitTag))
+                issues.Add(Err(s, $"Objectives[{o.Id}]", $"Нет юнита с меткой '{o.UnitTag}'"));
+            foreach (var c in o.Cells)
+                if (!map.Cells.Any(x => x.C == c)) issues.Add(Err(s, $"Objectives[{o.Id}].Cells", $"Клетка {c} вне карты"));
+        }
+        if (s.Victory.Count == 0 && s.Objectives.Count == 0) issues.Add(Warn(s, "Victory", "Нет условий победы"));
+        if (s.Objectives.Count > 0 && s.Objectives.All(o => !o.Required)) issues.Add(Warn(s, "Objectives", "Нет обязательных целей — победа невозможна"));
     }
 
     /// <summary>Why a unit cannot start on a hex with the others (docs/DECISIONS_2.md §26), or null.</summary>
