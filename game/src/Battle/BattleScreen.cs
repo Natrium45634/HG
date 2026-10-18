@@ -79,6 +79,8 @@ public partial class BattleScreen : Node
     {
         ulong? seed = Main.Instance.Args.TryGetValue("seed", out var s) && ulong.TryParse(s, out var v) ? v : null;
         Sim = ScenarioSystem.Create(_db, _scenario, seed, _admin);
+        // Events raised while setting up (e.g. enemies visible at start) must not pause the first tick.
+        Sim.ConsumeAutopause();
         Driver = new SimDriver(Sim);
         Driver.Autopaused += r => _hud.ShowBanner("Автопауза: " + r, Ui.Warn);
         if (Main.Instance.Args.TryGetValue("speed", out var sp) && int.TryParse(sp, out var si))

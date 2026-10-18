@@ -86,6 +86,9 @@ public partial class ScenarioEditorPanel : DefListPanel
         _view.Clicked += OnClick;
         left.AddChild(_view);
         _status = Ui.Label("Выберите юнита и инструмент «Поставить», затем ЛКМ по клетке. ПКМ/колесо — камера.", 13, Ui.TextDim);
+        _status.ClipText = true;
+        _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _status.CustomMinimumSize = new Vector2(10, 0);
         left.AddChild(_status);
         root.AddChild(left);
 

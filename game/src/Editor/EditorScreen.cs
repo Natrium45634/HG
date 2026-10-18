@@ -114,7 +114,7 @@ public partial class EditorScreen : Control
         if (app.Args.TryGetValue("select", out var sel) && _current is DefListPanel dl) dl.Select(sel);
         UpdateState();
 
-        if (app.Content.HasAutosave && !app.Content.DraftDirty && !app.Args.ContainsKey("auto"))
+        if (app.Content.HasAutosave && !app.Content.DraftDirty && !app.Args.ContainsKey("auto") && !app.Args.ContainsKey("uitest"))
             Dialogs.Confirm(this, "Автосохранение", "Найден автоматически сохранённый черновик с несохранёнными изменениями. Восстановить его?", RestoreAutosave, "Восстановить", "Нет");
     }
 

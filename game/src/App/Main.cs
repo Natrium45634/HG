@@ -43,6 +43,12 @@ public partial class Main : Node
         Content = new ContentManager();
         Content.Load();
 
+        if (Args.TryGetValue("uitest", out var uitest))
+        {
+            ShowMainMenu();
+            AddChild(new UiTestRunner(uitest));
+            return;
+        }
         string auto = Args.GetValueOrDefault("auto", "menu");
         if (Args.TryGetValue("shot", out _)) _shotFrame = int.Parse(Args.GetValueOrDefault("frames", "45"));
         switch (auto)

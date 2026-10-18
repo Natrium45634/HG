@@ -143,6 +143,9 @@ public partial class MapEditorPanel : DefListPanel
         _view.Hovered += (hex, cell) => UpdateStatus(hex, cell);
         left.AddChild(_view);
         _status = Ui.Label("", 13, Ui.TextDim);
+        _status.ClipText = true;
+        _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _status.CustomMinimumSize = new Vector2(10, 0);
         left.AddChild(_status);
         root.AddChild(left);
 
