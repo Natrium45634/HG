@@ -116,6 +116,26 @@ public partial class BattleScreen : Node
         }
         if (Main.Instance.Args.TryGetValue("cast", out var cast)) AutomationCast(cast);
         if (Main.Instance.Args.TryGetValue("mode", out var mode)) ApplyAutomationMode(mode);
+        if (Main.Instance.Args.TryGetValue("pick", out var pick))
+        {
+            // Automation: select the creature on a hex (enemies too — shows the information panel).
+            Unit? who;
+            if (char.IsLetter(pick[0]))
+            {
+                who = Sim.Units.Where(o => o.Alive && o.Def.Id == pick && UnitVisible(o)).OrderBy(o => o.Id).FirstOrDefault();
+            }
+            else
+            {
+                var p = pick.Split(',');
+                var cell = Sim.Map.Get(new HexCoord(int.Parse(p[0]), int.Parse(p[1])));
+                who = cell?.Occupants.Where(o => o.Alive && UnitVisible(o)).OrderBy(o => o.Id).FirstOrDefault();
+            }
+            if (who != null)
+            {
+                Select(who);
+                _stackOpen = StackOf(who).Count > 1;
+            }
+        }
         if (Main.Instance.Args.TryGetValue("focus", out var f))
         {
             var p = f.Split(',');
@@ -193,6 +213,7 @@ public partial class BattleScreen : Node
     {
         if (Selected != null && Board.Views.TryGetValue(Selected.Id, out var old)) old.Selected = false;
         Selected = u;
+        _stackOpen = false;
         if (u != null) Board.ViewOf(u).Selected = true;
         ExitMode();
         _hud.OnSelectionChanged();
@@ -337,6 +358,7 @@ public partial class BattleScreen : Node
 
         bool fog = Sim.FogOfWar && !_admin;
         Board.SyncMap(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));
+        UpdateBlockCaptions();
         Board.SyncUnits(Sim, Driver.Alpha, UnitVisible, _ => false, dt);
         foreach (var v in Board.Views.Values) v.ShowName = _diag && v.Unit.AiControlled;
         Board.SyncFog(Sim, fog);
@@ -425,10 +447,104 @@ public partial class BattleScreen : Node
         if (_forcedHover != null) _hover = _forcedHover;
         _hoverUnit = null;
         if (_hover != null)
+        {
+            // Several creatures on one hex (docs/DECISIONS_2.md §26): the figure nearest to the cursor.
+            float best = float.MaxValue;
+            var cam = Board.Rig.Camera;
             foreach (var o in _hover.Occupants)
-                if (o.Alive && UnitVisible(o))
+            {
+                if (!o.Alive || !UnitVisible(o)) continue;
+                float d = cam.IsInsideTree() ? cam.UnprojectPosition(Board.UnitPos(o) + new Vector3(0, 0.4f, 0)).DistanceTo(_mouse) : 0;
+                if (_hoverUnit == null || d < best - 0.5f)
+                {
+                    best = d;
                     _hoverUnit = o;
+                }
+            }
+        }
         foreach (var v in Board.Views.Values) v.Hovered = _hoverUnit != null && v.Unit == _hoverUnit;
+    }
+
+    /// <summary>Visible living creatures on the hex of a unit (all layers), in a stable order.</summary>
+    public List<Unit> StackOf(Unit? u)
+    {
+        var list = new List<Unit>();
+        if (u == null || !u.Alive) return list;
+        var cell = Sim.Map.Get(u.Pos);
+        if (cell == null) return list;
+        foreach (var o in cell.Occupants)
+            if (o.Alive && UnitVisible(o))
+                list.Add(o);
+        list.Sort((a, b) => a.Id.CompareTo(b.Id));
+        return list;
+    }
+
+    /// <summary>The stack selection strip is open (a shared hex was clicked): Tab cycles inside the stack.</summary>
+    public bool StackOpen => _stackOpen && StackOf(Selected).Count > 1;
+
+    private bool _stackOpen;
+
+    public void CycleStack(int dir)
+    {
+        var stack = StackOf(Selected);
+        if (stack.Count < 2) return;
+        int i = Selected == null ? -1 : stack.IndexOf(Selected);
+        SelectKeepStack(stack[((i + dir) % stack.Count + stack.Count) % stack.Count]);
+    }
+
+    public void SelectKeepStack(Unit u)
+    {
+        Select(u);
+        _stackOpen = true;
+    }
+
+    /// <summary>Captions over figures: "Блок 2/3" on blockers, "заблокирован" / "удерживается" on the held ones.</summary>
+    private void UpdateBlockCaptions()
+    {
+        var blocking = Sim.Blocking;
+        foreach (var v in Board.Views.Values)
+        {
+            var u = v.Unit;
+            v.BlockText = "";
+            if (!u.Alive) continue;
+            int limit = blocking.Limit(u);
+            int load = blocking.Load(u);
+            if (limit > 0 && (load > 0 || u == Selected || u == _hoverUnit))
+            {
+                v.BlockText = $"Блок {load}/{limit}";
+                v.BlockColor = load >= limit ? new Color(1f, 0.62f, 0.3f) : new Color(0.75f, 0.9f, 1f);
+                continue;
+            }
+            switch (blocking.HoldOf(u))
+            {
+                case MovementHold.Blocked:
+                    v.BlockText = "заблокирован";
+                    v.BlockColor = new Color(1f, 0.62f, 0.3f);
+                    break;
+                case MovementHold.Held when u.Flags.BlocksMovement || u.Queue.Current?.Type == CommandType.Move:
+                    v.BlockText = u.Flags.BlocksMovement ? "удерживается" : "удерживается (замедлен)";
+                    v.BlockColor = new Color(0.8f, 0.6f, 1f);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>Chain between a blocker and every enemy it holds.</summary>
+    private void DrawBlocking(OverlayLayer o)
+    {
+        foreach (var e in Sim.Units)
+        {
+            if (!e.Alive || !UnitVisible(e)) continue;
+            var b = Sim.Blocking.BlockerOf(e);
+            if (b == null || !UnitVisible(b)) continue;
+            var a = Board.UnitPos(b) + new Vector3(0, 0.22f, 0);
+            var z = Board.UnitPos(e) + new Vector3(0, 0.22f, 0);
+            var col = new Color(1f, 0.62f, 0.3f, 0.95f);
+            o.Strip(a, z, 0.05f, col, true);
+            int links = Math.Max(2, (int)(a.DistanceTo(z) / 0.16f));
+            for (int i = 1; i < links; i++) o.Circle(a.Lerp(z, (float)i / links), 0.065f, 0.028f, col, true, 10);
+            o.Disc(z, 0.07f, col);
+        }
     }
 
     public Cell? HoverCell => _hover;
@@ -448,6 +564,7 @@ public partial class BattleScreen : Node
         DrawTelegraphs(o, pulse);
         DrawRecentAreas(o);
         DrawGhosts(o);
+        DrawBlocking(o);
 
         if (_diag) DrawAiDebug(o);
 
@@ -807,7 +924,16 @@ public partial class BattleScreen : Node
             {
                 if (_hoverUnit != null)
                 {
+                    var stack = StackOf(_hoverUnit);
+                    if (stack.Count > 1 && Selected != null && stack.Contains(Selected))
+                    {
+                        // A repeated click on a shared hex cycles through its creatures.
+                        if (_hoverUnit == Selected) CycleStack(1);
+                        else SelectKeepStack(_hoverUnit);
+                        return;
+                    }
                     if (_hoverUnit != Selected) Select(_hoverUnit);
+                    _stackOpen = stack.Count > 1;
                     if (Sim.CanPlayerCommand(_hoverUnit) && Settings.ActionMenuOnClick) _hud.ShowActionMenu(mb.Position, -1);
                     return;
                 }
@@ -973,10 +1099,12 @@ public partial class BattleScreen : Node
                 return true;
             case Key.Escape:
                 if (Mode != InputMode.None) ExitMode();
+                else if (StackOpen) _stackOpen = false;
                 else _hud.ToggleMenu();
                 return true;
             case Key.Tab:
-                CycleUnits(k.ShiftPressed ? -1 : 1);
+                if (StackOpen) CycleStack(k.ShiftPressed ? -1 : 1);
+                else CycleUnits(k.ShiftPressed ? -1 : 1);
                 return true;
             case Key.M when A("move") is { } a1:
                 Activate(a1);

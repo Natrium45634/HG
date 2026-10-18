@@ -29,7 +29,8 @@
         "detection_range": 6,
         "armor": 4,
         "block_chance": 0.25,
-        "power": 3
+        "power": 3,
+        "block_limit": 3
       },
       "resistances": {},
       "statusResistances": {},
@@ -40,6 +41,44 @@
       "passives": ["counter", "vigilant"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": {
+        "zone": "AllAdjacent",
+        "categories": [],
+        "layers": [],
+        "abilities": ["heavy_guard"],
+        "whileMoving": false
+      },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Soldier", "color": "", "scale": 1, "symbol": "Р" }
     },
     {
@@ -79,6 +118,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "Л" }
     },
     {
@@ -110,6 +181,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "М" }
     },
     {
@@ -141,6 +244,38 @@
       "passives": ["second_wind"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Mage", "color": "#e8e4d8", "scale": 1, "symbol": "Ж" }
     },
     {
@@ -171,7 +306,8 @@
         "stealth": 0.3,
         "evasion": 0.2,
         "crit_chance": 0.15,
-        "tremor_sense": 1
+        "tremor_sense": 1,
+        "block_limit": 1
       },
       "resistances": {},
       "statusResistances": {},
@@ -182,6 +318,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "Р" }
     },
     {
@@ -196,9 +364,9 @@
       "moveCategory": "walk",
       "layer": "",
       "stacking": {
-        "canShare": false,
+        "canShare": true,
         "maxPerHex": 3,
-        "shareWith": [],
+        "shareWith": ["goblin", "goblin_archer"],
         "crowdMoveCost": 0.5,
         "crowdAccuracyPenalty": 0.05,
         "layout": "Cluster"
@@ -213,6 +381,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "г" }
     },
     {
@@ -227,9 +427,9 @@
       "moveCategory": "walk",
       "layer": "",
       "stacking": {
-        "canShare": false,
+        "canShare": true,
         "maxPerHex": 3,
-        "shareWith": [],
+        "shareWith": ["goblin", "goblin_archer"],
         "crowdMoveCost": 0.5,
         "crowdAccuracyPenalty": 0.05,
         "layout": "Cluster"
@@ -244,6 +444,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "ranged",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "л" }
     },
     {
@@ -283,6 +515,38 @@
       "passives": ["thick_hide"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 2,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Brute", "color": "", "scale": 1, "symbol": "О" }
     },
     {
@@ -314,6 +578,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "support",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "Wait"
+      },
       "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "ш" }
     },
     {
@@ -345,6 +641,38 @@
       "passives": ["pack_howl"],
       "startingStatuses": [],
       "aiProfile": "pursuer",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "FindDetour"
+      },
       "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "в" }
     },
     {
@@ -366,7 +694,15 @@
         "crowdAccuracyPenalty": 0.05,
         "layout": "Cluster"
       },
-      "stats": { "hp_max": 120, "move_speed": 1, "ap_max": 10, "ap_regen": 1, "detection_range": 6, "armor": 6 },
+      "stats": {
+        "hp_max": 120,
+        "move_speed": 1,
+        "ap_max": 10,
+        "ap_regen": 1,
+        "detection_range": 6,
+        "armor": 6,
+        "block_limit": 2
+      },
       "resistances": { "electric": -0.5, "fire": 0.3, "poison": 1 },
       "statusResistances": {},
       "immunities": ["poison", "bleeding", "tag:gas"],
@@ -376,6 +712,38 @@
       "passives": ["thorns"],
       "startingStatuses": [],
       "aiProfile": "hold",
+      "perception": {
+        "model": "Multiple",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "FrontArc", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Construct", "color": "", "scale": 1, "symbol": "С" }
     },
     {
@@ -407,6 +775,38 @@
       "passives": ["regrowth"],
       "startingStatuses": [],
       "aiProfile": "skittish",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": true,
+        "values": {
+          "panelEnabled": false,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "о" }
     },
     {
@@ -446,6 +846,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "hunter",
+      "perception": {
+        "model": "None",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Orb", "color": "#ff6b6b", "scale": 0.8, "symbol": "Д" }
     },
     {
@@ -477,6 +909,38 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "hunter",
+      "perception": {
+        "model": "Omni",
+        "extraFacings": [3],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": true,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "Never",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "Never",
+          "intent": "Never"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": false,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
       "visual": { "shape": "Beast", "color": "#c98b4a", "scale": 0.9, "symbol": "З" }
     }
   ]

@@ -37,8 +37,7 @@
           "cellEffect": "",
           "level": 1,
           "obstacleDamage": 1000,
-          "summonUnit": "",
-          "targetsUnits": true
+          "summonUnit": ""
         }
       ],
       "radiusCellEffects": ["fire"],
@@ -80,8 +79,7 @@
           "cellEffect": "",
           "level": 1,
           "obstacleDamage": 1000,
-          "summonUnit": "",
-          "targetsUnits": true
+          "summonUnit": ""
         }
       ],
       "radiusCellEffects": [],
@@ -123,8 +121,7 @@
           "cellEffect": "",
           "level": 1,
           "obstacleDamage": 1000,
-          "summonUnit": "",
-          "targetsUnits": true
+          "summonUnit": ""
         },
         {
           "type": "ApplyStatus",
@@ -146,8 +143,7 @@
           "cellEffect": "",
           "level": 1,
           "obstacleDamage": 1000,
-          "summonUnit": "",
-          "targetsUnits": true
+          "summonUnit": ""
         }
       ],
       "radiusCellEffects": [],
@@ -189,8 +185,7 @@
           "cellEffect": "",
           "level": 1,
           "obstacleDamage": 1000,
-          "summonUnit": "",
-          "targetsUnits": true
+          "summonUnit": ""
         },
         {
           "type": "ApplyStatus",
@@ -212,8 +207,7 @@
           "cellEffect": "",
           "level": 1,
           "obstacleDamage": 1000,
-          "summonUnit": "",
-          "targetsUnits": true
+          "summonUnit": ""
         }
       ],
       "radiusCellEffects": [],

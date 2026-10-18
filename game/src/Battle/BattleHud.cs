@@ -39,6 +39,11 @@ public partial class BattleHud : Control
     private Label _aiInfo = null!;
     private VBoxContainer _statsBox = null!;
     private bool _showStats;
+    private Button _statsBtn = null!;
+    private HFlowContainer _stackStrip = null!;
+    private string _stackKey = "";
+    private Label _blockInfo = null!;
+    private VBoxContainer _intel = null!;
 
     private PanelContainer _actionPanel = null!;
     private HFlowContainer _actions = null!;
@@ -188,6 +193,9 @@ public partial class BattleHud : Control
         head.AddChild(_unitName.Expand());
         head.AddChild(Ui.Button("–", () => _unitBox.Visible = !_unitBox.Visible, "Свернуть панель"));
         var outer = Ui.VBox(4);
+        _stackStrip = new HFlowContainer { Visible = false };
+        _stackStrip.AddThemeConstantOverride("h_separation", 4);
+        outer.AddChild(_stackStrip);
         outer.AddChild(head);
         outer.AddChild(_unitBox);
         _unitBox.AddChild(_unitSub);
@@ -197,8 +205,13 @@ public partial class BattleHud : Control
         _unitBox.AddChild(_resources);
         _unitBox.AddChild(_statuses);
         _unitBox.AddChild(_current);
+        _blockInfo = Ui.Label("", 13, new Color(1f, 0.7f, 0.4f), wrap: true);
+        _unitBox.AddChild(_blockInfo);
         _unitBox.AddChild(_aiInfo);
-        _unitBox.AddChild(Ui.Button("Характеристики (I)", ToggleInfo));
+        _intel = Ui.VBox(2);
+        _unitBox.AddChild(_intel);
+        _statsBtn = Ui.Button("Характеристики (I)", ToggleInfo);
+        _unitBox.AddChild(_statsBtn);
         _unitBox.AddChild(_statsBox);
         _unitPanel = Track(Ui.PanelBox(outer, null, 10));
         _unitPanel.Position = new Vector2(10, 64);
@@ -338,6 +351,10 @@ public partial class BattleHud : Control
             "Shift при клике — заменить очередь вместо добавления (или наоборот, см. переключатель)",
             "Камера: WASD/стрелки, средняя кнопка мыши, край экрана · колесо/PgUp/PgDn — зум · Q/E — поворот",
             "V — вписать карту в экран · Ctrl+0 — стандартный масштаб",
+            "ЛКМ по врагу — сведения о нём (только то, что видели или наблюдали)",
+            "Несколько существ на гексе (×N): клик — полоска выбора, повторный клик или Tab — следующий, Esc — закрыть",
+            "Оранжевая цепь — блок: «Блок 2/3» у блокирующего, «заблокирован» / «удерживается» у врага",
+            "Стрелка у основания — взгляд; несколько стрелок — несколько направлений; кольцо — круговой обзор; нет стрелки — без направления",
             "I — характеристики · L — журнал · F3 — диагностика · Home — к выбранному юниту",
             "",
             "Обозначения: синяя линия — запланированный маршрут; жёлтая — предпросмотр пути;",
@@ -615,11 +632,73 @@ public partial class BattleHud : Control
 
     private static string ShapeGlyph(FactionShape s) => s switch { FactionShape.Diamond => "◆", FactionShape.Square => "■", FactionShape.Triangle => "▲", _ => "●" };
 
+    /// <summary>Several creatures on the selected hex: a strip of buttons to pick one (Tab cycles while it is open).</summary>
+    private void RefreshStackStrip()
+    {
+        var stack = _bs.StackOf(_bs.Selected);
+        bool show = stack.Count > 1;
+        string key = show ? string.Join(",", stack.Select(x => x.Id)) + ":" + _bs.Selected?.Id : "";
+        if (key == _stackKey) return;
+        _stackKey = key;
+        Ui.ClearChildren(_stackStrip);
+        _stackStrip.Visible = show;
+        if (!show) return;
+        _stackStrip.AddChild(Ui.Label($"На гексе {stack.Count}:", 12, Ui.TextDim));
+        foreach (var x in stack)
+        {
+            var unit = x;
+            var faction = _bs.Db.Faction(x.FactionId);
+            string name = Sim.Knowledge.GetInfo(x).Name;
+            var b = Ui.Button($"{ShapeGlyph(faction?.Shape ?? FactionShape.Circle)} {name}", () => _bs.SelectKeepStack(unit), "Выбрать (Tab — следующий на этом гексе)");
+            b.ToggleMode = true;
+            b.ButtonPressed = x == _bs.Selected;
+            b.AddThemeColorOverride("font_color", Ui.Parse(faction?.Color, Ui.Text).Lightened(0.25f));
+            _stackStrip.AddChild(b);
+        }
+    }
+
+    private string BlockLine(Unit u)
+    {
+        var bl = Sim.Blocking;
+        int limit = bl.Limit(u);
+        if (limit > 0)
+        {
+            var held = bl.BlockedBy(u).Where(_bs.UnitVisible).Select(x => Sim.Knowledge.GetInfo(x).Name).ToList();
+            return $"Блок {bl.Load(u)}/{limit}" + (held.Count > 0 ? " — держит: " + string.Join(", ", held) : " — свободен");
+        }
+        switch (bl.HoldOf(u))
+        {
+            case MovementHold.Blocked:
+                var by = bl.BlockerOf(u);
+                return $"Заблокирован: {(by != null ? Sim.Knowledge.GetInfo(by).Name : "?")} — не может продолжить движение";
+            case MovementHold.Held:
+                return u.Flags.BlocksMovement ? "Удерживается: обездвижен состоянием" : "Удерживается: замедлен";
+        }
+        return "";
+    }
+
     private void RefreshUnit(bool slow)
     {
         var u = _bs.Selected;
         _unitPanel.Visible = u != null;
         if (u == null) return;
+        RefreshStackStrip();
+        if (slow)
+        {
+            _blockInfo.Text = u.Alive ? BlockLine(u) : "";
+            _blockInfo.Visible = _blockInfo.Text.Length > 0;
+        }
+        bool intel = !Sim.Knowledge.IsFullyKnown(u);
+        _statsBtn.Visible = !intel;
+        _intel.Visible = intel;
+        if (intel)
+        {
+            _statsBox.Visible = false;
+            RefreshEnemyIntel(u, slow);
+            return;
+        }
+        _hp.Visible = _ap.Visible = _apInfo.Visible = true;
+        _resources.Visible = _statuses.Visible = _current.Visible = true;
         var faction = _bs.Db.Faction(u.FactionId);
         var fcol = Ui.Parse(faction?.Color, Ui.Text);
         _unitName.Text = $"{ShapeGlyph(faction?.Shape ?? FactionShape.Circle)} {u.Name}" + (u.Alive ? "" : " (погиб)");
@@ -695,6 +774,95 @@ public partial class BattleHud : Control
         _aiInfo.Visible = u.AiControlled && (_bs.DiagnosticsVisible || _bs.Admin);
         _aiInfo.Text = $"ИИ ({u.AiProfile?.DisplayName}): {u.Ai.Explanation}";
         if (_showStats) RefreshStats();
+    }
+
+    private static string Age(InfoField f) => f.Stale ? $" (≈{f.StaleSeconds:0} с назад)" : "";
+
+    /// <summary>
+    /// Enemy information panel (docs/DECISIONS_2.md §24): only what the player side has seen or observed,
+    /// by the disclosure rules; unknown categories show how to learn them.
+    /// </summary>
+    private void RefreshEnemyIntel(Unit u, bool slow)
+    {
+        var info = Sim.Knowledge.GetInfo(u);
+        var faction = _bs.Db.Faction(u.FactionId);
+        var fcol = Ui.Parse(faction?.Color, Ui.Text);
+        _unitName.Text = $"{ShapeGlyph(faction?.Shape ?? FactionShape.Circle)} {info.Name}" + (u.Alive ? "" : " (погиб)");
+        _unitName.AddThemeColorOverride("font_color", fcol.Lightened(0.25f));
+        _aiInfo.Visible = false;
+        if (!info.PanelEnabled)
+        {
+            _unitSub.Text = "Сведения об этом существе недоступны";
+            _hp.Visible = _ap.Visible = _apInfo.Visible = false;
+            _resources.Visible = _statuses.Visible = _current.Visible = _intel.Visible = false;
+            return;
+        }
+        _resources.Visible = _statuses.Visible = _current.Visible = true;
+        var rel = Sim.Options.PlayerFactions.Select(pf => _bs.Db.RelationOf(pf, u.FactionId)).FirstOrDefault();
+        string seen = info.VisibleNow ? "на виду" : "не виден";
+        _unitSub.Text = $"{faction?.DisplayName ?? u.FactionId} · {Names.Of(rel)}" + (info.Type.Length > 0 ? " · " + info.Type : "") + $" · {seen}" + Age(info.NameField);
+        _hp.Visible = true;
+        if (info.HealthField.Known)
+        {
+            _hp.Set(info.Hp, info.HpMax, $"HP {info.Hp:0}/{info.HpMax:0}{Age(info.HealthField)}");
+            double f = info.HpMax <= 0 ? 0 : info.Hp / info.HpMax;
+            _hp.FillColor = info.HealthField.Stale ? Ui.TextDim : f > 0.5 ? Ui.HpColor : f > 0.25 ? Ui.Warn : Ui.Bad;
+        }
+        else
+        {
+            _hp.Set(0, 1, "HP ? — " + info.HealthField.Hint);
+        }
+        // Action points are a resource of the creature.
+        _ap.Visible = info.ResourcesField.Known && info.VisibleNow;
+        if (_ap.Visible) _ap.Set(u.Ap, u.ApMax, $"ОД {u.Ap:0.#}/{u.ApMax:0.#}");
+        _apInfo.Visible = false;
+        _current.Text = info.IntentField.Known ? "Намерение: " + info.Intent : "Намерение: ? — " + info.IntentField.Hint;
+        if (!slow) return;
+
+        Ui.ClearChildren(_resources);
+        if (info.ResourcesField.Known)
+        {
+            foreach (var (name, value, max) in info.Resources)
+            {
+                var b = new Bar { FillColor = info.ResourcesField.Stale ? Ui.TextDim : Ui.ApColor }.MinSize(300, 14);
+                b.Set(value, max, $"{name} {value:0}/{max:0}{Age(info.ResourcesField)}");
+                _resources.AddChild(b);
+            }
+        }
+        else if (u.Resources.Count > 0)
+        {
+            _resources.AddChild(Ui.Label("Ресурсы: ? — " + info.ResourcesField.Hint, 12, Ui.TextDim));
+        }
+
+        Ui.ClearChildren(_statuses);
+        if (info.StatusesField.Known)
+        {
+            foreach (var (name, detail) in info.Statuses)
+                _statuses.AddChild(Ui.Label(name + (detail.Length > 0 ? " — " + detail : "") + Age(info.StatusesField), 13, Ui.Text));
+        }
+        else
+        {
+            _statuses.AddChild(Ui.Label("Состояния: ? — " + info.StatusesField.Hint, 12, Ui.TextDim));
+        }
+
+        Ui.ClearChildren(_intel);
+        _intel.AddChild(Ui.Label("Взгляд: " + (info.FacingField.Known ? info.Facing + Age(info.FacingField) : "? — " + info.FacingField.Hint), 12,
+            info.FacingField.Known ? Ui.Text : Ui.TextDim, wrap: true));
+        if (info.ResistancesField.Known)
+        {
+            _intel.AddChild(Ui.Label("Известные реакции на урон:", 12, Ui.TextDim));
+            if (info.Resistances.Count == 0) _intel.AddChild(Ui.Label("  особых сопротивлений не замечено", 12, Ui.Text));
+            foreach (var (name, value) in info.Resistances)
+                _intel.AddChild(Ui.Label($"  {name}: {value}", 12, value.Contains("уязв") ? Ui.Good : value.StartsWith("−") || value.StartsWith("имм") ? Ui.Warn : Ui.Text));
+        }
+        else
+        {
+            _intel.AddChild(Ui.Label("Сопротивления: ? — " + info.ResistancesField.Hint, 12, Ui.TextDim, wrap: true));
+        }
+        if (info.SkillsField.Known)
+            _intel.AddChild(Ui.Label($"Навыки ({info.Skills.Count} из {info.TotalSkills}): " + string.Join(", ", info.Skills), 12, Ui.Text, wrap: true));
+        else
+            _intel.AddChild(Ui.Label("Навыки: ? — " + info.SkillsField.Hint, 12, Ui.TextDim, wrap: true));
     }
 
     private void RefreshStats()
@@ -900,8 +1068,27 @@ public partial class BattleHud : Control
         if (unit != null)
         {
             var f = _bs.Db.Faction(unit.FactionId);
-            sb.Append($"[color={Ui.ColorTag(Ui.Parse(f?.Color, Ui.Text).Lightened(0.3f))}]{ShapeGlyph(f?.Shape ?? FactionShape.Circle)} {unit.Name}[/color] HP {unit.Hp:0}/{unit.HpMax:0} · ОД {unit.Ap:0.#}\n");
-            if (unit.Statuses.Count > 0) sb.Append(string.Join(", ", unit.Statuses.Select(s => s.LevelName).Distinct())).Append('\n');
+            var tag = Ui.ColorTag(Ui.Parse(f?.Color, Ui.Text).Lightened(0.3f));
+            if (Sim.Knowledge.IsFullyKnown(unit))
+            {
+                sb.Append($"[color={tag}]{ShapeGlyph(f?.Shape ?? FactionShape.Circle)} {unit.Name}[/color] HP {unit.Hp:0}/{unit.HpMax:0} · ОД {unit.Ap:0.#}\n");
+                if (unit.Statuses.Count > 0) sb.Append(string.Join(", ", unit.Statuses.Select(s => s.LevelName).Distinct())).Append('\n');
+            }
+            else
+            {
+                // Enemies: only what the disclosure rules allow (docs/DECISIONS_2.md §24).
+                var info = Sim.Knowledge.GetInfo(unit);
+                sb.Append($"[color={tag}]{ShapeGlyph(f?.Shape ?? FactionShape.Circle)} {info.Name}[/color]");
+                sb.Append(info.HealthField.Known ? $" HP {info.Hp:0}/{info.HpMax:0}" : " HP ?");
+                sb.Append('\n');
+                if (info.StatusesField.Known && info.Statuses.Count > 0) sb.Append(string.Join(", ", info.Statuses.Select(s => s.Name).Distinct())).Append('\n');
+                if (info.IntentField.Known) sb.Append($"[color=#c0c8d0]{info.Intent}[/color]\n");
+                if (info.PanelEnabled) sb.Append("[color=#8890a0]клик — сведения о противнике[/color]\n");
+            }
+            var line = BlockLine(unit);
+            if (line.Length > 0) sb.Append($"[color=#ffb070]{line}[/color]\n");
+            int n = _bs.StackOf(unit).Count;
+            if (n > 1) sb.Append($"[color=#ffe8a0]На гексе {n} существ: повторный клик или Tab — следующий[/color]\n");
         }
         // Mode-specific details.
         if (_bs.Mode == InputMode.Move && _bs.HoverPath is { } p)

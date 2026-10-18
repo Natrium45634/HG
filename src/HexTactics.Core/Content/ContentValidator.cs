@@ -335,7 +335,7 @@ public static class ContentValidator
         var map = db.Get<MapDef>(s.Map);
         if (map == null) return; // reference error already reported
         var cells = map.Cells.ToDictionary(c => c.C);
-        var occupied = new HashSet<HexCoord>();
+        var occupied = new Dictionary<HexCoord, List<UnitDef>>();
         foreach (var u in s.Units)
         {
             if (!cells.TryGetValue(u.C, out var cell))
@@ -347,8 +347,11 @@ public static class ContentValidator
             var ud = db.Unit(u.Unit);
             if (t != null && ud != null && (!t.IsPassableFor(ud.MoveCategory) || cell.Blocked == true || !(cell.AllowPlacement ?? t.AllowsPlacement)))
                 issues.Add(Err(s, "Units", $"Юнит '{u.Unit}' стоит на недопустимой клетке {u.C} ({t.DisplayName})"));
-            if (!occupied.Add(u.C) && s.Limits.Stacking != StackingMode.AllowAll)
-                issues.Add(Err(s, "Units", $"Несколько юнитов на клетке {u.C}"));
+            if (ud == null) continue;
+            if (!occupied.TryGetValue(u.C, out var here)) occupied[u.C] = here = new List<UnitDef>();
+            var problem = StackProblem(db, s, here, ud, u.Faction);
+            if (problem != null) issues.Add(Err(s, "Units", $"Несколько юнитов на клетке {u.C}: {problem}"));
+            here.Add(ud);
         }
         if (s.Sides.Select(x => x.Faction).Distinct().Count() != s.Sides.Count)
             issues.Add(Err(s, "Sides", "Фракция указана в сторонах дважды"));
@@ -370,5 +373,28 @@ public static class ContentValidator
                 issues.Add(Err(s, "Conditions", $"Нет волны с индексом {c.Wave}"));
         }
         if (s.Victory.Count == 0) issues.Add(Warn(s, "Victory", "Нет условий победы"));
+    }
+
+    /// <summary>Why a unit cannot start on a hex with the others (docs/DECISIONS_2.md §26), or null.</summary>
+    private static string? StackProblem(ContentDatabase db, ScenarioDef s, List<UnitDef> here, UnitDef ud, string faction)
+    {
+        string layer = string.IsNullOrEmpty(ud.Layer) ? Layers.Ground : ud.Layer;
+        var mates = here.Where(o => (string.IsNullOrEmpty(o.Layer) ? Layers.Ground : o.Layer) == layer).ToList();
+        if (mates.Count == 0) return null;
+        string f = string.IsNullOrEmpty(faction) ? ud.Faction : faction;
+        switch (s.Limits.Stacking)
+        {
+            case StackingMode.ForbidAll:
+                return "в сценарии совместное размещение запрещено";
+            case StackingMode.AllowAll:
+                return mates.Count + 1 > Math.Max(1, db.Rules.Limits.MaxPerHex) ? $"больше {db.Rules.Limits.MaxPerHex} на гексе" : null;
+        }
+        foreach (var o in mates)
+        {
+            if (db.RelationOf(f, o.Faction) == Relation.Enemy) return "враждебные существа не делят клетку";
+            if (!StackingDef.Mutual(ud, o)) return $"«{ud.DisplayName}» и «{o.DisplayName}» не могут делить клетку (блок «Совместное размещение» типа юнита)";
+        }
+        int limit = mates.Append(ud).Min(o => o.Stacking.MaxPerHex);
+        return mates.Count + 1 > Math.Max(1, limit) ? $"превышен предел {limit} на гексе" : null;
     }
 }

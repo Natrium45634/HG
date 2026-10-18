@@ -81,6 +81,23 @@ public sealed class AiSystem
         }
         UpdateMemory(u, p);
 
+        // Blocked (docs/DECISIONS_2.md §27): attack the blocker, wait, or look for a detour (handled by the move command).
+        if (_sim.Blocking.BlockerOf(u) is { } blocker)
+        {
+            switch (u.Def.Blockable.WhenBlocked)
+            {
+                case BlockedBehavior.AttackBlocker:
+                    u.Ai.TargetUnitId = blocker.Id;
+                    if (TryAttack(u, blocker, p, "заблокирован — атакует блокирующего")) return;
+                    FaceTowards(u, blocker.Pos);
+                    Explain(u, $"заблокирован {blocker.Name} — нечем атаковать, ждёт");
+                    return;
+                case BlockedBehavior.Wait:
+                    Explain(u, $"заблокирован {blocker.Name} — ждёт");
+                    return;
+            }
+        }
+
         var visible = _sim.Units.Where(e => e.Alive && _sim.IsHostile(u, e) && _sim.Vision.CanFactionSee(u.FactionId, e)).ToList();
         var cur = u.Queue.Current;
         bool busyMoving = cur != null && cur.Type == CommandType.Move && cur.Status != CommandStatus.Pending;

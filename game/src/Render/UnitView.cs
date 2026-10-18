@@ -25,7 +25,11 @@ public partial class UnitView : Node3D
     private Label3D _name = null!;
     private Label3D _symbol = null!;
     private MeshInstance3D _arrow = null!;
+    private readonly List<(MeshInstance3D Mesh, int Offset)> _extraArrows = new();
+    private MeshInstance3D? _omniRing;
     private MeshInstance3D _selectRing = null!;
+    private Label3D _stackBadge = null!;
+    private Label3D _blockLabel = null!;
     private float _visualYaw;
     private float _deathTime = -1;
     private float _hitFlash;
@@ -37,6 +41,15 @@ public partial class UnitView : Node3D
     public bool Hovered { get; set; }
     public bool ShowName { get; set; }
     public bool Ghost { get; private set; }
+
+    /// <summary>Offset inside a shared hex (docs/DECISIONS_2.md §26) and the group size for the ×N badge.</summary>
+    public Vector3 StackOffset { get; set; }
+    public int StackIndex { get; set; }
+    public int StackCount { get; set; } = 1;
+
+    /// <summary>Blocking caption: "Блок 2/3" on a blocker, "заблокирован"/"удерживается" on an enemy (empty — none).</summary>
+    public string BlockText { get; set; } = "";
+    public Color BlockColor { get; set; } = Colors.White;
 
     private const float BarWidth = 0.8f;
 
@@ -83,6 +96,19 @@ public partial class UnitView : Node3D
         // Facing arrow: flat bright wedge sticking out of the base towards the facing direction.
         var arrowMesh = new PrismMesh { Size = new Vector3(0.36f, 0.34f, 0.05f), LeftToRight = 0.5f };
         _arrow = Part(this, arrowMesh, Mats.Emissive(new Color(1f, 0.92f, 0.55f), 0.9f), new Vector3(0, 0.145f, -0.5f), new Vector3(-90, 0, 0), shadow: false);
+        // Perception model (docs/DECISIONS_2.md §23): one arrow, several arrows, a ring (omni) or nothing.
+        var perception = Unit.Def.Perception;
+        if (perception.Model == FacingModel.Multiple)
+            foreach (var off in perception.ExtraFacings.Distinct().Where(o => ((o % 6) + 6) % 6 != 0))
+            {
+                var m = Part(this, new PrismMesh { Size = new Vector3(0.28f, 0.26f, 0.05f), LeftToRight = 0.5f },
+                    Mats.Emissive(new Color(1f, 0.78f, 0.45f), 0.6f), Vector3.Zero, new Vector3(-90, 0, 0), shadow: false);
+                _extraArrows.Add((m, off));
+            }
+        if (perception.Model == FacingModel.Omni)
+            _omniRing = Part(this, new TorusMesh { InnerRadius = 0.47f, OuterRadius = 0.5f, Rings = 36, RingSegments = 4 },
+                Mats.Emissive(new Color(1f, 0.92f, 0.55f), 0.7f), new Vector3(0, 0.15f, 0), shadow: false);
+        _arrow.Visible = perception.HasFacing;
         _selectRing = Part(this, new TorusMesh { InnerRadius = 0.52f, OuterRadius = 0.6f, Rings = 32, RingSegments = 6 },
             Mats.Emissive(new Color(1, 1, 1), 1.4f), new Vector3(0, 0.03f, 0), shadow: false);
         _selectRing.Visible = false;
@@ -214,6 +240,33 @@ public partial class UnitView : Node3D
             Visible = false,
         };
         _bars.AddChild(_name);
+        _stackBadge = new Label3D
+        {
+            FontSize = 44,
+            PixelSize = 0.0085f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            Position = new Vector3(BarWidth / 2 + 0.3f, 0.0f, 0),
+            OutlineSize = 8,
+            RenderPriority = 13,
+            OutlineRenderPriority = 12,
+            Modulate = new Color(1f, 0.95f, 0.7f),
+            Visible = false,
+        };
+        _bars.AddChild(_stackBadge);
+        _blockLabel = new Label3D
+        {
+            FontSize = 34,
+            PixelSize = 0.0075f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            Position = new Vector3(0, 0.47f, 0),
+            OutlineSize = 8,
+            RenderPriority = 13,
+            OutlineRenderPriority = 12,
+            Visible = false,
+        };
+        _bars.AddChild(_blockLabel);
     }
 
     public void Flash() => _hitFlash = 0.25f;
@@ -271,6 +324,8 @@ public partial class UnitView : Node3D
             _deathTime += delta;
             _bars.Visible = false;
             _arrow.Visible = false;
+            foreach (var (m, _) in _extraArrows) m.Visible = false;
+            if (_omniRing != null) _omniRing.Visible = false;
             SetLayerVisuals(null);
             if (u.DeathCause == DeathCause.Fall || u.DeathCause == DeathCause.Removed)
             {
@@ -316,7 +371,7 @@ public partial class UnitView : Node3D
         }
         else
         {
-            pos = Board.Center(u.Pos, Board.TopY(cell));
+            pos = Board.Center(u.Pos, Board.TopY(cell)) + StackOffset;
         }
         // Layer: flyers hover (with a ground shadow and a thin beam), underground units are translucent at the surface.
         var layer = u.LayerDef;
@@ -330,6 +385,16 @@ public partial class UnitView : Node3D
         _body.Rotation = new Vector3(0, _visualYaw, 0);
         _arrow.Position = new Vector3(-Mathf.Sin(_visualYaw) * 0.52f, 0.145f, -Mathf.Cos(_visualYaw) * 0.52f);
         _arrow.Basis = new Basis(Vector3.Up, _visualYaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
+        foreach (var (m, off) in _extraArrows)
+        {
+            float yaw = _visualYaw + Mathf.AngleDifference(Board.YawOf(HexDirection.E), Board.YawOf(HexDirection.E.Rotate(off)));
+            m.Position = new Vector3(-Mathf.Sin(yaw) * 0.5f, 0.145f, -Mathf.Cos(yaw) * 0.5f);
+            m.Basis = new Basis(Vector3.Up, yaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
+            m.Visible = true;
+        }
+        if (_omniRing != null) _omniRing.Visible = true;
+        float stackScale = StackCount switch { <= 1 => 1f, 2 => 0.72f, _ => 0.62f };
+        Scale = Scale.Lerp(Vector3.One * stackScale, Math.Min(1, delta * 12));
 
         _selectRing.Visible = Selected || Hovered;
         if (_selectRing.Visible)
@@ -351,7 +416,8 @@ public partial class UnitView : Node3D
         _apReserve.Visible = rf > 0.001f && sim.CanPlayerCommand(u);
         _apReserve.Scale = new Vector3(Math.Max(0.001f, BarWidth * rf), 0.05f, 1);
         _apReserve.Position = new Vector3(-BarWidth / 2 + BarWidth * (apf - rf / 2), -0.055f, 0);
-        _bars.Visible = !ghost;
+        // Shared hex: one set of bars (the first figure, or the selected/hovered one) keeps the stack readable.
+        _bars.Visible = !ghost && (StackCount < 2 || StackIndex == 0 || Selected || Hovered);
 
         // Status letters (coloured, but each status also has its own letter).
         if (u.Statuses.Count > 0)
@@ -375,6 +441,14 @@ public partial class UnitView : Node3D
         }
         _name.Visible = ShowName || Selected || Hovered;
         if (_name.Visible) _name.Text = u.Name;
+        _stackBadge.Visible = StackCount > 1 && StackIndex == 0 && !ghost;
+        if (_stackBadge.Visible) _stackBadge.Text = $"×{StackCount}";
+        _blockLabel.Visible = BlockText.Length > 0 && !ghost;
+        if (_blockLabel.Visible)
+        {
+            _blockLabel.Text = BlockText;
+            _blockLabel.Modulate = BlockColor;
+        }
 
         // Hit flash: briefly brighten the figure.
         if (_hitFlash > 0)

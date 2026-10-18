@@ -49,6 +49,8 @@
         { "sector": "FarFlank", "surpriseChance": 0.7, "noticeChance": 0.3 },
         { "sector": "Rear", "surpriseChance": 1, "noticeChance": 0 }
       ],
+      "noSectorNotice": 1,
+      "noSectorSurprise": 0,
       "unseenNoticeFactor": 0,
       "blindNoticeFactor": 0,
       "noticePenaltyPerHex": 0,
@@ -60,6 +62,17 @@
       "surpriseDamageMul": 1.25,
       "surpriseCrit": 0.15,
       "surpriseInterrupt": 0.5
+    },
+    "info": {
+      "panelEnabled": true,
+      "nameAndType": "AfterSeen",
+      "health": "WhenVisible",
+      "resources": "WhenVisible",
+      "statuses": "WhenVisible",
+      "resistances": "AfterObserved",
+      "skills": "AfterObserved",
+      "facing": "WhenVisible",
+      "intent": "WhenVisible"
     },
     "combat": {
       "baseHit": 0.85,

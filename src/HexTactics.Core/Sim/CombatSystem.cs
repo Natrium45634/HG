@@ -28,6 +28,7 @@ public sealed class AttackRoll
         AttackSector.Front => "фронт",
         AttackSector.NearFlank => "ближний фланг",
         AttackSector.FarFlank => "дальний фланг",
+        AttackSector.None => "без секторов",
         _ => "тыл",
     };
 
@@ -84,11 +85,41 @@ public sealed class CombatSystem
         return (AttackSector)best;
     }
 
+    /// <summary>
+    /// Sector of an attack against a target with its perception model (docs/DECISIONS_2.md §23):
+    /// several facings — the most frontal; omni / none — no sectors.
+    /// </summary>
+    public static AttackSector SectorFor(Unit target, HexCoord attackerPos)
+    {
+        var p = target.Def.Perception;
+        switch (p.Model)
+        {
+            case FacingModel.Omni:
+            case FacingModel.None:
+                return AttackSector.None;
+            case FacingModel.Multiple:
+            {
+                var best = SectorOf(target.Pos, target.Facing, attackerPos);
+                foreach (var off in p.ExtraFacings)
+                {
+                    var s = SectorOf(target.Pos, target.Facing.Rotate(off), attackerPos);
+                    if (s < best) best = s;
+                }
+                return best;
+            }
+            default:
+                return SectorOf(target.Pos, target.Facing, attackerPos);
+        }
+    }
+
     public double NoticeChance(Unit attacker, Unit target, HexCoord attackerPos, out AttackSector sector, out bool sees)
     {
         var det = Rules.Detection;
-        sector = SectorOf(target.Pos, target.Facing, attackerPos);
+        sector = SectorFor(target, attackerPos);
         var sr = det.For(sector);
+        var perception = target.Def.Perception;
+        if (sector == AttackSector.None && perception.OwnNoSectorRule)
+            sr = new SectorRule { Sector = sector, NoticeChance = perception.NoticeChance, SurpriseChance = perception.SurpriseChance };
         sees = _sim.Vision.CanSee(target, attacker, attackerPos);
         double p = sr.NoticeChance + target.Stat(Stats.Perception) - attacker.Stat(Stats.Stealth);
         int dist = HexCoord.Distance(target.Pos, attackerPos);
@@ -110,19 +141,34 @@ public sealed class CombatSystem
         return s;
     }
 
-    public double SurpriseChance(AttackSector sector, bool targetSeesAttacker)
+    public double SurpriseChance(AttackSector sector, bool targetSeesAttacker, Unit? target = null)
     {
         var det = Rules.Detection;
-        double s = det.For(sector).SurpriseChance + (targetSeesAttacker ? 0 : det.SurpriseBonusVsUnaware);
+        double baseChance = det.For(sector).SurpriseChance;
+        if (sector == AttackSector.None && target != null && target.Def.Perception.OwnNoSectorRule) baseChance = target.Def.Perception.SurpriseChance;
+        double s = baseChance + (targetSeesAttacker ? 0 : det.SurpriseBonusVsUnaware);
         return Math.Clamp(s, 0, 1);
+    }
+
+    /// <summary>Creatures sharing the unit's cell (same layer) — crowding penalty (docs/DECISIONS_2.md §26).</summary>
+    public int CellMates(Unit u)
+    {
+        var cell = _sim.Map.Get(u.Pos);
+        if (cell == null) return 0;
+        int n = 0;
+        foreach (var o in cell.Occupants)
+            if (o != u && o.Alive && o.Layer == u.Layer)
+                n++;
+        return n;
     }
 
     public double HitChance(Unit attacker, Unit target, SkillDef? skill, HexCoord attackerPos, bool noticed, bool surprise)
     {
         var c = Rules.Combat;
         var det = Rules.Detection;
-        double acc = attacker.Stat(Stats.Accuracy);
-        double eva = target.Stat(Stats.Evasion) * (noticed ? 1.0 : det.UnnoticedEvasionFactor);
+        double acc = attacker.Stat(Stats.Accuracy) - CellMates(attacker) * attacker.Def.Stacking.CrowdAccuracyPenalty * (attacker.Def.Stacking.CanShare ? 1 : 0);
+        double eva = target.Stat(Stats.Evasion) * (noticed ? 1.0 : det.UnnoticedEvasionFactor)
+                     - CellMates(target) * target.Def.Stacking.CrowdAccuracyPenalty * (target.Def.Stacking.CanShare ? 1 : 0);
         if (target.Flags.BlocksActions) eva = 0;
         var ac = _sim.Map.Get(attackerPos);
         var tc = _sim.Map.Get(target.Pos);
@@ -184,7 +230,7 @@ public sealed class CombatSystem
     public AttackRoll Roll(Unit attacker, Unit target, SkillDef? skill, HexCoord attackerPos)
     {
         double pNotice = NoticeChance(attacker, target, attackerPos, out var sector, out var sees);
-        double pSurprise = SurpriseChance(sector, sees);
+        double pSurprise = SurpriseChance(sector, sees, target);
         double u = _sim.Rng.NextDouble();
         bool noticed = u < pNotice;
         bool surprise = !noticed && u >= 1.0 - pSurprise;
@@ -290,9 +336,11 @@ public sealed class CombatSystem
         var dtName = _sim.Content.Get<DamageTypeDef>(damageType)?.DisplayName ?? damageType;
         if (b.Immune)
         {
+            _sim.Knowledge.OnDamageObserved(source, target, damageType);
             _sim.Emit(SimEventType.Damage, LogLevel.Normal, $"{target.Name}: иммунитет к урону «{dtName}» ({cause})", source?.Id ?? -1, target.Id, target.Pos, 0, damageType);
             return 0;
         }
+        _sim.Knowledge.OnDamageObserved(source, target, damageType);
         double dmg = b.Final;
         if (dmg <= 0) return 0;
         target.Hp -= dmg;
@@ -380,6 +428,7 @@ public sealed class CombatSystem
         }
         var cell = _sim.Map.Get(u.Pos);
         cell?.Occupants.Remove(u);
+        _sim.Blocking.OnRemoved(u);
         _sim.Map.Touch(false);
         _sim.Vision.MarkDirty(urgent: true);
 

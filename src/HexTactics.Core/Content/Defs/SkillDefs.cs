@@ -96,7 +96,7 @@ public sealed class SkillDef : Def
     [Ed("Значок", "1–2 символа на кнопке", Group = "Вид")] public string Icon { get; set; } = "";
 
     /// <summary>Directions are player-chosen for self/direction targeting.</summary>
-    public bool UsesChosenDirection => Targeting == TargetingMode.Self || Targeting == TargetingMode.Direction;
+    [JsonIgnore] public bool UsesChosenDirection => Targeting == TargetingMode.Self || Targeting == TargetingMode.Direction;
 
     public bool IsHarmful
     {
@@ -268,7 +268,7 @@ public sealed class SkillEffectDef
     [Ed("Призываемый юнит"), EdRef(DefCategory.Unit, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.Summon)]
     public string SummonUnit { get; set; } = "";
 
-    public bool TargetsUnits => Type switch
+    [JsonIgnore] public bool TargetsUnits => Type switch
     {
         EffectType.ChangeTerrain or EffectType.AddCellEffect or EffectType.RemoveCellEffect or EffectType.DestroyObstacle
             or EffectType.Summon or EffectType.TeleportCaster => false,

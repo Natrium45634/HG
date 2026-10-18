@@ -144,18 +144,6 @@ public readonly struct MoveContext
 /// <summary>Who may share a cell (docs/DECISIONS_2.md §22, §26). Collisions are counted per layer.</summary>
 public static class Occupancy
 {
-    private static bool Compatible(UnitDef a, UnitDef b)
-    {
-        var w = a.Stacking.ShareWith;
-        if (w.Count == 0) return true;
-        foreach (var x in w)
-        {
-            if (x == b.Id || x == b.CreatureCategory) return true;
-            if (x.StartsWith("tag:", StringComparison.Ordinal) && b.Tags.Contains(x.Substring(4))) return true;
-        }
-        return false;
-    }
-
     /// <summary>Other alive units in the cell (occupants and units stepping in) that collide with the mover's layer.</summary>
     public static int Colliding(in MoveContext c, Cell cell, List<Unit>? into = null)
     {
@@ -214,8 +202,7 @@ public static class Occupancy
         int limit = def.Stacking.MaxPerHex;
         foreach (var o in others)
         {
-            if (!o.Def.Stacking.CanShare) return false;
-            if (!Compatible(def, o.Def) || !Compatible(o.Def, def)) return false;
+            if (!StackingDef.Mutual(def, o.Def)) return false;
             limit = Math.Min(limit, o.Def.Stacking.MaxPerHex);
         }
         return others.Count + 1 <= Math.Max(1, limit);

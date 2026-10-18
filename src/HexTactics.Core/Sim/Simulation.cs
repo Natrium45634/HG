@@ -65,6 +65,8 @@ public sealed class Simulation
         Skills = new SkillSystem(this);
         Commands = new CommandSystem(this);
         Falls = new FallSystem(this);
+        Blocking = new BlockingSystem(this);
+        Knowledge = new KnowledgeSystem(this);
         Vision = new VisionSystem(this);
         Reactions = new ReactionSystem(this);
         Ai = new AiSystem(this);
@@ -102,6 +104,8 @@ public sealed class Simulation
     public SkillSystem Skills { get; }
     public CommandSystem Commands { get; }
     public FallSystem Falls { get; }
+    public BlockingSystem Blocking { get; }
+    public KnowledgeSystem Knowledge { get; }
     public VisionSystem Vision { get; }
     public ReactionSystem Reactions { get; }
     public AiSystem Ai { get; }
@@ -391,6 +395,9 @@ public sealed class Simulation
         UpdateUnits();
         p.End("Юниты/состояния", t);
         t = p.Begin();
+        Blocking.Update();
+        p.End("Блокирование", t);
+        t = p.Begin();
         Commands.Update();
         p.End("Команды", t);
         t = p.Begin();
@@ -402,6 +409,7 @@ public sealed class Simulation
         p.End("Реакции", t);
         t = p.Begin();
         Vision.Update();
+        Knowledge.Update();
         p.End("Видимость", t);
         t = p.Begin();
         CleanupDead();

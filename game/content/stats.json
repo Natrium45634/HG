@@ -326,6 +326,19 @@
       "max": 10,
       "format": "Number",
       "showInPanel": false
+    },
+    {
+      "id": "block_limit",
+      "name": "Лимит блокирования",
+      "description": "Сколько слотов врагов юнит может удерживать (0 — не блокирует). Не путать с шансом блока удара",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": 0,
+      "max": 20,
+      "format": "Number",
+      "showInPanel": true
     }
   ]
 }

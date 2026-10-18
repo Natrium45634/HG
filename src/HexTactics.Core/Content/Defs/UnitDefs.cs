@@ -24,11 +24,13 @@ public static class Stats
     public const string InterruptResist = "interrupt_resist";
     public const string Power = "power";
     public const string HealPower = "heal_power";
+    /// <summary>How many enemy slots the unit can hold back (blocking, part 2 §27).</summary>
+    public const string BlockLimit = "block_limit";
 
     public static readonly string[] All =
     {
         HpMax, MoveSpeed, ApMax, ApRegen, DetectionRange, Accuracy, Evasion, BlockChance, BlockReduction,
-        Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower,
+        Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit,
     };
 }
 
@@ -162,6 +164,12 @@ public sealed class UnitDef : Def
     [Ed("Стартовые состояния", Group = "Навыки")] public List<StartingStatusDef> StartingStatuses { get; set; } = new();
 
     [Ed("Профиль ИИ", Group = "Поведение"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "aggressive";
+
+    [Ed("Восприятие", "Модель взгляда и зона обнаружения", Group = "Восприятие")] public PerceptionDef Perception { get; set; } = new();
+    [Ed("Раскрытие информации", "Что игрок видит в панели этого существа", Group = "Восприятие")] public InfoOverrideDef Info { get; set; } = new();
+
+    [Ed("Блокирование (как блокирующий)", "Лимит — характеристика «Лимит блокирования»", Group = "Блокирование")] public BlockerDef Blocking { get; set; } = new();
+    [Ed("Блокирование (как цель)", Group = "Блокирование")] public BlockableDef Blockable { get; set; } = new();
 
     [Ed("Внешний вид", Group = "Вид")] public UnitVisualDef Visual { get; set; } = new();
 }

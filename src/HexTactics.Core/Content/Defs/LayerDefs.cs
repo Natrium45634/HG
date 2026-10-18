@@ -80,4 +80,19 @@ public sealed class StackingDef
     [Ed("Штраф точности за соседа", "Каждый сосед по клетке снижает точность и уклонение"), EdRange(0, 1), EdShowIf(nameof(CanShare), true)]
     public double CrowdAccuracyPenalty { get; set; } = 0.05;
     [Ed("Раскладка группы"), EdShowIf(nameof(CanShare), true)] public StackLayout Layout { get; set; } = StackLayout.Cluster;
+
+    private static bool Accepts(UnitDef a, UnitDef b)
+    {
+        var w = a.Stacking.ShareWith;
+        if (w.Count == 0) return true;
+        foreach (var x in w)
+        {
+            if (x == b.Id || x == b.CreatureCategory) return true;
+            if (x.StartsWith("tag:", System.StringComparison.Ordinal) && b.Tags.Contains(x.Substring(4))) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Both types allow sharing a hex with each other (relation and layer are checked by the caller).</summary>
+    public static bool Mutual(UnitDef a, UnitDef b) => a.Stacking.CanShare && b.Stacking.CanShare && Accepts(a, b) && Accepts(b, a);
 }

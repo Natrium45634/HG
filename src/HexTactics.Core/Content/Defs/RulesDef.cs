@@ -15,6 +15,7 @@ public sealed class RulesDef
     [Ed("Слои существ")] public LayerRules Layers { get; set; } = new();
     [Ed("Высота")] public HeightRules Height { get; set; } = new();
     [Ed("Обнаружение и неожиданность")] public DetectionRules Detection { get; set; } = new();
+    [Ed("Раскрытие информации о врагах")] public InfoDisclosureDef Info { get; set; } = new();
     [Ed("Бой")] public CombatRules Combat { get; set; } = new();
     [Ed("Видимость")] public VisionRules Vision { get; set; } = new();
     [Ed("Очередь команд")] public QueueRules Queue { get; set; } = new();
@@ -73,10 +74,12 @@ public sealed class HeightRules
 
 public enum AttackSector
 {
-    Front = 0,
-    NearFlank = 1,
-    FarFlank = 2,
-    Rear = 3,
+    [Ed("Фронт")] Front = 0,
+    [Ed("Ближний фланг")] NearFlank = 1,
+    [Ed("Дальний фланг")] FarFlank = 2,
+    [Ed("Тыл")] Rear = 3,
+    /// <summary>The target has no facing (omni / none): sector modifiers do not apply.</summary>
+    [Ed("Без секторов")] None = 4,
 }
 
 public sealed class SectorRule
@@ -97,6 +100,8 @@ public sealed class DetectionRules
         new SectorRule { Sector = AttackSector.Rear, SurpriseChance = 1.0, NoticeChance = 0.0 },
     };
 
+    [Ed("Без секторов: шанс заметить", "Для целей без направления взгляда или с круговым восприятием"), EdRange(0, 1)] public double NoSectorNotice { get; set; } = 1.0;
+    [Ed("Без секторов: шанс неожиданности"), EdRange(0, 1)] public double NoSectorSurprise { get; set; }
     [Ed("Множитель замечания, если цель не видит атакующего"), EdRange(0, 1)] public double UnseenNoticeFactor { get; set; }
     [Ed("Множитель замечания при ослеплении"), EdRange(0, 1)] public double BlindNoticeFactor { get; set; }
     [Ed("Штраф замечания за гекс"), EdRange(0, 1)] public double NoticePenaltyPerHex { get; set; }
@@ -112,6 +117,7 @@ public sealed class DetectionRules
 
     public SectorRule For(AttackSector s)
     {
+        if (s == AttackSector.None) return new SectorRule { Sector = s, NoticeChance = NoSectorNotice, SurpriseChance = NoSectorSurprise };
         foreach (var r in Sectors)
             if (r.Sector == s)
                 return r;

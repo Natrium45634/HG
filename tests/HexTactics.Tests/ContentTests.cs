@@ -108,7 +108,7 @@ public class ContentTests
         Assert.True(db.Rename(DefCategory.Skill, "fireball", "fire_orb"));
         Assert.Contains("fire_orb", db.Unit("mage")!.Skills);
         Assert.DoesNotContain(db.FindReferences(DefCategory.Skill, "fireball"), r => r.Id == "fireball");
-        Assert.Empty(ContentValidator.Validate(db).Where(i => i.Severity == IssueSeverity.Error));
+        Assert.DoesNotContain(ContentValidator.Validate(db), i => i.Severity == IssueSeverity.Error);
         // Terrain rename updates map cells.
         Assert.True(db.Rename(DefCategory.Terrain, "grass", "meadow"));
         Assert.Contains(db.Get<MapDef>("valley")!.Cells, c => c.T == "meadow");

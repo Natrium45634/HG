@@ -33,6 +33,12 @@ public static class ContentDefaults
         Id = "tremor_sense", Name = "Обнаружение подземных", Description = "> 0 — видит существ подземного слоя в пределах дальности обнаружения", Max = 10, ShowInPanel = false,
     };
 
+    public static StatDef BlockLimit() => new()
+    {
+        Id = Stats.BlockLimit, Name = "Лимит блокирования", Description = "Сколько слотов врагов юнит может удерживать (0 — не блокирует). Не путать с шансом блока удара",
+        Max = 20, ShowInPanel = true,
+    };
+
     public static void Ensure(ContentDatabase db, List<ContentIssue> issues)
     {
         if (db.Table(DefCategory.Layer).Count == 0)
@@ -44,6 +50,11 @@ public static class ContentDefaults
         {
             db.Add(TremorSense());
             issues.Add(new ContentIssue(IssueSeverity.Info, "stats.json", "", "Добавлена характеристика «Обнаружение подземных» (нужна подземному слою)"));
+        }
+        if (db.Stat(Stats.BlockLimit) == null)
+        {
+            db.Add(BlockLimit());
+            issues.Add(new ContentIssue(IssueSeverity.Info, "stats.json", "", "Добавлена характеристика «Лимит блокирования» (по умолчанию 0)"));
         }
     }
 }

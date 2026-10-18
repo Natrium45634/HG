@@ -442,6 +442,19 @@ public sealed class CommandSystem
         if (u.Flags.BlocksMovement) return Fail(FailureReason.Disabled, "юнит обездвижен");
         if (u.Stat(Stats.MoveSpeed) <= 0) return Fail(FailureReason.Disabled, "скорость 0");
 
+        // Blocked (docs/DECISIONS_2.md §27): cannot advance while the link holds; no AP spent, no timeout —
+        // the link disappears as soon as the blocker is gone, pushed away, stunned or out of slots.
+        if (_sim.Blocking.BlockerOf(u) is { } blocker)
+        {
+            if (u.Def.Blockable.WhenBlocked != BlockedBehavior.FindDetour || !TryDetour(u, cmd, blocker))
+            {
+                cmd.Status = CommandStatus.Waiting;
+                cmd.StatusText = $"заблокирован: {blocker.Name}";
+                return Result.Continue;
+            }
+            ClearWait(cmd);
+        }
+
         if (cmd.Path == null || cmd.Path.Count == 0 || HexCoord.Distance(cmd.Path[0], u.Pos) != 1)
         {
             var path = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { HazardPenalty = HazardPenaltyFor(u) });
@@ -494,10 +507,32 @@ public sealed class CommandSystem
         return Result.Continue;
     }
 
+    /// <summary>Path around the blocker's zone; on success the enemy is not re-blocked by it for a moment.</summary>
+    private bool TryDetour(Unit u, Command cmd, Unit blocker)
+    {
+        var avoid = new HashSet<HexCoord>();
+        foreach (var c in _sim.Map.InRadius(blocker.Pos, 1))
+            if (c.Coord != u.Pos)
+                avoid.Add(c.Coord);
+        var path = _sim.Pathfinder.Find(_sim, u, u.Pos, cmd.TargetCell!.Value, new PathOptions { Avoid = avoid, HazardPenalty = HazardPenaltyFor(u) });
+        if (!path.Found) return false;
+        cmd.Path = path.Path;
+        RecomputeEstimates(u);
+        _sim.Blocking.GrantDetour(u, 2.0);
+        _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name} обходит блок {blocker.Name}", u.Id, blocker.Id);
+        return true;
+    }
+
     private Result ExecTurn(Unit u, Command cmd)
     {
         var target = cmd.Direction!.Value;
         if (u.Facing == target) return Result.Done;
+        if (!u.Def.Perception.HasFacing)
+        {
+            // No facing (omni / none): orientation is cosmetic — instant and free.
+            u.Facing = target;
+            return Result.Done;
+        }
         if (u.Flags.BlocksActions) return Fail(FailureReason.Disabled, "юнит оглушён");
         if (u.Flags.BlocksTurning) return Fail(FailureReason.Disabled, "юнит не может поворачиваться");
         if (!TurnOneStep(u, target, cmd)) return Fail(FailureReason.NotEnoughAp, $"нужно {Rules.Turn.ApPerStep:0.##} ОД на поворот");

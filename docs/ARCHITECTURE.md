@@ -173,10 +173,11 @@ HG/
 |---|---|---|
 | `Geometry/HexGeometry`, `Geometry/CameraFit` | геометрия плит/ям/жидкостей; подбор масштаба камеры | `GeometryTests` |
 | `Content/MapTemplates` | встроенные шаблоны, создание карты из шаблона, сохранение карты как шаблона | `TemplateTests` |
-| `Sim/LayerRules`, `Sim/Occupancy` | слои, занятость клеток по слоям, совместное нахождение | `LayerTests`, `StackingTests` |
+| `Sim/LayerResolver`, `Sim/Occupancy` | слои, занятость клеток по слоям, совместное нахождение | `LayerTests`, `StackingTests` |
 | `Sim/FallSystem` | ямы и падение | `PitTests` |
-| `Sim/BlockingSystem` | связи блокирования | `BlockingTests` |
-| `Sim/KnowledgeSystem` | что игрок знает о врагах | `InfoTests` |
+| `Sim/BlockingSystem` | связи блокирования | `BlockingTests`, `BlockingWalkTests` |
+| `Sim/KnowledgeSystem` | что игрок знает о врагах | `InfoDisclosureTests` |
+| `CombatSystem.SectorFor`, `VisionSystem.InZone` | модели взгляда, зоны обнаружения | `FacingModelTests` |
 | `Sim/DamagePipeline` | единый расчёт урона, щиты, поглощение, отражение | `DamageTests` |
 | `Sim/AutoAttackSystem` | автоатаки | `AutoAttackTests` |
 | `Sim/Objectives`, `Sim/Conditions`, `Sim/SpawnWarnings` | цели сценария, дерево условий, маркеры появления | `ObjectiveTests`, `SpawnMarkerTests` |

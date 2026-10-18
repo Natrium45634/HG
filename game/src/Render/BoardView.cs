@@ -206,6 +206,7 @@ public partial class BoardView : Node3D
 
     public void SyncUnits(Simulation sim, double alpha, Func<Unit, bool> visible, Func<Unit, bool> ghost, float delta)
     {
+        LayoutStacks(sim, visible);
         foreach (var u in sim.Units) ViewOf(u).Sync(sim, sim.Map, alpha, visible(u), ghost(u), delta);
         // Units removed from the simulation entirely.
         foreach (var id in new List<int>(_views.Keys))
@@ -213,6 +214,67 @@ public partial class BoardView : Node3D
             if (sim.GetUnit(id) != null) continue;
             _views[id].QueueFree();
             _views.Remove(id);
+        }
+    }
+
+    private readonly Dictionary<(HexCoord, string), List<Unit>> _stacks = new();
+
+    /// <summary>Several visible creatures on one hex and layer: spread them out (cluster / row / ring) and badge ×N.</summary>
+    private void LayoutStacks(Simulation sim, Func<Unit, bool> visible)
+    {
+        foreach (var list in _stacks.Values) list.Clear();
+        foreach (var u in sim.Units)
+        {
+            if (!u.Alive || u.StepTo.HasValue || !visible(u)) continue;
+            var key = (u.Pos, u.Layer);
+            if (!_stacks.TryGetValue(key, out var list)) _stacks[key] = list = new List<Unit>(2);
+            list.Add(u);
+        }
+        foreach (var u in sim.Units)
+        {
+            var v = ViewOf(u);
+            v.StackOffset = Vector3.Zero;
+            v.StackIndex = 0;
+            v.StackCount = 1;
+        }
+        foreach (var list in _stacks.Values)
+        {
+            if (list.Count < 2) continue;
+            var layout = list[0].Def.Stacking.Layout;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var v = ViewOf(list[i]);
+                v.StackIndex = i;
+                v.StackCount = list.Count;
+                v.StackOffset = StackOffset(layout, i, list.Count);
+            }
+        }
+    }
+
+    public static Vector3 StackOffset(StackLayout layout, int i, int n)
+    {
+        if (n < 2) return Vector3.Zero;
+        switch (layout)
+        {
+            case StackLayout.Row:
+            {
+                float w = Math.Min(0.75f, 0.32f * (n - 1));
+                return new Vector3(-w / 2 + w * i / (n - 1), 0, 0.05f * (i % 2 == 0 ? 1 : -1));
+            }
+            case StackLayout.Ring:
+            {
+                float a = Mathf.Tau * i / n - Mathf.Pi / 2;
+                return new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.36f;
+            }
+            default:
+            {
+                // Cluster: a tight triangle/diamond; from five on, one in the centre.
+                if (n >= 5 && i == 0) return Vector3.Zero;
+                int k = n >= 5 ? i - 1 : i;
+                int m = n >= 5 ? n - 1 : n;
+                float a = Mathf.Tau * k / m + Mathf.Pi / 6;
+                return new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * (m == 2 ? 0.3f : 0.38f);
+            }
         }
     }
 

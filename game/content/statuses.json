@@ -57,8 +57,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -102,8 +101,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -151,8 +149,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -220,8 +217,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -265,8 +261,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -310,8 +305,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -379,8 +373,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -1084,8 +1077,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": []
@@ -1174,8 +1166,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ],
           "onEnter": [
@@ -1199,8 +1190,7 @@
               "cellEffect": "",
               "level": 1,
               "obstacleDamage": 1000,
-              "summonUnit": "",
-              "targetsUnits": true
+              "summonUnit": ""
             }
           ]
         }

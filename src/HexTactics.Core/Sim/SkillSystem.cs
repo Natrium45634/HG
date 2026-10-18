@@ -193,6 +193,7 @@ public sealed class SkillSystem
             foreach (var c in StageCells(cast, s.Stages[0], preview: true))
                 cast.TelegraphCells.Add(c.Cell);
         cast.VisibleToPlayer = _sim.IsPlayerFaction(u.FactionId) || _sim.Vision.IsVisibleToPlayer(u) || _sim.Options.AdminMode;
+        _sim.Knowledge.OnSkillUsed(u, s);
         u.Casting = cast;
         if (s.ApCost > 0)
             _sim.Emit(SimEventType.ApSpent, LogLevel.Detail, $"{u.Name}: −{s.ApCost:0.#} ОД ({s.DisplayName})", u.Id, value: s.ApCost);

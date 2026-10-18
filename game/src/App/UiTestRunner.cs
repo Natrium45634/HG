@@ -42,6 +42,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_save_map_as_template", EditorSaveAsTemplate));
         _tests.Add(("battle_fit_map_to_screen", BattleFitMap));
         _tests.Add(("battle_layers_melee_vs_flyer", BattleLayersMeleeVsFlyer));
+        _tests.Add(("battle_stack_select_and_enemy_info", BattleStackAndEnemyInfo));
+        _tests.Add(("battle_blocking_display", BattleBlockingDisplay));
         _ = Run();
     }
 
@@ -397,5 +399,69 @@ public partial class UiTestRunner : Node
         var shot = bs.Sim.Planner.Actions(archer).First(a => a.Key == "attack");
         Check(bs.Sim.Skills.Validate(archer, shot.Skill!, null, drone.Id, null, archer.Pos, archer.Facing).Reason != FailureReason.Invalid,
             "дальняя атака должна допускать воздушную цель");
+    }
+
+    private static void Teleport(BattleScreen bs, Unit u, HexCoord to)
+    {
+        bs.Sim.Map.Get(u.Pos)!.Occupants.Remove(u);
+        bs.Sim.Map.Get(to)!.Occupants.Add(u);
+        typeof(Unit).GetProperty("Pos")!.SetValue(u, to);
+        bs.Sim.Vision.Recompute();
+        bs.Sim.Knowledge.Update();
+    }
+
+    private bool LabelVisible(string text) =>
+        Find<Label>(GetTree().Root).Any(l => l.IsVisibleInTree() && l.Text.Contains(text, StringComparison.Ordinal));
+
+    /// <summary>Three goblins on one hex: click selects one and opens the strip, a repeated click and Tab cycle; the panel shows only known facts.</summary>
+    private async Task BattleStackAndEnemyInfo()
+    {
+        var bs = await OpenBattle("checkpoint_hold");
+        var goblins = bs.Sim.Units.Where(u => u.Def.Id == "goblin").ToList();
+        Check(goblins.Count == 3 && goblins.All(g => g.Pos == goblins[0].Pos), "три гоблина должны стоять на одном гексе");
+        var hex = goblins[0].Pos;
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        Teleport(bs, knight, hex + new HexCoord(-1, 0));
+        bs.Board.Rig.FocusOn(Render.Board.Center(hex));
+        await Frames(12);
+        Check(goblins.All(g => bs.UnitVisible(g)), "гоблины должны быть видны рыцарю");
+        Check(bs.Board.ViewOf(goblins[0]).StackCount == 3, "раскладка гекса должна знать о трёх существах (×3)");
+
+        var at = HexScreen(bs, hex);
+        await Click(at);
+        var first = bs.Selected;
+        Check(first != null && goblins.Contains(first), "клик по гексу должен выбрать гоблина");
+        Check(Find<Button>(GetTree().Root).Count(b => b.IsVisibleInTree() && b.Text.Contains("Гоблин")) == 3, "полоска выбора должна показать трёх гоблинов");
+        await Click(at);
+        var second = bs.Selected;
+        Check(second != null && second != first && goblins.Contains(second), "повторный клик должен выбрать следующего на гексе");
+        await Key(Godot.Key.Tab);
+        var third = bs.Selected;
+        Check(third != null && third != first && third != second && goblins.Contains(third), "Tab должен листать существ на гексе");
+
+        // Information panel: name, health and intent are seen; resistances and skills are not observed yet.
+        await Frames(15);
+        Check(LabelVisible("Намерение"), "панель врага должна показывать намерение");
+        Check(LabelVisible("Сопротивления: ?"), "сопротивления не должны раскрываться до наблюдения");
+        Check(!LabelVisible("Характеристики"), "полные характеристики врага не показываются");
+        var info = bs.Sim.Knowledge.GetInfo(third!);
+        Check(info.NameField.Known && info.HealthField.Known && !info.ResistancesField.Known, "раскрытие: имя и здоровье видны, сопротивления — нет");
+    }
+
+    /// <summary>A goblin walks past the knight: "Блок 1/3" on the knight, "заблокирован" on the goblin.</summary>
+    private async Task BattleBlockingDisplay()
+    {
+        var bs = await OpenBattle("checkpoint_hold");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        var goblin = bs.Sim.Units.First(u => u.Def.Id == "goblin");
+        Teleport(bs, goblin, knight.Pos + new HexCoord(1, 0));
+        bs.Sim.Enqueue(goblin, Command.Move(knight.Pos + new HexCoord(-3, 0)), -1, true);
+        for (int i = 0; i < 40 && bs.Sim.Blocking.BlockerOf(goblin) == null; i++) bs.Sim.Step();
+        Check(bs.Sim.Blocking.BlockerOf(goblin) == knight, "рыцарь должен заблокировать гоблина");
+        bs.Select(knight);
+        await Frames(15);
+        Check(bs.Board.ViewOf(knight).BlockText.StartsWith("Блок 1/3"), $"у рыцаря должна быть подпись «Блок 1/3», а не «{bs.Board.ViewOf(knight).BlockText}»");
+        Check(bs.Board.ViewOf(goblin).BlockText == "заблокирован", "у гоблина должна быть подпись «заблокирован»");
+        Check(LabelVisible("Блок 1/3 — держит: Гоблин"), "панель рыцаря должна показывать, кого он держит");
     }
 }

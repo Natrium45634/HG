@@ -60,10 +60,40 @@ public sealed class VisionSystem
         int d = HexCoord.Distance(viewer.Pos, pos);
         if (d > DetectionRange(viewer, target) + 1e-9) return false;
         // Hidden layers (underground): only viewers with the layer's detection stat, or up close.
+        // Detection zone (cone/sector/line in front of the viewer): outside it only adjacent units are seen.
+        if (viewer.Def.Perception.Zone != DetectionZoneShape.None && d > 1 && !InZone(viewer, pos)) return false;
         var layer = target.LayerDef;
         if (layer.Hidden && d > layer.RevealRange && (string.IsNullOrEmpty(layer.DetectionStat) || viewer.Stat(layer.DetectionStat) <= 0)) return false;
         if (layer.Hidden) return true; // detected by tremor/sonar: no line of sight needed
         return _sim.Los.Has(_sim.Map, _sim.Rules, viewer.Pos, pos);
+    }
+
+    private readonly Dictionary<int, (HexCoord Pos, HexDirection Facing, int Version, HashSet<HexCoord> Cells)> _zones = new();
+
+    /// <summary>Cells of the viewer's detection zone (cached per position/facing/map version).</summary>
+    public bool InZone(Unit viewer, HexCoord cell)
+    {
+        var p = viewer.Def.Perception;
+        if (p.Zone == DetectionZoneShape.None) return true;
+        if (!_zones.TryGetValue(viewer.Id, out var z) || z.Pos != viewer.Pos || z.Facing != viewer.Facing || z.Version != _sim.Map.Version)
+        {
+            var area = new AreaDef
+            {
+                Shape = p.Zone switch { DetectionZoneShape.Cone => AreaShape.Cone, DetectionZoneShape.Line => AreaShape.Line, _ => AreaShape.Sector },
+                Size = p.ZoneSize,
+                Angle = p.ZoneAngle,
+                IncludeCenter = true,
+            };
+            var set = new HashSet<HexCoord>();
+            foreach (var ac in AreaResolver.Resolve(area, viewer.Pos, viewer.Facing, _sim.Map)) set.Add(ac.Cell);
+            if (p.Model == FacingModel.Multiple)
+                foreach (var off in p.ExtraFacings)
+                foreach (var ac in AreaResolver.Resolve(area, viewer.Pos, viewer.Facing.Rotate(off), _sim.Map))
+                    set.Add(ac.Cell);
+            z = (viewer.Pos, viewer.Facing, _sim.Map.Version, set);
+            _zones[viewer.Id] = z;
+        }
+        return z.Cells.Contains(cell);
     }
 
     private bool SharesVision(string a, string b) => a == b || _sim.Content.RelationOf(a, b) == Relation.Ally;

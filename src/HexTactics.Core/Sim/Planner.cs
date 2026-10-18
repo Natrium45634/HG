@@ -360,7 +360,7 @@ public sealed class Planner
                     if (harmful && o != u)
                     {
                         double notice = _sim.Combat.NoticeChance(u, o, fromPos, out var sector, out var sees);
-                        double surprise = _sim.Combat.SurpriseChance(sector, sees);
+                        double surprise = _sim.Combat.SurpriseChance(sector, sees, o);
                         double hit = s.HitMode == HitMode.AlwaysHit ? 1.0 : _sim.Combat.HitChance(u, o, s, fromPos, true, false);
                         p.Odds.Add((o, hit, notice, surprise, sector));
                     }
