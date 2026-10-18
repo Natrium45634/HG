@@ -215,7 +215,7 @@ public sealed class AiSystem
         }
     }
 
-    private static double Threat(Unit e)
+    public static double Threat(Unit e)
     {
         double t = e.Stat(Stats.Power);
         foreach (var s in e.Skills.Append(e.BasicAttack))

@@ -169,11 +169,15 @@ public sealed class SkillSystem
     }
 
     /// <summary>Pays costs and starts preparation. Returns the cast.</summary>
-    public SkillCast Begin(Unit u, SkillDef s, SkillCheck check, int targetUnitId)
+    /// <param name="source">Skill command or auto-attack (damage source for the pipeline rules).</param>
+    /// <param name="apCost">Overrides the skill's AP cost (auto-attack setting).</param>
+    public SkillCast Begin(Unit u, SkillDef s, SkillCheck check, int targetUnitId, DamageSource source = DamageSource.Skill, double? apCost = null)
     {
-        u.Ap = Math.Max(0, u.Ap - s.ApCost);
+        double ap = apCost ?? s.ApCost;
+        u.Ap = Math.Max(0, u.Ap - ap);
         var cast = new SkillCast
         {
+            Source = source,
             Id = _nextCastId++,
             Caster = u,
             Skill = s,
@@ -183,7 +187,7 @@ public sealed class SkillSystem
             CasterPos = u.Pos,
             StartTick = _sim.Tick,
             ReleaseTick = _sim.Tick + _sim.TicksFor(s.PrepTime),
-            PaidAp = s.ApCost,
+            PaidAp = ap,
         };
         foreach (var rc in s.ResourceCosts)
         {
@@ -197,8 +201,8 @@ public sealed class SkillSystem
         cast.VisibleToPlayer = _sim.IsPlayerFaction(u.FactionId) || _sim.Vision.IsVisibleToPlayer(u) || _sim.Options.AdminMode;
         _sim.Knowledge.OnSkillUsed(u, s);
         u.Casting = cast;
-        if (s.ApCost > 0)
-            _sim.Emit(SimEventType.ApSpent, LogLevel.Detail, $"{u.Name}: −{s.ApCost:0.#} ОД ({s.DisplayName})", u.Id, value: s.ApCost);
+        if (ap > 0)
+            _sim.Emit(SimEventType.ApSpent, LogLevel.Detail, $"{u.Name}: −{ap:0.#} ОД ({s.DisplayName}{(source == DamageSource.AutoAttack ? ", автоатака" : "")})", u.Id, value: ap);
         _sim.Emit(SimEventType.CastStarted, s.PrepTime > 0 ? LogLevel.Normal : LogLevel.Detail,
             s.PrepTime > 0 ? $"{u.Name} готовит «{s.DisplayName}» ({s.PrepTime:0.##} с)" : $"{u.Name}: «{s.DisplayName}»", u.Id, targetUnitId, check.Anchor);
         return cast;

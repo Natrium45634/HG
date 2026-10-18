@@ -159,6 +159,8 @@ public sealed class UnitDef : Def
     [Ed("Навыки", Group = "Навыки"), EdRef(DefCategory.Skill)] public List<string> Skills { get; set; } = new();
     [Ed("Пассивные способности", Group = "Навыки"), EdRef(DefCategory.Passive)] public List<string> Passives { get; set; } = new();
     [Ed("Стартовые состояния", Group = "Навыки")] public List<StartingStatusDef> StartingStatuses { get; set; } = new();
+    [Ed("Автоатаки", "Атакуют сами через общую систему боя: навык, дальность, цели, интервал, правила выбора", Group = "Навыки")]
+    public List<AutoAttackDef> AutoAttacks { get; set; } = new();
 
     [Ed("Профиль ИИ", Group = "Поведение"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "aggressive";
 

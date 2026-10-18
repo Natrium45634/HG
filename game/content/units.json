@@ -52,6 +52,32 @@
       "skills": ["shield_bash", "cleave", "war_cry", "demolish"],
       "passives": ["counter", "vigilant"],
       "startingStatuses": [],
+      "autoAttacks": [
+        {
+          "enabled": true,
+          "skill": "",
+          "range": 0,
+          "areaSize": 0,
+          "targets": { "enemies": true, "allies": false, "neutrals": false, "self": false },
+          "targetLayers": [],
+          "requireDetection": true,
+          "requireLoS": true,
+          "apCost": -1,
+          "interval": 1.8,
+          "selection": "Sequential",
+          "rules": [
+            { "rule": "BlockedByMe", "tag": "", "weight": 1 },
+            { "rule": "CurrentTarget", "tag": "", "weight": 1 },
+            { "rule": "Nearest", "tag": "", "weight": 1 }
+          ],
+          "randomTies": false,
+          "whileMoving": false,
+          "whenBlocking": true,
+          "whenBlocked": true,
+          "stopWhen": [{ "when": "PlayerCommand", "hpFraction": 0.25, "status": "" }],
+          "onShortage": "Skip"
+        }
+      ],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -138,6 +164,31 @@
       "skills": ["net", "smoke_bomb", "sneak", "set_trap"],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [
+        {
+          "enabled": true,
+          "skill": "",
+          "range": 0,
+          "areaSize": 0,
+          "targets": { "enemies": true, "allies": false, "neutrals": false, "self": false },
+          "targetLayers": [],
+          "requireDetection": true,
+          "requireLoS": true,
+          "apCost": -1,
+          "interval": 1.6,
+          "selection": "Sequential",
+          "rules": [
+            { "rule": "LowestHpFraction", "tag": "", "weight": 1 },
+            { "rule": "Nearest", "tag": "", "weight": 1 }
+          ],
+          "randomTies": false,
+          "whileMoving": false,
+          "whenBlocking": true,
+          "whenBlocked": true,
+          "stopWhen": [{ "when": "PlayerCommand", "hpFraction": 0.25, "status": "" }],
+          "onShortage": "Skip"
+        }
+      ],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -210,6 +261,7 @@
       "skills": ["fireball", "frost_cone", "chain_lightning", "meteor", "water_wave", "spark"],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -282,6 +334,7 @@
       "skills": ["heal", "consecrate", "blinding_flash", "barrier", "grav_lift", "aegis"],
       "passives": ["second_wind"],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -365,6 +418,7 @@
       "skills": ["charge", "torch", "poison_cloud", "sneak"],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -437,6 +491,7 @@
       "skills": [],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -509,6 +564,28 @@
       "skills": [],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [
+        {
+          "enabled": true,
+          "skill": "",
+          "range": 0,
+          "areaSize": 0,
+          "targets": { "enemies": true, "allies": false, "neutrals": false, "self": false },
+          "targetLayers": [],
+          "requireDetection": true,
+          "requireLoS": true,
+          "apCost": -1,
+          "interval": 2,
+          "selection": "Sequential",
+          "rules": [{ "rule": "Boss", "tag": "", "weight": 1 }, { "rule": "LowestHp", "tag": "", "weight": 1 }],
+          "randomTies": false,
+          "whileMoving": false,
+          "whenBlocking": true,
+          "whenBlocked": true,
+          "stopWhen": [{ "when": "PlayerCommand", "hpFraction": 0.25, "status": "" }],
+          "onShortage": "Skip"
+        }
+      ],
       "aiProfile": "ranged",
       "perception": {
         "model": "Single",
@@ -599,6 +676,7 @@
       "skills": ["quake", "cleave"],
       "passives": ["thick_hide"],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "aggressive",
       "perception": {
         "model": "Single",
@@ -671,6 +749,7 @@
       "skills": ["heal", "poison_cloud", "spark", "curse_ground", "dominate"],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "support",
       "perception": {
         "model": "Single",
@@ -743,6 +822,7 @@
       "skills": [],
       "passives": ["pack_howl"],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "pursuer",
       "perception": {
         "model": "Single",
@@ -828,6 +908,28 @@
       "skills": ["shield_bash"],
       "passives": ["thorns"],
       "startingStatuses": [],
+      "autoAttacks": [
+        {
+          "enabled": true,
+          "skill": "",
+          "range": 0,
+          "areaSize": 0,
+          "targets": { "enemies": true, "allies": false, "neutrals": false, "self": false },
+          "targetLayers": [],
+          "requireDetection": true,
+          "requireLoS": true,
+          "apCost": -1,
+          "interval": 2,
+          "selection": "Sequential",
+          "rules": [{ "rule": "BlockingMe", "tag": "", "weight": 1 }, { "rule": "Nearest", "tag": "", "weight": 1 }],
+          "randomTies": false,
+          "whileMoving": false,
+          "whenBlocking": true,
+          "whenBlocked": true,
+          "stopWhen": [{ "when": "PlayerCommand", "hpFraction": 0.25, "status": "" }],
+          "onShortage": "Skip"
+        }
+      ],
       "aiProfile": "hold",
       "perception": {
         "model": "Multiple",
@@ -900,6 +1002,7 @@
       "skills": [],
       "passives": ["regrowth"],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "skittish",
       "perception": {
         "model": "Single",
@@ -990,6 +1093,7 @@
       "skills": [],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "hunter",
       "perception": {
         "model": "None",
@@ -1062,6 +1166,7 @@
       "skills": [],
       "passives": [],
       "startingStatuses": [],
+      "autoAttacks": [],
       "aiProfile": "hunter",
       "perception": {
         "model": "Omni",

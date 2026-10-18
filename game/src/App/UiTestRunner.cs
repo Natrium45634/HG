@@ -46,6 +46,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_blocking_display", BattleBlockingDisplay));
         _tests.Add(("battle_shield_and_damage", BattleShieldAndDamage));
         _tests.Add(("editor_element_inheritance", EditorElementInheritance));
+        _tests.Add(("battle_autoattack_panel_toggle", BattleAutoAttackPanel));
         _ = Run();
     }
 
@@ -504,5 +505,24 @@ public partial class UiTestRunner : Node
         await Frames(6);
         Check(LabelVisible("унаследовано от «Вода»"), "редактор должен показать поле, унаследованное ледом от воды");
         Check(LabelVisible("задано здесь"), "редактор должен отличать собственные поля");
+    }
+
+    /// <summary>The archer auto-attacks a goblin in range; the panel shows it and the toggle turns it off.</summary>
+    private async Task BattleAutoAttackPanel()
+    {
+        var bs = await OpenBattle("checkpoint_hold");
+        var archer = bs.Sim.Units.First(u => u.Def.Id == "archer");
+        var goblin = bs.Sim.Units.First(u => u.Def.Id == "goblin");
+        Teleport(bs, goblin, archer.Pos + new HexCoord(3, 0));
+        for (int i = 0; i < 60 && bs.Sim.AutoAttacks.StatesOf(archer).Sum(s => s.Fired) == 0; i++) bs.Sim.Step();
+        Check(bs.Sim.AutoAttacks.StatesOf(archer).Sum(s => s.Fired) > 0, "лучник должен атаковать автоматически");
+        bs.Select(archer);
+        await Frames(15);
+        Check(LabelVisible("Автоатака"), "панель юнита должна показывать автоатаку");
+        await ClickButton("Автоатака: вкл");
+        Check(bs.Sim.AutoAttacks.DisabledUnits.Contains(archer.Id), "кнопка должна выключать автоатаки юнита");
+        int fired = bs.Sim.AutoAttacks.StatesOf(archer).Sum(s => s.Fired);
+        for (int i = 0; i < 80; i++) bs.Sim.Step();
+        Check(bs.Sim.AutoAttacks.StatesOf(archer).Sum(s => s.Fired) == fired, "выключенная автоатака не должна срабатывать");
     }
 }

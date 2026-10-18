@@ -71,6 +71,7 @@ public sealed class Simulation
         Vision = new VisionSystem(this);
         Reactions = new ReactionSystem(this);
         Ai = new AiSystem(this);
+        AutoAttacks = new AutoAttackSystem(this);
         Scenario = new ScenarioSystem(this);
         Planner = new Planner(this);
 
@@ -112,6 +113,8 @@ public sealed class Simulation
     public VisionSystem Vision { get; }
     public ReactionSystem Reactions { get; }
     public AiSystem Ai { get; }
+    /// <summary>Auto-attacks of allies and enemies (docs/DECISIONS_2.md §28).</summary>
+    public AutoAttackSystem AutoAttacks { get; }
     public ScenarioSystem Scenario { get; }
     public Planner Planner { get; }
 
@@ -396,6 +399,9 @@ public sealed class Simulation
         t = p.Begin();
         Ai.Update();
         p.End("ИИ", t);
+        t = p.Begin();
+        AutoAttacks.Update();
+        p.End("Автоатаки", t);
         t = p.Begin();
         UpdateUnits();
         p.End("Юниты/состояния", t);

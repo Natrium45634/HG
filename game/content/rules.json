@@ -226,6 +226,7 @@
       "overhealShieldDuration": 8,
       "adminBreakdown": true
     },
+    "autoAttacks": { "enabled": true, "playerUnits": true, "aiUnits": true, "protectedTag": "protected", "bossTag": "boss" },
     "vision": {
       "updateInterval": 0.25,
       "fogOfWar": true,

@@ -265,6 +265,8 @@ public sealed class CommandSystem
             }
 
             if (u.BusyUntil > _sim.Tick) continue;
+            // An auto-attack in preparation holds the queue until it is released (docs/DECISIONS_2.md §28).
+            if (u.Casting != null && !u.Casting.Released && u.Casting.Source == DamageSource.AutoAttack) continue;
             // Several instantaneous commands may complete in one tick; cap the loop for safety.
             for (int guard = 0; guard < 8; guard++)
             {
@@ -539,6 +541,9 @@ public sealed class CommandSystem
         ClearWait(cmd);
         return u.Facing == target && u.BusyUntil <= _sim.Tick ? Result.Done : Result.Continue;
     }
+
+    /// <summary>One turning step by the common turn rules (used by auto-attacks to face their target).</summary>
+    internal bool TurnStep(Unit u, HexDirection target) => TurnOneStep(u, target, null);
 
     /// <summary>Turns one 60° step towards the target direction (AP + time). False if not enough AP.</summary>
     private bool TurnOneStep(Unit u, HexDirection target, Command? cmd)

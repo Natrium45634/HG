@@ -179,7 +179,7 @@ HG/
 | `Sim/KnowledgeSystem` | что игрок знает о врагах | `InfoDisclosureTests` |
 | `CombatSystem.SectorFor`, `VisionSystem.InZone` | модели взгляда, зоны обнаружения | `FacingModelTests` |
 | `Sim/DamagePipeline`, `Content/DamageTaxonomy` | единый расчёт урона, щиты, поглощение, отражение; иерархия типов и элементов | `ResistanceTests`, `DamageMechanicsTests`, `ElementTests` |
-| `Sim/AutoAttackSystem` | автоатаки | `AutoAttackTests` |
+| `Sim/AutoAttackSystem` | автоатаки (9 шагов, общий путь навыка и конвейер урона) | `AutoAttackTests` |
 | `Sim/Objectives`, `Sim/Conditions`, `Sim/SpawnWarnings` | цели сценария, дерево условий, маркеры появления | `ObjectiveTests`, `SpawnMarkerTests` |
 | `Content/Library`, `Content/Packages` | версии, история, надёжная запись, пакеты `.hexpack` | `LibraryTests`, `PackageTests` |
 | `Content/AssetValidator` | проверка импортируемых ресурсов | `AssetTests` |

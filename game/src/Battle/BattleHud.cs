@@ -43,6 +43,8 @@ public partial class BattleHud : Control
     private HFlowContainer _stackStrip = null!;
     private string _stackKey = "";
     private Label _blockInfo = null!;
+    private Label _autoInfo = null!;
+    private Button _autoToggle = null!;
     private VBoxContainer _intel = null!;
 
     private PanelContainer _actionPanel = null!;
@@ -207,6 +209,12 @@ public partial class BattleHud : Control
         _unitBox.AddChild(_current);
         _blockInfo = Ui.Label("", 13, new Color(1f, 0.7f, 0.4f), wrap: true);
         _unitBox.AddChild(_blockInfo);
+        var autoRow = Ui.HBox(6);
+        _autoInfo = Ui.Label("", 12, new Color(0.75f, 0.9f, 1f), wrap: true).Expand();
+        _autoToggle = Ui.Button("Автоатака: вкл", ToggleAutoAttack, "Включить/выключить автоатаки выбранного юнита");
+        autoRow.AddChild(_autoInfo);
+        autoRow.AddChild(_autoToggle);
+        _unitBox.AddChild(autoRow);
         _unitBox.AddChild(_aiInfo);
         _intel = Ui.VBox(2);
         _unitBox.AddChild(_intel);
@@ -659,6 +667,35 @@ public partial class BattleHud : Control
         }
     }
 
+    private void ToggleAutoAttack()
+    {
+        var u = _bs.Selected;
+        if (u == null) return;
+        var off = Sim.AutoAttacks.DisabledUnits;
+        if (!off.Remove(u.Id)) off.Add(u.Id);
+        ShowBanner(off.Contains(u.Id) ? $"{u.Name}: автоатаки выключены" : $"{u.Name}: автоатаки включены", Ui.TextDim, 1.5f);
+    }
+
+    /// <summary>"Автоатака «Выстрел»: атакует Гоблин" / "нет целей в зоне" / "нет свободных ОД".</summary>
+    private void RefreshAutoAttack(Unit u)
+    {
+        bool has = u.Def.AutoAttacks.Count > 0 && u.Alive;
+        _autoInfo.GetParent<Control>().Visible = has;
+        if (!has) return;
+        bool off = Sim.AutoAttacks.DisabledUnits.Contains(u.Id) || !Sim.Rules.AutoAttacks.Enabled;
+        var states = Sim.AutoAttacks.StatesOf(u);
+        var parts = new List<string>();
+        for (int i = 0; i < u.Def.AutoAttacks.Count; i++)
+        {
+            var name = Sim.AutoAttacks.SkillOf(u, i)?.DisplayName ?? "—";
+            var st = i < states.Count ? states[i].Status : "";
+            parts.Add($"«{name}»" + (st.Length > 0 ? $": {st}" : ""));
+        }
+        _autoInfo.Text = "Автоатака " + (off ? "(выкл.) " : "") + string.Join("; ", parts);
+        _autoToggle.Text = off ? "Автоатака: выкл" : "Автоатака: вкл";
+        _autoToggle.Visible = Sim.CanPlayerCommand(u);
+    }
+
     private string BlockLine(Unit u)
     {
         var bl = Sim.Blocking;
@@ -691,6 +728,7 @@ public partial class BattleHud : Control
             _blockInfo.Visible = _blockInfo.Text.Length > 0;
         }
         bool intel = !Sim.Knowledge.IsFullyKnown(u);
+        if (intel) _autoInfo.GetParent<Control>().Visible = false;
         _statsBtn.Visible = !intel;
         _intel.Visible = intel;
         if (intel)
@@ -701,6 +739,7 @@ public partial class BattleHud : Control
         }
         _hp.Visible = _ap.Visible = _apInfo.Visible = true;
         _resources.Visible = _statuses.Visible = _current.Visible = true;
+        if (slow) RefreshAutoAttack(u);
         var faction = _bs.Db.Faction(u.FactionId);
         var fcol = Ui.Parse(faction?.Color, Ui.Text);
         _unitName.Text = $"{ShapeGlyph(faction?.Shape ?? FactionShape.Circle)} {u.Name}" + (u.Alive ? "" : " (погиб)");
