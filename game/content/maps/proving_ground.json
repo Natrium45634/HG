@@ -1,12 +1,16 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "map",
   "map": {
     "id": "proving_ground",
     "name": "Полигон",
     "description": "Все типы местности для экспериментов с навыками и синергиями",
     "tags": [],
+    "group": "",
+    "version": 1,
     "rules": { "darkness": 0, "notes": "" },
+    "templateId": "",
+    "templateVersion": 0,
     "cells": [
       { "c": [0, 0], "t": "dirt", "h": 0 },
       { "c": [1, 0], "t": "dirt", "h": 0 },
@@ -152,6 +156,7 @@
     "markers": [
       { "id": "start", "type": "PlayerStart", "c": [1, 4], "label": "Старт", "radius": 1 },
       { "id": "spawn", "type": "EnemySpawn", "c": [12, 6], "label": "Мишени", "radius": 1 }
-    ]
+    ],
+    "routes": []
   }
 }

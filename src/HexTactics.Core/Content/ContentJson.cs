@@ -9,7 +9,7 @@ namespace HexTactics.Core.Content;
 /// <summary>Shared JSON settings for all content files.</summary>
 public static class ContentJson
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     public static readonly JsonSerializerOptions Options = CreateOptions();
 

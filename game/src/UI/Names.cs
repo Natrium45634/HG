@@ -64,15 +64,15 @@ public static class Names
         ["CommandStatus.Done"] = "выполнено", ["CommandStatus.Skipped"] = "пропущено", ["CommandStatus.Failed"] = "не выполнено", ["CommandStatus.Cancelled"] = "отменено",
     };
 
-    public static string Of(Enum e)
-    {
-        var key = e.GetType().Name + "." + e;
-        return Map.TryGetValue(key, out var v) ? v : e.ToString();
-    }
+    public static string Of(Enum e) => Of(e.GetType(), e.ToString());
 
+    /// <summary>Display name: the table above, else the [Ed] label on the enum member (core enums are self-describing).</summary>
     public static string Of(Type enumType, string member)
     {
         var key = enumType.Name + "." + member;
-        return Map.TryGetValue(key, out var v) ? v : member;
+        if (Map.TryGetValue(key, out var v)) return v;
+        var field = enumType.GetField(member);
+        if (field != null && Attribute.GetCustomAttribute(field, typeof(HexTactics.Core.Content.EdAttribute)) is HexTactics.Core.Content.EdAttribute ed) return ed.Label;
+        return member;
     }
 }

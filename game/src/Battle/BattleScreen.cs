@@ -99,12 +99,13 @@ public partial class BattleScreen : Node
         layer.AddChild(_hud);
         AddChild(layer);
 
+        Board.Rig.InsetsProvider = _hud.WorkInsets;
+        Board.Rig.RefitRequested += FitMap;
         var first = Sim.Units.FirstOrDefault(u => Sim.CanPlayerCommand(u));
-        if (first != null)
-        {
-            Select(first);
-            Board.Rig.FocusOn(Board.UnitPos(first));
-        }
+        if (first != null) Select(first);
+        // The HUD gets its final layout after a couple of frames; fit the camera then.
+        _initialCameraFrames = 3;
+        _initialCameraUnit = first;
         _diag = _admin;
 
         if (Main.Instance.Args.TryGetValue("run", out var run) && double.TryParse(run, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var secs))
@@ -331,6 +332,7 @@ public partial class BattleScreen : Node
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+        if (_initialCameraFrames > 0 && --_initialCameraFrames == 0) InitialCamera(_initialCameraUnit);
         Driver.Advance(delta);
         foreach (var e in Sim.DrainEvents()) OnSimEvent(e);
 
@@ -928,6 +930,30 @@ public partial class BattleScreen : Node
         }
     }
 
+    private int _initialCameraFrames;
+    private Unit? _initialCameraUnit;
+
+    /// <summary>«Вписать карту в экран» (V / button).</summary>
+    public void FitMap() => Board.FitCamera();
+
+    /// <summary>
+    /// Whole map in view when its hexes stay comfortably large; otherwise the standard zoom
+    /// centred on the first unit (big maps). Runs after the HUD has its layout.
+    /// </summary>
+    private void InitialCamera(Unit? first)
+    {
+        Board.FitCamera(immediate: true);
+        var rig = Board.Rig;
+        var vp = GetViewport().GetVisibleRect().Size;
+        float hexPx = HexTactics.Core.Geometry.CameraFit.HexWidthPx(new System.Numerics.Vector3(rig.Pivot.X, 0, rig.Pivot.Z), rig.Distance, rig.TiltDeg, rig.YawDeg,
+            rig.Camera.Fov, vp.X, vp.Y);
+        if (hexPx < 48 * vp.Y / 1080f && first != null)
+        {
+            rig.ResetStandardZoom();
+            rig.FocusOn(Board.UnitPos(first));
+        }
+    }
+
     private bool OnKey(InputEventKey k)
     {
         var u = Selected;
@@ -985,6 +1011,13 @@ public partial class BattleScreen : Node
                 return true;
             case Key.Home:
                 if (u != null) Board.Rig.FocusOn(Board.UnitPos(u));
+                return true;
+            case Key.V:
+                FitMap();
+                return true;
+            case Key.Key0 when k.CtrlPressed:
+            case Key.Kp0 when k.CtrlPressed:
+                Board.Rig.ResetStandardZoom();
                 return true;
             case Key.Backspace:
                 if (u != null && u.Queue.Count > 0 && Sim.CanPlayerCommand(u))

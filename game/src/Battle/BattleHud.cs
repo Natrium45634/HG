@@ -100,6 +100,25 @@ public partial class BattleHud : Control
         OnSelectionChanged();
     }
 
+    /// <summary>Screen area covered by the HUD (top bar, action bar, side panels) for camera fitting.</summary>
+    public HexTactics.Core.Geometry.ScreenInsets WorkInsets()
+    {
+        var size = Size;
+        if (size.X < 10 || size.Y < 10) return HexTactics.Core.Geometry.ScreenInsets.BattleHud(1920, 1080);
+        float top = _topBar != null && _topBar.Visible ? _topBar.GetGlobalRect().End.Y : 0;
+        float bottom = _actionPanel != null && _actionPanel.Visible ? size.Y - _actionPanel.GetGlobalRect().Position.Y : 0;
+        float left = _unitPanel != null && _unitPanel.Visible ? _unitPanel.GetGlobalRect().End.X : 0;
+        float right = _queuePanel != null && _queuePanel.Visible ? size.X - _queuePanel.GetGlobalRect().Position.X : 0;
+        // Side panels only cover the upper part of the screen; never let them squeeze the board below half the width.
+        if (left + right > size.X * 0.5f) left = right = size.X * 0.25f;
+        var formula = HexTactics.Core.Geometry.ScreenInsets.BattleHud(size.X, size.Y);
+        if (top <= 0 || top > size.Y * 0.25f) top = formula.Top;
+        if (bottom <= 0 || bottom > size.Y * 0.4f) bottom = formula.Bottom;
+        return new HexTactics.Core.Geometry.ScreenInsets(Math.Max(0, left), Math.Max(0, top), Math.Max(0, right), Math.Max(0, bottom));
+    }
+
+    private PanelContainer? _topBar;
+
     private T Track<T>(T c) where T : Control
     {
         _panels.Add(c);
@@ -139,15 +158,17 @@ public partial class BattleHud : Control
         bar.AddChild(_time);
         _status = Ui.Label("", 14, Ui.TextDim).MinSize(160);
         bar.AddChild(_status);
+        bar.AddChild(Ui.Button("⤢", () => _bs.FitMap(), "Вписать карту в экран (V)", 38));
+        bar.AddChild(Ui.Button("1:1", () => _bs.Board.Rig.ResetStandardZoom(), "Стандартный масштаб (Ctrl+0)", 44));
         bar.AddChild(Ui.Button("Журнал", ToggleLog, "Показать/скрыть журнал (L)"));
         bar.AddChild(Ui.Button("?", ToggleHelp, "Справка (F1)", 34));
         bar.AddChild(Ui.Button("Меню", ToggleMenu, "Меню (Esc)"));
         var panel = Track(Ui.PanelBox(bar, null, 6));
-        panel.SetAnchorsPreset(LayoutPreset.CenterTop);
-        panel.GrowHorizontal = GrowDirection.Both;
-        panel.Position = new Vector2(0, 8);
+        _topBar = panel;
         AddChild(panel);
-        panel.Resized += () => panel.Position = new Vector2((Size.X - panel.Size.X) / 2, 8);
+        panel.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterTop, LayoutPresetMode.Minsize);
+        panel.GrowHorizontal = GrowDirection.Both;
+        panel.OffsetTop = 8;
     }
 
     private void BuildUnitPanel()
@@ -316,6 +337,7 @@ public partial class BattleHud : Control
             "ПКМ — быстрое движение / атака по врагу · ПКМ/Esc — выйти из режима",
             "Shift при клике — заменить очередь вместо добавления (или наоборот, см. переключатель)",
             "Камера: WASD/стрелки, средняя кнопка мыши, край экрана · колесо/PgUp/PgDn — зум · Q/E — поворот",
+            "V — вписать карту в экран · Ctrl+0 — стандартный масштаб",
             "I — характеристики · L — журнал · F3 — диагностика · Home — к выбранному юниту",
             "",
             "Обозначения: синяя линия — запланированный маршрут; жёлтая — предпросмотр пути;",

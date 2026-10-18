@@ -48,6 +48,14 @@ public static class HexLayout
         return deg;
     }
 
+    /// <summary>Axial → "odd-r" offset coordinates (column, row): rows are horizontal, odd rows shifted right.</summary>
+    public static (int Col, int Row) ToOffset(HexCoord h) => (h.Q + FloorDiv2(h.R), h.R);
+
+    /// <summary>"Odd-r" offset (column, row) → axial.</summary>
+    public static HexCoord FromOffset(int col, int row) => new(col - FloorDiv2(row), row);
+
+    private static int FloorDiv2(int v) => v >= 0 ? v / 2 : -((-v + 1) / 2);
+
     public static HexDirection DirectionFromAngle(double deg)
     {
         int idx = (int)Math.Floor(deg / 60.0 + 0.5);

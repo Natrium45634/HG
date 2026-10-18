@@ -71,6 +71,13 @@ public sealed class DefTable
         _items.Clear();
         _byId.Clear();
     }
+
+    /// <summary>Rebuilds the id index after an id was edited in place (first item wins on duplicates).</summary>
+    public void Reindex()
+    {
+        _byId.Clear();
+        foreach (var d in _items) _byId.TryAdd(d.Id, d);
+    }
 }
 
 /// <summary>
@@ -93,8 +100,21 @@ public sealed class ContentDatabase
         (DefCategory.Passive, typeof(PassiveDef), "passives.json"),
         (DefCategory.AiProfile, typeof(AiProfileDef), "ai_profiles.json"),
         (DefCategory.Unit, typeof(UnitDef), "units.json"),
+        (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),
         (DefCategory.Map, typeof(MapDef), "maps"),
         (DefCategory.Scenario, typeof(ScenarioDef), "scenarios"),
+    };
+
+    /// <summary>Categories stored as one file per definition in a folder (maps, templates, scenarios).</summary>
+    public static bool IsFolderCategory(DefCategory c) => !FileOf(c).EndsWith(".json", StringComparison.Ordinal);
+
+    /// <summary>JSON "kind" (and wrapper key) of a single-definition file of a folder category.</summary>
+    public static string SingleKind(DefCategory c) => c switch
+    {
+        DefCategory.Map => "map",
+        DefCategory.Scenario => "scenario",
+        DefCategory.MapTemplate => "map_template",
+        _ => c.ToString().ToLowerInvariant(),
     };
 
     private readonly Dictionary<DefCategory, DefTable> _tables = new();

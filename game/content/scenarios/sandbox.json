@@ -1,11 +1,13 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "scenario",
   "scenario": {
     "id": "sandbox",
     "name": "Полигон (песочница)",
     "description": "Без победы и поражения: проверка навыков, эффектов клеток и синергий.",
     "tags": [],
+    "group": "",
+    "version": 1,
     "map": "proving_ground",
     "seed": 1,
     "intro": "Песочница: мишени не атакуют. Попробуйте огонь по ядовитому облаку и искру по воде.",

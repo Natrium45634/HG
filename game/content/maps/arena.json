@@ -1,12 +1,16 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "map",
   "map": {
     "id": "arena",
     "name": "Арена",
     "description": "Круглая арена с колоннами, бассейнами и помостом",
     "tags": [],
+    "group": "",
+    "version": 1,
     "rules": { "darkness": 0, "notes": "" },
+    "templateId": "",
+    "templateVersion": 0,
     "cells": [
       { "c": [0, 0], "t": "stone", "h": 1 },
       { "c": [-1, 1], "t": "stone", "h": 1 },
@@ -181,6 +185,7 @@
     "markers": [
       { "id": "west", "type": "PlayerStart", "c": [-6, 3], "label": "Запад", "radius": 2 },
       { "id": "east", "type": "EnemySpawn", "c": [6, -3], "label": "Восток", "radius": 2 }
-    ]
+    ],
+    "routes": []
   }
 }

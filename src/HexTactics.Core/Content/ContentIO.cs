@@ -38,12 +38,8 @@ public static class ContentIO
 {
     public const string RulesFile = "rules.json";
 
-    public static string KindOf(DefCategory c) => c switch
-    {
-        DefCategory.Map => "map",
-        DefCategory.Scenario => "scenario",
-        _ => ContentDatabase.FileOf(c).Replace(".json", ""),
-    };
+    public static string KindOf(DefCategory c) =>
+        ContentDatabase.IsFolderCategory(c) ? ContentDatabase.SingleKind(c) : ContentDatabase.FileOf(c).Replace(".json", "");
 
     public static ContentLoadResult Load(IContentStorage storage, bool validate = true)
     {
@@ -75,9 +71,9 @@ public static class ContentIO
 
         foreach (var (cat, type, file) in ContentDatabase.Layout)
         {
-            if (cat == DefCategory.Map || cat == DefCategory.Scenario)
+            if (ContentDatabase.IsFolderCategory(cat))
             {
-                string single = cat == DefCategory.Map ? "map" : "scenario";
+                string single = ContentDatabase.SingleKind(cat);
                 foreach (var name in storage.ListFiles(file, ".json"))
                 {
                     var rel = file + "/" + name;
@@ -209,7 +205,7 @@ public static class ContentIO
 
     public static string SerializeSingle(Def d)
     {
-        string kind = d.Category == DefCategory.Map ? "map" : "scenario";
+        string kind = ContentDatabase.SingleKind(d.Category);
         var root = new JsonObject
         {
             ["formatVersion"] = ContentJson.CurrentFormatVersion,
@@ -229,7 +225,7 @@ public static class ContentIO
         var plan = new Dictionary<string, string>(StringComparer.Ordinal) { [RulesFile] = SerializeRules(db.Rules) };
         foreach (var (cat, _, file) in ContentDatabase.Layout)
         {
-            if (cat == DefCategory.Map || cat == DefCategory.Scenario)
+            if (ContentDatabase.IsFolderCategory(cat))
             {
                 foreach (var d in db.Table(cat).Items) plan[file + "/" + SafeFileName(d.Id) + ".json"] = SerializeSingle(d);
                 continue;
@@ -238,7 +234,7 @@ public static class ContentIO
         }
 
         var toDelete = new List<string>();
-        foreach (var dir in new[] { "maps", "scenarios" })
+        foreach (var dir in ContentDatabase.Layout.Where(l => ContentDatabase.IsFolderCategory(l.Category)).Select(l => l.File))
         foreach (var name in storage.ListFiles(dir, ".json"))
         {
             var rel = dir + "/" + name;

@@ -97,6 +97,7 @@ public static class ContentValidator
         DefCategory.Map => "карта",
         DefCategory.Scenario => "сценарий",
         DefCategory.MoveCategory => "категория движения",
+        DefCategory.MapTemplate => "шаблон карты",
         _ => c.ToString(),
     };
 

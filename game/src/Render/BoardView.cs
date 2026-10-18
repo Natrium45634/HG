@@ -123,6 +123,15 @@ public partial class BoardView : Node3D
         FrameCamera();
     }
 
+    /// <summary>Fits the whole board into the free screen area (core CameraFit).</summary>
+    public void FitCamera(bool immediate = false)
+    {
+        if (_map == null || _map.Count == 0) return;
+        var cells = new List<(HexTactics.Core.Hex.HexCoord, float, float)>();
+        foreach (var c in _map.Cells) cells.Add((c.Coord, Math.Max(Board.SurfaceY(c), Board.TopY(c)), Terrain.BaseY));
+        Rig.FitPoints(HexTactics.Core.Geometry.CameraFit.BoardPoints(cells), immediate);
+    }
+
     public void FrameCamera(bool fitAll = false)
     {
         if (_map == null || _map.Count == 0) return;
@@ -136,6 +145,7 @@ public partial class BoardView : Node3D
             maxZ = Math.Max(maxZ, p.Z);
         }
         Rig.Frame(new Rect2(minX, minZ, maxX - minX, maxZ - minZ), fitAll || Embedded);
+        FitCamera(immediate: true);
     }
 
     public void RebuildTerrain()
@@ -271,6 +281,7 @@ public partial class BoardView : Node3D
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+        Overlay.WidthScale = Math.Clamp(Rig.Distance / Math.Max(1f, Rig.StandardDistance), 1f, 3f);
         for (int i = _floating.Count - 1; i >= 0; i--)
         {
             var (l, age, life) = _floating[i];

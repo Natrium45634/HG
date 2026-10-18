@@ -38,6 +38,9 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_skill_mask_click", EditorSkillMaskClick));
         _tests.Add(("editor_map_paint", EditorMapPaint));
         _tests.Add(("editor_create_delete", EditorCreateDelete));
+        _tests.Add(("editor_new_map_standard_template", EditorNewMapStandard));
+        _tests.Add(("editor_save_map_as_template", EditorSaveAsTemplate));
+        _tests.Add(("battle_fit_map_to_screen", BattleFitMap));
         _ = Run();
     }
 
@@ -312,5 +315,62 @@ public partial class UiTestRunner : Node
         dlg2!.EmitSignal(AcceptDialog.SignalName.Canceled);
         await Frames(2);
         Check(db.Exists(DefCategory.Status, "poison"), "отмена удалила объект");
+    }
+
+    // ------------------------------------------------------------------ part 2
+
+    private async Task EditorNewMapStandard()
+    {
+        await OpenEditor("maps");
+        var db = Main.Instance.Content.Draft!;
+        int before = db.Table(DefCategory.Map).Count;
+        await ClickButton("Создать");
+        Check(db.Table(DefCategory.Map).Count == before + 1, "«Создать» не добавил карту");
+        var panel = Find<MapEditorPanel>(GetTree().Root).First();
+        var map = (MapDef)panel.Current!;
+        Check(map.TemplateId == MapTemplates.StandardId, $"новая карта не из стандартного шаблона ({map.TemplateId})");
+        Check(map.Cells.Count == 80, $"стандартная карта должна иметь 80 клеток, а не {map.Cells.Count}");
+    }
+
+    private async Task EditorSaveAsTemplate()
+    {
+        await OpenEditor("maps");
+        var db = Main.Instance.Content.Draft!;
+        var panel = Find<MapEditorPanel>(GetTree().Root).First();
+        panel.Select("arena");
+        await Frames(6);
+        int before = db.Table(DefCategory.MapTemplate).Count;
+        await ClickButton("Сохранить как шаблон");
+        var dlg = Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible);
+        Check(dlg != null, "нет диалога «Сохранить как шаблон»");
+        dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        await Frames(3);
+        Check(db.Table(DefCategory.MapTemplate).Count == before + 1, "шаблон не добавлен");
+        var t = db.All<MapTemplateDef>().Last();
+        Check(t.Cells.Count == db.Get<MapDef>("arena")!.Cells.Count, "в шаблоне другая форма");
+        Check(!t.BuiltIn && t.Group == MapTemplates.UserGroup, "шаблон не пользовательский");
+        foreach (var info in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) info.EmitSignal(AcceptDialog.SignalName.Confirmed);
+    }
+
+    private async Task BattleFitMap()
+    {
+        var bs = await OpenBattle("arena_duel");
+        await Frames(10);
+        var rig = bs.Board.Rig;
+        for (int i = 0; i < 4; i++) await Key(Godot.Key.Pageup);
+        await Frames(30);
+        float zoomed = rig.Distance;
+        await Key(Godot.Key.V);
+        await Frames(60);
+        Check(rig.AutoFit, "V не включил вписывание");
+        Check(rig.Distance > zoomed * 1.2f, $"после V камера не отдалилась ({zoomed:0.0} → {rig.Distance:0.0})");
+        var vp = GetViewport().GetVisibleRect().Size;
+        var ins = Find<BattleHud>(GetTree().Root).First().WorkInsets();
+        foreach (var c in bs.Sim.Map.Cells)
+        {
+            var p = rig.Camera.UnprojectPosition(Render.Board.Center(c.Coord, Render.Board.PickY(c)));
+            Check(p.X >= ins.Left - 4 && p.X <= vp.X - ins.Right + 4 && p.Y >= ins.Top - 4 && p.Y <= vp.Y - ins.Bottom + 4,
+                $"клетка {c.Coord} вне рабочей области: {p}, область {ins}");
+        }
     }
 }

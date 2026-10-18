@@ -64,20 +64,28 @@ public sealed class MapDef : Def
     [JsonIgnore] public override DefCategory Category => DefCategory.Map;
 
     [Ed("Правила карты")] public MapRulesDef Rules { get; set; } = new();
+    [Ed("Создана из шаблона", "Происхождение карты (шаблон не меняет карту автоматически)"), EdReadOnly] public string TemplateId { get; set; } = "";
+    [Ed("Версия шаблона", "Версия шаблона на момент создания/обновления"), EdReadOnly] public int TemplateVersion { get; set; }
     [EdHidden] public List<MapCellDef> Cells { get; set; } = new();
     [EdHidden] public List<MapMarkerDef> Markers { get; set; } = new();
+    [EdHidden] public List<MapRouteDef> Routes { get; set; } = new();
 
+    /// <summary>Rectangle of width columns × height rows ("odd-r": odd rows shifted half a hex right).</summary>
     public static MapDef CreateRectangle(string id, int width, int height, string terrain)
     {
         var map = new MapDef { Id = id, Name = id };
-        // "Odd-r" style rectangle in axial coordinates.
         for (int row = 0; row < height; row++)
-        {
-            int offset = row / 2;
-            for (int col = 0; col < width; col++)
-                map.Cells.Add(new MapCellDef { C = new HexCoord(col - offset, row), T = terrain });
-        }
+        for (int col = 0; col < width; col++)
+            map.Cells.Add(new MapCellDef { C = HexLayout.FromOffset(col, row), T = terrain });
         return map;
+    }
+
+    public MapRouteDef? FindRoute(string id)
+    {
+        foreach (var r in Routes)
+            if (r.Id == id)
+                return r;
+        return null;
     }
 
     public static MapDef CreateHexagon(string id, int radius, string terrain)

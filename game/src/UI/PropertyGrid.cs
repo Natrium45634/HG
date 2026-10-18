@@ -31,6 +31,12 @@ public partial class PropertyGrid : VBoxContainer
 
     public float LabelWidth { get; set; } = 210;
     public bool ReadOnly { get; set; }
+
+    /// <summary>
+    /// Returns true when the ID of a definition may no longer change (published objects:
+    /// docs/DECISIONS_2.md §31). Set by the editor context.
+    /// </summary>
+    public static Func<Def, bool>? IdLocked { get; set; }
     /// <summary>Properties to skip (by name) at the top level (edited by a custom tool).</summary>
     public HashSet<string> Skip { get; } = new();
 
@@ -234,7 +240,10 @@ public partial class PropertyGrid : VBoxContainer
         if (!string.IsNullOrEmpty(ed.Tip)) editor.TooltipText = ed.Tip;
         row.AddChild(editor);
         if (prop.GetCustomAttribute<EdFormulaAttribute>() is { } fa) AddFormulaHelpers(parent, owner, prop, fa, (LineEdit)editor);
-        if (ReadOnly) SetReadOnly(editor);
+        bool locked = prop.GetCustomAttribute<EdReadOnlyAttribute>() != null
+                      || (owner is Def def && prop.Name == nameof(Def.Id) && IdLocked?.Invoke(def) == true);
+        if (ReadOnly || locked) SetReadOnly(editor);
+        if (locked && prop.Name == nameof(Def.Id)) editor.TooltipText = "ID опубликованного объекта не меняется. Новый ID — через «Дублировать».";
         return row;
     }
 

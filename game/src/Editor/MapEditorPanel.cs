@@ -65,11 +65,11 @@ public partial class MapEditorPanel : DefListPanel
 
     protected override bool UseScroll => false;
 
+    /// <summary>«Создать» — the first template (standard 10 × 8); other templates: «Новая карта…».</summary>
     protected override Def CreateNew()
     {
-        var m = MapDef.CreateRectangle("new_map", 16, 12, Ctx.Db.Ids(DefCategory.Terrain).FirstOrDefault() ?? "grass");
-        m.Name = "Новая карта";
-        m.Id = "";
+        var t = MapTemplates.Ordered(Ctx.Db).FirstOrDefault() ?? MapTemplates.CreateBuiltIn(MapTemplates.StandardId, Ctx.Db)!;
+        var m = MapTemplates.CreateMap(t, "", Ctx.Db, "Новая карта");
         return m;
     }
 
@@ -128,7 +128,10 @@ public partial class MapEditorPanel : DefListPanel
         foreach (var n in Enum.GetNames(typeof(MarkerType))) _markerType.AddItem(Names.Of(typeof(MarkerType), n));
         opts.AddChild(_markerType);
         opts.AddChild(Ui.Spacer(8));
-        opts.AddChild(Ui.Button("Новая карта…", NewMapDialog));
+        opts.AddChild(Ui.Button("Новая карта…", NewMapDialog, "Из шаблона (стандарт 10 × 8 — первый) или произвольного размера"));
+        opts.AddChild(Ui.Button("Сохранить как шаблон…", SaveAsTemplateDialog, "Сохранить эту карту как шаблон с выбором частей"));
+        opts.AddChild(Ui.Button("⤢", () => _view.Board.FitCamera(), "Вписать карту в окно", 36));
+        opts.AddChild(Ui.Button("1:1", () => _view.Board.Rig.ResetStandardZoom(), "Стандартный масштаб (карта 10 × 8)", 40));
         opts.AddChild(Ui.Button("Проверить", RunCheck));
         opts.AddChild(Ui.Button("▶ Просмотр в игре", () =>
         {
@@ -577,47 +580,101 @@ public partial class MapEditorPanel : DefListPanel
 
     private void NewMapDialog()
     {
-        var d = new ConfirmationDialog { Title = "Новая карта", OkButtonText = "Создать", CancelButtonText = "Отмена", Theme = App.Main.Instance.Theme };
+        var templates = MapTemplates.Ordered(Ctx.Db);
         var v = Ui.VBox(6);
+        v.AddChild(Ui.Label("Шаблон новой карты. Карта — независимая копия: изменения шаблона её не меняют. Клетки потом можно добавлять и удалять.", 13, Ui.TextDim, wrap: true).MinSize(520));
+        var list = new ItemList { CustomMinimumSize = new Vector2(520, 220) };
+        foreach (var t in templates)
+        {
+            var (c, r) = t.Size();
+            list.AddItem($"{t.DisplayName}   ({(t.Cells.Count == 0 ? "пусто" : $"{c} × {r}")}){(t.BuiltIn ? "" : "  · " + (string.IsNullOrEmpty(t.Group) ? MapTemplates.UserGroup : t.Group))}");
+        }
+        int customIndex = list.AddItem("Произвольный размер…");
+        list.Select(0);
+        v.AddChild(list);
+        var info = Ui.Label("", 12, Ui.TextDim, wrap: true).MinSize(520);
+        v.AddChild(info);
+        var custom = Ui.HBox(6);
         var shape = new OptionButton();
-        shape.AddItem("Прямоугольник");
-        shape.AddItem("Шестиугольник");
-        shape.AddItem("Ромб");
-        var w = new SpinBox { MinValue = 2, MaxValue = 128, Value = 20, Prefix = "ширина/радиус" };
-        var h = new SpinBox { MinValue = 2, MaxValue = 128, Value = 14, Prefix = "высота" };
+        foreach (var n in Enum.GetNames(typeof(MapShape))) shape.AddItem(Names.Of(typeof(MapShape), n));
+        var w = new SpinBox { MinValue = 1, MaxValue = 128, Value = 10, Prefix = "ширина/радиус" };
+        var h = new SpinBox { MinValue = 1, MaxValue = 128, Value = 8, Prefix = "высота" };
         var terrain = new OptionButton();
         var ids = Ctx.Db.Ids(DefCategory.Terrain).ToList();
         foreach (var id in ids) terrain.AddItem(id);
-        v.AddChild(Ui.Label("Форма и размер. Клетки потом можно добавлять и удалять вручную.", 13, Ui.TextDim, wrap: true).MinSize(380));
-        v.AddChild(shape);
-        v.AddChild(w);
-        v.AddChild(h);
-        v.AddChild(terrain);
-        d.AddChild(v);
-        AddChild(d);
-        d.Confirmed += () =>
+        int fi = ids.IndexOf(MapTemplates.DefaultFloor);
+        if (fi >= 0) terrain.Selected = fi;
+        custom.AddChild(shape);
+        custom.AddChild(w);
+        custom.AddChild(h);
+        custom.AddChild(terrain);
+        custom.Visible = false;
+        v.AddChild(custom);
+        var name = new LineEdit { PlaceholderText = "Название карты", Text = "Новая карта" };
+        v.AddChild(name);
+        void Info(long idx)
         {
-            string t = ids.Count > 0 ? ids[Math.Max(0, terrain.Selected)] : "grass";
-            var m = shape.Selected switch
+            custom.Visible = idx == customIndex;
+            info.Text = idx >= 0 && idx < templates.Count ? $"{templates[(int)idx].Description} {templates[(int)idx].Purpose}" : "Форма и размер задаются вручную.";
+        }
+        list.ItemSelected += Info;
+        Info(0);
+        Dialogs.Custom(this, "Новая карта", v, "Создать", () =>
+        {
+            var sel = list.GetSelectedItems();
+            int idx = sel.Length > 0 ? sel[0] : 0;
+            var id = ContentIO.UniqueId(Ctx.Db, DefCategory.Map, "map");
+            MapDef m;
+            if (idx == customIndex)
             {
-                1 => MapDef.CreateHexagon("map", (int)w.Value, t),
-                2 => MapDef.CreateRhombus("map", (int)w.Value, (int)h.Value, t),
-                _ => MapDef.CreateRectangle("map", (int)w.Value, (int)h.Value, t),
-            };
+                string t = ids.Count > 0 ? ids[Math.Max(0, terrain.Selected)] : MapTemplates.DefaultFloor;
+                m = MapTemplates.Generate(id, (MapShape)shape.Selected, (int)w.Value, (int)h.Value, t);
+            }
+            else
+            {
+                m = MapTemplates.CreateMap(templates[idx], id, Ctx.Db);
+            }
             if (m.Cells.Count > Ctx.Db.Rules.Limits.MaxMapCells)
             {
                 Dialogs.Info(this, "Слишком большая карта", $"Клеток {m.Cells.Count} > лимита {Ctx.Db.Rules.Limits.MaxMapCells}.");
-                return;
+                return false;
             }
-            m.Id = ContentIO.UniqueId(Ctx.Db, DefCategory.Map, "map");
-            m.Name = "Новая карта";
+            m.Name = name.Text.Trim().Length > 0 ? name.Text.Trim() : "Новая карта";
             Ctx.Db.Add(m);
             Ctx.MarkDirty();
             RefreshList();
             Select(m);
-            d.QueueFree();
-        };
-        d.Canceled += () => d.QueueFree();
-        d.PopupCentered(new Vector2I(420, 0));
+            return true;
+        }, new Vector2I(560, 0));
+    }
+
+    private void SaveAsTemplateDialog()
+    {
+        if (_map == null) return;
+        var map = _map;
+        var v = Ui.VBox(6);
+        v.AddChild(Ui.Label($"Шаблон из карты «{map.DisplayName}». Форма и размер сохраняются всегда; выберите остальные части:", 13, Ui.TextDim, wrap: true).MinSize(480));
+        var parts = new TemplatePartsDef();
+        var grid = new PropertyGrid { LabelWidth = 220 };
+        grid.SetTarget(parts, Ctx.Db);
+        v.AddChild(grid);
+        var name = new LineEdit { Text = map.DisplayName, PlaceholderText = "Название шаблона" };
+        var group = new LineEdit { Text = MapTemplates.UserGroup, PlaceholderText = "Категория" };
+        var desc = new LineEdit { Text = map.Description, PlaceholderText = "Описание" };
+        v.AddChild(Ui.Label("Название, категория, описание:", 13, Ui.TextDim));
+        v.AddChild(name);
+        v.AddChild(group);
+        v.AddChild(desc);
+        Dialogs.Custom(this, "Сохранить как шаблон", v, "Сохранить", () =>
+        {
+            var id = ContentIO.UniqueId(Ctx.Db, DefCategory.MapTemplate, "tpl_" + map.Id);
+            var t = MapTemplates.FromMap(map, id, parts, Ctx.Db, name.Text.Trim().Length > 0 ? name.Text.Trim() : map.DisplayName);
+            t.Group = group.Text.Trim();
+            t.Description = desc.Text.Trim();
+            Ctx.Db.Add(t);
+            Ctx.MarkDirty();
+            Dialogs.Info(this, "Шаблон сохранён", $"Шаблон «{t.DisplayName}» [{t.Id}] добавлен в черновик (раздел «Шаблоны карт»). Он попадёт в библиотеку при сохранении.");
+            return true;
+        }, new Vector2I(540, 0));
     }
 }

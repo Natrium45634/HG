@@ -22,6 +22,7 @@ public enum DefCategory
     Scenario,
     /// <summary>Movement categories are plain strings listed in rules (walk, fly, swim...).</summary>
     MoveCategory,
+    MapTemplate,
 }
 
 /// <summary>Base class of every content definition.</summary>
@@ -38,6 +39,12 @@ public abstract class Def
 
     [Ed("Теги", "Теги для правил, навыков и синергий", Order = -97), JsonPropertyOrder(-7)]
     public List<string> Tags { get; set; } = new();
+
+    [Ed("Категория в библиотеке", "Группа для поиска и фильтров библиотеки (например «Боссы»)", Order = -96), JsonPropertyOrder(-6)]
+    public string Group { get; set; } = "";
+
+    [Ed("Версия", "Увеличивается автоматически при публикации изменений", Order = -95), EdReadOnly, JsonPropertyOrder(-5)]
+    public int Version { get; set; } = 1;
 
     [JsonIgnore]
     public abstract DefCategory Category { get; }
@@ -104,6 +111,7 @@ public sealed class ControlFlagsDef
     [Ed("Контроль разума", "Юнит временно сражается за источник")] public bool MindControl { get; set; }
     [Ed("Прерывает подготовку", "При наложении прерывает подготовку навыка")] public bool InterruptsCast { get; set; }
 
+    [JsonIgnore]
     public bool Any => BlocksMovement || BlocksActions || BlocksSkills || BlocksAttacks || BlocksTurning
                        || BlocksApRegen || Blind || Invisible || Fear || MindControl || InterruptsCast;
 

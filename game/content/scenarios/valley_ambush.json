@@ -1,11 +1,13 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "scenario",
   "scenario": {
     "id": "valley_ambush",
     "name": "Засада в долине",
     "description": "Отряд должен очистить долину. Через минуту подойдёт подкрепление врага.",
     "tags": [],
+    "group": "",
+    "version": 1,
     "map": "valley",
     "seed": 2024,
     "intro": "Разведка доносит: гоблины заняли руины форта за рекой. Очистите долину! (Пробел — пауза)",

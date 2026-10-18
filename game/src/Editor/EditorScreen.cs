@@ -32,6 +32,7 @@ public partial class EditorScreen : Control
     private static readonly (string Key, string Title, DefCategory? Cat)[] Sections =
     {
         ("maps", "Карты", DefCategory.Map),
+        ("templates", "Шаблоны карт", DefCategory.MapTemplate),
         ("units", "Юниты", DefCategory.Unit),
         ("enemies", "Враги", DefCategory.Unit),
         ("skills", "Навыки", DefCategory.Skill),
@@ -60,6 +61,7 @@ public partial class EditorScreen : Control
 
         var draft = app.Content.BeginEdit();
         _ctx = new EditorContext(draft);
+        PropertyGrid.IdLocked = d => app.Content.Published.Exists(d.Category, d.Id) && app.Content.Published.Table(d.Category).Get(d.Id)?.GetType() == d.GetType();
         if (app.Content.DraftDirty) _ctx.MarkDirty();
         _ctx.DirtyChanged += UpdateState;
         _ctx.Validated += UpdateState;
@@ -157,6 +159,7 @@ public partial class EditorScreen : Control
         _current = key switch
         {
             "maps" => new MapEditorPanel(_ctx, PreviewMap),
+            "templates" => new MapTemplatePanel(_ctx, id => Navigate(DefCategory.Map, id)),
             "units" => new UnitEditorPanel(_ctx, "Юниты (союзники и нейтралы)", d => ((UnitDef)d).Faction != "enemy", "player"),
             "enemies" => new UnitEditorPanel(_ctx, "Враги", d => ((UnitDef)d).Faction == "enemy", "enemy"),
             "skills" => new SkillEditorPanel(_ctx, TestSkill),
@@ -189,6 +192,7 @@ public partial class EditorScreen : Control
         string key = c switch
         {
             DefCategory.Map => "maps",
+            DefCategory.MapTemplate => "templates",
             DefCategory.Unit => _ctx.Db.Unit(id)?.Faction == "enemy" ? "enemies" : "units",
             DefCategory.Skill => "skills",
             DefCategory.Terrain => "terrains",

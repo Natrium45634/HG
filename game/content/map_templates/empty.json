@@ -1,0 +1,28 @@
+{
+  "formatVersion": 2,
+  "kind": "map_template",
+  "map_template": {
+    "id": "empty",
+    "name": "Пустая карта",
+    "description": "Ни одной клетки — гексы добавляются кистью «Добавить гекс».",
+    "tags": [],
+    "group": "Встроенные",
+    "version": 1,
+    "purpose": "Карты неправильной формы с нуля.",
+    "builtIn": true,
+    "sortOrder": 50,
+    "parts": {
+      "terrain": false,
+      "heights": false,
+      "obstacles": false,
+      "spawnPoints": false,
+      "objectives": false,
+      "routes": false,
+      "other": false
+    },
+    "rules": { "darkness": 0, "notes": "" },
+    "cells": [],
+    "markers": [],
+    "routes": []
+  }
+}

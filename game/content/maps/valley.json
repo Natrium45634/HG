@@ -1,12 +1,16 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "map",
   "map": {
     "id": "valley",
     "name": "Долина у реки",
     "description": "Река с бродом и мостом, холмы, лес, руины форта, пропасть и ядовитое болото",
     "tags": ["demo"],
+    "group": "",
+    "version": 1,
     "rules": { "darkness": 0, "notes": "" },
+    "templateId": "",
+    "templateVersion": 0,
     "cells": [
       { "c": [2, 0], "t": "grass", "h": 0 },
       { "c": [3, 0], "t": "grass", "h": 0 },
@@ -394,6 +398,7 @@
       { "id": "east_gate", "type": "EnemySpawn", "c": [20, 6], "label": "Восточные ворота", "radius": 1 },
       { "id": "south", "type": "EnemySpawn", "c": [14, 14], "label": "Южный лес", "radius": 1 },
       { "id": "altar", "type": "Objective", "c": [15, 6], "label": "Алтарь", "radius": 0 }
-    ]
+    ],
+    "routes": []
   }
 }

@@ -1,11 +1,13 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "scenario",
   "scenario": {
     "id": "arena_duel",
     "name": "Арена",
     "description": "Небольшой бой: три героя против стражей и волков.",
     "tags": [],
+    "group": "",
+    "version": 1,
     "map": "arena",
     "seed": 7,
     "intro": "Победите всех противников на арене.",

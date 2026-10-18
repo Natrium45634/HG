@@ -22,9 +22,26 @@ public enum TerrainVisual
     Rubble,
 }
 
+/// <summary>Logical class of a terrain type (library filters, templates, editor brushes).</summary>
+public enum TerrainKind
+{
+    [Ed("Пол")] Floor,
+    [Ed("Возвышенность")] Elevation,
+    [Ed("Препятствие")] Obstacle,
+    [Ed("Жидкость")] Liquid,
+    [Ed("Яма / провал")] Pit,
+    [Ed("Опасная поверхность")] Hazard,
+    [Ed("Особая")] Special,
+}
+
 public sealed class TerrainDef : Def
 {
     [JsonIgnore] public override DefCategory Category => DefCategory.Terrain;
+
+    [Ed("Вид местности", "Пол, препятствие, жидкость, яма… — для библиотеки, шаблонов и кистей", Group = "Основное")]
+    public TerrainKind Kind { get; set; } = TerrainKind.Floor;
+
+    [JsonIgnore] public bool IsObstacle => Kind == TerrainKind.Obstacle;
 
     [Ed("Цвет", Group = "Вид"), EdColor]
     public string Color { get; set; } = "#8a9a6a";

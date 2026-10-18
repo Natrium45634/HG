@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "damage_types",
   "items": [
     {
@@ -7,6 +7,8 @@
       "name": "Физический",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#d8d8d8",
       "armorApplies": true
     },
@@ -15,6 +17,8 @@
       "name": "Огненный",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#ff7a2a",
       "armorApplies": false
     },
@@ -23,6 +27,8 @@
       "name": "Ледяной",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#8fd8ff",
       "armorApplies": false
     },
@@ -31,6 +37,8 @@
       "name": "Электрический",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#ffe04a",
       "armorApplies": false
     },
@@ -39,6 +47,8 @@
       "name": "Ядовитый",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#7ad04a",
       "armorApplies": false
     },
@@ -47,6 +57,8 @@
       "name": "Магический",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#c08aff",
       "armorApplies": false
     },
@@ -55,6 +67,8 @@
       "name": "Чистый",
       "description": "Не снижается бронёй",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#ff4a6a",
       "armorApplies": false
     }

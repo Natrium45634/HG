@@ -100,6 +100,22 @@ public static class Dialogs
         d.PopupCentered(new Vector2I(560, 0));
     }
 
+    /// <summary>Dialog with custom content; onOk returns false to keep the dialog open (validation failed).</summary>
+    public static ConfirmationDialog Custom(Node parent, string title, Control content, string ok, Func<bool> onOk, Vector2I? size = null)
+    {
+        var d = new ConfirmationDialog { Title = title, OkButtonText = ok, CancelButtonText = "Отмена", Theme = App.Main.Instance.Theme };
+        d.DialogHideOnOk = false;
+        d.AddChild(content);
+        parent.AddChild(d);
+        d.Confirmed += () =>
+        {
+            if (onOk()) d.QueueFree();
+        };
+        d.Canceled += () => d.QueueFree();
+        d.PopupCentered(size ?? new Vector2I(560, 0));
+        return d;
+    }
+
     public static void Info(Node parent, string title, string text)
     {
         var d = new AcceptDialog { Title = title, DialogText = text, DialogAutowrap = true };

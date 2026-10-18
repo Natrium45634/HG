@@ -68,6 +68,12 @@ public sealed class EdHiddenAttribute : Attribute
 {
 }
 
+/// <summary>Shown in the property grid but not editable (maintained by the engine).</summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class EdReadOnlyAttribute : Attribute
+{
+}
+
 /// <summary>String field is a color "#rrggbb".</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class EdColorAttribute : Attribute

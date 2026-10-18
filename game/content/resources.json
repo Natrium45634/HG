@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "resources",
   "items": [
     {
@@ -7,6 +7,8 @@
       "name": "Мана",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#4a7fd0",
       "defaultMax": 50,
       "defaultRegen": 1,
@@ -17,6 +19,8 @@
       "name": "Энергия",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#d0b030",
       "defaultMax": 100,
       "defaultRegen": 5,
@@ -27,6 +31,8 @@
       "name": "Боеприпасы",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#9a9a9a",
       "defaultMax": 20,
       "defaultRegen": 0,

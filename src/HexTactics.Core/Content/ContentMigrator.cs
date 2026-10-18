@@ -17,6 +17,7 @@ public static class ContentMigrator
     private static readonly Dictionary<int, Step> Steps = new()
     {
         [0] = V0ToV1,
+        [1] = V1ToV2,
     };
 
     public static JsonObject? Migrate(JsonNode node, string expectedKind, out List<string> notes, out string? error)
@@ -123,6 +124,56 @@ public static class ContentMigrator
             }
             if (converted > 0) notes.Add($"v0: {converted} клеток переведены в формат c:[q,r]");
         }
+    }
+
+    /// <summary>
+    /// v1 → v2 (part 2 of the spec): terrain types get a logical kind derived from their visual
+    /// style; computed fields written by older builds ("displayName", "any") are dropped.
+    /// </summary>
+    private static void V1ToV2(JsonObject root, string kind, List<string> notes)
+    {
+        int dropped = DropComputed(root);
+        if (dropped > 0) notes.Add($"v1→v2: удалено служебных полей: {dropped}");
+        if (kind != "terrains" || root["items"] is not JsonArray items) return;
+        int classified = 0;
+        foreach (var n in items)
+        {
+            if (n is not JsonObject t || t["kind"] != null) continue;
+            string visual = t["visual"]?.GetValue<string>() ?? "Ground";
+            bool walkable = t["passableFor"] is not JsonArray pf || pf.Any(x => x?.GetValue<string>() == "walk");
+            int defaultHeight = t["defaultHeight"] is JsonValue dh && dh.TryGetValue<int>(out var h) ? h : 0;
+            string k = visual switch
+            {
+                "Water" => "Liquid",
+                "Pit" => "Pit",
+                "Hazard" => "Hazard",
+                "Special" => "Special",
+                _ when !walkable => "Obstacle",
+                _ when visual is "Wall" or "Rock" or "Crate" => "Obstacle",
+                _ when defaultHeight > 0 => "Elevation",
+                _ => "Floor",
+            };
+            t["kind"] = k;
+            classified++;
+        }
+        if (classified > 0) notes.Add($"v1→v2: определён вид местности для {classified} типов");
+    }
+
+    private static int DropComputed(JsonNode? node)
+    {
+        int n = 0;
+        switch (node)
+        {
+            case JsonObject o:
+                if (o.Remove("displayName")) n++;
+                if (o["blocksMovement"] != null && o["interruptsCast"] != null && o.Remove("any")) n++;
+                foreach (var kv in o.ToArray()) n += DropComputed(kv.Value);
+                break;
+            case JsonArray a:
+                foreach (var x in a) n += DropComputed(x);
+                break;
+        }
+        return n;
     }
 
     private static void MoveField(JsonObject from, string field, JsonObject to, string newName, List<string> notes)

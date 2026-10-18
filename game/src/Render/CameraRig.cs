@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using Godot;
+using HexTactics.Core.Geometry;
 
 namespace HexTactics.Game.Render;
 
@@ -21,6 +23,12 @@ public partial class CameraRig : Node3D
     public bool KeyboardPan { get; set; } = true;
     public Rect2 Bounds { get; set; } = new(-50, -50, 100, 100);
 
+    /// <summary>Screen area covered by HUD panels (the fit keeps the board out of it).</summary>
+    public Func<ScreenInsets>? InsetsProvider { get; set; }
+    /// <summary>True until the player zooms or pans: window resizes then re-fit the board.</summary>
+    public bool AutoFit { get; private set; }
+    public event Action? RefitRequested;
+
     private float _yaw;
     private float _targetYaw;
     private float _targetDistance = 18;
@@ -40,6 +48,63 @@ public partial class CameraRig : Node3D
     }
 
     public float YawDeg => Mathf.RadToDeg(_yaw);
+
+    /// <summary>Distance at which the standard 10 × 8 map fits the current viewport ("1:1").</summary>
+    public float StandardDistance
+    {
+        get
+        {
+            var vp = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920, 1080);
+            if (vp.X < 10 || vp.Y < 10) vp = new Vector2(1920, 1080);
+            var key = (vp, TiltDeg);
+            if (_stdKey == key && _stdDistance > 0) return _stdDistance;
+            var ins = InsetsProvider?.Invoke() ?? default;
+            _stdKey = key;
+            _stdDistance = CameraFit.Fit(CameraFit.RectanglePoints(10, 8), vp.X, vp.Y, ins, TiltDeg, 0, Camera.Fov).Distance;
+            return _stdDistance;
+        }
+    }
+
+    private (Vector2, float) _stdKey;
+    private float _stdDistance = -1;
+
+    /// <summary>
+    /// «Вписать карту»: distance and pivot so that all points project into the free screen area
+    /// (core CameraFit; docs/DECISIONS_2.md §19).
+    /// </summary>
+    public void FitPoints(List<System.Numerics.Vector3> points, bool immediate)
+    {
+        if (points.Count == 0) return;
+        var vp = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920, 1080);
+        if (vp.X < 10 || vp.Y < 10) return;
+        var ins = InsetsProvider?.Invoke() ?? default;
+        var fit = CameraFit.Fit(points, vp.X, vp.Y, ins, TiltDeg, Mathf.RadToDeg(_targetYaw), Camera.Fov, MinDistance, 400);
+        MaxDistance = Math.Max(MaxDistance, fit.Distance * 1.6f);
+        _pivot = ClampPivot(new Vector3(fit.Pivot.X, 0, fit.Pivot.Z));
+        _targetDistance = fit.Distance;
+        if (immediate)
+        {
+            Distance = fit.Distance;
+            _yaw = _targetYaw;
+            UpdateTransform();
+        }
+        AutoFit = true;
+    }
+
+    /// <summary>«Стандартный масштаб»: zoom of the standard 10 × 8 map, pivot unchanged.</summary>
+    public void ResetStandardZoom()
+    {
+        _targetDistance = Math.Clamp(StandardDistance, MinDistance, MaxDistance);
+        AutoFit = false;
+    }
+
+    public override void _Ready()
+    {
+        GetViewport().SizeChanged += () =>
+        {
+            if (AutoFit) RefitRequested?.Invoke();
+        };
+    }
 
     public void Frame(Rect2 boardRect, bool fitAll = false)
     {
@@ -84,6 +149,7 @@ public partial class CameraRig : Node3D
         }
         if (move != Vector2.Zero)
         {
+            AutoFit = false;
             float s = Distance * 0.9f * Speed * dt;
             var fwd = new Vector3(-Mathf.Sin(_yaw), 0, -Mathf.Cos(_yaw));
             var right = new Vector3(Mathf.Cos(_yaw), 0, -Mathf.Sin(_yaw));
@@ -109,9 +175,11 @@ public partial class CameraRig : Node3D
         {
             case InputEventMouseButton mb when mb.ButtonIndex == MouseButton.WheelUp && mb.Pressed && !mb.CtrlPressed:
                 _targetDistance = Math.Max(MinDistance, _targetDistance * 0.88f);
+                AutoFit = false;
                 return true;
             case InputEventMouseButton mb when mb.ButtonIndex == MouseButton.WheelDown && mb.Pressed && !mb.CtrlPressed:
                 _targetDistance = Math.Min(MaxDistance, _targetDistance / 0.88f);
+                AutoFit = false;
                 return true;
             case InputEventMouseButton mb when mb.ButtonIndex == MouseButton.Middle:
                 _dragging = mb.Pressed;
@@ -119,6 +187,7 @@ public partial class CameraRig : Node3D
                 return true;
             case InputEventMouseMotion mm when _dragging:
             {
+                AutoFit = false;
                 var d = mm.Position - _lastMouse;
                 _lastMouse = mm.Position;
                 float s = Distance * 0.0016f;

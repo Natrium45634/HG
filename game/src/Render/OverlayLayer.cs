@@ -27,6 +27,9 @@ public partial class OverlayLayer : MeshInstance3D
 
     public void Bind(BattleMap map) => _map = map;
 
+    /// <summary>Line widths are multiplied by this when the camera is far (outlines stay ≥ ~2 px).</summary>
+    public float WidthScale { get; set; } = 1f;
+
     public override void _Process(double delta) => _time += (float)delta;
 
     public float Pulse(float speed = 3f) => 0.5f + 0.5f * Mathf.Sin(_time * speed);
@@ -64,8 +67,8 @@ public partial class OverlayLayer : MeshInstance3D
             int j = (i + 1) % 6;
             var o0 = Board.Corner(c, i, y, scale);
             var o1 = Board.Corner(c, j, y, scale);
-            var i0 = Board.Corner(c, i, y, scale - width);
-            var i1 = Board.Corner(c, j, y, scale - width);
+            var i0 = Board.Corner(c, i, y, scale - width * WidthScale);
+            var i1 = Board.Corner(c, j, y, scale - width * WidthScale);
             Add(o0, o1, i1, col, onTop);
             Add(o0, i1, i0, col, onTop);
         }
@@ -80,8 +83,8 @@ public partial class OverlayLayer : MeshInstance3D
             int j = (i + 1) % 6;
             var o0 = Board.Corner(c, i, y, scale);
             var o1 = Board.Corner(c, j, y, scale);
-            var i0 = Board.Corner(c, i, y, scale - width);
-            var i1 = Board.Corner(c, j, y, scale - width);
+            var i0 = Board.Corner(c, i, y, scale - width * WidthScale);
+            var i1 = Board.Corner(c, j, y, scale - width * WidthScale);
             for (int k = 0; k < 3; k++)
             {
                 float t0 = k / 3f + 0.04f, t1 = (k + 0.6f) / 3f;
@@ -113,7 +116,7 @@ public partial class OverlayLayer : MeshInstance3D
         var d = b - a;
         d.Y = 0;
         if (d.LengthSquared() < 1e-8f) return;
-        var side = new Vector3(-d.Z, 0, d.X).Normalized() * (width / 2);
+        var side = new Vector3(-d.Z, 0, d.X).Normalized() * (width * WidthScale / 2);
         Add(a + side, b + side, b - side, col, onTop);
         Add(a + side, b - side, a - side, col, onTop);
     }

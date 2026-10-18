@@ -59,7 +59,7 @@ public partial class DefListPanel : HSplitContainer
         grid.AddThemeConstantOverride("v_separation", 4);
         grid.AddChild(Ui.Button("Создать", Create, "Новый объект с значениями по умолчанию").Expand());
         grid.AddChild(Ui.Button("Дублировать", Duplicate, "Копия выбранного (создание из шаблона) с новым ID").Expand());
-        grid.AddChild(Ui.Button("Переименовать", Rename, "Сменить ID; все ссылки обновятся").Expand());
+        grid.AddChild(Ui.Button("Переименовать", Rename, "Сменить название (ID неизменен)").Expand());
         grid.AddChild(Ui.Button("Удалить", Delete, "С проверкой зависимостей").Expand());
         grid.AddChild(Ui.Button("Импорт…", Import, "Загрузить объект из JSON-файла").Expand());
         grid.AddChild(Ui.Button("Экспорт…", Export, "Сохранить выбранный объект в JSON-файл").Expand());
@@ -166,6 +166,8 @@ public partial class DefListPanel : HSplitContainer
 
     protected void OnEdited(Def d)
     {
+        var table = Ctx.Db.Table(Category);
+        if (table.Get(d.Id) != d) table.Reindex();
         Ctx.MarkDirty();
         _header.Text = $"{ContentValidator.CatName(Category)}: {d.DisplayName} [{d.Id}]";
         int idx = _shown.IndexOf(d);
@@ -231,18 +233,15 @@ public partial class DefListPanel : HSplitContainer
         Select(copy);
     }
 
+    /// <summary>Renames the object (name only): IDs are stable after publication (docs/DECISIONS_2.md §31).</summary>
     private void Rename()
     {
         if (Current == null) return;
         var cur = Current;
-        Dialogs.Prompt(this, "Переименовать", $"Новый ID для «{cur.DisplayName}». Все ссылки в контенте будут обновлены.", cur.Id, newId =>
+        Dialogs.Prompt(this, "Переименовать", $"Новое название для [{cur.Id}]. ID не меняется — ссылки и пакеты остаются действительными.", cur.DisplayName, name =>
         {
-            if (newId == cur.Id || newId.Length == 0) return;
-            if (!Ctx.Db.Rename(Category, cur.Id, newId))
-            {
-                Dialogs.Info(this, "Не удалось", $"ID «{newId}» уже занят или недопустим.");
-                return;
-            }
+            if (name.Trim().Length == 0 || name == cur.Name) return;
+            cur.Name = name.Trim();
             Ctx.MarkDirty();
             RefreshList();
             Select(cur);

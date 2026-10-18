@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "factions",
   "items": [
     {
@@ -7,6 +7,8 @@
       "name": "Отряд",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#3c78d8",
       "shape": "Circle",
       "hostileTo": ["enemy"],
@@ -17,6 +19,8 @@
       "name": "Противник",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#d04a3a",
       "shape": "Diamond",
       "hostileTo": ["player"],
@@ -27,6 +31,8 @@
       "name": "Нейтралы",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "color": "#c8a848",
       "shape": "Square",
       "hostileTo": [],

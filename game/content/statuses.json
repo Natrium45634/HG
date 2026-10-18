@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "kind": "statuses",
   "items": [
     {
@@ -7,6 +7,8 @@
       "name": "Отравление",
       "description": "Накапливается в ядовитых клетках, спадает со временем",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Accumulating",
       "negative": true,
       "duration": 5,
@@ -31,8 +33,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -77,8 +78,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -127,8 +127,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -171,6 +170,8 @@
       "name": "Горение",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 4,
@@ -195,8 +196,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -241,8 +241,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -287,8 +286,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -331,6 +329,8 @@
       "name": "Кровотечение",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 6,
@@ -355,8 +355,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
@@ -399,6 +398,8 @@
       "name": "Оглушение",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 1.5,
@@ -423,8 +424,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": true,
-            "any": true
+            "interruptsCast": true
           },
           "tickInterval": 1,
           "onTick": [],
@@ -443,6 +443,8 @@
       "name": "Ослепление",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 4,
@@ -467,8 +469,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": true
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -487,6 +488,8 @@
       "name": "Обездвиживание",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 3,
@@ -511,8 +514,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": true
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -531,6 +533,8 @@
       "name": "Замедление",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 4,
@@ -555,8 +559,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -575,6 +578,8 @@
       "name": "Охлаждение",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Accumulating",
       "negative": true,
       "duration": 5,
@@ -599,8 +604,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -621,8 +625,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": true
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -643,8 +646,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": true,
-            "any": true
+            "interruptsCast": true
           },
           "tickInterval": 1,
           "onTick": [],
@@ -663,6 +665,8 @@
       "name": "Страх",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 4,
@@ -687,8 +691,7 @@
             "invisible": false,
             "fear": true,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": true
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -707,6 +710,8 @@
       "name": "Немота",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 4,
@@ -731,8 +736,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": true
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -751,6 +755,8 @@
       "name": "Уязвимость",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 5,
@@ -779,8 +785,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -799,6 +804,8 @@
       "name": "Защита",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": false,
       "duration": 6,
@@ -823,8 +830,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -843,6 +849,8 @@
       "name": "Невидимость",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": false,
       "duration": 6,
@@ -867,8 +875,7 @@
             "invisible": true,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": true
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -887,6 +894,8 @@
       "name": "Сопротивление стихиям",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": false,
       "duration": 8,
@@ -916,8 +925,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [],
@@ -936,6 +944,8 @@
       "name": "Контроль разума",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 5,
@@ -960,8 +970,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": true,
-            "interruptsCast": true,
-            "any": true
+            "interruptsCast": true
           },
           "tickInterval": 1,
           "onTick": [],
@@ -980,6 +989,8 @@
       "name": "Шок",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": true,
       "duration": 2,
@@ -1004,8 +1015,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": true,
-            "any": true
+            "interruptsCast": true
           },
           "tickInterval": 1,
           "onTick": [],
@@ -1024,6 +1034,8 @@
       "name": "Регенерация",
       "description": "",
       "tags": [],
+      "group": "",
+      "version": 1,
       "kind": "Timed",
       "negative": false,
       "duration": 8,
@@ -1048,8 +1060,7 @@
             "invisible": false,
             "fear": false,
             "mindControl": false,
-            "interruptsCast": false,
-            "any": false
+            "interruptsCast": false
           },
           "tickInterval": 1,
           "onTick": [
