@@ -182,7 +182,7 @@ HG/
 | `Sim/AutoAttackSystem` | автоатаки (9 шагов, общий путь навыка и конвейер урона) | `AutoAttackTests` |
 | `Sim/ScenarioSystem` (цели, дерево условий, действия, волны, фазы босса), `Sim/SpawnWarningSystem` | сценарии и маркеры появления | `ObjectiveTests`, `SpawnWarningTests` |
 | `Content/ContentLibrary` (+ `ContentRef`, `ContentDependencies`, `ContentDiff`) | версии и история, закреплённые ссылки `id@N`, транзакционная публикация (журнал, копии, манифест SHA-256), восстановление после сбоя, целостность, зависимости, различия версий | `LibraryTests` |
-| `Content/Packages` | пакеты `.hexpack` | `PackageTests` |
+| `Content/ContentPackage` | пакеты `.hexpack`: экспорт с зависимостями, проверка формата и целостности, план импорта (зависимости, конфликты, различия), применение, отчёт | `PackageTests` |
 | `Content/AssetValidator` | проверка импортируемых ресурсов | `AssetTests` |
 
 ### 9.3 Порядок тика (дополнение)

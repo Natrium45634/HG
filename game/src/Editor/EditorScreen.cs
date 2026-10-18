@@ -89,6 +89,7 @@ public partial class EditorScreen : Control
         top.AddChild(Ui.Spacer(20));
         top.AddChild(Ui.Button("Сохранить", Publish, "Опубликовать: записать черновик в пользовательский пакет контента (версии, история, резервная копия)"));
         top.AddChild(Ui.Button("Библиотека…", () => LibraryDialogs.PackState(this, ReloadAfterRestore), "Целостность пакета, резервные копии, история версий"));
+        top.AddChild(Ui.Button("Импорт…", () => PackageDialogs.Import(this, _ctx, _ => ShowSection(_currentKey)), "Импорт пакета .hexpack или объекта .json в черновик"));
         top.AddChild(Ui.Button("Отменить", Revert, "Отменить неопубликованные изменения и вернуть опубликованную версию"));
         top.AddChild(Ui.Button("Автосохранение", RestoreAutosave, "Восстановить автосохранённый черновик (сохраняется раз в минуту)"));
         top.AddChild(Ui.Button("К встроенному", ResetBuiltIn, "Удалить пользовательский пакет (с копией) и вернуться к встроенному контенту"));

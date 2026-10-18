@@ -166,7 +166,7 @@ public partial class MapEditorPanel : DefListPanel
         _checkTab = Tab("Проверка");
         root.AddChild(_tabs);
 
-        Callable.From(() =>
+        AfterLayout(root, () =>
         {
             RebuildMap(true);
             RefreshCellTab();
@@ -174,7 +174,7 @@ public partial class MapEditorPanel : DefListPanel
             RefreshRouteTab();
             RefreshProps();
             RunCheck();
-        }).CallDeferred();
+        });
         return root;
     }
 

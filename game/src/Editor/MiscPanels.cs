@@ -36,11 +36,15 @@ public partial class RulesPanel : ScrollContainer
         pad.AddThemeConstantOverride("margin_right", 14);
         pad.AddChild(v);
         AddChild(pad.Expand());
-        _ctx.ContentReplaced += () =>
-        {
-            grid.SetTarget(_ctx.Db.Rules, _ctx.Db);
-        };
+        _grid = grid;
+        _ctx.ContentReplaced += OnContentReplaced;
     }
+
+    private PropertyGrid? _grid;
+
+    private void OnContentReplaced() => _grid?.SetTarget(_ctx.Db.Rules, _ctx.Db);
+
+    public override void _ExitTree() => _ctx.ContentReplaced -= OnContentReplaced;
 }
 
 /// <summary>Full validation report with navigation to the offending definition.</summary>

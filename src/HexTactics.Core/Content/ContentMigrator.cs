@@ -61,7 +61,8 @@ public static class ContentMigrator
             }
             try
             {
-                step(root, expectedKind, notes);
+                if (expectedKind == "def") StepSingle(step, root, notes);
+                else step(root, expectedKind, notes);
             }
             catch (Exception e)
             {
@@ -75,6 +76,29 @@ public static class ContentMigrator
 
         if (root["kind"] == null) root["kind"] = expectedKind;
         return root;
+    }
+
+    /// <summary>
+    /// A single exported object ("kind": "def", "category", "item") migrates like the file of its
+    /// category: the item is wrapped the way that file stores it, migrated, and unwrapped.
+    /// </summary>
+    private static void StepSingle(Step step, JsonObject root, List<string> notes)
+    {
+        if (root["item"] is not JsonObject item || (string?)root["category"] is not { } catName
+            || !Enum.TryParse<DefCategory>(catName, out var cat) || cat == DefCategory.MoveCategory)
+        {
+            step(root, "def", notes);
+            return;
+        }
+        string kind = ContentIO.KindOf(cat);
+        root.Remove("item");
+        var wrapper = new JsonObject();
+        bool folder = ContentDatabase.IsFolderCategory(cat);
+        if (folder) wrapper[kind] = item;
+        else wrapper["items"] = new JsonArray(item);
+        step(wrapper, kind, notes);
+        var migrated = folder ? wrapper[kind] : (wrapper["items"] as JsonArray)?.FirstOrDefault();
+        root["item"] = (migrated ?? item).DeepClone();
     }
 
     /// <summary>

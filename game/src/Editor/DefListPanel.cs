@@ -91,8 +91,9 @@ public partial class DefListPanel : HSplitContainer
         grid.AddChild(Ui.Button("Дублировать", Duplicate, "Копия выбранного (создание из шаблона) с новым ID").Expand());
         grid.AddChild(Ui.Button("Переименовать", Rename, "Сменить название (ID неизменен)").Expand());
         grid.AddChild(Ui.Button("Удалить", Delete, "С проверкой зависимостей").Expand());
-        grid.AddChild(Ui.Button("Импорт…", Import, "Загрузить объект из JSON-файла").Expand());
+        grid.AddChild(Ui.Button("Импорт…", Import, "Объект (.json) или пакет (.hexpack): проверка, зависимости, предпросмотр, конфликты ID").Expand());
         grid.AddChild(Ui.Button("Экспорт…", Export, "Сохранить выбранный объект в JSON-файл").Expand());
+        grid.AddChild(Ui.Button("Пакет…", ExportPackage, "Экспорт выбранных объектов в пакет .hexpack со всеми зависимостями").Expand());
         grid.AddChild(Ui.Button("★ Избранное", ToggleFavorite, "Отметить / снять отметку (личная настройка, не часть контента)").Expand());
         grid.AddChild(Ui.Button("Связи…", ShowDependencies, "Что объект использует и где используется сам").Expand());
         grid.AddChild(Ui.Button("Версии…", ShowVersions, "История версий: различия и возврат прежней версии в черновик").Expand());
@@ -106,10 +107,11 @@ public partial class DefListPanel : HSplitContainer
         pm.AddItem("Убрать из избранного", 5);
         pm.AddItem("Снять отметку «неполный»", 6);
         pm.AddItem("Экспорт выбранных в папку…", 7);
+        pm.AddItem("Экспорт выбранных в пакет…", 9);
         pm.AddItem("Выбрать все показанные", 8);
         pm.IdPressed += id => MassOperation((int)id);
-        grid.AddChild(mass.Expand());
         left.AddChild(grid);
+        left.AddChild(mass.Expand());
         AddChild(left);
 
         var right = Ui.VBox(8).Expand(true, true);
@@ -134,12 +136,7 @@ public partial class DefListPanel : HSplitContainer
         }
 
         Ctx.Validated += OnValidated;
-        Ctx.ContentReplaced += () =>
-        {
-            Current = null;
-            RefreshList();
-            SelectFirst();
-        };
+        Ctx.ContentReplaced += OnContentReplaced;
         RefreshList();
         SelectFirst();
     }
@@ -147,6 +144,14 @@ public partial class DefListPanel : HSplitContainer
     public override void _ExitTree()
     {
         Ctx.Validated -= OnValidated;
+        Ctx.ContentReplaced -= OnContentReplaced;
+    }
+
+    private void OnContentReplaced()
+    {
+        Current = null;
+        RefreshList();
+        SelectFirst();
     }
 
     protected IEnumerable<Def> Items => Ctx.Db.Table(Category).Items.Where(d => _filter == null || _filter(d));
@@ -290,6 +295,15 @@ public partial class DefListPanel : HSplitContainer
         if (d == null) return;
         DetailRoot.AddChild(BuildDetail(d));
     }
+
+    /// <summary>
+    /// Runs after the detail form is laid out — unless it was replaced in between (content reloaded,
+    /// another object or section chosen): then the stale preview is not built.
+    /// </summary>
+    protected static void AfterLayout(Control anchor, Action action) => Callable.From(() =>
+    {
+        if (IsInstanceValid(anchor) && anchor.IsInsideTree()) action();
+    }).CallDeferred();
 
     /// <summary>Form of the selected definition. Override for custom editors.</summary>
     protected virtual Control BuildDetail(Def d)
@@ -439,6 +453,11 @@ public partial class DefListPanel : HSplitContainer
             return;
         }
         if (sel.Count == 0) return;
+        if (op == 9)
+        {
+            PackageDialogs.Export(this, Ctx, sel);
+            return;
+        }
         var cm = Main.Instance.Content;
         string names = string.Join(", ", sel.Take(8).Select(d => d.DisplayName)) + (sel.Count > 8 ? $" … (+{sel.Count - 8})" : "");
         switch (op)
@@ -516,33 +535,18 @@ public partial class DefListPanel : HSplitContainer
 
     private void Import()
     {
-        Dialogs.OpenFile(this, "Импорт объекта", path =>
+        PackageDialogs.Import(this, Ctx, report =>
         {
-            var issues = new List<ContentIssue>();
-            Def? d;
-            try
-            {
-                d = ContentIO.ImportDef(File.ReadAllText(path), issues);
-            }
-            catch (Exception e)
-            {
-                Dialogs.Info(this, "Ошибка импорта", e.Message);
-                return;
-            }
-            if (d == null || d.Category != Category)
-            {
-                Dialogs.Info(this, "Ошибка импорта", d == null ? string.Join("\n", issues) : $"Файл содержит {ContentValidator.CatName(d.Category)}, а не {ContentValidator.CatName(Category)}.");
-                return;
-            }
-            if (Ctx.Db.Exists(Category, d.Id)) d.Id = ContentIO.UniqueId(Ctx.Db, Category, d.Id);
-            Ctx.Db.Add(d);
-            Ctx.MarkDirty();
+            var first = report.Added.Concat(report.Copied.Select(c => c.Def)).Concat(report.Replaced).FirstOrDefault(d => d.Category == Category);
             RefreshList();
-            Select(d);
-            Ctx.Validate();
-            var problems = Ctx.IssuesOf(d).Where(i => i.Severity == IssueSeverity.Error).ToList();
-            if (problems.Count > 0) Dialogs.Info(this, "Импортировано с ошибками", string.Join("\n", problems.Take(10).Select(p => p.Message)));
+            if (first != null) Select(first);
         });
+    }
+
+    private void ExportPackage()
+    {
+        var sel = SelectedDefs();
+        if (sel.Count > 0) PackageDialogs.Export(this, Ctx, sel);
     }
 
     private void Export()

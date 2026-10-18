@@ -148,62 +148,50 @@ public static class Dialogs
         le.SelectAll();
     }
 
-    public static void OpenFile(Node parent, string title, Action<string> onPath)
-    {
-        var fd = new FileDialog
-        {
-            Title = title,
-            FileMode = FileDialog.FileModeEnum.OpenFile,
-            Access = FileDialog.AccessEnum.Filesystem,
-            Filters = new[] { "*.json ; JSON" },
-            UseNativeDialog = true,
-        };
-        parent.AddChild(fd);
-        fd.FileSelected += p =>
-        {
-            onPath(p);
-            fd.QueueFree();
-        };
-        fd.Canceled += () => fd.QueueFree();
-        fd.PopupCentered(new Vector2I(820, 520));
-    }
+    /// <summary>UI tests: answers file dialogs by title (null = show the dialog).</summary>
+    public static Func<string, string?>? AutoPath { get; set; }
 
-    public static void OpenDir(Node parent, string title, Action<string> onPath)
-    {
-        var fd = new FileDialog
-        {
-            Title = title,
-            FileMode = FileDialog.FileModeEnum.OpenDir,
-            Access = FileDialog.AccessEnum.Filesystem,
-            UseNativeDialog = true,
-        };
-        parent.AddChild(fd);
-        fd.DirSelected += p =>
-        {
-            onPath(p);
-            fd.QueueFree();
-        };
-        fd.Canceled += () => fd.QueueFree();
-        fd.PopupCentered(new Vector2I(820, 520));
-    }
+    public const string JsonFilter = "*.json ; JSON";
+    public const string PackageFilter = "*.hexpack ; Пакет контента";
 
-        public static void SaveFile(Node parent, string title, string defaultName, Action<string> onPath)
+    public static void OpenFile(Node parent, string title, Action<string> onPath, params string[] filters) =>
+        FileDialogFor(parent, title, FileDialog.FileModeEnum.OpenFile, "", onPath, filters.Length == 0 ? new[] { JsonFilter } : filters);
+
+    public static void OpenDir(Node parent, string title, Action<string> onPath) =>
+        FileDialogFor(parent, title, FileDialog.FileModeEnum.OpenDir, "", onPath, Array.Empty<string>());
+
+    public static void SaveFile(Node parent, string title, string defaultName, Action<string> onPath, params string[] filters) =>
+        FileDialogFor(parent, title, FileDialog.FileModeEnum.SaveFile, defaultName, onPath, filters.Length == 0 ? new[] { JsonFilter } : filters);
+
+    private static void FileDialogFor(Node parent, string title, FileDialog.FileModeEnum mode, string defaultName, Action<string> onPath, string[] filters)
     {
+        if (AutoPath?.Invoke(title) is { } auto)
+        {
+            onPath(auto);
+            return;
+        }
         var fd = new FileDialog
         {
             Title = title,
-            FileMode = FileDialog.FileModeEnum.SaveFile,
+            FileMode = mode,
             Access = FileDialog.AccessEnum.Filesystem,
-            Filters = new[] { "*.json ; JSON" },
+            Filters = filters,
             CurrentFile = defaultName,
             UseNativeDialog = true,
         };
         parent.AddChild(fd);
-        fd.FileSelected += p =>
-        {
-            onPath(p);
-            fd.QueueFree();
-        };
+        if (mode == FileDialog.FileModeEnum.OpenDir)
+            fd.DirSelected += p =>
+            {
+                onPath(p);
+                fd.QueueFree();
+            };
+        else
+            fd.FileSelected += p =>
+            {
+                onPath(p);
+                fd.QueueFree();
+            };
         fd.Canceled += () => fd.QueueFree();
         fd.PopupCentered(new Vector2I(820, 520));
     }

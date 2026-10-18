@@ -207,6 +207,16 @@ public sealed class ContentLibrary
             draft.Table(ch.Category).Get(ch.Id)!.Version = ch.NewVersion;
         }
 
+        // Pinned versions that came from elsewhere (an imported package) are kept in the history too.
+        foreach (var kv in draft.Pinned)
+        {
+            var path = HistoryPath(kv.Key.Category, kv.Key.Id, kv.Key.Version);
+            if (history.ContainsKey(path) || _storage.Exists(path)) continue;
+            var old = ContentJson.Clone(kv.Value);
+            old.Version = kv.Key.Version;
+            history[path] = ContentIO.ExportDef(old);
+        }
+
         var (plan, toDelete) = ContentIO.BuildPlan(draft, _storage);
         foreach (var kv in history) plan[kv.Key] = kv.Value;
         var changed = plan.Where(kv => _storage.ReadText(kv.Key) != kv.Value).Select(kv => kv.Key).ToList();

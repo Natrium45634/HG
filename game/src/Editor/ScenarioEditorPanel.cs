@@ -53,6 +53,7 @@ public partial class ScenarioEditorPanel : DefListPanel
         var left = Ui.VBox(6).Expand(true, true);
         var bar = new HFlowContainer();
         bar.AddThemeConstantOverride("h_separation", 4);
+        _toolButtons.Clear();
         string[] tools = { "Поставить", "Убрать", "Повернуть", "Выбрать" };
         for (int i = 0; i < tools.Length; i++)
         {
@@ -96,12 +97,12 @@ public partial class ScenarioEditorPanel : DefListPanel
         _propsTab = TabIn(tabs, "Сценарий");
         _unitsTab = TabIn(tabs, "Юниты");
         root.AddChild(tabs);
-        Callable.From(() =>
+        AfterLayout(_view, () =>
         {
             RebuildPreview(true);
             RefreshProps();
             RefreshUnits();
-        }).CallDeferred();
+        });
         return root;
     }
 

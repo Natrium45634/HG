@@ -59,7 +59,7 @@ public partial class MapTemplatePanel : DefListPanel
         _view = new BoardViewport { CustomMinimumSize = new Vector2(420, 360), SizeFlagsVertical = SizeFlags.ShrinkBegin };
         split.AddChild(_view);
         root.AddChild(split);
-        Callable.From(() => Preview(t)).CallDeferred();
+        AfterLayout(root, () => Preview(t));
         return root;
     }
 

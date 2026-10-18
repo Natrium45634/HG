@@ -42,7 +42,7 @@ public partial class TerrainPanel : DefListPanel
         side.AddChild(_view);
         side.AddChild(Ui.Label("Предпросмотр: плитка в центре, вокруг — пол. Колесо — зум, Q/E — поворот.", 12, Ui.TextDim, wrap: true).MinSize(320));
         root.AddChild(side);
-        Callable.From(Preview).CallDeferred();
+        AfterLayout(root, Preview);
         return root;
     }
 

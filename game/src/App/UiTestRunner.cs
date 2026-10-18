@@ -52,6 +52,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_route_tool", EditorRouteTool));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
+        _tests.Add(("editor_package_export_import", EditorPackageExportImport));
         _ = Run();
     }
 
@@ -550,6 +551,106 @@ public partial class UiTestRunner : Node
         Check(cm.Library.CheckIntegrity().Ok, "после отката целостность должна быть в порядке");
         Check(cm.Draft!.Skill("cleave")!.Description == "Версия, которую прервёт сбой", "черновик не должен теряться");
         foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+    }
+
+    private void CloseDialogs()
+    {
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList())
+        {
+            d.Hide();
+            d.QueueFree();
+        }
+    }
+
+    /// <summary>
+    /// Packages (docs/DECISIONS_2.md §32): a scenario exported with all dependencies, imported back
+    /// with an ID conflict resolved as a copy; a damaged package is rejected; an object without its
+    /// dependencies imports only as an incomplete draft.
+    /// </summary>
+    private async Task EditorPackageExportImport()
+    {
+        var cm = Main.Instance.Content;
+        string dir = ProjectSettings.GlobalizePath("user://uitest/packages");
+        Directory.CreateDirectory(dir);
+        string pkgPath = System.IO.Path.Combine(dir, "gate.hexpack");
+        string next = pkgPath;
+        Dialogs.AutoPath = _ => next;
+        try
+        {
+            await OpenEditor("scenarios");
+            var panel = Find<DefListPanel>(GetTree().Root).First();
+            panel.Select("gate_defense");
+            await Frames(4);
+            await ClickButton("Пакет…");
+            Check(LabelVisible("вместе с зависимостями"), "окно экспорта должно показать зависимости");
+            Confirm(Dialog("Экспорт пакета"));
+            await Frames(4);
+            Check(File.Exists(pkgPath), "пакет не записан");
+            Check(InfoVisible("сохранён"), "нет сообщения об экспорте");
+            CloseDialogs();
+            var pkg = ContentPackage.Read(File.ReadAllBytes(pkgPath));
+            Check(pkg.Ok && pkg.Objects.Any(o => o.Id == "gate_defense") && pkg.Objects.Any(o => o.Category == DefCategory.Map) && pkg.Objects.Any(o => o.Id == "goblin"),
+                "пакет должен содержать сценарий, карту и врагов");
+
+            // The library changes after the export: the scenario is gone, the goblin differs.
+            var draft = cm.Draft!;
+            draft.Table(DefCategory.Scenario).Remove("gate_defense");
+            draft.Unit("goblin")!.Name = "Гоблин (изменён)";
+            cm.DraftDirty = true;
+            await ClickButton("Импорт…");
+            var preview = Dialog("Импорт: предпросмотр");
+            Check(preview != null, "нет предпросмотра импорта");
+            Check(LabelVisible("Конфликты ID") && LabelVisible("[goblin]"), "предпросмотр должен показать конфликт ID гоблина");
+            var choice = Find<OptionButton>(preview!).First(o => o.ItemCount == 3 && o.GetItemText(1).StartsWith("Копия"));
+            choice.Select(1);
+            Confirm(preview);
+            await Frames(5);
+            Check(InfoVisible("копия"), "отчёт импорта должен назвать копии");
+            CloseDialogs();
+            var sc = draft.Get<ScenarioDef>("gate_defense");
+            Check(sc != null, "сценарий должен вернуться");
+            Check(draft.Unit("goblin")!.Name == "Гоблин (изменён)", "существующий объект не должен перезаписываться");
+            Check(draft.Unit("goblin_copy") != null && draft.Unit("goblin_copy")!.Name != "Гоблин (изменён)", "копия должна получить новый ID и содержимое пакета");
+            Check(sc!.Waves.SelectMany(w => w.Units).Any(u => u.Unit == "goblin_copy"), "ссылки сценария должны перейти на копию");
+
+            // A damaged package is rejected without changes.
+            var bytes = File.ReadAllBytes(pkgPath);
+            for (int i = bytes.Length / 2; i < bytes.Length / 2 + 64; i++) bytes[i] ^= 0x5A;
+            next = System.IO.Path.Combine(dir, "damaged.hexpack");
+            File.WriteAllBytes(next, bytes);
+            int before = draft.AllDefs().Count();
+            await ClickButton("Импорт…");
+            Check(InfoVisible("не прошёл проверку") || InfoVisible("отклонён") || InfoVisible("Ошибка импорта"), "повреждённый пакет должен быть отклонён");
+            Check(draft.AllDefs().Count() == before, "черновик не должен меняться");
+            CloseDialogs();
+
+            // A single object without its dependencies: only as an incomplete draft.
+            next = System.IO.Path.Combine(dir, "lonely.json");
+            File.WriteAllText(next, """
+            { "formatVersion": 4, "kind": "def", "category": "Unit",
+              "item": { "id": "lonely_knight", "name": "Одинокий рыцарь", "faction": "player", "basicAttack": "missing_strike" } }
+            """);
+            await ClickButton("Импорт…");
+            preview = Dialog("Импорт: предпросмотр");
+            Check(preview != null && LabelVisible("Отсутствуют зависимости"), "предпросмотр должен показать отсутствующую зависимость");
+            Confirm(preview);
+            await Frames(4);
+            Check(draft.Unit("lonely_knight") == null, "без отметки черновика импорт не выполняется");
+            Check(InfoVisible("только как черновик"), "должно быть объяснение, почему импорт не выполнен");
+            foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible && d is not ConfirmationDialog).ToList()) d.QueueFree();
+            await Frames(2);
+            preview = Dialog("Импорт: предпросмотр");
+            Check(preview != null, "предпросмотр должен остаться открытым");
+            Find<CheckBox>(preview!).First(c => c.Text.StartsWith("Импортировать как черновик")).ButtonPressed = true;
+            Confirm(preview);
+            await Frames(5);
+            Check(draft.Unit("lonely_knight") is { Incomplete: true }, "объект должен импортироваться с отметкой «неполный»");
+            CloseDialogs();
+        }
+        finally
+        {
+            Dialogs.AutoPath = null;
+        }
     }
 
     private bool InfoVisible(string text) =>

@@ -186,6 +186,13 @@ public class AiAndScenarioTests
     }
 }
 
+/// <summary>Timing budgets are measured alone: parallel tests would compete for the CPU.</summary>
+[CollectionDefinition("Performance", DisableParallelization = true)]
+public class PerformanceCollection
+{
+}
+
+[Collection("Performance")]
 public class StressTests
 {
     private readonly ITestOutputHelper _out;
