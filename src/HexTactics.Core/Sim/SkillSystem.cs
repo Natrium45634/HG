@@ -69,6 +69,9 @@ public sealed class SkillSystem
 
     public IReadOnlyList<PendingStage> PendingStages => _pending;
 
+    /// <summary>Recently resolved stage areas (renderer flashes the real effect area). Trimmed to the last ~2 s.</summary>
+    public List<(long Tick, int CasterId, string Color, List<HexCoord> Cells, bool PlayerVisible)> RecentAreas { get; } = new();
+
     /// <summary>All casts currently in preparation (for telegraph rendering).</summary>
     public IEnumerable<SkillCast> ActiveCasts => _sim.Units.Where(u => u.Alive && u.Casting != null && !u.Casting.Released).Select(u => u.Casting!);
 
@@ -369,6 +372,9 @@ public sealed class SkillSystem
 
         // 2. Area.
         var cells = StageCells(cast, stage);
+        RecentAreas.Add((_sim.Tick, caster.Id, skill.Color, cells.Select(c => c.Cell).ToList(),
+            _sim.IsPlayerFaction(caster.FactionId) || _sim.Vision.IsVisibleToPlayer(caster) || cells.Any(c => _sim.Vision.IsCellVisibleToPlayer(c.Cell))));
+        while (RecentAreas.Count > 0 && RecentAreas[0].Tick < _sim.Tick - _sim.TicksPerSecond * 2) RecentAreas.RemoveAt(0);
 
         // 3. Targets.
         var entries = new List<TargetEntry>();

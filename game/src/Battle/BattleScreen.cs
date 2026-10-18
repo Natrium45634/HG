@@ -1,0 +1,1036 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Godot;
+using HexTactics.Core.Content;
+using HexTactics.Core.Hex;
+using HexTactics.Core.Sim;
+using HexTactics.Game.App;
+using HexTactics.Game.Render;
+using HexTactics.Game.UI;
+
+namespace HexTactics.Game.Battle;
+
+public enum InputMode
+{
+    None,
+    Move,
+    Turn,
+    Attack,
+    Skill,
+}
+
+/// <summary>
+/// Battle screen: drives the simulation in fixed ticks (pause/speeds), turns player input into
+/// commands, and draws previews (paths, areas, odds), queue markers, telegraphs and the HUD.
+/// It never changes unit state directly — everything goes through the command API.
+/// </summary>
+public partial class BattleScreen : Node
+{
+    private readonly ScenarioDef _scenario;
+    private readonly ContentDatabase _db;
+    private readonly bool _admin;
+    private readonly Action? _onExit;
+
+    public Simulation Sim { get; private set; } = null!;
+    public SimDriver Driver { get; private set; } = null!;
+    public BoardView Board { get; private set; } = null!;
+    private BattleHud _hud = null!;
+    private LabelPool _labels = null!;
+
+    public Unit? Selected { get; private set; }
+    public InputMode Mode { get; private set; }
+    public SkillDef? ModeSkill { get; private set; }
+    /// <summary>Insertion index for new commands (-1 = append to the end of the queue).</summary>
+    public int InsertIndex { get; private set; } = -1;
+
+    private Cell? _hover;
+    private Unit? _hoverUnit;
+    private Vector2 _mouse;
+    private PathResult? _path;
+    private (HexCoord From, HexCoord To, int Ver, long Tick)? _pathKey;
+    private Dictionary<HexCoord, double>? _reach;
+    private (HexCoord From, double Ap, int Ver, long Tick)? _reachKey;
+    private List<ProjectedCommand> _proj = new();
+    private (int Unit, string Key, long Tick)? _projKey;
+    private readonly Dictionary<int, List<HexCoord>> _trails = new();
+    private SkillPreview? _skillPreview;
+    private string _hint = "";
+    private bool _diag;
+    private long _lastAreaTick;
+
+    public bool Admin => _admin;
+    public bool DiagnosticsVisible => _diag;
+    public ContentDatabase Db => _db;
+    public Settings Settings => Main.Instance.Settings;
+    public string Hint => _hint;
+    public List<ProjectedCommand> Projection => _proj;
+
+    public BattleScreen(ScenarioDef scenario, ContentDatabase db, bool admin, Action? onExit)
+    {
+        _scenario = scenario;
+        _db = db;
+        _admin = admin;
+        _onExit = onExit;
+        Name = "Battle";
+    }
+
+    public override void _Ready()
+    {
+        ulong? seed = Main.Instance.Args.TryGetValue("seed", out var s) && ulong.TryParse(s, out var v) ? v : null;
+        Sim = ScenarioSystem.Create(_db, _scenario, seed, _admin);
+        Driver = new SimDriver(Sim);
+        Driver.Autopaused += r => _hud.ShowBanner("Автопауза: " + r, Ui.Warn);
+        if (Main.Instance.Args.TryGetValue("speed", out var sp) && int.TryParse(sp, out var si))
+        {
+            Driver.SetSpeedIndex(si);
+            Driver.Paused = false;
+        }
+        Board = new BoardView();
+        AddChild(Board);
+        Board.ApplySettings(Settings);
+        Board.Bind(Sim.Map, _db);
+        _labels = new LabelPool { Name = "Labels" };
+        Board.AddChild(_labels);
+        _hud = new BattleHud(this);
+        var layer = new CanvasLayer { Layer = 1 };
+        layer.AddChild(_hud);
+        AddChild(layer);
+
+        var first = Sim.Units.FirstOrDefault(u => Sim.CanPlayerCommand(u));
+        if (first != null)
+        {
+            Select(first);
+            Board.Rig.FocusOn(Board.UnitPos(first));
+        }
+        _diag = _admin;
+
+        if (Main.Instance.Args.TryGetValue("run", out var run) && double.TryParse(run, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var secs))
+        {
+            // Automation: advance the battle before the screenshot.
+            Sim.Rules.Autopause.EnemySpotted = false;
+            for (long i = 0; i < Sim.TicksFor(secs); i++) Sim.Step();
+            Sim.ConsumeAutopause();
+        }
+        if (Main.Instance.Args.TryGetValue("cast", out var cast)) AutomationCast(cast);
+        if (Main.Instance.Args.TryGetValue("mode", out var mode)) ApplyAutomationMode(mode);
+        if (Main.Instance.Args.TryGetValue("focus", out var f))
+        {
+            var p = f.Split(',');
+            Board.Rig.FocusOn(Render.Board.Center(new HexCoord(int.Parse(p[0]), int.Parse(p[1]))));
+        }
+    }
+
+    /// <summary>Automation: --cast=skill:q,r[;skill:q,r…] — the first unit knowing the skill uses it, then the battle runs --after seconds.</summary>
+    private void AutomationCast(string spec)
+    {
+        foreach (var part in spec.Split(';'))
+        {
+            var kv = part.Split(':');
+            var sk = _db.Skill(kv[0]);
+            var u = Sim.Units.FirstOrDefault(x => x.Alive && Sim.IsPlayerFaction(x.FactionId) && x.KnowsSkill(kv[0]));
+            if (sk == null || u == null) continue;
+            var xy = kv[1].Split(',');
+            var c = new HexCoord(int.Parse(xy[0]), int.Parse(xy[1]));
+            var target = Sim.Map.Get(c)?.Occupant;
+            var cmd = sk.Targeting switch
+            {
+                TargetingMode.Unit => Command.Skill(sk.Id, null, target?.Id ?? -1),
+                TargetingMode.Cell => Command.Skill(sk.Id, c),
+                _ => Command.Skill(sk.Id, null, -1, u.Pos.DirectionTo(c)),
+            };
+            if (sk == u.BasicAttack && target != null) cmd = Command.Attack(target.Id);
+            var err = Sim.Enqueue(u, cmd);
+            if (err != null) GD.Print("cast: " + err);
+        }
+        if (Main.Instance.Args.TryGetValue("after", out var a) && double.TryParse(a, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var secs))
+        {
+            Sim.Rules.Autopause.EnemySpotted = false;
+            for (long i = 0; i < Sim.TicksFor(secs); i++) Sim.Step();
+            Sim.ConsumeAutopause();
+        }
+    }
+
+    private void ApplyAutomationMode(string mode)
+    {
+        if (Selected == null) return;
+        if (mode == "move") EnterMode(InputMode.Move);
+        else if (mode.StartsWith("skill:"))
+        {
+            var sk = _db.Skill(mode[6..]);
+            var u = Sim.Units.FirstOrDefault(x => Sim.CanPlayerCommand(x) && x.KnowsSkill(mode[6..]));
+            if (u != null && sk != null)
+            {
+                Select(u);
+                EnterSkill(sk);
+            }
+        }
+        if (Main.Instance.Args.TryGetValue("hover", out var h))
+        {
+            var parts = h.Split(',');
+            var c = Sim.Map.Get(new HexCoord(int.Parse(parts[0]), int.Parse(parts[1])));
+            if (c != null) _forcedHover = c;
+        }
+        if (Main.Instance.Args.ContainsKey("plan"))
+        {
+            // Demo queue: move → attack/skill → move → defend (for screenshots).
+            var u = Selected;
+            var enemy = Sim.Units.FirstOrDefault(e => Sim.IsHostile(u, e));
+            Sim.Enqueue(u, Command.Move(u.Pos + new HexCoord(3, 0)));
+            Sim.Enqueue(u, Command.Turn(HexDirection.NE));
+            if (enemy != null) Sim.Enqueue(u, Command.Move(u.Pos + new HexCoord(5, -1)));
+            Sim.Enqueue(u, Command.Defend());
+        }
+    }
+
+    private Cell? _forcedHover;
+
+    // ------------------------------------------------------------------ selection & modes
+
+    public void Select(Unit? u)
+    {
+        if (Selected != null && Board.Views.TryGetValue(Selected.Id, out var old)) old.Selected = false;
+        Selected = u;
+        if (u != null) Board.ViewOf(u).Selected = true;
+        ExitMode();
+        _hud.OnSelectionChanged();
+    }
+
+    public void ExitMode()
+    {
+        Mode = InputMode.None;
+        ModeSkill = null;
+        InsertIndex = -1;
+        _skillPreview = null;
+        _hint = "";
+        _hud?.OnModeChanged();
+    }
+
+    public void EnterMode(InputMode mode, int insertIndex = -1)
+    {
+        if (Selected == null || !Sim.CanPlayerCommand(Selected)) return;
+        Mode = mode;
+        ModeSkill = mode == InputMode.Attack ? Selected.BasicAttack : null;
+        InsertIndex = insertIndex;
+        _hint = mode switch
+        {
+            InputMode.Move => "Движение: ЛКМ — точка маршрута (можно несколько), ПКМ/Esc — готово. Shift — " + (Settings.AppendByDefault ? "заменить очередь" : "добавить в очередь"),
+            InputMode.Turn => "Поворот: укажите клетку в нужном направлении",
+            InputMode.Attack => "Атака: ЛКМ по врагу. Показаны шансы попадания и обнаружения",
+            _ => "",
+        };
+        _hud.OnModeChanged();
+    }
+
+    public void EnterSkill(SkillDef skill, int insertIndex = -1)
+    {
+        if (Selected == null || !Sim.CanPlayerCommand(Selected)) return;
+        Mode = InputMode.Skill;
+        ModeSkill = skill;
+        InsertIndex = insertIndex;
+        _hint = skill.Targeting switch
+        {
+            TargetingMode.Unit => $"«{skill.DisplayName}»: ЛКМ по цели",
+            TargetingMode.Cell => $"«{skill.DisplayName}»: ЛКМ по клетке в пределах дальности",
+            TargetingMode.Direction => $"«{skill.DisplayName}»: наведите в нужном направлении и нажмите ЛКМ",
+            _ => $"«{skill.DisplayName}»: ЛКМ — применить (направление — по курсору)",
+        };
+        _hud.OnModeChanged();
+    }
+
+    /// <summary>Activates an action from the menu/hotkey (respecting availability).</summary>
+    public void Activate(ActionInfo a, int insertIndex = -1)
+    {
+        if (Selected == null) return;
+        if (!a.Enabled)
+        {
+            _hud.ShowBanner($"{a.Label}: недоступно — {a.Reason}", Ui.Bad);
+            return;
+        }
+        switch (a.Key)
+        {
+            case "move":
+                EnterMode(InputMode.Move, insertIndex);
+                break;
+            case "turn":
+                EnterMode(InputMode.Turn, insertIndex);
+                break;
+            case "attack":
+                EnterMode(InputMode.Attack, insertIndex);
+                break;
+            case "defend":
+                InsertIndex = insertIndex;
+                Submit(Command.Defend());
+                InsertIndex = -1;
+                break;
+            case "wait":
+                InsertIndex = insertIndex;
+                Submit(Command.Wait(2));
+                InsertIndex = -1;
+                break;
+            case "queue":
+                _hud.FocusQueue();
+                break;
+            case "info":
+                _hud.ToggleInfo();
+                break;
+            default:
+                if (a.Skill != null)
+                {
+                    if (a.Skill.Targeting == TargetingMode.Self && a.Skill.Stages.All(s => s.Area.Shape is AreaShape.Single or AreaShape.Radius or AreaShape.Ring or AreaShape.Cross or AreaShape.Global))
+                    {
+                        InsertIndex = insertIndex;
+                        Submit(Command.Skill(a.Skill.Id, null));
+                        InsertIndex = -1;
+                    }
+                    else
+                    {
+                        EnterSkill(a.Skill, insertIndex);
+                    }
+                }
+                break;
+        }
+        if (!string.IsNullOrEmpty(a.Warning)) _hud.ShowBanner(a.Warning, Ui.Warn);
+    }
+
+    public (HexCoord Pos, HexDirection Facing) PlanStart()
+    {
+        if (Selected == null) return (HexCoord.Zero, HexDirection.E);
+        if (InsertIndex < 0)
+            return _proj.Count == 0 ? (Selected.StepTo ?? Selected.Pos, Selected.Facing) : (_proj[^1].EndPos, _proj[^1].EndFacing);
+        int i = Math.Min(InsertIndex - 1, _proj.Count - 1);
+        if (i < 0) return (Selected.StepTo ?? Selected.Pos, Selected.Facing);
+        return (_proj[i].EndPos, _proj[i].EndFacing);
+    }
+
+    private bool Replace => Input.IsKeyPressed(Key.Shift) == Settings.AppendByDefault;
+
+    private void Submit(Command c)
+    {
+        var u = Selected;
+        if (u == null) return;
+        string? err;
+        if (InsertIndex >= 0)
+        {
+            err = Sim.Enqueue(u, c, InsertIndex);
+            if (err == null) InsertIndex++;
+        }
+        else
+        {
+            err = Sim.Enqueue(u, c, -1, Replace);
+        }
+        _projKey = null;
+        if (err != null) _hud.ShowBanner("Команда не принята: " + err, Ui.Bad);
+        _hud.OnQueueChanged();
+    }
+
+    // ------------------------------------------------------------------ frame
+
+    public override void _Process(double delta)
+    {
+        float dt = (float)delta;
+        Driver.Advance(delta);
+        foreach (var e in Sim.DrainEvents()) OnSimEvent(e);
+
+        bool fog = Sim.FogOfWar && !_admin;
+        Board.SyncMap(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));
+        Board.SyncUnits(Sim, Driver.Alpha, UnitVisible, _ => false, dt);
+        foreach (var v in Board.Views.Values) v.ShowName = _diag && v.Unit.AiControlled;
+        Board.SyncFog(Sim, fog);
+        Board.Effects.UpdateVisibility(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));
+
+        UpdateProjection();
+        UpdateHover();
+        DrawOverlay();
+        _hud.Refresh();
+    }
+
+    public bool UnitVisible(Unit u)
+    {
+        if (_admin || !Sim.FogOfWar) return true;
+        if (Sim.IsPlayerFaction(u.FactionId) || Sim.IsPlayerFaction(u.BaseFactionId)) return true;
+        return Sim.Vision.IsVisibleToPlayer(u);
+    }
+
+    private void OnSimEvent(SimEvent e)
+    {
+        bool visible = e.PlayerVisible || _admin;
+        _hud.AppendLog(e, visible);
+        if (!visible || !Settings.FloatingNumbers) return;
+        var target = Sim.GetUnit(e.TargetUnit);
+        Vector3? pos = target != null ? Board.UnitPos(target) : e.Cell.HasValue ? Render.Board.Center(e.Cell.Value, Render.Board.TopY(Sim.Map.Get(e.Cell.Value))) : null;
+        if (pos == null) return;
+        switch (e.Type)
+        {
+            case SimEventType.Damage when e.Value > 0:
+                Board.FloatText(pos.Value, $"-{e.Value:0}", Ui.Parse(_db.Get<DamageTypeDef>(e.DamageType)?.Color, Ui.Bad).Lightened(0.1f), 1.1f);
+                if (target != null) Board.ViewOf(target).Flash();
+                break;
+            case SimEventType.Heal:
+                Board.FloatText(pos.Value, $"+{e.Value:0}", Ui.Good, 1.05f);
+                break;
+            case SimEventType.Miss:
+                Board.FloatText(pos.Value, "промах", Ui.TextDim, 0.8f);
+                break;
+            case SimEventType.Block:
+                Board.FloatText(pos.Value + new Vector3(0, 0.25f, 0), "блок", new Color(0.7f, 0.85f, 1f), 0.8f);
+                break;
+            case SimEventType.Crit:
+                Board.FloatText(pos.Value + new Vector3(0, 0.45f, 0), "КРИТ!", Ui.Accent, 1.0f);
+                break;
+            case SimEventType.Surprise:
+                Board.FloatText(pos.Value + new Vector3(0, 0.65f, 0), "неожиданно!", new Color(1f, 0.55f, 0.3f), 0.85f);
+                break;
+            case SimEventType.CastInterrupted:
+                var src = Sim.GetUnit(e.SourceUnit);
+                if (src != null) Board.FloatText(Board.UnitPos(src), "прервано", Ui.Warn, 0.85f);
+                break;
+            case SimEventType.StatusApplied when e.Level == LogLevel.Normal && target != null:
+                Board.FloatText(pos.Value + new Vector3(0, 0.3f, 0), e.Text.Contains('«') ? e.Text.Substring(e.Text.IndexOf('«')) : "состояние", new Color(0.85f, 0.75f, 1f), 0.7f);
+                break;
+            case SimEventType.Synergy when e.Cell.HasValue:
+                Board.FloatText(pos.Value, "синергия!", new Color(1f, 0.85f, 0.4f), 0.9f, 1.6f);
+                break;
+            case SimEventType.Moved when e.SourceUnit >= 0 && e.Cell.HasValue:
+            {
+                if (!_trails.TryGetValue(e.SourceUnit, out var t)) _trails[e.SourceUnit] = t = new List<HexCoord>();
+                t.Add(e.Cell.Value);
+                if (t.Count > 24) t.RemoveAt(0);
+                break;
+            }
+        }
+    }
+
+    private void UpdateProjection()
+    {
+        var u = Selected;
+        if (u == null || !u.Alive)
+        {
+            _proj = new List<ProjectedCommand>();
+            return;
+        }
+        string key = string.Join(",", u.Queue.Items.Select(c => c.Id + ":" + (int)c.Status)) + "|" + u.Pos + u.StepTo;
+        if (_projKey is { } k && k.Unit == u.Id && k.Key == key && k.Tick == Sim.Tick) return;
+        _proj = Sim.Planner.ProjectQueue(u);
+        _projKey = (u.Id, key, Sim.Tick);
+    }
+
+    private void UpdateHover()
+    {
+        bool overUi = _hud.IsMouseOverUi();
+        _hover = overUi ? null : Board.PickCell(_mouse);
+        if (_forcedHover != null) _hover = _forcedHover;
+        _hoverUnit = null;
+        if (_hover != null)
+            foreach (var o in _hover.Occupants)
+                if (o.Alive && UnitVisible(o))
+                    _hoverUnit = o;
+        foreach (var v in Board.Views.Values) v.Hovered = _hoverUnit != null && v.Unit == _hoverUnit;
+    }
+
+    public Cell? HoverCell => _hover;
+    public Unit? HoverUnit => _hoverUnit;
+    public PathResult? HoverPath => _path;
+    public SkillPreview? HoverSkillPreview => _skillPreview;
+
+    // ------------------------------------------------------------------ overlay
+
+    private void DrawOverlay()
+    {
+        var o = Board.Overlay;
+        o.Clear();
+        _labels.Begin();
+        float pulse = o.Pulse(4);
+
+        DrawTelegraphs(o, pulse);
+        DrawRecentAreas(o);
+        DrawGhosts(o);
+
+        if (_diag) DrawAiDebug(o);
+
+        var u = Selected;
+        if (u != null && u.Alive)
+        {
+            DrawTrail(o, u);
+            DrawQueue(o, u);
+            switch (Mode)
+            {
+                case InputMode.Move:
+                    DrawMovePreview(o, u);
+                    break;
+                case InputMode.Turn:
+                    DrawTurnPreview(o, u);
+                    break;
+                case InputMode.Attack:
+                case InputMode.Skill:
+                    DrawSkillPreview(o, u);
+                    break;
+            }
+        }
+        if (_hover != null) o.RingHex(_hover.Coord, new Color(1, 1, 1, 0.85f), 0.06f, 0.97f);
+        o.Commit();
+        _labels.End();
+    }
+
+    private Vector3 LabelPos(HexCoord c, float lift = 0.5f)
+    {
+        var cell = Sim.Map.Get(c);
+        return Render.Board.Center(c, (cell == null ? 0 : Math.Max(Render.Board.TopY(cell), Render.Board.SurfaceY(cell))) + lift);
+    }
+
+    private void DrawTelegraphs(OverlayLayer o, float pulse)
+    {
+        foreach (var cast in Sim.Skills.ActiveCasts)
+        {
+            var caster = cast.Caster;
+            bool own = Sim.IsPlayerFaction(caster.FactionId);
+            bool visible = _admin || own || (cast.VisibleToPlayer && UnitVisible(caster));
+            if (!visible || !cast.Skill.Telegraph) continue;
+            var col = Ui.Parse(cast.Skill.Color, Ui.Accent);
+            bool hostileToPlayer = !own && Sim.Options.PlayerFactions.Any(pf => _db.RelationOf(pf, caster.FactionId) == Relation.Enemy);
+            foreach (var c in cast.TelegraphCells)
+            {
+                if (hostileToPlayer)
+                {
+                    o.FillHex(c, new Color(0.9f, 0.2f, 0.15f, 0.12f + 0.12f * pulse));
+                    o.HatchHex(c, new Color(1f, 0.35f, 0.25f, 0.55f), phase: (float)Time.GetTicksMsec() / 900f);
+                    o.DashedRing(c, new Color(1f, 0.3f, 0.2f, 0.9f));
+                }
+                else
+                {
+                    o.FillHex(c, new Color(col.R, col.G, col.B, 0.18f));
+                    o.RingHex(c, new Color(col.R, col.G, col.B, 0.7f), 0.05f);
+                }
+            }
+            var p = Board.UnitPos(caster) + new Vector3(0, 0.02f, 0);
+            float frac = (float)cast.Progress(Sim.Tick);
+            o.Circle(p, 0.66f, 0.07f, new Color(0, 0, 0, 0.5f), true, 40, 1f);
+            o.Circle(p, 0.66f, 0.07f, hostileToPlayer ? new Color(1f, 0.35f, 0.25f) : col, true, 40, Math.Max(0.02f, frac));
+            if (hostileToPlayer && cast.TelegraphCells.Count > 0)
+                _labels.Add(LabelPos(cast.Anchor, 0.9f), "!", new Color(1f, 0.4f, 0.3f), 64);
+        }
+    }
+
+    private void DrawRecentAreas(OverlayLayer o)
+    {
+        long window = Sim.TicksPerSecond / 2;
+        foreach (var (tick, _, color, cells, visible) in Sim.Skills.RecentAreas)
+        {
+            if (Sim.Tick - tick > window || (!visible && !_admin)) continue;
+            float a = 1f - (float)(Sim.Tick - tick + Driver.Alpha) / window;
+            var col = Ui.Parse(color, Ui.Accent);
+            foreach (var c in cells) o.FillHex(c, new Color(col.R, col.G, col.B, 0.55f * a), 0.97f, 0.05f);
+        }
+    }
+
+    private void DrawGhosts(OverlayLayer o)
+    {
+        if (_admin || !Sim.FogOfWar) return;
+        foreach (var (id, pos) in Sim.Vision.LastSeenByPlayer)
+        {
+            var u = Sim.GetUnit(id);
+            if (u == null || !u.Alive || UnitVisible(u)) continue;
+            o.DashedRing(pos, new Color(0.8f, 0.8f, 0.85f, 0.7f));
+            _labels.Add(LabelPos(pos, 0.45f), "?", new Color(0.85f, 0.85f, 0.9f, 0.85f), 40);
+        }
+    }
+
+    private void DrawAiDebug(OverlayLayer o)
+    {
+        foreach (var u in Sim.Units)
+        {
+            if (!u.Alive || !u.AiControlled) continue;
+            var t = Sim.GetUnit(u.Ai.TargetUnitId);
+            if (t != null && t.Alive) o.Strip(Board.UnitPos(u) + new Vector3(0, 0.2f, 0), Board.UnitPos(t) + new Vector3(0, 0.2f, 0), 0.04f, new Color(1f, 0.3f, 0.6f, 0.6f), true);
+            var cur = u.Queue.Current;
+            if (cur?.Type == CommandType.Move && cur.TargetCell.HasValue) o.DashedRing(cur.TargetCell.Value, new Color(1f, 0.3f, 0.6f, 0.8f));
+            // Full explanation only for the hovered/selected AI unit (the panel shows it too).
+            if (!string.IsNullOrEmpty(u.Ai.Explanation) && (u == _hoverUnit || u == Selected))
+                _labels.Add(Board.UnitPos(u) + new Vector3(0, 1.75f, 0), u.Ai.Explanation, new Color(1f, 0.75f, 0.85f), 20);
+            else if (t != null && t.Alive)
+                _labels.Add(Board.UnitPos(u) + new Vector3(0, 1.6f, 0), "→ " + t.Name, new Color(1f, 0.75f, 0.85f, 0.8f), 18);
+        }
+    }
+
+    private void DrawTrail(OverlayLayer o, Unit u)
+    {
+        if (!_trails.TryGetValue(u.Id, out var t)) return;
+        for (int i = 0; i < t.Count; i++)
+            o.Dot(t[i], new Color(0.75f, 0.75f, 0.78f, 0.12f + 0.3f * i / t.Count), 0.07f, 0.04f, false);
+    }
+
+    private static readonly Color RouteColor = new(0.45f, 0.75f, 1f, 0.9f);
+
+    private void DrawQueue(OverlayLayer o, Unit u)
+    {
+        if (!Sim.CanPlayerCommand(u) && !_admin) return;
+        var prevEnd = u.StepTo ?? u.Pos;
+        if (u.StepTo.HasValue) o.Line(u.Pos, u.StepTo.Value, RouteColor, 0.08f);
+        for (int i = 0; i < _proj.Count; i++)
+        {
+            var pc = _proj[i];
+            var cmd = pc.Command;
+            bool insertHere = InsertIndex >= 0 && i == InsertIndex - 1;
+            switch (cmd.Type)
+            {
+                case CommandType.Move:
+                {
+                    var path = pc.Estimate.Path;
+                    var last = pc.StartPos;
+                    foreach (var c in path)
+                    {
+                        o.Line(last, c, RouteColor, 0.075f);
+                        last = c;
+                    }
+                    foreach (var c in path) o.Dot(c, new Color(RouteColor.R, RouteColor.G, RouteColor.B, 0.55f), 0.07f);
+                    bool feasible = pc.Estimate.Feasible;
+                    o.Disc(LabelPos(pc.EndPos, 0.08f), 0.26f, feasible ? new Color(0.2f, 0.45f, 0.8f, 0.95f) : new Color(0.8f, 0.25f, 0.2f, 0.95f));
+                    o.Circle(LabelPos(pc.EndPos, 0.08f), 0.3f, 0.05f, insertHere ? Ui.Accent : Colors.White);
+                    break;
+                }
+                case CommandType.Turn:
+                    o.Arrow(pc.EndPos, pc.EndFacing, new Color(1f, 0.9f, 0.5f, 0.95f), 0.85f);
+                    break;
+                case CommandType.Attack:
+                case CommandType.Skill:
+                {
+                    var target = cmd.TargetUnitId >= 0 ? Sim.GetUnit(cmd.TargetUnitId) : null;
+                    var tpos = target?.Pos ?? cmd.TargetCell ?? pc.EndPos;
+                    var sk = Sim.Planner.SkillOf(u, cmd);
+                    var col = Ui.Parse(sk?.Color, new Color(1f, 0.5f, 0.3f));
+                    if (sk != null && (sk.Targeting != TargetingMode.Unit || sk.Stages.Any(s => s.Area.Shape != AreaShape.Single)))
+                    {
+                        var pv = Sim.Planner.PreviewSkill(u, sk, pc.StartPos, pc.StartFacing, cmd.TargetCell ?? tpos, cmd.TargetUnitId, cmd.Direction);
+                        foreach (var c in pv.Cells.Where(c => !c.Blocked)) o.FillHex(c.Cell, new Color(col.R, col.G, col.B, 0.16f));
+                    }
+                    if (tpos != pc.EndPos) o.Line(pc.EndPos, tpos, new Color(col.R, col.G, col.B, 0.8f), 0.05f);
+                    o.RingHex(tpos, new Color(col.R, col.G, col.B, 0.95f), 0.08f, 0.8f);
+                    break;
+                }
+            }
+            string label = cmd.Type switch
+            {
+                CommandType.Move => $"{i + 1}",
+                CommandType.Turn => $"{i + 1}↻",
+                CommandType.Attack => $"{i + 1}⚔",
+                CommandType.Skill => $"{i + 1}★",
+                CommandType.Defend => $"{i + 1}⛨",
+                CommandType.Wait => $"{i + 1}⏸",
+                _ => $"{i + 1}",
+            };
+            var color = cmd.Status == CommandStatus.Waiting ? Ui.Warn : cmd.Status == CommandStatus.Active ? Ui.Accent : Colors.White;
+            _labels.Add(LabelPos(pc.EndPos, 0.55f + 0.0f), label, color, 36);
+            prevEnd = pc.EndPos;
+        }
+        _ = prevEnd;
+    }
+
+    private void DrawMovePreview(OverlayLayer o, Unit u)
+    {
+        var (start, _) = PlanStart();
+        double freeAp = Math.Max(0, (_proj.Count > 0 && InsertIndex < 0 ? _proj[^1].RemainingNoRegen : u.FreeAp));
+        if (Settings.ShowMoveRange)
+        {
+            var key = (start, Math.Round(freeAp, 1), Sim.Map.Version, Sim.Tick / 10);
+            if (_reachKey != key)
+            {
+                _reach = Sim.Planner.ReachableWithAp(u, start, freeAp);
+                _reachKey = key;
+            }
+            if (_reach != null)
+                foreach (var c in _reach.Keys)
+                    if (c != start)
+                        o.FillHex(c, new Color(0.45f, 0.75f, 1f, 0.10f), 0.92f, 0.025f);
+        }
+        _path = null;
+        if (_hover == null) return;
+        var to = _hover.Coord;
+        var pk = (start, to, Sim.Map.Version, Sim.Tick / 5);
+        if (_pathKey != pk)
+        {
+            _cachedPath = Sim.Pathfinder.Find(Sim.Map, Sim.Rules, u.Def.MoveCategory, u, start, to,
+                new PathOptions { HazardPenalty = Sim.Rules.Move.HazardPenalty, IgnoreUnits = start != u.Pos && start != (u.StepTo ?? u.Pos), ComputeNearest = true }, Sim.AllowStacking);
+            _pathKey = pk;
+        }
+        _path = _cachedPath;
+        if (_path == null) return;
+        if (_path.Found)
+        {
+            var last = start;
+            var col = new Color(1f, 0.85f, 0.35f, 0.95f);
+            foreach (var c in _path.Path)
+            {
+                o.Line(last, c, col, 0.09f);
+                last = c;
+            }
+            foreach (var c in _path.Path) o.Dot(c, col, 0.08f);
+            double ap = _path.Cost * Sim.Rules.Ap.MovePerCost;
+            double secs = _path.StepCosts.Sum(c => c / Math.Max(0.01, u.Stat(Stats.MoveSpeed)));
+            bool short_ = ap > freeAp + 1e-9;
+            _labels.Add(LabelPos(to, 0.85f), $"{ap:0.#} ОД · {secs:0.#} с" + (short_ ? " ⏳" : ""), short_ ? Ui.Warn : new Color(1f, 0.92f, 0.6f), 30);
+        }
+        else
+        {
+            o.RingHex(to, new Color(1f, 0.25f, 0.2f, 0.95f), 0.1f);
+            o.Strip(LabelPos(to, -0.45f) + new Vector3(-0.35f, 0, -0.35f), LabelPos(to, -0.45f) + new Vector3(0.35f, 0, 0.35f), 0.1f, new Color(1f, 0.25f, 0.2f), true);
+            o.Strip(LabelPos(to, -0.45f) + new Vector3(0.35f, 0, -0.35f), LabelPos(to, -0.45f) + new Vector3(-0.35f, 0, 0.35f), 0.1f, new Color(1f, 0.25f, 0.2f), true);
+            if (_path.Nearest.HasValue)
+            {
+                o.DashedRing(_path.Nearest.Value, new Color(0.4f, 1f, 0.5f, 0.95f));
+                _labels.Add(LabelPos(_path.Nearest.Value, 0.7f), "ближайшая", new Color(0.5f, 1f, 0.6f), 24);
+            }
+        }
+    }
+
+    private PathResult? _cachedPath;
+
+    private void DrawTurnPreview(OverlayLayer o, Unit u)
+    {
+        var (start, facing) = PlanStart();
+        HexDirection? hoverDir = _hover != null ? start.DirectionTo(_hover.Coord) : null;
+        for (int d = 0; d < 6; d++)
+        {
+            var dir = (HexDirection)d;
+            bool hl = hoverDir == dir;
+            o.Arrow(start, dir, hl ? new Color(1f, 0.85f, 0.35f, 1f) : new Color(1, 1, 1, dir == facing ? 0.6f : 0.25f), hl ? 1.05f : 0.9f);
+        }
+        if (hoverDir.HasValue)
+        {
+            int steps = HexDirectionExt.StepsBetween(facing, hoverDir.Value);
+            _labels.Add(LabelPos(start, 1.0f), $"{hoverDir.Value.RuName()}: {steps * Sim.Rules.Turn.ApPerStep:0.##} ОД", new Color(1f, 0.92f, 0.6f), 28);
+        }
+    }
+
+    private void DrawSkillPreview(OverlayLayer o, Unit u)
+    {
+        var skill = ModeSkill;
+        _skillPreview = null;
+        if (skill == null) return;
+        var (start, facing) = PlanStart();
+        var col = Ui.Parse(skill.Color, Ui.Accent);
+        // Range band.
+        if (skill.Targeting is TargetingMode.Unit or TargetingMode.Cell)
+        {
+            int max = skill.RangeMax + (skill.Ranged ? 3 : 0);
+            foreach (var c in HexCoord.Spiral(start, max))
+            {
+                int d = HexCoord.Distance(start, c);
+                if (d < skill.RangeMin || !Sim.Map.Contains(c)) continue;
+                int bonus = Sim.Skills.RangeBonus(skill, start, c);
+                if (d > skill.RangeMax + bonus) continue;
+                o.FillHex(c, new Color(col.R, col.G, col.B, 0.07f), 0.9f, 0.022f);
+            }
+        }
+        if (_hover == null) return;
+        HexCoord? targetCell = null;
+        int targetUnit = -1;
+        HexDirection? dir = null;
+        switch (skill.Targeting)
+        {
+            case TargetingMode.Unit:
+                if (_hoverUnit == null) return;
+                targetUnit = _hoverUnit.Id;
+                targetCell = _hoverUnit.Pos;
+                break;
+            case TargetingMode.Cell:
+                targetCell = _hover.Coord;
+                break;
+            default:
+                dir = start.DirectionTo(_hover.Coord) ?? facing;
+                break;
+        }
+        var pv = Sim.Planner.PreviewSkill(u, skill, start, facing, targetCell, targetUnit, dir);
+        _skillPreview = pv;
+        foreach (var c in pv.Cells)
+        {
+            if (c.Blocked)
+            {
+                o.HatchHex(c.Cell, new Color(0.6f, 0.6f, 0.65f, 0.5f));
+                continue;
+            }
+            o.FillHex(c.Cell, new Color(col.R, col.G, col.B, pv.Valid ? 0.42f : 0.18f));
+            o.RingHex(c.Cell, new Color(col.R, col.G, col.B, pv.Valid ? 0.95f : 0.4f), 0.05f);
+            if (c.HasMaskEffects) o.Dot(c.Cell, Colors.White, 0.1f);
+        }
+        foreach (var e in pv.Enemies) o.RingHex(e.Pos, new Color(1f, 0.3f, 0.25f), 0.1f, 0.82f);
+        foreach (var a in pv.Allies)
+            if (a != u)
+            {
+                o.RingHex(a.Pos, new Color(1f, 0.65f, 0.15f), 0.1f, 0.82f);
+                _labels.Add(Board.UnitPos(a) + new Vector3(0, 1.85f, 0), "⚠ союзник", new Color(1f, 0.7f, 0.25f), 26);
+            }
+        if (dir.HasValue) o.Arrow(start, dir.Value, new Color(col.R, col.G, col.B, 1f), 1.0f);
+        if (!pv.Valid && !string.IsNullOrEmpty(pv.Problem))
+            _labels.Add(LabelPos(_hover.Coord, 0.9f), pv.Problem, Ui.Bad, 24);
+        foreach (var (t, hit, notice, surprise, sector) in pv.Odds.Take(4))
+            _labels.Add(Board.UnitPos(t) + new Vector3(0, 2.05f, 0), $"{hit:P0} · {Names.Of(sector)}" + (surprise > 0 ? $" · неожид. {surprise:P0}" : ""), Colors.White, 24);
+    }
+
+    // ------------------------------------------------------------------ input
+
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (Board.Rig.HandleInput(e))
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        switch (e)
+        {
+            case InputEventMouseMotion mm:
+                _mouse = mm.Position;
+                _forcedHover = null;
+                break;
+            case InputEventMouseButton mb when mb.Pressed:
+                _mouse = mb.Position;
+                _forcedHover = null;
+                UpdateHover();
+                if (mb.ButtonIndex == MouseButton.Left) OnLeftClick(mb);
+                else if (mb.ButtonIndex == MouseButton.Right) OnRightClick();
+                GetViewport().SetInputAsHandled();
+                break;
+            case InputEventKey k when k.Pressed && !k.Echo:
+                if (OnKey(k)) GetViewport().SetInputAsHandled();
+                break;
+        }
+    }
+
+    private void OnLeftClick(InputEventMouseButton mb)
+    {
+        var u = Selected;
+        switch (Mode)
+        {
+            case InputMode.None:
+            {
+                if (_hoverUnit != null)
+                {
+                    if (_hoverUnit != Selected) Select(_hoverUnit);
+                    if (Sim.CanPlayerCommand(_hoverUnit) && Settings.ActionMenuOnClick) _hud.ShowActionMenu(mb.Position, -1);
+                    return;
+                }
+                // Click on one of the queue markers opens the waypoint menu.
+                if (u != null && _hover != null && Sim.CanPlayerCommand(u))
+                {
+                    for (int i = _proj.Count - 1; i >= 0; i--)
+                    {
+                        if (_proj[i].EndPos != _hover.Coord) continue;
+                        _hud.ShowWaypointMenu(mb.Position, i);
+                        return;
+                    }
+                }
+                if (_hover != null) _hud.ShowCellInfo(_hover);
+                break;
+            }
+            case InputMode.Move:
+            {
+                if (u == null || _hover == null) return;
+                var (start, _) = PlanStart();
+                if (_hover.Coord == start) return;
+                if (_path != null && !_path.Found)
+                {
+                    if (_path.Nearest.HasValue)
+                        _hud.ShowBanner($"Цель недостижима: {_path.Reason}. Ближайшая доступная клетка отмечена зелёным — выберите её, если подходит.", Ui.Warn);
+                    else
+                        _hud.ShowBanner("Цель недостижима: " + _path.Reason, Ui.Bad);
+                    return;
+                }
+                Submit(Command.Move(_hover.Coord));
+                break;
+            }
+            case InputMode.Turn:
+            {
+                if (u == null || _hover == null) return;
+                var (start, _) = PlanStart();
+                var d = start.DirectionTo(_hover.Coord);
+                if (d == null) return;
+                Submit(Command.Turn(d.Value));
+                ExitMode();
+                break;
+            }
+            case InputMode.Attack:
+            case InputMode.Skill:
+                ClickSkill();
+                break;
+        }
+    }
+
+    private void ClickSkill()
+    {
+        var u = Selected;
+        var skill = ModeSkill;
+        if (u == null || skill == null || _hover == null) return;
+        var pv = _skillPreview;
+        if (pv != null && !pv.Valid && pv.Reason is FailureReason.Invalid or FailureReason.TargetLost)
+        {
+            _hud.ShowBanner($"«{skill.DisplayName}»: {pv.Problem}", Ui.Bad);
+            return;
+        }
+        if (pv != null && !pv.Valid) _hud.ShowBanner($"«{skill.DisplayName}»: {pv.Problem} — команда подождёт по правилам очереди", Ui.Warn);
+        var (start, facing) = PlanStart();
+        Command cmd;
+        if (Mode == InputMode.Attack)
+        {
+            if (_hoverUnit == null || _hoverUnit == u) return;
+            cmd = Command.Attack(_hoverUnit.Id);
+        }
+        else
+        {
+            switch (skill.Targeting)
+            {
+                case TargetingMode.Unit:
+                    if (_hoverUnit == null) return;
+                    cmd = Command.Skill(skill.Id, null, _hoverUnit.Id);
+                    break;
+                case TargetingMode.Cell:
+                    cmd = Command.Skill(skill.Id, _hover.Coord);
+                    break;
+                default:
+                    cmd = Command.Skill(skill.Id, null, -1, start.DirectionTo(_hover.Coord) ?? facing);
+                    break;
+            }
+        }
+        if (pv != null && pv.Allies.Any(a => a != u) && !Input.IsKeyPressed(Key.Alt))
+            _hud.ShowBanner("Внимание: область задевает союзников!", Ui.Warn);
+        Submit(cmd);
+        int keep = InsertIndex;
+        ExitMode();
+        if (keep >= 0) InsertIndex = -1;
+    }
+
+    private void OnRightClick()
+    {
+        if (Mode != InputMode.None)
+        {
+            ExitMode();
+            return;
+        }
+        var u = Selected;
+        if (u == null || !Sim.CanPlayerCommand(u) || _hover == null) return;
+        // Quick orders: RMB on an enemy = attack, on a cell = move.
+        if (_hoverUnit != null && Sim.IsHostile(u, _hoverUnit) && u.BasicAttack != null)
+        {
+            Submit(Command.Attack(_hoverUnit.Id));
+            return;
+        }
+        if (_hoverUnit == null)
+        {
+            var (start, _) = PlanStart();
+            var p = Sim.Pathfinder.Find(Sim.Map, Sim.Rules, u.Def.MoveCategory, u, start, _hover.Coord,
+                new PathOptions { IgnoreUnits = start != u.Pos, ComputeNearest = true }, Sim.AllowStacking);
+            if (!p.Found)
+            {
+                _hud.ShowBanner("Цель недостижима: " + p.Reason + (p.Nearest.HasValue ? $" (ближайшая доступная: {p.Nearest})" : ""), Ui.Bad);
+                return;
+            }
+            Submit(Command.Move(_hover.Coord));
+        }
+    }
+
+    private bool OnKey(InputEventKey k)
+    {
+        var u = Selected;
+        var actions = u != null ? Sim.Planner.Actions(u) : new List<ActionInfo>();
+        ActionInfo? A(string key) => actions.FirstOrDefault(a => a.Key == key);
+        switch (k.Keycode)
+        {
+            case Key.Space:
+                TogglePause();
+                return true;
+            case Key.Z:
+            case Key.Minus:
+                Driver.Slower();
+                return true;
+            case Key.X:
+            case Key.Equal:
+                Driver.Faster();
+                return true;
+            case Key.Escape:
+                if (Mode != InputMode.None) ExitMode();
+                else _hud.ToggleMenu();
+                return true;
+            case Key.Tab:
+                CycleUnits(k.ShiftPressed ? -1 : 1);
+                return true;
+            case Key.M when A("move") is { } a1:
+                Activate(a1);
+                return true;
+            case Key.T when A("turn") is { } a2:
+                Activate(a2);
+                return true;
+            case Key.F when A("attack") is { } a3:
+                Activate(a3);
+                return true;
+            case Key.B when A("defend") is { } a4:
+                Activate(a4);
+                return true;
+            case Key.H when A("wait") is { } a5:
+                Activate(a5);
+                return true;
+            case Key.I:
+                _hud.ToggleInfo();
+                return true;
+            case Key.L:
+                _hud.ToggleLog();
+                return true;
+            case Key.F1:
+                _hud.ToggleHelp();
+                return true;
+            case Key.F3:
+                _diag = !_diag;
+                return true;
+            case Key.Period when _admin || Driver.Paused:
+                Driver.StepOnce();
+                return true;
+            case Key.Home:
+                if (u != null) Board.Rig.FocusOn(Board.UnitPos(u));
+                return true;
+            case Key.Backspace:
+                if (u != null && u.Queue.Count > 0 && Sim.CanPlayerCommand(u))
+                {
+                    var last = u.Queue.Items[^1];
+                    Sim.RemoveCommand(u, last.Id);
+                    _hud.OnQueueChanged();
+                }
+                return true;
+            case Key.Delete:
+                if (u != null && Sim.CanPlayerCommand(u))
+                {
+                    Sim.ClearQueue(u);
+                    _hud.OnQueueChanged();
+                }
+                return true;
+        }
+        if (k.Keycode >= Key.Key1 && k.Keycode <= Key.Key9 && u != null)
+        {
+            int idx = (int)(k.Keycode - Key.Key1);
+            var skills = actions.Where(a => a.Key.StartsWith("skill:")).ToList();
+            if (idx < skills.Count) Activate(skills[idx]);
+            return true;
+        }
+        return false;
+    }
+
+    public void TogglePause()
+    {
+        Driver.Paused = !Driver.Paused;
+        _hud.ShowBanner(Driver.Paused ? "Пауза" : $"Скорость {Driver.Speed:0.##}×", Ui.Text, 0.8f);
+    }
+
+    public void CycleUnits(int dir)
+    {
+        var mine = Sim.Units.Where(x => x.Alive && Sim.CanPlayerCommand(x)).ToList();
+        if (mine.Count == 0) return;
+        int i = Selected == null ? -1 : mine.IndexOf(Selected);
+        var next = mine[((i + dir) % mine.Count + mine.Count) % mine.Count];
+        Select(next);
+        Board.Rig.FocusOn(Board.UnitPos(next));
+    }
+
+    public void ExitBattle()
+    {
+        if (_onExit != null) _onExit();
+        else Main.Instance.ShowMainMenu();
+    }
+
+    public void Restart() => Main.Instance.ShowBattle(_scenario, _db, _admin, _onExit);
+}

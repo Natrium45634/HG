@@ -91,7 +91,7 @@ public sealed class VisionSystem
         return _playerCells.Contains(c);
     }
 
-    public IReadOnlyCollection<HexCoord> PlayerVisibleCells
+    public HashSet<HexCoord> PlayerVisibleCells
     {
         get
         {

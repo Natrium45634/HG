@@ -110,7 +110,7 @@ public sealed class ReactionSystem
         switch (p.Action)
         {
             case PassiveAction.EffectsOnSelf:
-                _sim.Emit(SimEventType.Reaction, LogLevel.Normal, $"{owner.Name}: «{p.DisplayName}»", owner.Id);
+                _sim.Emit(SimEventType.Reaction, p.Trigger == PassiveTrigger.Periodic ? LogLevel.Detail : LogLevel.Normal, $"{owner.Name}: «{p.DisplayName}»", owner.Id);
                 _sim.Combat.ApplyDirect(owner, owner, p.Effects, 1.0, p.DisplayName);
                 fired = true;
                 break;

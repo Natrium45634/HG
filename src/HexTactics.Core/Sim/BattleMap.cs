@@ -161,6 +161,9 @@ public sealed class BattleMap
     /// <summary>Incremented on visual-only changes too (effects, terrain) — the renderer watches it.</summary>
     public int VisualVersion { get; private set; }
 
+    /// <summary>Incremented when terrain type or height of a cell changes (terrain mesh rebuild).</summary>
+    public int TerrainVersion { get; private set; }
+
     public int MinX { get; private set; }
     public int MaxX { get; private set; }
 
@@ -234,12 +237,14 @@ public sealed class BattleMap
     {
         cell.Terrain = terrain;
         cell.ObstacleHp = terrain.DestructibleHp;
+        TerrainVersion++;
         Touch();
     }
 
     public void SetHeight(Cell cell, int h)
     {
         cell.Height = h;
+        TerrainVersion++;
         Touch();
     }
 

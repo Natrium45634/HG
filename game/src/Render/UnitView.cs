@@ -1,0 +1,324 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Godot;
+using HexTactics.Core.Content;
+using HexTactics.Core.Hex;
+using HexTactics.Core.Sim;
+using HexTactics.Game.UI;
+
+namespace HexTactics.Game.Render;
+
+/// <summary>
+/// A unit as a board-game piece: faction-shaped base (circle/diamond/square/triangle — shape,
+/// not only colour), a low-poly figure by unit shape, a bright facing arrow, HP/AP bars and
+/// status letters. Position is interpolated between cells during a step.
+/// </summary>
+public partial class UnitView : Node3D
+{
+    private readonly Node3D _body = new() { Name = "Body" };
+    private readonly Node3D _bars = new() { Name = "Bars" };
+    private MeshInstance3D _hpFill = null!;
+    private MeshInstance3D _apFill = null!;
+    private MeshInstance3D _apReserve = null!;
+    private Label3D _status = null!;
+    private Label3D _name = null!;
+    private Label3D _symbol = null!;
+    private MeshInstance3D _arrow = null!;
+    private MeshInstance3D _selectRing = null!;
+    private float _visualYaw;
+    private float _deathTime = -1;
+    private float _hitFlash;
+    private Color _bodyColor;
+    private readonly List<MeshInstance3D> _bodyParts = new();
+
+    public Unit Unit { get; }
+    public bool Selected { get; set; }
+    public bool Hovered { get; set; }
+    public bool ShowName { get; set; }
+    public bool Ghost { get; private set; }
+
+    private const float BarWidth = 0.8f;
+
+    public UnitView(Unit unit, ContentDatabase db)
+    {
+        Unit = unit;
+        Name = "Unit" + unit.Id;
+        var faction = db.Faction(unit.FactionId);
+        var fcol = Ui.Parse(faction?.Color, new Color(0.6f, 0.6f, 0.6f));
+        _bodyColor = Ui.Parse(unit.Def.Visual.Color, fcol.Lightened(0.15f));
+        float scale = (float)Math.Clamp(unit.Def.Visual.Scale, 0.3, 3.0) * 1.2f;
+        BuildBase(faction?.Shape ?? FactionShape.Circle, fcol);
+        AddChild(_body);
+        BuildBody(unit.Def.Visual.Shape, _bodyColor, fcol);
+        _body.Scale = Vector3.One * scale;
+        BuildBars(scale);
+        _visualYaw = Board.YawOf(unit.Facing);
+    }
+
+    private MeshInstance3D Part(Node3D parent, Mesh mesh, Material mat, Vector3 pos, Vector3? rot = null, Vector3? scale = null, bool shadow = true)
+    {
+        var m = new MeshInstance3D
+        {
+            Mesh = mesh,
+            MaterialOverride = mat,
+            Position = pos,
+            RotationDegrees = rot ?? Vector3.Zero,
+            Scale = scale ?? Vector3.One,
+            CastShadow = shadow ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        parent.AddChild(m);
+        return m;
+    }
+
+    private void BuildBase(FactionShape shape, Color fcol)
+    {
+        int seg = shape switch { FactionShape.Diamond => 4, FactionShape.Square => 4, FactionShape.Triangle => 3, _ => 28 };
+        float rot = shape switch { FactionShape.Square => 45, FactionShape.Triangle => 30, _ => 0 };
+        float r = shape == FactionShape.Circle ? 0.42f : 0.5f;
+        var baseMesh = new CylinderMesh { TopRadius = r * 0.94f, BottomRadius = r, Height = 0.12f, RadialSegments = seg, Rings = 1 };
+        Part(this, baseMesh, Mats.Solid(fcol.Darkened(0.15f), 0.6f), new Vector3(0, 0.06f, 0), new Vector3(0, rot, 0));
+        var rim = new CylinderMesh { TopRadius = r * 0.78f, BottomRadius = r * 0.78f, Height = 0.135f, RadialSegments = seg, Rings = 1 };
+        Part(this, rim, Mats.Solid(fcol.Lightened(0.25f), 0.5f), new Vector3(0, 0.07f, 0), new Vector3(0, rot, 0));
+        // Facing arrow: flat bright wedge sticking out of the base towards the facing direction.
+        var arrowMesh = new PrismMesh { Size = new Vector3(0.36f, 0.34f, 0.05f), LeftToRight = 0.5f };
+        _arrow = Part(this, arrowMesh, Mats.Emissive(new Color(1f, 0.92f, 0.55f), 0.9f), new Vector3(0, 0.145f, -0.5f), new Vector3(-90, 0, 0), shadow: false);
+        _selectRing = Part(this, new TorusMesh { InnerRadius = 0.52f, OuterRadius = 0.6f, Rings = 32, RingSegments = 6 },
+            Mats.Emissive(new Color(1, 1, 1), 1.4f), new Vector3(0, 0.03f, 0), shadow: false);
+        _selectRing.Visible = false;
+    }
+
+    private void BuildBody(UnitShape shape, Color c, Color fcol)
+    {
+        var mat = Mats.Solid(c, 0.55f);
+        var dark = Mats.Solid(c.Darkened(0.3f), 0.6f);
+        var skin = Mats.Solid(new Color(0.93f, 0.85f, 0.74f), 0.6f);
+        var metal = Mats.Solid(new Color(0.75f, 0.77f, 0.8f), 0.3f, 0.7f);
+        float b = 0.12f;
+        void P(Mesh m, Material mt, Vector3 p, Vector3? r = null, Vector3? s = null) => _bodyParts.Add(Part(_body, m, mt, p, r, s));
+        switch (shape)
+        {
+            case UnitShape.Soldier:
+                P(new CylinderMesh { TopRadius = 0.2f, BottomRadius = 0.25f, Height = 0.5f, RadialSegments = 8 }, mat, new Vector3(0, b + 0.25f, 0));
+                P(new SphereMesh { Radius = 0.15f, Height = 0.3f, RadialSegments = 10, Rings = 6 }, metal, new Vector3(0, b + 0.63f, 0));
+                P(new BoxMesh { Size = new Vector3(0.38f, 0.42f, 0.06f) }, Mats.Solid(fcol.Lightened(0.1f), 0.5f), new Vector3(0, b + 0.3f, -0.26f));
+                P(new CylinderMesh { TopRadius = 0.02f, BottomRadius = 0.02f, Height = 0.6f, RadialSegments = 4 }, metal, new Vector3(0.27f, b + 0.4f, -0.08f), new Vector3(15, 0, 0));
+                break;
+            case UnitShape.Archer:
+                P(new CylinderMesh { TopRadius = 0.15f, BottomRadius = 0.22f, Height = 0.5f, RadialSegments = 8 }, mat, new Vector3(0, b + 0.25f, 0));
+                P(new SphereMesh { Radius = 0.14f, Height = 0.28f, RadialSegments = 10, Rings = 6 }, skin, new Vector3(0, b + 0.62f, 0));
+                P(new CylinderMesh { TopRadius = 0.0f, BottomRadius = 0.16f, Height = 0.18f, RadialSegments = 8 }, dark, new Vector3(0, b + 0.78f, 0));
+                P(new TorusMesh { InnerRadius = 0.28f, OuterRadius = 0.31f, Rings = 16, RingSegments = 4 }, Mats.Solid(new Color(0.55f, 0.38f, 0.2f)), new Vector3(-0.2f, b + 0.42f, -0.12f), new Vector3(0, 0, 90), new Vector3(1, 1, 0.5f));
+                break;
+            case UnitShape.Mage:
+                P(new CylinderMesh { TopRadius = 0.08f, BottomRadius = 0.28f, Height = 0.62f, RadialSegments = 10 }, mat, new Vector3(0, b + 0.31f, 0));
+                P(new SphereMesh { Radius = 0.13f, Height = 0.26f, RadialSegments = 10, Rings = 6 }, skin, new Vector3(0, b + 0.72f, 0));
+                P(new CylinderMesh { TopRadius = 0.0f, BottomRadius = 0.19f, Height = 0.36f, RadialSegments = 10 }, dark, new Vector3(0, b + 0.98f, 0), new Vector3(-8, 0, 0));
+                P(new SphereMesh { Radius = 0.06f, Height = 0.12f }, Mats.Emissive(new Color(0.6f, 0.85f, 1f), 1.5f), new Vector3(0.24f, b + 0.6f, -0.12f));
+                P(new CylinderMesh { TopRadius = 0.015f, BottomRadius = 0.015f, Height = 0.75f, RadialSegments = 4 }, Mats.Solid(new Color(0.5f, 0.36f, 0.22f)), new Vector3(0.24f, b + 0.25f, -0.12f));
+                break;
+            case UnitShape.Beast:
+                P(new CapsuleMesh { Radius = 0.17f, Height = 0.62f, RadialSegments = 10, Rings = 4 }, mat, new Vector3(0, b + 0.22f, 0.02f), new Vector3(90, 0, 0));
+                P(new SphereMesh { Radius = 0.14f, Height = 0.26f, RadialSegments = 10, Rings = 6 }, mat, new Vector3(0, b + 0.32f, -0.32f));
+                P(new PrismMesh { Size = new Vector3(0.08f, 0.12f, 0.04f) }, dark, new Vector3(0.07f, b + 0.47f, -0.3f));
+                P(new PrismMesh { Size = new Vector3(0.08f, 0.12f, 0.04f) }, dark, new Vector3(-0.07f, b + 0.47f, -0.3f));
+                P(new CylinderMesh { TopRadius = 0.03f, BottomRadius = 0.05f, Height = 0.3f, RadialSegments = 5 }, dark, new Vector3(0, b + 0.3f, 0.36f), new Vector3(-55, 0, 0));
+                break;
+            case UnitShape.Brute:
+                P(new BoxMesh { Size = new Vector3(0.52f, 0.5f, 0.38f) }, mat, new Vector3(0, b + 0.3f, 0));
+                P(new SphereMesh { Radius = 0.15f, Height = 0.28f, RadialSegments = 10, Rings = 6 }, dark, new Vector3(0, b + 0.66f, -0.04f));
+                P(new SphereMesh { Radius = 0.12f, Height = 0.24f }, mat, new Vector3(0.32f, b + 0.48f, 0));
+                P(new SphereMesh { Radius = 0.12f, Height = 0.24f }, mat, new Vector3(-0.32f, b + 0.48f, 0));
+                P(new BoxMesh { Size = new Vector3(0.12f, 0.12f, 0.55f) }, metal, new Vector3(0.36f, b + 0.32f, -0.2f));
+                break;
+            case UnitShape.Construct:
+                P(new BoxMesh { Size = new Vector3(0.46f, 0.34f, 0.4f) }, mat, new Vector3(0, b + 0.19f, 0));
+                P(new BoxMesh { Size = new Vector3(0.34f, 0.3f, 0.32f) }, dark, new Vector3(0, b + 0.52f, 0));
+                P(new BoxMesh { Size = new Vector3(0.2f, 0.06f, 0.04f) }, Mats.Emissive(new Color(1f, 0.4f, 0.25f), 2f), new Vector3(0, b + 0.55f, -0.17f));
+                break;
+            case UnitShape.Orb:
+                P(new SphereMesh { Radius = 0.26f, Height = 0.52f, RadialSegments = 16, Rings = 8 }, Mats.Emissive(c, 0.6f), new Vector3(0, b + 0.5f, 0));
+                break;
+            case UnitShape.Totem:
+                P(new CylinderMesh { TopRadius = 0.16f, BottomRadius = 0.2f, Height = 0.9f, RadialSegments = 6 }, mat, new Vector3(0, b + 0.45f, 0));
+                P(new BoxMesh { Size = new Vector3(0.5f, 0.08f, 0.12f) }, dark, new Vector3(0, b + 0.75f, 0));
+                break;
+            default: // Pawn
+                P(new CylinderMesh { TopRadius = 0.1f, BottomRadius = 0.24f, Height = 0.45f, RadialSegments = 10 }, mat, new Vector3(0, b + 0.22f, 0));
+                P(new SphereMesh { Radius = 0.15f, Height = 0.3f, RadialSegments = 10, Rings = 6 }, mat, new Vector3(0, b + 0.55f, 0));
+                P(new BoxMesh { Size = new Vector3(0.1f, 0.05f, 0.05f) }, dark, new Vector3(0, b + 0.56f, -0.14f));
+                break;
+        }
+        _symbol = new Label3D
+        {
+            Text = Unit.Def.Visual.Symbol,
+            FontSize = 48,
+            PixelSize = 0.004f,
+            Position = new Vector3(0, 0.137f, 0.12f),
+            RotationDegrees = new Vector3(-90, 0, 0),
+            Modulate = new Color(1, 1, 1, 0.9f),
+            OutlineSize = 6,
+            OutlineModulate = new Color(0, 0, 0, 0.5f),
+            Shaded = false,
+        };
+        AddChild(_symbol);
+    }
+
+    private void BuildBars(float scale)
+    {
+        _bars.Position = new Vector3(0, 1.25f * Math.Max(1, scale), 0);
+        AddChild(_bars);
+        var quad = new QuadMesh { Size = new Vector2(1, 1) };
+        MeshInstance3D Q(Color c, Vector3 pos, Vector3 size, int prio)
+        {
+            var mat = new StandardMaterial3D
+            {
+                AlbedoColor = c,
+                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                BillboardMode = BaseMaterial3D.BillboardModeEnum.Enabled,
+                BillboardKeepScale = true,
+                NoDepthTest = true,
+                RenderPriority = prio,
+                Transparency = c.A < 1 ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
+            };
+            var m = new MeshInstance3D { Mesh = quad, MaterialOverride = mat, Position = pos, Scale = size, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+            _bars.AddChild(m);
+            return m;
+        }
+        Q(new Color(0.05f, 0.05f, 0.06f, 0.85f), new Vector3(0, 0, 0), new Vector3(BarWidth + 0.06f, 0.2f, 1), 10);
+        _hpFill = Q(Ui.HpColor, new Vector3(0, 0.04f, 0), new Vector3(BarWidth, 0.08f, 1), 11);
+        _apFill = Q(Ui.ApColor, new Vector3(0, -0.055f, 0), new Vector3(BarWidth, 0.05f, 1), 11);
+        _apReserve = Q(Ui.ReserveColor, new Vector3(0, -0.055f, 0), new Vector3(0.01f, 0.05f, 1), 12);
+        _status = new Label3D
+        {
+            FontSize = 36,
+            PixelSize = 0.006f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            Position = new Vector3(0, 0.19f, 0),
+            OutlineSize = 8,
+            RenderPriority = 13,
+            OutlineRenderPriority = 12,
+        };
+        _bars.AddChild(_status);
+        _name = new Label3D
+        {
+            FontSize = 30,
+            PixelSize = 0.0055f,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+            NoDepthTest = true,
+            Position = new Vector3(0, -0.2f, 0),
+            OutlineSize = 8,
+            RenderPriority = 13,
+            OutlineRenderPriority = 12,
+            Visible = false,
+        };
+        _bars.AddChild(_name);
+    }
+
+    public void Flash() => _hitFlash = 0.25f;
+
+    /// <summary>Updates transform and indicators from the simulation state.</summary>
+    public void Sync(Simulation sim, BattleMap map, double alpha, bool visible, bool ghost, float delta)
+    {
+        Ghost = ghost;
+        var u = Unit;
+        if (!u.Alive)
+        {
+            if (_deathTime < 0) _deathTime = 0;
+            _deathTime += delta;
+            float k = Math.Min(1, _deathTime / 0.8f);
+            _body.RotationDegrees = new Vector3(k * 80, 0, 0);
+            Scale = Vector3.One * (1 - k * 0.3f);
+            _bars.Visible = false;
+            _arrow.Visible = false;
+            Visible = _deathTime < 1.6f && visible;
+            Position = Position with { Y = Position.Y - delta * 0.15f * k };
+            return;
+        }
+        Visible = visible || ghost;
+        if (!Visible) return;
+
+        // Position: interpolate along the current step.
+        Vector3 pos;
+        var cell = map.Get(u.Pos);
+        if (u.StepFrom.HasValue && u.StepTo.HasValue)
+        {
+            var a = map.Get(u.StepFrom.Value);
+            var b = map.Get(u.StepTo.Value);
+            double t = (u.StepTicksDone + alpha) / Math.Max(1, u.StepTicksTotal);
+            t = Math.Clamp(t, 0, 1);
+            var pa = Board.Center(u.StepFrom.Value, Board.TopY(a));
+            var pb = Board.Center(u.StepTo.Value, Board.TopY(b));
+            pos = pa.Lerp(pb, (float)t);
+            pos.Y += Mathf.Sin((float)t * Mathf.Pi) * 0.12f; // small hop
+        }
+        else
+        {
+            pos = Board.Center(u.Pos, Board.TopY(cell));
+        }
+        Position = Position.DistanceTo(pos) > 3 ? pos : Position.Lerp(pos, Math.Min(1, delta * 25));
+
+        float targetYaw = Board.YawOf(u.Facing);
+        _visualYaw = Mathf.LerpAngle(_visualYaw, targetYaw, Math.Min(1, delta * 14));
+        _body.Rotation = new Vector3(0, _visualYaw, 0);
+        _arrow.Position = new Vector3(-Mathf.Sin(_visualYaw) * 0.52f, 0.145f, -Mathf.Cos(_visualYaw) * 0.52f);
+        _arrow.Basis = new Basis(Vector3.Up, _visualYaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
+
+        _selectRing.Visible = Selected || Hovered;
+        if (_selectRing.Visible)
+        {
+            float p = 0.5f + 0.5f * Mathf.Sin((float)Time.GetTicksMsec() / 180f);
+            _selectRing.Scale = Vector3.One * (Selected ? 1.0f + p * 0.06f : 0.95f);
+            ((StandardMaterial3D)_selectRing.MaterialOverride).AlbedoColor = Selected ? new Color(1, 1, 1) : new Color(1, 1, 1, 0.6f);
+        }
+
+        // Bars.
+        float hpf = (float)Math.Clamp(u.HpFraction, 0, 1);
+        _hpFill.Scale = new Vector3(Math.Max(0.001f, BarWidth * hpf), 0.08f, 1);
+        _hpFill.Position = new Vector3(-BarWidth / 2 + BarWidth * hpf / 2, 0.04f, 0);
+        ((StandardMaterial3D)_hpFill.MaterialOverride).AlbedoColor = hpf > 0.5f ? Ui.HpColor : hpf > 0.25f ? Ui.Warn : Ui.Bad;
+        float apf = (float)Math.Clamp(u.ApMax <= 0 ? 0 : u.Ap / u.ApMax, 0, 1);
+        _apFill.Scale = new Vector3(Math.Max(0.001f, BarWidth * apf), 0.05f, 1);
+        _apFill.Position = new Vector3(-BarWidth / 2 + BarWidth * apf / 2, -0.055f, 0);
+        float rf = (float)Math.Clamp(u.ApMax <= 0 ? 0 : Math.Min(u.ReservedAp, u.Ap) / u.ApMax, 0, 1);
+        _apReserve.Visible = rf > 0.001f && sim.CanPlayerCommand(u);
+        _apReserve.Scale = new Vector3(Math.Max(0.001f, BarWidth * rf), 0.05f, 1);
+        _apReserve.Position = new Vector3(-BarWidth / 2 + BarWidth * (apf - rf / 2), -0.055f, 0);
+        _bars.Visible = !ghost;
+
+        // Status letters (coloured, but each status also has its own letter).
+        if (u.Statuses.Count > 0)
+        {
+            var parts = u.Statuses.GroupBy(s => s.Def.Id).Select(g => g.First()).Take(6)
+                .Select(s => $"{(string.IsNullOrEmpty(s.Def.Icon) ? s.Def.DisplayName.Substring(0, 1) : s.Def.Icon)}");
+            _status.Text = string.Join(" ", parts);
+            var first = u.Statuses[0];
+            _status.Modulate = Ui.Parse(first.Def.Color, Colors.White);
+            _status.Visible = true;
+        }
+        else
+        {
+            _status.Visible = false;
+        }
+        if (u.Casting != null && !u.Casting.Released)
+        {
+            _status.Text = "◷ " + u.Casting.Skill.DisplayName + (_status.Visible ? "  " + _status.Text : "");
+            _status.Modulate = Ui.Parse(u.Casting.Skill.Color, Ui.Accent);
+            _status.Visible = true;
+        }
+        _name.Visible = ShowName || Selected || Hovered;
+        if (_name.Visible) _name.Text = u.Name;
+
+        // Hit flash: briefly brighten the figure.
+        if (_hitFlash > 0)
+        {
+            _hitFlash -= delta;
+            float f = Math.Max(0, _hitFlash) * 4;
+            _body.Scale = Vector3.One * (float)Math.Clamp(u.Def.Visual.Scale, 0.3, 3.0) * 1.2f * (1 + f * 0.08f);
+        }
+
+        // Ghost (last known position): semi-transparent.
+        foreach (var part in _bodyParts) part.Transparency = ghost ? 0.65f : 0f;
+    }
+}
