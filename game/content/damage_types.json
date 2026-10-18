@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "kind": "damage_types",
+  "items": [
+    {
+      "id": "physical",
+      "name": "Физический",
+      "description": "",
+      "tags": [],
+      "color": "#d8d8d8",
+      "armorApplies": true,
+      "displayName": "Физический"
+    },
+    {
+      "id": "fire",
+      "name": "Огненный",
+      "description": "",
+      "tags": [],
+      "color": "#ff7a2a",
+      "armorApplies": false,
+      "displayName": "Огненный"
+    },
+    {
+      "id": "ice",
+      "name": "Ледяной",
+      "description": "",
+      "tags": [],
+      "color": "#8fd8ff",
+      "armorApplies": false,
+      "displayName": "Ледяной"
+    },
+    {
+      "id": "electric",
+      "name": "Электрический",
+      "description": "",
+      "tags": [],
+      "color": "#ffe04a",
+      "armorApplies": false,
+      "displayName": "Электрический"
+    },
+    {
+      "id": "poison",
+      "name": "Ядовитый",
+      "description": "",
+      "tags": [],
+      "color": "#7ad04a",
+      "armorApplies": false,
+      "displayName": "Ядовитый"
+    },
+    {
+      "id": "magic",
+      "name": "Магический",
+      "description": "",
+      "tags": [],
+      "color": "#c08aff",
+      "armorApplies": false,
+      "displayName": "Магический"
+    },
+    {
+      "id": "true",
+      "name": "Чистый",
+      "description": "Не снижается бронёй",
+      "tags": [],
+      "color": "#ff4a6a",
+      "armorApplies": false,
+      "displayName": "Чистый"
+    }
+  ]
+}

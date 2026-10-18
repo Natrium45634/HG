@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Godot
+.godot/
+.import/
+game/.godot/
+*.translation
+export_credentials.cfg
+mono_crash.*
+
+# Builds
+build/
+dist/
+*.tmp

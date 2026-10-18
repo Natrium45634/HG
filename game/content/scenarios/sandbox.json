@@ -1,0 +1,61 @@
+{
+  "formatVersion": 1,
+  "kind": "scenario",
+  "scenario": {
+    "id": "sandbox",
+    "name": "Полигон (песочница)",
+    "description": "Без победы и поражения: проверка навыков, эффектов клеток и синергий.",
+    "tags": [],
+    "map": "proving_ground",
+    "seed": 1,
+    "intro": "Песочница: мишени не атакуют. Попробуйте огонь по ядовитому облаку и искру по воде.",
+    "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
+    "units": [
+      { "unit": "mage", "faction": "", "c": [1, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "knight", "faction": "", "c": [2, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "scout", "faction": "", "c": [1, 5], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "priestess",
+        "faction": "",
+        "c": [0, 5],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      {
+        "unit": "sentinel",
+        "faction": "",
+        "c": [10, 3],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "skittish",
+        "name": "Мишень в воде"
+      },
+      {
+        "unit": "goblin",
+        "faction": "",
+        "c": [11, 3],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "skittish",
+        "name": "Мишень-гоблин"
+      },
+      {
+        "unit": "orc_brute",
+        "faction": "",
+        "c": [8, 6],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "hold",
+        "name": "Мишень-орк"
+      }
+    ],
+    "waves": [],
+    "victory": [],
+    "defeat": [{ "type": "AllPlayerUnitsDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
+    "triggers": [],
+    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 },
+    "displayName": "Полигон (песочница)"
+  }
+}

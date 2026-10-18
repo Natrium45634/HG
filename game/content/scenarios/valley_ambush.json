@@ -1,0 +1,137 @@
+{
+  "formatVersion": 1,
+  "kind": "scenario",
+  "scenario": {
+    "id": "valley_ambush",
+    "name": "Засада в долине",
+    "description": "Отряд должен очистить долину. Через минуту подойдёт подкрепление врага.",
+    "tags": [],
+    "map": "valley",
+    "seed": 2024,
+    "intro": "Разведка доносит: гоблины заняли руины форта за рекой. Очистите долину! (Пробел — пауза)",
+    "sides": [
+      { "faction": "player", "controller": "Player" },
+      { "faction": "enemy", "controller": "Ai" },
+      { "faction": "neutral", "controller": "Ai" }
+    ],
+    "units": [
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [-1, 7],
+        "facing": "E",
+        "tag": "hero",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "archer", "faction": "", "c": [-2, 6], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "mage", "faction": "", "c": [-3, 8], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "priestess",
+        "faction": "",
+        "c": [-3, 7],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "scout", "faction": "", "c": [-1, 9], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "goblin", "faction": "", "c": [14, 5], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "goblin", "faction": "", "c": [13, 7], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "goblin_archer",
+        "faction": "",
+        "c": [17, 4],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      {
+        "unit": "orc_brute",
+        "faction": "",
+        "c": [16, 6],
+        "facing": "W",
+        "tag": "boss",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "shaman", "faction": "", "c": [16, 8], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "wolf", "faction": "", "c": [1, 13], "facing": "NE", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "wolf", "faction": "", "c": [1, 14], "facing": "NW", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "deer",
+        "faction": "neutral",
+        "c": [13, 1],
+        "facing": "SW",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      {
+        "unit": "deer",
+        "faction": "neutral",
+        "c": [13, 2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      }
+    ],
+    "waves": [
+      {
+        "name": "Подкрепление",
+        "time": 60,
+        "spawnMarker": "east_gate",
+        "faction": "enemy",
+        "units": [{ "unit": "goblin", "count": 3 }, { "unit": "goblin_archer", "count": 1 }],
+        "message": "С востока подходят гоблины!"
+      },
+      {
+        "name": "Стая",
+        "time": 110,
+        "spawnMarker": "south",
+        "faction": "enemy",
+        "units": [{ "unit": "wolf", "count": 3 }],
+        "message": "Из южного леса выбегает стая волков!"
+      }
+    ],
+    "victory": [{ "type": "AllEnemiesDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
+    "defeat": [
+      { "type": "AllPlayerUnitsDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 },
+      { "type": "UnitDead", "seconds": 60, "marker": "", "unitTag": "hero", "count": 5, "wave": 0 }
+    ],
+    "triggers": [
+      {
+        "name": "Совет",
+        "condition": { "type": "TimeElapsed", "seconds": 3, "marker": "", "unitTag": "", "count": 5, "wave": 0 },
+        "actions": [
+          {
+            "type": "Message",
+            "text": "Совет: огонь взрывает ядовитые облака, а искра по воде бьёт всех, кто в ней стоит.",
+            "wave": 0,
+            "cellEffect": "",
+            "marker": ""
+          }
+        ],
+        "once": true
+      },
+      {
+        "name": "Босс пал",
+        "condition": { "type": "UnitDead", "seconds": 60, "marker": "", "unitTag": "boss", "count": 5, "wave": 0 },
+        "actions": [
+          {
+            "type": "Message",
+            "text": "Орк-громила повержен! Гоблины дрогнули.",
+            "wave": 0,
+            "cellEffect": "",
+            "marker": ""
+          }
+        ],
+        "once": true
+      }
+    ],
+    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 },
+    "displayName": "Засада в долине"
+  }
+}

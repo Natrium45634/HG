@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "kind": "factions",
+  "items": [
+    {
+      "id": "player",
+      "name": "Отряд",
+      "description": "",
+      "tags": [],
+      "color": "#3c78d8",
+      "shape": "Circle",
+      "hostileTo": ["enemy"],
+      "alliedWith": [],
+      "displayName": "Отряд"
+    },
+    {
+      "id": "enemy",
+      "name": "Противник",
+      "description": "",
+      "tags": [],
+      "color": "#d04a3a",
+      "shape": "Diamond",
+      "hostileTo": ["player"],
+      "alliedWith": [],
+      "displayName": "Противник"
+    },
+    {
+      "id": "neutral",
+      "name": "Нейтралы",
+      "description": "",
+      "tags": [],
+      "color": "#c8a848",
+      "shape": "Square",
+      "hostileTo": [],
+      "alliedWith": [],
+      "displayName": "Нейтралы"
+    }
+  ]
+}

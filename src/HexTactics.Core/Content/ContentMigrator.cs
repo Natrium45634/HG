@@ -1,0 +1,144 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Nodes;
+
+namespace HexTactics.Core.Content;
+
+/// <summary>
+/// Step-by-step upgrade of content files: version N → N+1 until the current version.
+/// Files without "formatVersion" are treated as version 0 (pre-release prototype format).
+/// Files from a newer version are rejected without modification.
+/// </summary>
+public static class ContentMigrator
+{
+    private delegate void Step(JsonObject root, string kind, List<string> notes);
+
+    private static readonly Dictionary<int, Step> Steps = new()
+    {
+        [0] = V0ToV1,
+    };
+
+    public static JsonObject? Migrate(JsonNode node, string expectedKind, out List<string> notes, out string? error)
+    {
+        notes = new List<string>();
+        error = null;
+
+        JsonObject root;
+        if (node is JsonArray arr)
+        {
+            // v0 category files could be a bare array of items.
+            root = new JsonObject { ["items"] = arr.DeepClone() };
+        }
+        else if (node is JsonObject obj)
+        {
+            root = (JsonObject)obj.DeepClone();
+        }
+        else
+        {
+            error = "Корень файла должен быть объектом";
+            return null;
+        }
+
+        int version = 0;
+        if (root["formatVersion"] is JsonValue v && v.TryGetValue<int>(out var ver)) version = ver;
+
+        if (version > ContentJson.CurrentFormatVersion)
+        {
+            error = $"Файл создан более новой версией формата ({version}), текущая — {ContentJson.CurrentFormatVersion}. Файл не изменён.";
+            return null;
+        }
+
+        while (version < ContentJson.CurrentFormatVersion)
+        {
+            if (!Steps.TryGetValue(version, out var step))
+            {
+                error = $"Нет миграции с версии {version}";
+                return null;
+            }
+            try
+            {
+                step(root, expectedKind, notes);
+            }
+            catch (Exception e)
+            {
+                error = $"Ошибка миграции {version}→{version + 1}: {e.Message}";
+                return null;
+            }
+            version++;
+            root["formatVersion"] = version;
+            notes.Add($"Файл обновлён до версии формата {version}");
+        }
+
+        if (root["kind"] == null) root["kind"] = expectedKind;
+        return root;
+    }
+
+    /// <summary>
+    /// v0 (prototype): units had top-level "hp", "speed", "ap"; map cells had "q", "r",
+    /// "terrain", "height"; maps/scenarios were stored without a wrapper object.
+    /// </summary>
+    private static void V0ToV1(JsonObject root, string kind, List<string> notes)
+    {
+        if ((kind == "map" || kind == "scenario") && root[kind] == null && root["id"] != null)
+        {
+            var inner = new JsonObject();
+            foreach (var kv in root.ToArray())
+            {
+                root.Remove(kv.Key);
+                if (kv.Key != "formatVersion" && kv.Key != "kind") inner[kv.Key] = kv.Value;
+            }
+            root[kind] = inner;
+            notes.Add($"v0: {kind} перенесён в обёртку");
+        }
+
+        if (kind == "units" && root["items"] is JsonArray units)
+        {
+            foreach (var u in units)
+            {
+                if (u is not JsonObject uo) continue;
+                var stats = uo["stats"] as JsonObject ?? new JsonObject();
+                MoveField(uo, "hp", stats, Stats.HpMax, notes);
+                MoveField(uo, "speed", stats, Stats.MoveSpeed, notes);
+                MoveField(uo, "ap", stats, Stats.ApMax, notes);
+                if (stats.Count > 0) uo["stats"] = stats;
+            }
+        }
+
+        if (kind == "map" && root["map"] is JsonObject map && map["cells"] is JsonArray cells)
+        {
+            int converted = 0;
+            foreach (var c in cells)
+            {
+                if (c is not JsonObject co) continue;
+                if (co["q"] != null && co["r"] != null && co["c"] == null)
+                {
+                    co["c"] = new JsonArray(co["q"]!.GetValue<int>(), co["r"]!.GetValue<int>());
+                    co.Remove("q");
+                    co.Remove("r");
+                    converted++;
+                }
+                Rename(co, "terrain", "t");
+                Rename(co, "height", "h");
+            }
+            if (converted > 0) notes.Add($"v0: {converted} клеток переведены в формат c:[q,r]");
+        }
+    }
+
+    private static void MoveField(JsonObject from, string field, JsonObject to, string newName, List<string> notes)
+    {
+        var val = from[field];
+        if (val == null) return;
+        from.Remove(field);
+        to[newName] = val;
+        notes.Add($"v0: поле '{field}' перенесено в stats.{newName}");
+    }
+
+    private static void Rename(JsonObject o, string oldName, string newName)
+    {
+        var val = o[oldName];
+        if (val == null || o[newName] != null) return;
+        o.Remove(oldName);
+        o[newName] = val;
+    }
+}

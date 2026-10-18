@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4ABDE1DC-967C-489B-8D19-0BF640A6194B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexTactics.Core", "src\HexTactics.Core\HexTactics.Core.csproj", "{D119981E-63B1-4989-A749-9B1BE08D830F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{DC243BC0-FF15-4BF7-B770-05512357D917}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexTactics.Tests", "tests\HexTactics.Tests\HexTactics.Tests.csproj", "{CA9551E2-89E5-4003-9576-A905B3FEBDB1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexTactics", "game\HexTactics.csproj", "{25812E3A-36A8-42C0-BFAB-7C15611FECE4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{AA05CAB7-0BCA-4AB5-BC2A-04A5E438D9A0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContentBootstrap", "tools\ContentBootstrap\ContentBootstrap.csproj", "{99968A9E-1078-4D7A-B07A-088F60BB110C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D119981E-63B1-4989-A749-9B1BE08D830F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D119981E-63B1-4989-A749-9B1BE08D830F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D119981E-63B1-4989-A749-9B1BE08D830F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D119981E-63B1-4989-A749-9B1BE08D830F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA9551E2-89E5-4003-9576-A905B3FEBDB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA9551E2-89E5-4003-9576-A905B3FEBDB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA9551E2-89E5-4003-9576-A905B3FEBDB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA9551E2-89E5-4003-9576-A905B3FEBDB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25812E3A-36A8-42C0-BFAB-7C15611FECE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25812E3A-36A8-42C0-BFAB-7C15611FECE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25812E3A-36A8-42C0-BFAB-7C15611FECE4}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{25812E3A-36A8-42C0-BFAB-7C15611FECE4}.Release|Any CPU.Build.0 = Debug|Any CPU
+		{99968A9E-1078-4D7A-B07A-088F60BB110C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{99968A9E-1078-4D7A-B07A-088F60BB110C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{99968A9E-1078-4D7A-B07A-088F60BB110C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{99968A9E-1078-4D7A-B07A-088F60BB110C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D119981E-63B1-4989-A749-9B1BE08D830F} = {4ABDE1DC-967C-489B-8D19-0BF640A6194B}
+		{CA9551E2-89E5-4003-9576-A905B3FEBDB1} = {DC243BC0-FF15-4BF7-B770-05512357D917}
+		{99968A9E-1078-4D7A-B07A-088F60BB110C} = {AA05CAB7-0BCA-4AB5-BC2A-04A5E438D9A0}
+	EndGlobalSection
+EndGlobal

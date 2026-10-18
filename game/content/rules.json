@@ -1,0 +1,111 @@
+{
+  "formatVersion": 1,
+  "kind": "rules",
+  "rules": {
+    "time": {
+      "ticksPerSecond": 20,
+      "speedPresets": [0.25, 0.5, 1, 2, 4],
+      "defaultSpeedIndex": 2,
+      "maxTicksPerFrame": 40,
+      "startPaused": true
+    },
+    "ap": {
+      "movePerCost": 1,
+      "reactionsRespectReserve": true,
+      "defendCost": 1,
+      "defendEvasionBonus": 0.15,
+      "defendBlockBonus": 0.25,
+      "defendRegenMultiplier": 0.5
+    },
+    "turn": {
+      "apPerStep": 0.25,
+      "secondsPerStep": 0.1,
+      "autoFaceOnMove": true,
+      "autoFaceCostsAp": false,
+      "autoFaceTarget": true
+    },
+    "move": { "movementCategories": ["walk", "fly", "swim"], "alliesBlockPath": true, "hazardPenalty": 0.01 },
+    "height": {
+      "maxClimb": 1,
+      "maxDrop": 2,
+      "climbCostPerLevel": 1,
+      "descendCostPerLevel": 0,
+      "accuracyPerLevel": 0.05,
+      "rangePerLevel": 0.5,
+      "eyeHeight": 1,
+      "terrainBlocksLoS": true
+    },
+    "detection": {
+      "sectors": [
+        { "sector": "Front", "surpriseChance": 0, "noticeChance": 1 },
+        { "sector": "NearFlank", "surpriseChance": 0.3, "noticeChance": 0.7 },
+        { "sector": "FarFlank", "surpriseChance": 0.7, "noticeChance": 0.3 },
+        { "sector": "Rear", "surpriseChance": 1, "noticeChance": 0 }
+      ],
+      "unseenNoticeFactor": 0,
+      "blindNoticeFactor": 0,
+      "noticePenaltyPerHex": 0,
+      "noticeFreeDistance": 1,
+      "darknessNoticePenalty": 0.3,
+      "surpriseBonusVsUnaware": 0,
+      "unnoticedEvasionFactor": 0,
+      "surpriseAccuracy": 0.25,
+      "surpriseDamageMul": 1.25,
+      "surpriseCrit": 0.15,
+      "surpriseInterrupt": 0.5
+    },
+    "combat": {
+      "baseHit": 0.85,
+      "minHit": 0.05,
+      "maxHit": 0.98,
+      "coverFactor": 1,
+      "minArmorFraction": 0.2,
+      "minDamageOnHit": 1,
+      "friendlyFire": true,
+      "healCanCrit": false,
+      "hitFormula": "",
+      "damageFormula": ""
+    },
+    "vision": {
+      "updateInterval": 0.25,
+      "fogOfWar": true,
+      "stealthRangeFactor": 1,
+      "invisibleDetectRange": 1,
+      "blindDetectRange": 1
+    },
+    "queue": {
+      "notEnoughAp": { "action": "Wait", "waitSeconds": 10, "then": "Skip", "maxAttempts": 3 },
+      "notEnoughResource": { "action": "Wait", "waitSeconds": 10, "then": "Skip", "maxAttempts": 3 },
+      "pathBlocked": { "action": "Repath", "waitSeconds": 1, "then": "CancelQueue", "maxAttempts": 3 },
+      "noPath": { "action": "CancelQueue", "waitSeconds": 0, "then": "Skip", "maxAttempts": 3 },
+      "targetLost": { "action": "Skip", "waitSeconds": 0, "then": "Skip", "maxAttempts": 3 },
+      "outOfRange": { "action": "Wait", "waitSeconds": 5, "then": "Skip", "maxAttempts": 3 },
+      "noLineOfSight": { "action": "Wait", "waitSeconds": 5, "then": "Skip", "maxAttempts": 3 },
+      "cooldown": { "action": "Wait", "waitSeconds": 30, "then": "Skip", "maxAttempts": 3 },
+      "disabled": { "action": "Wait", "waitSeconds": 10, "then": "Skip", "maxAttempts": 3 },
+      "maxWaitSeconds": 60
+    },
+    "limits": {
+      "maxReactionDepth": 8,
+      "maxEventsPerTick": 5000,
+      "maxEffectsPerCell": 8,
+      "maxSynergyChain": 6,
+      "maxUnits": 500,
+      "maxMapCells": 16384,
+      "maxStatusStacks": 20,
+      "allowGlobalSkills": true
+    },
+    "autopause": {
+      "enemySpotted": true,
+      "allyCriticalDamage": true,
+      "criticalHpFraction": 0.3,
+      "unitDied": true,
+      "skillInterrupted": false,
+      "pathUnavailable": true,
+      "waveStarted": true,
+      "commandFailed": false,
+      "queueEmpty": false
+    },
+    "death": { "summonsDieWithOwner": true, "corpseCellEffect": "" }
+  }
+}
