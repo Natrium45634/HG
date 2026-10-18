@@ -37,6 +37,7 @@ public partial class EditorScreen : Control
         ("enemies", "Враги", DefCategory.Unit),
         ("skills", "Навыки", DefCategory.Skill),
         ("terrains", "Типы местности", DefCategory.Terrain),
+        ("layers", "Слои существ", DefCategory.Layer),
         ("cell_effects", "Эффекты клеток", DefCategory.CellEffect),
         ("statuses", "Состояния", DefCategory.Status),
         ("synergies", "Синергии", DefCategory.Synergy),
@@ -163,7 +164,8 @@ public partial class EditorScreen : Control
             "units" => new UnitEditorPanel(_ctx, "Юниты (союзники и нейтралы)", d => ((UnitDef)d).Faction != "enemy", "player"),
             "enemies" => new UnitEditorPanel(_ctx, "Враги", d => ((UnitDef)d).Faction == "enemy", "enemy"),
             "skills" => new SkillEditorPanel(_ctx, TestSkill),
-            "terrains" => new DefListPanel(_ctx, DefCategory.Terrain, "Типы местности"),
+            "terrains" => new TerrainPanel(_ctx),
+            "layers" => new DefListPanel(_ctx, DefCategory.Layer, "Слои существ"),
             "cell_effects" => new DefListPanel(_ctx, DefCategory.CellEffect, "Эффекты клеток"),
             "statuses" => new DefListPanel(_ctx, DefCategory.Status, "Состояния", null, () => new StatusDef
             {
@@ -196,6 +198,7 @@ public partial class EditorScreen : Control
             DefCategory.Unit => _ctx.Db.Unit(id)?.Faction == "enemy" ? "enemies" : "units",
             DefCategory.Skill => "skills",
             DefCategory.Terrain => "terrains",
+            DefCategory.Layer => "layers",
             DefCategory.CellEffect => "cell_effects",
             DefCategory.Status => "statuses",
             DefCategory.Synergy => "synergies",

@@ -241,7 +241,7 @@ public sealed class ScenarioDef : Def
 
 public sealed class ScenarioLimitsDef
 {
-    [Ed("Разрешить несколько юнитов на клетке")] public bool AllowStacking { get; set; }
+    [Ed("Совместное нахождение на гексе", "По настройкам типов юнитов / запрещено / разрешено всем")] public StackingMode Stacking { get; set; } = StackingMode.ByUnitType;
     [Ed("Туман войны")] public bool FogOfWar { get; set; } = true;
     [Ed("Лимит времени, с", "0 = без лимита (по истечении — поражение)"), EdRange(0, 36000)] public double TimeLimit { get; set; }
 }

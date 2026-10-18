@@ -98,6 +98,7 @@ public sealed class SkillSystem
         if (!u.Alive) return none with { Message = "юнит погиб" };
         if (_sim.Content.DisabledSkills.TryGetValue(s.Id, out var why))
             return none with { Message = "навык отключён из-за ошибки данных: " + why };
+        if (!LayerResolver.CanCastFrom(s, u)) return none with { Message = $"нельзя применить из слоя «{u.LayerDef.DisplayName}»" };
         if (checkState)
         {
             if (u.Flags.BlocksActions) return new SkillCheck(FailureReason.Disabled, "юнит оглушён", fromPos, facing);
@@ -133,6 +134,7 @@ public sealed class SkillSystem
                 if (t == null || !t.Alive) return new SkillCheck(FailureReason.TargetLost, "цель потеряна", fromPos, facing);
                 if (t != u && !_sim.Vision.CanFactionSee(u.FactionId, t)) return new SkillCheck(FailureReason.TargetLost, "цель не видна", fromPos, facing);
                 if (!_sim.FilterAccepts(s.ValidTargets, u, t)) return none with { Message = "недопустимая цель" };
+                if (t != u && !LayerResolver.CanTarget(_sim.Rules, s, t)) return none with { Message = $"цель в слое «{t.LayerDef.DisplayName}» — навык её не поражает" };
                 return CheckRangeAndLos(u, s, fromPos, t.Pos, facing);
             }
             case TargetingMode.Cell:
@@ -141,7 +143,7 @@ public sealed class SkillSystem
                 if (!s.AllowEmptyCell)
                 {
                     var c = _sim.Map.Get(targetCell.Value)!;
-                    if (c.Occupant == null || !c.Occupant.Alive) return new SkillCheck(FailureReason.TargetLost, "в клетке нет цели", fromPos, facing);
+                    if (!c.Occupants.Any(o => o.Alive && LayerResolver.CanTarget(_sim.Rules, s, o))) return new SkillCheck(FailureReason.TargetLost, "в клетке нет цели", fromPos, facing);
                 }
                 return CheckRangeAndLos(u, s, fromPos, targetCell.Value, facing);
             }
@@ -292,7 +294,7 @@ public sealed class SkillSystem
         var area = stage.Area;
         List<AreaCell> cells;
         if (area.Shape == AreaShape.Chain)
-            cells = ResolveChain(caster, stage, anchor, preview);
+            cells = ResolveChain(caster, skill, stage, anchor, preview);
         else
             cells = AreaResolver.Resolve(area, anchor, orientation, _sim.Map);
 
@@ -318,7 +320,7 @@ public sealed class SkillSystem
         return cells;
     }
 
-    private List<AreaCell> ResolveChain(Unit caster, SkillStageDef stage, HexCoord anchor, bool preview)
+    private List<AreaCell> ResolveChain(Unit caster, SkillDef skill, SkillStageDef stage, HexCoord anchor, bool preview)
     {
         var result = new List<AreaCell> { new(anchor, null, 0) };
         if (preview) return result;
@@ -335,6 +337,7 @@ public sealed class SkillSystem
             {
                 if (!u.Alive || hit.Contains(u.Id) || u == caster) continue;
                 if (!_sim.FilterAccepts(filter, caster, u)) continue;
+                if (!LayerResolver.CanTarget(_sim.Rules, skill, u)) continue;
                 int d = HexCoord.Distance(cur, u.Pos);
                 if (d > stage.Area.ChainRange) continue;
                 if (stage.BlockedByObstacles && !_sim.Los.Has(_sim.Map, _sim.Rules, cur, u.Pos)) continue;
@@ -386,6 +389,7 @@ public sealed class SkillSystem
             foreach (var u in cell.Occupants.ToArray())
             {
                 if (!u.Alive || !seen.Add(u.Id)) continue;
+                if (u != caster && !LayerResolver.CanTarget(_sim.Rules, skill, u)) continue;
                 var list = new List<SkillEffectDef>();
                 foreach (var e in stage.Effects.Concat(ac.Mask?.Effects ?? Enumerable.Empty<SkillEffectDef>()))
                 {
@@ -488,7 +492,8 @@ public sealed class SkillSystem
             {
                 var t = _sim.Content.Terrain(e.Terrain);
                 if (t == null || t == cell.Terrain) return;
-                if (cell.Occupants.Any(o => o.Alive && !t.IsPassableFor(o.Def.MoveCategory))) return; // never trap/bury units
+                // Never bury units in walls; a floor may collapse into a pit (units fall).
+                if (t.Kind != TerrainKind.Pit && cell.Occupants.Any(o => o.Alive && !t.IsPassableFor(o.Def.MoveCategory) && o.LayerDef.PassesObstaclesUpTo <= 0)) return;
                 _sim.CellEffects.ChangeTerrain(cell, t, cause);
                 break;
             }
@@ -511,7 +516,7 @@ public sealed class SkillSystem
     {
         var def = _sim.Content.Unit(e.SummonUnit);
         if (def == null) return;
-        if (MovementRules.Check(_sim.Rules, def.MoveCategory, null, cell, null, false, _sim.AllowStacking, out _) != StepCheck.Ok || !cell.AllowsPlacement)
+        if (MovementRules.Check(MoveContext.For(_sim, def, caster.FactionId), null, cell, false, out _) != StepCheck.Ok || !cell.AllowsPlacement)
         {
             _sim.Emit(SimEventType.Diagnostic, LogLevel.Detail, $"Призыв «{def.DisplayName}» невозможен: клетка {cell.Coord} занята или непроходима", caster.Id, cell: cell.Coord);
             return;
@@ -534,10 +539,10 @@ public sealed class SkillSystem
     private void Teleport(Unit caster, Cell cell, string cause)
     {
         if (!caster.Alive) return;
-        if (MovementRules.Check(_sim.Rules, caster.Def.MoveCategory, null, cell, caster, false, _sim.AllowStacking, out _) != StepCheck.Ok) return;
+        if (MovementRules.Check(MoveContext.For(_sim, caster), null, cell, false, out _) != StepCheck.Ok) return;
         _sim.Commands.OnForcedMove(caster);
-        _sim.Relocate(caster, cell.Coord);
         _sim.Emit(SimEventType.Displaced, LogLevel.Normal, $"{caster.Name} перемещается в {cell.Coord} — {cause}", caster.Id, cell: cell.Coord);
+        if (!_sim.Relocate(caster, cell.Coord, caster, cause)) return;
         _sim.CellEffects.OnUnitEntered(caster, cell);
     }
 }

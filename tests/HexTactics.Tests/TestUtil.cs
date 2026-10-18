@@ -39,6 +39,8 @@ public static class TestUtil
             db.Add(new StatDef { Id = "resist_" + t, Name = "resist " + t, Min = -1, Max = 1 });
         }
         db.Add(new ResourceDef { Id = "mana", Name = "Мана" });
+        foreach (var l in ContentDefaults.Layers()) db.Add(l);
+        db.Add(new StatDef { Id = "tremor_sense", Name = "Обнаружение подземных", Max = 10 });
         db.Add(new FactionDef { Id = "player", Name = "P", HostileTo = { "enemy" } });
         db.Add(new FactionDef { Id = "enemy", Name = "E", HostileTo = { "player" } });
         db.Add(new FactionDef { Id = "neutral", Name = "N" });

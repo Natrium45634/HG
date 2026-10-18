@@ -65,6 +65,7 @@ public partial class CameraRig : Node3D
         }
     }
 
+    private List<System.Numerics.Vector3>? _pendingFit;
     private (Vector2, float) _stdKey;
     private float _stdDistance = -1;
 
@@ -76,10 +77,17 @@ public partial class CameraRig : Node3D
     {
         if (points.Count == 0) return;
         var vp = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920, 1080);
-        if (vp.X < 10 || vp.Y < 10) return;
+        if (vp.X < 10 || vp.Y < 10)
+        {
+            // Viewport not laid out yet (editor previews): fit as soon as it has a size.
+            _pendingFit = points;
+            return;
+        }
+        _pendingFit = null;
         var ins = InsetsProvider?.Invoke() ?? default;
         var fit = CameraFit.Fit(points, vp.X, vp.Y, ins, TiltDeg, Mathf.RadToDeg(_targetYaw), Camera.Fov, MinDistance, 400);
         MaxDistance = Math.Max(MaxDistance, fit.Distance * 1.6f);
+        Bounds = Bounds.Expand(new Vector2(fit.Pivot.X, fit.Pivot.Z));
         _pivot = ClampPivot(new Vector3(fit.Pivot.X, 0, fit.Pivot.Z));
         _targetDistance = fit.Distance;
         if (immediate)
@@ -126,6 +134,7 @@ public partial class CameraRig : Node3D
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+        if (_pendingFit != null) FitPoints(_pendingFit, true);
         var move = Vector2.Zero;
         if (KeyboardPan && GetViewport().GuiGetFocusOwner() is not LineEdit and not TextEdit and not SpinBox)
         {

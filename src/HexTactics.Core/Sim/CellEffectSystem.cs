@@ -37,7 +37,7 @@ public sealed class CellEffectSystem
         {
             var def = _sim.Content.CellEffect(id);
             if (def == null || cell.HasEffect(id)) continue;
-            var inst = new CellEffectInstance { Def = def, Level = 1, RemainingTicks = -1, TotalTicks = -1, Intrinsic = true, Serial = ++_serial };
+            var inst = new CellEffectInstance { Def = def, Level = 1, RemainingTicks = -1, TotalTicks = -1, Intrinsic = true, Serial = ++_serial, Origin = EffectOrigin.Terrain };
             cell.Effects.Add(inst);
             SortEffects(cell);
         }
@@ -84,7 +84,8 @@ public sealed class CellEffectSystem
         _sim.Map.Touch(def.BlocksLoS || def.BlocksMovement || Math.Abs(def.MoveCostAdd) > 1e-9);
 
     /// <summary>Adds (or stacks) an effect. duration 0 = definition default. Returns the instance or null if not allowed.</summary>
-    public CellEffectInstance? Add(Cell cell, CellEffectDef def, int level, double duration, int source, int generation, int chainDepth)
+    public CellEffectInstance? Add(Cell cell, CellEffectDef def, int level, double duration, int source, int generation, int chainDepth,
+        EffectOrigin origin = EffectOrigin.Skill)
     {
         if (!CanHost(cell, def, out var reason))
         {
@@ -150,6 +151,7 @@ public sealed class CellEffectSystem
             Generation = generation,
             SourceUnit = source,
             Serial = ++_serial,
+            Origin = generation > 0 ? EffectOrigin.Spread : origin,
         };
         cell.Effects.Add(inst);
         SortEffects(cell);
@@ -186,6 +188,8 @@ public sealed class CellEffectSystem
         _sim.Map.SetTerrain(cell, terrain);
         AddIntrinsic(cell);
         _sim.Emit(SimEventType.TerrainChanged, LogLevel.Normal, $"{cell.Coord}: «{old.DisplayName}» → «{terrain.DisplayName}» ({cause})", cell: cell.Coord);
+        // Floor collapsed into a pit: everyone standing there may fall.
+        if (terrain.Kind == TerrainKind.Pit) _sim.Falls.CheckOccupants(cell, null, cause);
         foreach (var e in cell.Effects.ToList())
             if (!CanHost(cell, e.Def, out var why))
                 Remove(cell, e, why);
@@ -210,8 +214,9 @@ public sealed class CellEffectSystem
         ChangeTerrain(cell, into, "разрушение");
     }
 
+    /// <summary>Immune creature category / immunity, or the effect does not reach the unit's layer.</summary>
     private bool UnitImmune(Unit u, CellEffectDef def) =>
-        def.ImmuneCreatureCategories.Contains(u.Def.CreatureCategory) || u.IsImmuneTo(def.Id, def.Tags);
+        !LayerResolver.EffectAffects(_sim.Rules, def, u) || def.ImmuneCreatureCategories.Contains(u.Def.CreatureCategory) || u.IsImmuneTo(def.Id, def.Tags);
 
     public void OnUnitEntered(Unit u, Cell cell)
     {
@@ -219,11 +224,47 @@ public sealed class CellEffectSystem
         {
             if (!u.Alive) return;
             if (e.Def.OnEnter.Count == 0 || UnitImmune(u, e.Def)) continue;
+            if (e.Def.ConsumeOnEnter)
+                _sim.Emit(SimEventType.TrapTriggered, LogLevel.Normal, $"{cell.Coord}: срабатывает «{e.Def.DisplayName}» под {u.Name}", e.SourceUnit, u.Id, cell.Coord);
             _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnEnter, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName);
             if (e.Def.ConsumeOnEnter)
             {
                 if (e.Level > 1) e.Level--;
                 else Remove(cell, e, "сработал");
+            }
+        }
+    }
+
+    public void OnUnitExited(Unit u, Cell cell)
+    {
+        foreach (var e in cell.Effects.ToList())
+        {
+            if (!u.Alive) return;
+            if (e.Def.OnExit.Count == 0 || UnitImmune(u, e.Def)) continue;
+            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnExit, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (выход)");
+        }
+    }
+
+    /// <summary>(unit, effect def) → tick of the last adjacency application (one per interval, whatever the number of nearby cells).</summary>
+    private readonly Dictionary<(int, string), long> _adjacentApplied = new();
+
+    private void ApplyAdjacent(Cell cell, CellEffectInstance e)
+    {
+        long interval = Math.Max(1, _sim.TicksFor(e.Def.AdjacentInterval));
+        e.AdjacentTimer++;
+        if (e.AdjacentTimer < interval) return;
+        e.AdjacentTimer = 0;
+        int radius = Math.Max(1, e.Def.AdjacentRadius);
+        foreach (var c in _sim.Map.InRadius(cell.Coord, radius))
+        {
+            if (c == cell) continue;
+            foreach (var u in c.Occupants.ToArray())
+            {
+                if (!u.Alive || UnitImmune(u, e.Def)) continue;
+                var key = (u.Id, e.Def.Id);
+                if (_adjacentApplied.TryGetValue(key, out var last) && _sim.Tick - last < interval) continue;
+                _adjacentApplied[key] = _sim.Tick;
+                _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnAdjacent, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (рядом)");
             }
         }
     }
@@ -260,6 +301,7 @@ public sealed class CellEffectSystem
                         }
                     }
                 }
+                if (e.Def.OnAdjacent.Count > 0) ApplyAdjacent(cell, e);
                 var sp = e.Def.Spread;
                 if (sp.Enabled && e.Generation < sp.MaxGenerations)
                 {

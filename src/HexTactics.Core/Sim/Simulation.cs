@@ -20,7 +20,9 @@ public sealed class SimOptions
     public HashSet<string> PlayerFactions { get; init; } = new() { "player" };
     /// <summary>Factions controlled by AI.</summary>
     public HashSet<string> AiFactions { get; init; } = new() { "enemy" };
+    /// <summary>Part 1 compatibility: true = everyone may share cells (StackingMode.AllowAll).</summary>
     public bool AllowStacking { get; init; }
+    public StackingMode Stacking { get; init; } = StackingMode.ByUnitType;
     public bool? FogOfWar { get; init; }
     /// <summary>Admin/diagnostic mode: the player may command every unit and sees everything.</summary>
     public bool AdminMode { get; init; }
@@ -52,7 +54,7 @@ public sealed class Simulation
         var issues = new List<ContentIssue>();
         Map = BattleMap.Build(mapDef, content, issues);
         BuildIssues = issues;
-        AllowStacking = Options.AllowStacking;
+        Stacking = Options.AllowStacking ? StackingMode.AllowAll : Options.Stacking;
         FogOfWar = Options.FogOfWar ?? Rules.Vision.FogOfWar;
 
         Pathfinder = new Pathfinder();
@@ -62,6 +64,7 @@ public sealed class Simulation
         Combat = new CombatSystem(this);
         Skills = new SkillSystem(this);
         Commands = new CommandSystem(this);
+        Falls = new FallSystem(this);
         Vision = new VisionSystem(this);
         Reactions = new ReactionSystem(this);
         Ai = new AiSystem(this);
@@ -77,7 +80,7 @@ public sealed class Simulation
             foreach (var e in cd.Effects)
             {
                 var def = content.CellEffect(e);
-                if (def != null) CellEffects.Add(cell, def, 1, 0, -1, 0, 0);
+                if (def != null) CellEffects.Add(cell, def, 1, 0, -1, 0, 0, EffectOrigin.MapStart);
             }
         }
     }
@@ -88,7 +91,7 @@ public sealed class Simulation
     public SimRng Rng { get; }
     public BattleMap Map { get; }
     public List<ContentIssue> BuildIssues { get; }
-    public bool AllowStacking { get; set; }
+    public StackingMode Stacking { get; set; }
     public bool FogOfWar { get; set; }
 
     public Pathfinder Pathfinder { get; }
@@ -98,6 +101,7 @@ public sealed class Simulation
     public CombatSystem Combat { get; }
     public SkillSystem Skills { get; }
     public CommandSystem Commands { get; }
+    public FallSystem Falls { get; }
     public VisionSystem Vision { get; }
     public ReactionSystem Reactions { get; }
     public AiSystem Ai { get; }
@@ -166,7 +170,9 @@ public sealed class Simulation
         u.BaseFactionId = u.FactionId;
         if (!string.IsNullOrEmpty(name)) u.Name = name!;
         u.Pos = pos;
+        u.LastSafePos = pos;
         u.Facing = facing;
+        SetLayerInternal(u, LayerResolver.LayerIdOf(Content, def));
         foreach (var sid in def.Skills)
         {
             var s = Content.Skill(sid);
@@ -209,34 +215,58 @@ public sealed class Simulation
         return u;
     }
 
+    internal void SetLayerInternal(Unit u, string layer)
+    {
+        u.Layer = layer;
+        u.LayerDef = LayerResolver.Get(Content, layer);
+    }
+
+    /// <summary>Moves a unit to another layer (take off, land, burrow, emerge).</summary>
+    public void SetLayer(Unit u, string layer, string cause)
+    {
+        if (u.Layer == layer) return;
+        var old = u.LayerDef.DisplayName;
+        SetLayerInternal(u, layer);
+        Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name}: слой «{old}» → «{u.LayerDef.DisplayName}» — {cause}", u.Id, cell: u.Pos);
+        Vision.MarkDirty(urgent: true);
+        Map.Touch(false);
+        var cell = Map.Get(u.Pos);
+        if (cell != null) Falls.CheckCell(u, cell, null, cause);
+    }
+
     public void Remove(Unit u)
     {
         var cell = Map.Get(u.Pos);
         cell?.Occupants.Remove(u);
-        if (u.StepTo.HasValue)
-        {
-            var c = Map.Get(u.StepTo.Value);
-            if (c != null && c.ReservedBy == u) c.ReservedBy = null;
-        }
+        if (u.StepTo.HasValue) Map.Get(u.StepTo.Value)?.Reservations.Remove(u);
         _units.Remove(u);
         _unitsById.Remove(u.Id);
         Vision.MarkDirty(urgent: true);
     }
 
-    /// <summary>Moves a unit to another cell immediately (step completion, push, teleport).</summary>
-    internal void Relocate(Unit u, HexCoord to)
+    /// <summary>
+    /// Moves a unit to another cell immediately (step completion, push, teleport). Exit effects
+    /// of the old cell fire here; entering a pit that affects the unit makes it fall.
+    /// Returns false when the unit fell (and died or was removed/returned).
+    /// </summary>
+    internal bool Relocate(Unit u, HexCoord to, Unit? source = null, string cause = "")
     {
         var from = Map.Get(u.Pos);
         from?.Occupants.Remove(u);
+        if (from != null && from.Coord != to) CellEffects.OnUnitExited(u, from);
         u.Pos = to;
         var cell = Map.Get(to);
         if (cell != null)
         {
             cell.Occupants.Add(u);
-            if (cell.ReservedBy == u) cell.ReservedBy = null;
+            cell.Reservations.Remove(u);
         }
         Vision.MarkDirty();
         Map.Touch(false);
+        if (cell == null) return true;
+        if (Falls.CheckCell(u, cell, source, cause)) return false;
+        u.LastSafePos = to;
+        return true;
     }
 
     internal int NextCommandId() => _nextCommandId++;
@@ -415,6 +445,12 @@ public sealed class Simulation
             }
             Statuses.UpdateUnit(u);
             Reactions.UpdatePeriodic(u);
+            // Standing over a pit (rescue status expired, layer changed): fall now.
+            if (u.Alive && u.StepTo == null)
+            {
+                var here = Map.Get(u.Pos);
+                if (here != null && here.Terrain.Kind == TerrainKind.Pit) Falls.CheckCell(u, here, null, "");
+            }
             if (u.ExpiresAtTick > 0 && Tick >= u.ExpiresAtTick && u.Alive)
                 Combat.Kill(u, null, "время призыва истекло");
         }

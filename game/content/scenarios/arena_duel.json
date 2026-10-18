@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "scenario",
   "scenario": {
     "id": "arena_duel",
@@ -65,6 +65,6 @@
     "victory": [{ "type": "AllEnemiesDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
     "defeat": [{ "type": "AllPlayerUnitsDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
     "triggers": [],
-    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 }
+    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
   }
 }

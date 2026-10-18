@@ -57,6 +57,9 @@ public enum SimEventType
     AiDecision,
     Diagnostic,
     Autopause,
+    Fall,
+    LayerChanged,
+    TrapTriggered,
 }
 
 public enum LogLevel

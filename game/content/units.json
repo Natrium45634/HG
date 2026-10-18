@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "units",
   "items": [
     {
@@ -12,6 +12,15 @@
       "faction": "player",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": {
         "hp_max": 140,
         "move_speed": 1.3,
@@ -43,6 +52,15 @@
       "faction": "player",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": {
         "hp_max": 80,
         "move_speed": 1.6,
@@ -73,6 +91,15 @@
       "faction": "player",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 70, "move_speed": 1.4, "ap_max": 12, "ap_regen": 1, "detection_range": 7 },
       "resistances": {},
       "statusResistances": {},
@@ -95,13 +122,22 @@
       "faction": "player",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 85, "move_speed": 1.4, "ap_max": 10, "ap_regen": 1, "detection_range": 7 },
       "resistances": {},
       "statusResistances": {},
       "immunities": [],
       "resources": [{ "resource": "mana", "max": 80, "start": 80, "regen": 2 }],
       "basicAttack": "strike",
-      "skills": ["heal", "consecrate", "blinding_flash", "barrier"],
+      "skills": ["heal", "consecrate", "blinding_flash", "barrier", "grav_lift"],
       "passives": ["second_wind"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
@@ -117,6 +153,15 @@
       "faction": "player",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": {
         "hp_max": 75,
         "move_speed": 2.1,
@@ -125,7 +170,8 @@
         "detection_range": 10,
         "stealth": 0.3,
         "evasion": 0.2,
-        "crit_chance": 0.15
+        "crit_chance": 0.15,
+        "tremor_sense": 1
       },
       "resistances": {},
       "statusResistances": {},
@@ -148,6 +194,15 @@
       "faction": "enemy",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 50, "move_speed": 1.7, "ap_max": 8, "ap_regen": 1, "detection_range": 7, "evasion": 0.15 },
       "resistances": {},
       "statusResistances": {},
@@ -170,6 +225,15 @@
       "faction": "enemy",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 40, "move_speed": 1.6, "ap_max": 8, "ap_regen": 1, "detection_range": 8 },
       "resistances": {},
       "statusResistances": {},
@@ -192,6 +256,15 @@
       "faction": "enemy",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": {
         "hp_max": 160,
         "move_speed": 1.1,
@@ -222,6 +295,15 @@
       "faction": "enemy",
       "creatureCategory": "humanoid",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 60, "move_speed": 1.4, "ap_max": 10, "ap_regen": 1, "detection_range": 8 },
       "resistances": {},
       "statusResistances": {},
@@ -244,6 +326,15 @@
       "faction": "enemy",
       "creatureCategory": "beast",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 55, "move_speed": 2.4, "ap_max": 8, "ap_regen": 1.2, "detection_range": 8, "evasion": 0.2 },
       "resistances": {},
       "statusResistances": {},
@@ -266,6 +357,15 @@
       "faction": "enemy",
       "creatureCategory": "construct",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 120, "move_speed": 1, "ap_max": 10, "ap_regen": 1, "detection_range": 6, "armor": 6 },
       "resistances": { "electric": -0.5, "fire": 0.3, "poison": 1 },
       "statusResistances": {},
@@ -288,6 +388,15 @@
       "faction": "neutral",
       "creatureCategory": "beast",
       "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
       "stats": { "hp_max": 40, "move_speed": 2.6, "ap_max": 8, "ap_regen": 1.5, "detection_range": 9 },
       "resistances": {},
       "statusResistances": {},
@@ -299,6 +408,76 @@
       "startingStatuses": [],
       "aiProfile": "skittish",
       "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "о" }
+    },
+    {
+      "id": "drone",
+      "name": "Дрон-разведчик",
+      "description": "Воздушный слой: ближний бой по нему не проходит",
+      "tags": [],
+      "group": "Воздух",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "construct",
+      "moveCategory": "fly",
+      "layer": "air",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 45,
+        "ap_max": 8,
+        "ap_regen": 1.2,
+        "move_speed": 3.2,
+        "detection_range": 8,
+        "evasion": 0.1,
+        "accuracy": 0.05
+      },
+      "resistances": {},
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "zap",
+      "skills": [],
+      "passives": [],
+      "startingStatuses": [],
+      "aiProfile": "hunter",
+      "visual": { "shape": "Orb", "color": "#ff6b6b", "scale": 0.8, "symbol": "Д" }
+    },
+    {
+      "id": "burrower",
+      "name": "Землерой",
+      "description": "Подземный слой: виден только с обнаружением подземных или вплотную; обычные атаки не достают",
+      "tags": [],
+      "group": "Подземные",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "beast",
+      "moveCategory": "walk",
+      "layer": "underground",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": { "hp_max": 70, "ap_max": 8, "ap_regen": 1, "move_speed": 2, "detection_range": 6, "armor": 2 },
+      "resistances": {},
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "bite",
+      "skills": [],
+      "passives": [],
+      "startingStatuses": [],
+      "aiProfile": "hunter",
+      "visual": { "shape": "Beast", "color": "#c98b4a", "scale": 0.9, "symbol": "З" }
     }
   ]
 }

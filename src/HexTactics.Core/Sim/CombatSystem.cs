@@ -374,8 +374,7 @@ public sealed class CombatSystem
         _sim.Commands.ClearQueue(u, "гибель юнита", CommandStatus.Cancelled);
         if (u.StepTo.HasValue)
         {
-            var sc = _sim.Map.Get(u.StepTo.Value);
-            if (sc != null && sc.ReservedBy == u) sc.ReservedBy = null;
+            _sim.Map.Get(u.StepTo.Value)?.Reservations.Remove(u);
             u.StepTo = null;
             u.StepFrom = null;
         }
@@ -520,21 +519,23 @@ public sealed class CombatSystem
         if (dir == null) dir = push ? target.Facing.Opposite() : target.Facing;
         var start = target.Pos;
         var cur = target.Pos;
+        var mc = MoveContext.For(_sim, target);
         for (int i = 0; i < distance; i++)
         {
             var next = cur.Neighbor(dir.Value);
             if (!push && next == origin) break;
             var from = _sim.Map.Get(cur);
             var to = _sim.Map.Get(next);
-            var st = MovementRules.Check(Rules, target.Def.MoveCategory, from, to, target, false, _sim.AllowStacking, out _);
-            if (st == StepCheck.TooLow) st = StepCheck.Ok; // can be pushed down a ledge
+            // Forced movement: ledges can be descended, pits can be entered (and the unit falls).
+            var st = MovementRules.Check(mc, from, to, false, out _, forced: true);
             if (st != StepCheck.Ok) break;
             cur = next;
+            if (to != null && _sim.Falls.Affects(target, to)) break;
         }
         if (cur == start) return;
         _sim.Commands.OnForcedMove(target);
-        _sim.Relocate(target, cur);
         _sim.Emit(SimEventType.Displaced, LogLevel.Normal, $"{target.Name} {(push ? "отброшен" : "притянут")} в {cur} — {cause}", source?.Id ?? -1, target.Id, cur);
+        if (!_sim.Relocate(target, cur, source, cause)) return;
         if (target.Casting != null && !target.Casting.Released && target.Casting.Skill.Interrupt.ByForcedMove)
             _sim.Skills.Interrupt(target, InterruptCause.ForcedMove, "перемещение");
         _sim.CellEffects.OnUnitEntered(target, _sim.Map.Get(cur)!);

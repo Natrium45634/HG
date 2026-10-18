@@ -35,7 +35,7 @@ public sealed class ScenarioSystem
             Seed = s0,
             PlayerFactions = player,
             AiFactions = ai,
-            AllowStacking = sc.Limits.AllowStacking,
+            Stacking = sc.Limits.Stacking,
             FogOfWar = sc.Limits.FogOfWar && db.Rules.Vision.FogOfWar,
             AdminMode = admin,
         });
@@ -55,7 +55,7 @@ public sealed class ScenarioSystem
                 continue;
             }
             var cell = _sim.Map.Get(su.C);
-            if (cell == null || (!_sim.AllowStacking && cell.Occupants.Any(o => o.Alive)))
+            if (cell == null || !Occupancy.CanEnter(MoveContext.For(_sim, def, string.IsNullOrEmpty(su.Faction) ? null : su.Faction), cell))
             {
                 _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Сценарий: клетка {su.C} недоступна для '{su.Unit}' — пропущен");
                 continue;
@@ -146,7 +146,7 @@ public sealed class ScenarioSystem
         {
             var cell = _sim.Map.Get(c);
             if (cell == null || !cell.AllowsPlacement) continue;
-            if (MovementRules.Check(_sim.Rules, def.MoveCategory, null, cell, null, false, _sim.AllowStacking, out _) != StepCheck.Ok) continue;
+            if (MovementRules.Check(MoveContext.For(_sim, def, null), null, cell, false, out _) != StepCheck.Ok) continue;
             return c;
         }
         return null;

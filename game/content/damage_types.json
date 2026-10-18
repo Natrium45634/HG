@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "damage_types",
   "items": [
     {
@@ -70,6 +70,16 @@
       "group": "",
       "version": 1,
       "color": "#ff4a6a",
+      "armorApplies": false
+    },
+    {
+      "id": "acid",
+      "name": "Кислота",
+      "description": "",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "color": "#9be22d",
       "armorApplies": false
     }
   ]

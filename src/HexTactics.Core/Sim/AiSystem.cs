@@ -94,9 +94,12 @@ public sealed class AiSystem
         // Support allies.
         if (p.Support && TrySupport(u, p)) return;
 
-        if (visible.Count > 0)
+        // Only enemies some own skill can reach (layers: a melee brute ignores a high flyer it cannot hit).
+        var attackable = visible.Where(e => CanHitLayer(u, e)).ToList();
+        if (attackable.Count == 0 && visible.Count > 0) Explain(u, "видит врагов, но не может их поразить (слой)");
+        if (attackable.Count > 0)
         {
-            var target = ChooseTarget(u, visible, p, out var why);
+            var target = ChooseTarget(u, attackable, p, out var why);
             u.Ai.TargetUnitId = target.Id;
             if (TryAttack(u, target, p, why)) return;
             if (p.KeepDistance && TryKeepDistance(u, visible, p)) return;
@@ -161,6 +164,15 @@ public sealed class AiSystem
             r += c.Coord.R;
         }
         return HexCoord.Round(q / _sim.Map.Count, r / _sim.Map.Count);
+    }
+
+    private bool CanHitLayer(Unit u, Unit target)
+    {
+        if (u.BasicAttack != null && LayerResolver.CanTarget(_sim.Rules, u.BasicAttack, target)) return true;
+        foreach (var s in u.Skills)
+            if (s.IsHarmful && LayerResolver.CanTarget(_sim.Rules, s, target))
+                return true;
+        return false;
     }
 
     private Unit ChooseTarget(Unit u, List<Unit> visible, AiProfileDef p, out string why)
@@ -322,7 +334,7 @@ public sealed class AiSystem
         }
 
         double budget = Math.Min(40, HexCoord.Distance(u.Pos, target.Pos) * 2.0 + 6);
-        var reach = _sim.Pathfinder.Flood(_sim.Map, _sim.Rules, u.Def.MoveCategory, u, u.Pos, budget, new PathOptions { MaxExpanded = 1500 }, _sim.AllowStacking);
+        var reach = _sim.Pathfinder.Flood(_sim, u, u.Pos, budget, new PathOptions { MaxExpanded = 1500 });
         HexCoord? best = null;
         double bestScore = double.MaxValue;
         foreach (var kv in reach)
@@ -370,7 +382,7 @@ public sealed class AiSystem
 
     private bool Retreat(Unit u, List<Unit> enemies, AiProfileDef p, string why)
     {
-        var reach = _sim.Pathfinder.Flood(_sim.Map, _sim.Rules, u.Def.MoveCategory, u, u.Pos, 6, new PathOptions { MaxExpanded = 1500 }, _sim.AllowStacking);
+        var reach = _sim.Pathfinder.Flood(_sim, u, u.Pos, 6, new PathOptions { MaxExpanded = 1500 });
         HexCoord best = u.Pos;
         double bestScore = enemies.Min(e => HexCoord.Distance(u.Pos, e.Pos));
         foreach (var kv in reach)

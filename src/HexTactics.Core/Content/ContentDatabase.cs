@@ -92,6 +92,7 @@ public sealed class ContentDatabase
         (DefCategory.Resource, typeof(ResourceDef), "resources.json"),
         (DefCategory.DamageType, typeof(DamageTypeDef), "damage_types.json"),
         (DefCategory.Faction, typeof(FactionDef), "factions.json"),
+        (DefCategory.Layer, typeof(LayerDef), "layers.json"),
         (DefCategory.Terrain, typeof(TerrainDef), "terrains.json"),
         (DefCategory.CellEffect, typeof(CellEffectDef), "cell_effects.json"),
         (DefCategory.Synergy, typeof(SynergyDef), "synergies.json"),
@@ -203,6 +204,7 @@ public sealed class ContentDatabase
     public CellEffectDef? CellEffect(string id) => Get<CellEffectDef>(id);
     public FactionDef? Faction(string id) => Get<FactionDef>(id);
     public StatDef? Stat(string id) => Get<StatDef>(id);
+    public LayerDef? Layer(string id) => Get<LayerDef>(id);
 
     /// <summary>Relation of faction a towards faction b.</summary>
     public Relation RelationOf(string a, string b)

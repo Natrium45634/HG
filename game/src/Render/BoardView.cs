@@ -52,6 +52,8 @@ public partial class BoardView : Node3D
         AddChild(_fx);
         _fog.Mesh = _fogMesh;
         SetupEnvironment();
+        // Window/preview resized while the board was fitted: fit again.
+        Rig.RefitRequested += () => FitCamera(immediate: true);
     }
 
     private void SetupEnvironment()
@@ -59,19 +61,19 @@ public partial class BoardView : Node3D
         var env = new Godot.Environment
         {
             BackgroundMode = Godot.Environment.BGMode.Color,
-            BackgroundColor = new Color(0.115f, 0.125f, 0.14f),
+            BackgroundColor = new Color(0.075f, 0.085f, 0.10f),
             AmbientLightSource = Godot.Environment.AmbientSource.Color,
-            AmbientLightColor = new Color(0.66f, 0.70f, 0.78f),
-            AmbientLightEnergy = 0.55f,
+            AmbientLightColor = new Color(0.62f, 0.68f, 0.78f),
+            AmbientLightEnergy = 0.45f,
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
             TonemapExposure = 1.05f,
             SsaoEnabled = true,
             SsaoRadius = 0.9f,
             SsaoIntensity = 1.4f,
             GlowEnabled = true,
-            GlowIntensity = 0.55f,
-            GlowBloom = 0.02f,
-            GlowHdrThreshold = 1.1f,
+            GlowIntensity = 0.7f,
+            GlowBloom = 0.03f,
+            GlowHdrThreshold = 1.05f,
             AdjustmentEnabled = true,
             AdjustmentSaturation = 1.05f,
         };
@@ -160,7 +162,7 @@ public partial class BoardView : Node3D
             {
                 Name = "Table",
                 Mesh = new PlaneMesh { Size = new Vector2(400, 400) },
-                MaterialOverride = Mats.Solid(new Color(0.17f, 0.185f, 0.2f), 0.95f),
+                MaterialOverride = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/table.gdshader") },
             };
             AddChild(_table);
         }

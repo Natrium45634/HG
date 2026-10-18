@@ -73,6 +73,11 @@ public sealed class SkillDef : Def
     [Ed("Можно в пустую клетку", Group = "Наведение"), EdShowIf(nameof(Targeting), TargetingMode.Cell)]
     public bool AllowEmptyCell { get; set; } = true;
     [Ed("Попадание", "Бросок точности или всегда попадает", Group = "Наведение")] public HitMode HitMode { get; set; } = HitMode.Roll;
+    [Ed("Слои целей", "Какие слои поражает; пусто — по правилам (ближний бой — наземный, дальний и заклинания — наземный и воздушный)", Group = "Наведение"),
+     EdRef(DefCategory.Layer)]
+    public List<string> TargetLayers { get; set; } = new();
+    [Ed("Слои исполнителя", "Из каких слоёв можно применять; пусто — из любого", Group = "Наведение"), EdRef(DefCategory.Layer)]
+    public List<string> CasterLayers { get; set; } = new();
 
     [Ed("Подготовка, с", "Время телеграфа перед срабатыванием", Group = "Время"), EdRange(0, 60)] public double PrepTime { get; set; } = 0.3;
     [Ed("Восстановление, с", "Юнит занят после срабатывания", Group = "Время"), EdRange(0, 60)] public double RecoveryTime { get; set; } = 0.2;

@@ -135,7 +135,7 @@ public partial class ScenarioEditorPanel : DefListPanel
         bool newMap = _mapId != map.Id;
         _mapId = map.Id;
         _view.Board.ClearUnits();
-        _preview = new Simulation(Ctx.Db, map, new SimOptions { Seed = 1, FogOfWar = false, AdminMode = true, AllowStacking = _sc.Limits.AllowStacking });
+        _preview = new Simulation(Ctx.Db, map, new SimOptions { Seed = 1, FogOfWar = false, AdminMode = true, Stacking = _sc.Limits.Stacking });
         foreach (var su in _sc.Units)
         {
             var ud = Ctx.Db.Unit(su.Unit);
@@ -191,7 +191,7 @@ public partial class ScenarioEditorPanel : DefListPanel
         {
             case 0:
             {
-                if (existing != null && !_sc.Limits.AllowStacking)
+                if (existing != null && _sc.Limits.Stacking != StackingMode.AllowAll)
                 {
                     _selected = existing;
                     break;
@@ -242,7 +242,7 @@ public partial class ScenarioEditorPanel : DefListPanel
         grid.Changed += () => OnEdited(_sc);
         grid.PropertyChanged += (o, p) =>
         {
-            if (p == nameof(ScenarioDef.Map) || p == nameof(ScenarioLimitsDef.AllowStacking)) RebuildPreview(true);
+            if (p == nameof(ScenarioDef.Map) || p == nameof(ScenarioLimitsDef.Stacking)) RebuildPreview(true);
         };
         _propsTab.AddChild(grid);
     }

@@ -200,7 +200,7 @@ public sealed class CommandSystem
                     {
                         var cell = _sim.Map.Get(p);
                         if (cell == null) break;
-                        rest += MovementRules.EntryCost(Rules, u.Def.MoveCategory, prev, cell) * Rules.Ap.MovePerCost;
+                        rest += MovementRules.EntryCost(MoveContext.For(_sim, u), prev, cell) * Rules.Ap.MovePerCost;
                         prev = cell;
                     }
                     c.EstimatedAp = c.SpentAp + rest;
@@ -222,8 +222,7 @@ public sealed class CommandSystem
     {
         if (u.StepTo.HasValue)
         {
-            var c = _sim.Map.Get(u.StepTo.Value);
-            if (c != null && c.ReservedBy == u) c.ReservedBy = null;
+            _sim.Map.Get(u.StepTo.Value)?.Reservations.Remove(u);
             u.StepTo = null;
             u.StepFrom = null;
             if (_stepAp.TryGetValue(u.Id, out var ap) && ap > 0)
@@ -284,8 +283,8 @@ public sealed class CommandSystem
         u.StepFrom = null;
         _stepAp.Remove(u.Id);
         var from = u.Pos;
-        _sim.Relocate(u, to);
         _sim.Emit(SimEventType.Moved, LogLevel.Diagnostic, $"{u.Name}: {from} → {to}", u.Id, cell: to);
+        if (!_sim.Relocate(u, to, null, "шаг")) return;
         var cell = _sim.Map.Get(to);
         if (cell != null) _sim.CellEffects.OnUnitEntered(u, cell);
     }
@@ -461,7 +460,7 @@ public sealed class CommandSystem
         var next = cmd.Path[0];
         var from = _sim.Map.Get(u.Pos);
         var to = _sim.Map.Get(next);
-        var check = MovementRules.Check(Rules, u.Def.MoveCategory, from, to, u, false, _sim.AllowStacking, out var cost);
+        var check = MovementRules.Check(MoveContext.For(_sim, u), from, to, false, out var cost);
         if (check != StepCheck.Ok)
         {
             cmd.Path = null;
@@ -485,7 +484,7 @@ public sealed class CommandSystem
             u.Facing = dir;
             _sim.Vision.MarkDirty();
         }
-        to!.ReservedBy = u;
+        if (!to!.Reservations.Contains(u)) to.Reservations.Add(u);
         u.StepFrom = u.Pos;
         u.StepTo = next;
         u.StepTicksDone = 0;

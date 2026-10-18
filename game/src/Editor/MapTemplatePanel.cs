@@ -56,7 +56,7 @@ public partial class MapTemplatePanel : DefListPanel
         scroll.AddChild(grid.Expand());
         split.AddChild(scroll.Expand(false, true));
 
-        _view = new BoardViewport { CustomMinimumSize = new Vector2(420, 360) };
+        _view = new BoardViewport { CustomMinimumSize = new Vector2(420, 360), SizeFlagsVertical = SizeFlags.ShrinkBegin };
         split.AddChild(_view);
         root.AddChild(split);
         Callable.From(() => Preview(t)).CallDeferred();

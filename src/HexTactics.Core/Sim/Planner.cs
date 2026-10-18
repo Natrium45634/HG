@@ -89,8 +89,8 @@ public sealed class Planner
             {
                 var target = c.TargetCell ?? pos;
                 if (target == pos) return new CommandEstimate { EndPos = pos, EndFacing = facing };
-                var path = _sim.Pathfinder.Find(_sim.Map, Rules, u.Def.MoveCategory, u, pos, target,
-                    new PathOptions { HazardPenalty = Rules.Move.HazardPenalty, IgnoreUnits = pos != u.Pos && pos != (u.StepTo ?? u.Pos), ComputeNearest = !u.AiControlled }, _sim.AllowStacking);
+                var path = _sim.Pathfinder.Find(_sim.Map, MoveContext.For(_sim, u), pos, target,
+                    new PathOptions { HazardPenalty = Rules.Move.HazardPenalty, IgnoreUnits = pos != u.Pos && pos != (u.StepTo ?? u.Pos), ComputeNearest = !u.AiControlled });
                 if (!path.Found)
                     return new CommandEstimate { EndPos = pos, EndFacing = facing, Feasible = false, Problem = path.Reason, Suggestion = path.Nearest };
                 double ap = path.Cost * Rules.Ap.MovePerCost;
@@ -379,6 +379,6 @@ public sealed class Planner
     public Dictionary<HexCoord, double> ReachableWithAp(Unit u, HexCoord from, double ap)
     {
         double maxCost = Rules.Ap.MovePerCost > 0 ? ap / Rules.Ap.MovePerCost : 1000;
-        return _sim.Pathfinder.Flood(_sim.Map, Rules, u.Def.MoveCategory, u, from, maxCost, new PathOptions(), _sim.AllowStacking);
+        return _sim.Pathfinder.Flood(_sim.Map, MoveContext.For(_sim, u), from, maxCost, new PathOptions());
     }
 }

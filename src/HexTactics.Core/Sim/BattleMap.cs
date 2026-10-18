@@ -6,6 +6,17 @@ using HexTactics.Core.Hex;
 
 namespace HexTactics.Core.Sim;
 
+public enum EffectOrigin
+{
+    Terrain,
+    MapStart,
+    Skill,
+    Synergy,
+    Spread,
+    Scenario,
+    Corpse,
+}
+
 /// <summary>Runtime instance of a cell effect (fire, poison...).</summary>
 public sealed class CellEffectInstance
 {
@@ -20,6 +31,9 @@ public sealed class CellEffectInstance
     public int SourceUnit { get; set; } = -1;
     public bool Intrinsic { get; set; }
     public long Serial { get; init; }
+    /// <summary>Where the instance came from (map/terrain vs action) — docs/DECISIONS_2.md §30.</summary>
+    public EffectOrigin Origin { get; set; } = EffectOrigin.Skill;
+    public long AdjacentTimer { get; set; }
 
     public double Fraction => TotalTicks <= 0 ? 1.0 : Math.Clamp((double)RemainingTicks / TotalTicks, 0, 1);
 }
@@ -53,7 +67,9 @@ public sealed class Cell
 
     public List<CellEffectInstance> Effects { get; } = new();
     public List<Unit> Occupants { get; } = new();
-    public Unit? ReservedBy { get; internal set; }
+    /// <summary>Units currently stepping into this cell (several when the cell may be shared).</summary>
+    public List<Unit> Reservations { get; } = new();
+    public Unit? ReservedBy => Reservations.Count > 0 ? Reservations[0] : null;
 
     /// <summary>Neighbor cells by direction index (null when missing).</summary>
     public Cell?[] Neighbors { get; } = new Cell?[6];
@@ -136,7 +152,18 @@ public sealed class Cell
         foreach (var u in Occupants)
             if (u != except && u.Alive)
                 return true;
-        return ReservedBy != null && ReservedBy != except && ReservedBy.Alive;
+        foreach (var u in Reservations)
+            if (u != except && u.Alive)
+                return true;
+        return false;
+    }
+
+    /// <summary>Alive units in the cell in the given layer.</summary>
+    public IEnumerable<Unit> UnitsInLayer(string layer)
+    {
+        foreach (var u in Occupants)
+            if (u.Alive && u.Layer == layer)
+                yield return u;
     }
 
     public string DisplayName => string.IsNullOrEmpty(Name) ? Terrain.DisplayName : Name;

@@ -23,6 +23,7 @@ public enum DefCategory
     /// <summary>Movement categories are plain strings listed in rules (walk, fly, swim...).</summary>
     MoveCategory,
     MapTemplate,
+    Layer,
 }
 
 /// <summary>Base class of every content definition.</summary>

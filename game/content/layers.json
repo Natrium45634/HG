@@ -1,0 +1,63 @@
+{
+  "formatVersion": 3,
+  "kind": "layers",
+  "items": [
+    {
+      "id": "ground",
+      "name": "Наземный",
+      "description": "Обычное положение: стоят на клетке, сталкиваются, блокируются",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "displayHeight": 0,
+      "translucent": false,
+      "ignoresTerrainCost": false,
+      "ignoresHeight": false,
+      "passesObstaclesUpTo": 0,
+      "immuneToPits": false,
+      "collidesWith": [],
+      "hidden": false,
+      "detectionStat": "",
+      "revealRange": 1,
+      "blockable": true
+    },
+    {
+      "id": "air",
+      "name": "Воздушный",
+      "description": "Летят над полем: игнорируют стоимость местности, высоту и ямы, пролетают над низкими стенами",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "displayHeight": 3.2,
+      "translucent": false,
+      "ignoresTerrainCost": true,
+      "ignoresHeight": true,
+      "passesObstaclesUpTo": 4,
+      "immuneToPits": true,
+      "collidesWith": [],
+      "hidden": false,
+      "detectionStat": "",
+      "revealRange": 1,
+      "blockable": false
+    },
+    {
+      "id": "underground",
+      "name": "Подземный",
+      "description": "Под поверхностью: проходят под препятствиями, видны только с обнаружением слоя или вплотную",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "displayHeight": -0.9,
+      "translucent": true,
+      "ignoresTerrainCost": true,
+      "ignoresHeight": true,
+      "passesObstaclesUpTo": 100,
+      "immuneToPits": true,
+      "collidesWith": [],
+      "hidden": true,
+      "detectionStat": "tremor_sense",
+      "revealRange": 1,
+      "blockable": false
+    }
+  ]
+}

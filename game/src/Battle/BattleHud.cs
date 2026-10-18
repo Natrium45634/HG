@@ -625,7 +625,7 @@ public partial class BattleHud : Control
         _unitName.Text = $"{ShapeGlyph(faction?.Shape ?? FactionShape.Circle)} {u.Name}" + (u.Alive ? "" : " (погиб)");
         _unitName.AddThemeColorOverride("font_color", fcol.Lightened(0.25f));
         var rel = Sim.Options.PlayerFactions.Select(pf => _bs.Db.RelationOf(pf, u.FactionId)).FirstOrDefault();
-        _unitSub.Text = $"{faction?.DisplayName ?? u.FactionId} · {Names.Of(rel)} · {u.Def.CreatureCategory} · взгляд: {u.Facing.RuName()}" + (u.AiControlled ? " · ИИ" : "");
+        _unitSub.Text = $"{faction?.DisplayName ?? u.FactionId} · {Names.Of(rel)} · {u.Def.CreatureCategory} · {u.LayerDef.DisplayName.ToLowerInvariant()} слой · взгляд: {u.Facing.RuName()}" + (u.AiControlled ? " · ИИ" : "");
         _hp.Set(u.Hp, u.HpMax, $"HP {u.Hp:0}/{u.HpMax:0}");
         _hp.FillColor = u.HpFraction > 0.5 ? Ui.HpColor : u.HpFraction > 0.25 ? Ui.Warn : Ui.Bad;
         bool mine = Sim.CanPlayerCommand(u);
@@ -878,7 +878,7 @@ public partial class BattleHud : Control
         if (u != null)
         {
             if (t.IsPassableFor(u.Def.MoveCategory) && !cell.Blocked)
-                parts.Add($"вход {MovementRules.EntryCost(Sim.Rules, u.Def.MoveCategory, null, cell):0.#}");
+                parts.Add($"вход {MovementRules.EntryCost(MoveContext.For(Sim, u), null, cell):0.#}");
             else
                 parts.Add("[color=#ff8080]непроходимо[/color]");
         }

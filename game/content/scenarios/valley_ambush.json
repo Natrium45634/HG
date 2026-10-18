@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "scenario",
   "scenario": {
     "id": "valley_ambush",
@@ -133,6 +133,6 @@
         "once": true
       }
     ],
-    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 }
+    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
   }
 }

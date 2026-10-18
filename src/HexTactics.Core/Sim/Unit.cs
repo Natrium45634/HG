@@ -135,6 +135,13 @@ public sealed class Unit
     public HexDirection Facing { get; internal set; }
     public bool Alive { get; internal set; } = true;
     public long DiedAtTick { get; internal set; } = -1;
+    public DeathCause DeathCause { get; internal set; }
+
+    /// <summary>Position layer id (ground/air/underground/custom) and its definition.</summary>
+    public string Layer { get; internal set; } = Layers.Ground;
+    public LayerDef LayerDef { get; internal set; } = new() { Id = Layers.Ground };
+    /// <summary>Last cell that was not a pit for this unit (fall "return" consequence).</summary>
+    public HexCoord LastSafePos { get; internal set; }
 
     public double Hp { get; internal set; }
     public double Ap { get; internal set; }
@@ -225,6 +232,14 @@ public sealed class Unit
     }
 
     public override string ToString() => $"#{Id} {Name}";
+}
+
+public enum DeathCause
+{
+    Killed,
+    Fall,
+    Removed,
+    Expired,
 }
 
 /// <summary>Per-unit AI memory and explanation for the admin view.</summary>

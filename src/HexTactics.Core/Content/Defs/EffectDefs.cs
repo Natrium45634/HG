@@ -51,9 +51,14 @@ public sealed class CellEffectDef : Def
     [Ed("Макс. уровень", Group = "Наложение"), EdRange(1, 100)] public int MaxLevel { get; set; } = 3;
     [Ed("Эффекты тика масштабируются уровнем", Group = "Наложение")] public bool ScaleWithLevel { get; set; } = true;
 
-    [Ed("Каждый тик (на юнита в клетке)", Group = "Действие")] public List<SkillEffectDef> OnTick { get; set; } = new();
+    [Ed("Каждый тик (на юнита в клетке)", "Нахождение в клетке", Group = "Действие")] public List<SkillEffectDef> OnTick { get; set; } = new();
     [Ed("При входе юнита", Group = "Действие")] public List<SkillEffectDef> OnEnter { get; set; } = new();
     [Ed("Исчезает после срабатывания при входе", "Ловушки и т. п. (заряд расходуется)", Group = "Действие")] public bool ConsumeOnEnter { get; set; }
+    [Ed("При выходе юнита", Group = "Действие")] public List<SkillEffectDef> OnExit { get; set; } = new();
+    [Ed("По соседству", "Каждый интервал — на юнитов в радиусе (кроме самой клетки)", Group = "Действие")] public List<SkillEffectDef> OnAdjacent { get; set; } = new();
+    [Ed("Радиус соседства", Group = "Действие"), EdRange(1, 10)] public int AdjacentRadius { get; set; } = 1;
+    [Ed("Интервал соседства, с", Group = "Действие"), EdRange(0.05, 3600)] public double AdjacentInterval { get; set; } = 1;
+    [Ed("Действует на слои", "Пусто — по правилам (наземный)", Group = "Ограничения"), EdRef(DefCategory.Layer)] public List<string> AffectsLayers { get; set; } = new();
 
     [Ed("Разрешён на местности с тегами", "Пусто — на любой", Group = "Ограничения")] public List<string> AllowedTerrainTags { get; set; } = new();
     [Ed("Запрещён на местности с тегами", Group = "Ограничения")] public List<string> ForbiddenTerrainTags { get; set; } = new();

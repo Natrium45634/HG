@@ -271,9 +271,22 @@ public partial class PropertyGrid : VBoxContainer
             if (refAttr != null) return RefOption(refAttr, s, v => set(v));
             if (prop.GetCustomAttribute<EdColorAttribute>() != null)
             {
-                var cp = new ColorPickerButton { Color = Ui.Parse(s, Colors.White), CustomMinimumSize = new Vector2(80, 26), EditAlpha = false };
+                // Empty colour = "not set" (no outline, default side colour…): shown explicitly, never as white.
+                var box = Ui.HBox(4);
+                var on = new CheckBox { Text = "задан", ButtonPressed = s.Length > 0, FocusMode = FocusModeEnum.None, TooltipText = "Снимите, чтобы не задавать цвет (значение по умолчанию)" };
+                var cp = new ColorPickerButton { Color = Ui.Parse(s, Colors.White), CustomMinimumSize = new Vector2(80, 26), EditAlpha = false, Disabled = s.Length == 0 };
+                cp.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                if (s.Length == 0) cp.Modulate = new Color(1, 1, 1, 0.25f);
                 cp.ColorChanged += c => set("#" + c.ToHtml(false));
-                return cp;
+                on.Toggled += v =>
+                {
+                    cp.Disabled = !v;
+                    cp.Modulate = v ? Colors.White : new Color(1, 1, 1, 0.25f);
+                    set(v ? "#" + cp.Color.ToHtml(false) : "");
+                };
+                box.AddChild(on);
+                box.AddChild(cp);
+                return box;
             }
             if (prop.GetCustomAttribute<EdMultilineAttribute>() != null)
             {

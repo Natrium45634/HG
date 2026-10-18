@@ -137,6 +137,10 @@ public sealed class UnitDef : Def
     public string CreatureCategory { get; set; } = "humanoid";
     [Ed("Категория движения", Group = "Основное"), EdRef(DefCategory.MoveCategory, AllowEmpty = false)]
     public string MoveCategory { get; set; } = "walk";
+    [Ed("Слой", "Наземный, воздушный, подземный…; пусто — по умолчанию из правил", Group = "Основное"), EdRef(DefCategory.Layer)]
+    public string Layer { get; set; } = "";
+    [Ed("Совместное размещение", "Может ли делить клетку с другими существами", Group = "Основное")]
+    public StackingDef Stacking { get; set; } = new();
 
     [Ed("Характеристики", "Отсутствующие берутся по умолчанию из определения характеристики", Group = "Характеристики"), EdKeyRef(DefCategory.Stat)]
     public Dictionary<string, double> Stats { get; set; } = new();

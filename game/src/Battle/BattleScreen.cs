@@ -100,7 +100,6 @@ public partial class BattleScreen : Node
         AddChild(layer);
 
         Board.Rig.InsetsProvider = _hud.WorkInsets;
-        Board.Rig.RefitRequested += FitMap;
         var first = Sim.Units.FirstOrDefault(u => Sim.CanPlayerCommand(u));
         if (first != null) Select(first);
         // The HUD gets its final layout after a couple of frames; fit the camera then.
@@ -652,8 +651,8 @@ public partial class BattleScreen : Node
         var pk = (start, to, Sim.Map.Version, Sim.Tick / 5);
         if (_pathKey != pk)
         {
-            _cachedPath = Sim.Pathfinder.Find(Sim.Map, Sim.Rules, u.Def.MoveCategory, u, start, to,
-                new PathOptions { HazardPenalty = Sim.Rules.Move.HazardPenalty, IgnoreUnits = start != u.Pos && start != (u.StepTo ?? u.Pos), ComputeNearest = true }, Sim.AllowStacking);
+            _cachedPath = Sim.Pathfinder.Find(Sim.Map, MoveContext.For(Sim, u), start, to,
+                new PathOptions { HazardPenalty = Sim.Rules.Move.HazardPenalty, IgnoreUnits = start != u.Pos && start != (u.StepTo ?? u.Pos), ComputeNearest = true });
             _pathKey = pk;
         }
         _path = _cachedPath;
@@ -919,8 +918,8 @@ public partial class BattleScreen : Node
         if (_hoverUnit == null)
         {
             var (start, _) = PlanStart();
-            var p = Sim.Pathfinder.Find(Sim.Map, Sim.Rules, u.Def.MoveCategory, u, start, _hover.Coord,
-                new PathOptions { IgnoreUnits = start != u.Pos, ComputeNearest = true }, Sim.AllowStacking);
+            var p = Sim.Pathfinder.Find(Sim.Map, MoveContext.For(Sim, u), start, _hover.Coord,
+                new PathOptions { IgnoreUnits = start != u.Pos, ComputeNearest = true });
             if (!p.Found)
             {
                 _hud.ShowBanner("Цель недостижима: " + p.Reason + (p.Nearest.HasValue ? $" (ближайшая доступная: {p.Nearest})" : ""), Ui.Bad);

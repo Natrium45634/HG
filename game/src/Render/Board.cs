@@ -22,28 +22,40 @@ public static class Board
         return new Vector3((float)x, y, (float)z);
     }
 
-    /// <summary>Top surface height of a cell where units stand (water: the floor below the surface).</summary>
+    public static bool IsLiquid(TerrainDef t) =>
+        t.Kind != TerrainKind.Pit && (t.Look.Material == TerrainMaterial.Liquid || t.Visual is TerrainVisual.Water or TerrainVisual.Lava or TerrainVisual.Acid);
+
+    public static bool IsPit(TerrainDef t) => t.Kind == TerrainKind.Pit || t.Visual is TerrainVisual.Pit or TerrainVisual.Chasm;
+
+    /// <summary>Visual height of walls/barriers above the walkable level (world units).</summary>
+    public static float ExtraHeight(TerrainDef t) =>
+        t.Look.ExtraHeight > 0 ? (float)t.Look.ExtraHeight * LevelHeight : t.Visual == TerrainVisual.Wall ? WallHeight : 0f;
+
+    /// <summary>Depth of a pit (world units).</summary>
+    public static float PitDepth(TerrainDef t) => (float)Math.Max(t.Look.Depth > 0 ? t.Look.Depth : 2.5, 0.5) * LevelHeight;
+
+    /// <summary>Basin depth of a liquid (world units).</summary>
+    public static float LiquidDepth(TerrainDef t) => (float)(0.4 + Math.Max(0, t.Look.Depth)) * LevelHeight;
+
+    public const float LiquidDrop = 0.05f;
+
+    /// <summary>Top surface height of a cell where units stand (liquids: wading below the surface).</summary>
     public static float TopY(Cell? cell)
     {
         if (cell == null) return 0;
         float y = cell.Height * LevelHeight;
-        return cell.Terrain.Visual switch
-        {
-            TerrainVisual.Water => y - WaterDepth,
-            _ => y,
-        };
+        if (IsLiquid(cell.Terrain)) return y - Math.Min(WaterDepth, LiquidDepth(cell.Terrain) * 0.8f);
+        return y;
     }
 
-    /// <summary>Height of the visible top (walls are taller blocks; water shows its surface).</summary>
+    /// <summary>Height of the visible top (walls are taller blocks; liquids show their surface; pits their rim).</summary>
     public static float SurfaceY(Cell cell)
     {
         float y = cell.Height * LevelHeight;
-        return cell.Terrain.Visual switch
-        {
-            TerrainVisual.Wall => y + WallHeight,
-            TerrainVisual.Water => y - 0.06f,
-            _ => y,
-        };
+        var t = cell.Terrain;
+        if (IsPit(t)) return y;
+        if (IsLiquid(t)) return y - LiquidDrop;
+        return y + ExtraHeight(t);
     }
 
     public static Vector3 CellTop(Cell cell) => Center(cell.Coord, TopY(cell));
@@ -90,7 +102,7 @@ public static class Board
         return null;
     }
 
-    public static float PickY(Cell cell) => cell.Terrain.Visual == TerrainVisual.Wall ? SurfaceY(cell) : Math.Max(TopY(cell), SurfaceY(cell));
+    public static float PickY(Cell cell) => ExtraHeight(cell.Terrain) > 0 ? SurfaceY(cell) : Math.Max(TopY(cell), SurfaceY(cell));
 
     public static List<float> PickLevels(BattleMap map)
     {

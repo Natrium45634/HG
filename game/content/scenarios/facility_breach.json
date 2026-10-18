@@ -1,0 +1,65 @@
+{
+  "formatVersion": 3,
+  "kind": "scenario",
+  "scenario": {
+    "id": "facility_breach",
+    "name": "Прорыв в технокомплекс",
+    "description": "Демонстрация слоёв, ям, лавы, кислоты и барьеров на стандартной карте.",
+    "tags": [],
+    "group": "",
+    "version": 1,
+    "map": "facility",
+    "seed": 21,
+    "intro": "Технокомплекс 10 × 8. Дроны летают (ближний бой их не достаёт), землерой под полом (виден разведчику). Ямы смертельны — толкайте туда врагов!",
+    "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
+    "units": [
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [-1, 4],
+        "facing": "E",
+        "tag": "hero",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "archer", "faction": "", "c": [-1, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "mage", "faction": "", "c": [0, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "priestess",
+        "faction": "",
+        "c": [-2, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "scout", "faction": "", "c": [0, 5], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "drone", "faction": "", "c": [7, 2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "drone", "faction": "", "c": [7, 5], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "burrower",
+        "faction": "",
+        "c": [5, 4],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "goblin", "faction": "", "c": [6, 4], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "orc_brute",
+        "faction": "",
+        "c": [8, 3],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      }
+    ],
+    "waves": [],
+    "victory": [{ "type": "AllEnemiesDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
+    "defeat": [{ "type": "AllPlayerUnitsDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
+    "triggers": [],
+    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+  }
+}

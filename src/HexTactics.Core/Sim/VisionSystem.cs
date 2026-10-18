@@ -59,6 +59,10 @@ public sealed class VisionSystem
         var pos = targetPos ?? target.Pos;
         int d = HexCoord.Distance(viewer.Pos, pos);
         if (d > DetectionRange(viewer, target) + 1e-9) return false;
+        // Hidden layers (underground): only viewers with the layer's detection stat, or up close.
+        var layer = target.LayerDef;
+        if (layer.Hidden && d > layer.RevealRange && (string.IsNullOrEmpty(layer.DetectionStat) || viewer.Stat(layer.DetectionStat) <= 0)) return false;
+        if (layer.Hidden) return true; // detected by tremor/sonar: no line of sight needed
         return _sim.Los.Has(_sim.Map, _sim.Rules, viewer.Pos, pos);
     }
 

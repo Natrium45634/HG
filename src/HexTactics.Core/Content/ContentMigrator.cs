@@ -18,6 +18,7 @@ public static class ContentMigrator
     {
         [0] = V0ToV1,
         [1] = V1ToV2,
+        [2] = V2ToV3,
     };
 
     public static JsonObject? Migrate(JsonNode node, string expectedKind, out List<string> notes, out string? error)
@@ -157,6 +158,18 @@ public static class ContentMigrator
             classified++;
         }
         if (classified > 0) notes.Add($"v1→v2: определён вид местности для {classified} типов");
+    }
+
+    /// <summary>v2 → v3: scenario flag "allowStacking" becomes the stacking mode (true → AllowAll).</summary>
+    private static void V2ToV3(JsonObject root, string kind, List<string> notes)
+    {
+        if (kind != "scenario" || root["scenario"]?["limits"] is not JsonObject limits) return;
+        var old = limits["allowStacking"];
+        if (old == null) return;
+        bool allow = old is JsonValue v && v.TryGetValue<bool>(out var b) && b;
+        limits.Remove("allowStacking");
+        if (limits["stacking"] == null) limits["stacking"] = allow ? "AllowAll" : "ByUnitType";
+        notes.Add($"v2→v3: «несколько юнитов на клетке» = {allow} → режим {(allow ? "AllowAll" : "ByUnitType")}");
     }
 
     private static int DropComputed(JsonNode? node)

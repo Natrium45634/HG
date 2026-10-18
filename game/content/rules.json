@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "rules",
   "rules": {
     "time": {
@@ -25,6 +25,13 @@
       "autoFaceTarget": true
     },
     "move": { "movementCategories": ["walk", "fly", "swim"], "alliesBlockPath": true, "hazardPenalty": 0.01 },
+    "layers": {
+      "default": "ground",
+      "meleeTargets": ["ground"],
+      "rangedTargets": ["ground", "air"],
+      "spellTargets": ["ground", "air"],
+      "cellEffectLayers": ["ground"]
+    },
     "height": {
       "maxClimb": 1,
       "maxDrop": 2,
@@ -93,6 +100,7 @@
       "maxUnits": 500,
       "maxMapCells": 16384,
       "maxStatusStacks": 20,
+      "maxPerHex": 6,
       "allowGlobalSkills": true
     },
     "autopause": {

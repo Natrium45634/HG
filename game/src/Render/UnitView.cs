@@ -218,6 +218,48 @@ public partial class UnitView : Node3D
 
     public void Flash() => _hitFlash = 0.25f;
 
+    private MeshInstance3D? _groundShadow;
+    private MeshInstance3D? _beam;
+    private MeshInstance3D? _burrowRing;
+    private float _transparency = -1;
+
+    private void SetTransparency(float t)
+    {
+        if (Math.Abs(t - _transparency) < 0.01f) return;
+        _transparency = t;
+        foreach (var m in _bodyParts) m.Transparency = t;
+    }
+
+    /// <summary>Hover shadow + beam for flyers, translucency + ring for hidden (underground) layers.</summary>
+    private void SetLayerVisuals(LayerDef? layer, float lift = 0)
+    {
+        bool air = layer != null && lift > 0.01f;
+        if (air && _groundShadow == null)
+        {
+            _groundShadow = Part(this, new CylinderMesh { TopRadius = 0.36f, BottomRadius = 0.36f, Height = 0.01f, RadialSegments = 24, Rings = 1 },
+                Mats.Transparent(new Color(0, 0, 0, 0.42f), unshaded: true), Vector3.Zero, shadow: false);
+            _beam = Part(this, new CylinderMesh { TopRadius = 0.015f, BottomRadius = 0.015f, Height = 1f, RadialSegments = 6, Rings = 1 },
+                Mats.Transparent(new Color(0.55f, 0.85f, 1f, 0.35f), unshaded: true), Vector3.Zero, shadow: false);
+        }
+        if (_groundShadow != null)
+        {
+            _groundShadow.Visible = air;
+            _beam!.Visible = air;
+            if (air)
+            {
+                _groundShadow.Position = new Vector3(0, -lift + 0.02f, 0);
+                _beam.Position = new Vector3(0, -lift / 2, 0);
+                _beam.Scale = new Vector3(1, Math.Max(0.05f, lift), 1);
+            }
+        }
+        bool hidden = layer != null && layer.Translucent;
+        if (hidden && _burrowRing == null)
+            _burrowRing = Part(this, new TorusMesh { InnerRadius = 0.36f, OuterRadius = 0.44f, Rings = 24, RingSegments = 4 },
+                Mats.Transparent(new Color(0.85f, 0.62f, 0.35f, 0.7f), unshaded: true), new Vector3(0, 0.02f, 0), shadow: false);
+        if (_burrowRing != null) _burrowRing.Visible = hidden;
+        if (layer != null) SetTransparency(hidden ? 0.55f : 0f);
+    }
+
     /// <summary>Updates transform and indicators from the simulation state.</summary>
     public void Sync(Simulation sim, BattleMap map, double alpha, bool visible, bool ghost, float delta)
     {
@@ -227,11 +269,30 @@ public partial class UnitView : Node3D
         {
             if (_deathTime < 0) _deathTime = 0;
             _deathTime += delta;
+            _bars.Visible = false;
+            _arrow.Visible = false;
+            SetLayerVisuals(null);
+            if (u.DeathCause == DeathCause.Fall || u.DeathCause == DeathCause.Removed)
+            {
+                // Falling into a pit: drop / fade / shrink by the pit's settings.
+                var pit = map.Get(u.Pos)?.Terrain.Pit ?? new PitRulesDef();
+                float dur = Math.Max(0.2f, (float)pit.AnimationSeconds);
+                float f = Math.Min(1, _deathTime / dur);
+                if (pit.Animation != FallAnimation.None)
+                {
+                    var target = Board.Center(u.Pos, Board.TopY(map.Get(u.Pos)));
+                    Position = new Vector3(Mathf.Lerp(Position.X, target.X, 0.3f), Position.Y, Mathf.Lerp(Position.Z, target.Z, 0.3f));
+                    if (pit.Animation == FallAnimation.Drop) Position = Position with { Y = target.Y - 2.2f * f * f };
+                    if (pit.Animation == FallAnimation.Shrink) Scale = Vector3.One * Math.Max(0.02f, 1 - f);
+                    SetTransparency(pit.Animation == FallAnimation.Fade ? f : f * f * 0.8f);
+                    _body.RotationDegrees = new Vector3(f * 35, f * 140, 0);
+                }
+                Visible = f < 1 && visible;
+                return;
+            }
             float k = Math.Min(1, _deathTime / 0.8f);
             _body.RotationDegrees = new Vector3(k * 80, 0, 0);
             Scale = Vector3.One * (1 - k * 0.3f);
-            _bars.Visible = false;
-            _arrow.Visible = false;
             Visible = _deathTime < 1.6f && visible;
             Position = Position with { Y = Position.Y - delta * 0.15f * k };
             return;
@@ -257,7 +318,12 @@ public partial class UnitView : Node3D
         {
             pos = Board.Center(u.Pos, Board.TopY(cell));
         }
+        // Layer: flyers hover (with a ground shadow and a thin beam), underground units are translucent at the surface.
+        var layer = u.LayerDef;
+        float lift = layer.DisplayHeight > 0 ? (float)layer.DisplayHeight * Board.LevelHeight : 0f;
+        pos.Y += lift + (lift > 0 ? Mathf.Sin(Time.GetTicksMsec() / 450f + u.Id) * 0.05f : 0);
         Position = Position.DistanceTo(pos) > 3 ? pos : Position.Lerp(pos, Math.Min(1, delta * 25));
+        SetLayerVisuals(layer, lift);
 
         float targetYaw = Board.YawOf(u.Facing);
         _visualYaw = Mathf.LerpAngle(_visualYaw, targetYaw, Math.Min(1, delta * 14));

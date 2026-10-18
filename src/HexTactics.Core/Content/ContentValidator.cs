@@ -98,6 +98,7 @@ public static class ContentValidator
         DefCategory.Scenario => "сценарий",
         DefCategory.MoveCategory => "категория движения",
         DefCategory.MapTemplate => "шаблон карты",
+        DefCategory.Layer => "слой",
         _ => c.ToString(),
     };
 
@@ -346,7 +347,7 @@ public static class ContentValidator
             var ud = db.Unit(u.Unit);
             if (t != null && ud != null && (!t.IsPassableFor(ud.MoveCategory) || cell.Blocked == true || !(cell.AllowPlacement ?? t.AllowsPlacement)))
                 issues.Add(Err(s, "Units", $"Юнит '{u.Unit}' стоит на недопустимой клетке {u.C} ({t.DisplayName})"));
-            if (!occupied.Add(u.C) && !s.Limits.AllowStacking)
+            if (!occupied.Add(u.C) && s.Limits.Stacking != StackingMode.AllowAll)
                 issues.Add(Err(s, "Units", $"Несколько юнитов на клетке {u.C}"));
         }
         if (s.Sides.Select(x => x.Faction).Distinct().Count() != s.Sides.Count)

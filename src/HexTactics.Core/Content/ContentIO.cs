@@ -113,6 +113,7 @@ public static class ContentIO
             }
         }
 
+        ContentDefaults.Ensure(db, result.Issues);
         if (validate) result.Issues.AddRange(ContentValidator.Validate(db));
         return result;
     }

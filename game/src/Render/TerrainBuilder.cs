@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using HexTactics.Core.Content;
+using HexTactics.Core.Geometry;
 using HexTactics.Core.Hex;
 using HexTactics.Core.Sim;
 using HexTactics.Game.UI;
@@ -9,15 +10,15 @@ using HexTactics.Game.UI;
 namespace HexTactics.Game.Render;
 
 /// <summary>
-/// Builds the board geometry: chamfered hexagonal prisms with height (one mesh for all cells,
-/// matte + glossy surfaces), a transparent water sheet and low-poly decorations (rocks, trees,
-/// bushes, crates, rubble, swamp bubbles, altar) via MultiMesh. Minimalist but volumetric.
+/// Builds the board: volumetric hex tiles from the core geometry (prisms with bevels, pits with
+/// inner walls and a dark bottom, liquid basins), grouped by material (matte, metal, glossy,
+/// glass, hologram, animated liquids), glowing accent lines (outlines, platform edges, wall
+/// stripes, pit rims), patterns and symbols (never colour alone) and low-poly tech props.
+/// Minimalist high-tech (docs/DECISIONS_2.md §20). Purely visual.
 /// </summary>
 public partial class TerrainNode : Node3D
 {
-    private MeshInstance3D? _terrain;
-    private MeshInstance3D? _water;
-    private readonly List<Node3D> _decor = new();
+    private static Shader? _liquidShader, _accentShader, _holoShader;
 
     public float BaseY { get; private set; } = -0.6f;
 
@@ -33,6 +34,59 @@ public partial class TerrainNode : Node3D
         }
     }
 
+    private static Shader LoadShader(ref Shader? cache, string path)
+    {
+        cache ??= GD.Load<Shader>(path);
+        return cache;
+    }
+
+    private sealed class Batch
+    {
+        public readonly SurfaceTool St = new();
+        public bool Any;
+
+        public Batch() => St.Begin(Mesh.PrimitiveType.Triangles);
+
+        public void Tri(Vector3 a, Vector3 b, Vector3 c, Vector3 n, Color ca, Color cb, Color cc, Vector2 uv)
+        {
+            Any = true;
+            // Core geometry is counter-clockwise around the normal; Godot front faces are clockwise.
+            St.SetNormal(n);
+            St.SetColor(ca);
+            St.SetUV(uv);
+            St.AddVertex(a);
+            St.SetNormal(n);
+            St.SetColor(cc);
+            St.SetUV(uv);
+            St.AddVertex(c);
+            St.SetNormal(n);
+            St.SetColor(cb);
+            St.SetUV(uv);
+            St.AddVertex(b);
+        }
+
+        public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color col, Vector2 uv, Vector3? n = null)
+        {
+            var nn = n ?? Vector3.Up;
+            Tri(a, b, c, nn, col, col, col, uv);
+            Tri(a, c, d, nn, col, col, col, uv);
+        }
+    }
+
+    private readonly Dictionary<string, Batch> _batches = new();
+
+    private Batch B(string key)
+    {
+        if (!_batches.TryGetValue(key, out var b))
+        {
+            b = new Batch();
+            _batches[key] = b;
+        }
+        return b;
+    }
+
+    private static Vector3 V(System.Numerics.Vector3 v) => new(v.X, v.Y, v.Z);
+
     public void Build(BattleMap map, bool showGrid = true)
     {
         foreach (var c in GetChildren())
@@ -40,198 +94,342 @@ public partial class TerrainNode : Node3D
             RemoveChild(c);
             c.QueueFree();
         }
-        _decor.Clear();
+        _batches.Clear();
 
         int minH = 0;
         foreach (var c in map.Cells) minH = Math.Min(minH, c.Height);
-        BaseY = minH * Board.LevelHeight - 0.45f;
-
-        var matte = new SurfaceTool();
-        matte.Begin(Mesh.PrimitiveType.Triangles);
-        var glossy = new SurfaceTool();
-        glossy.Begin(Mesh.PrimitiveType.Triangles);
-        var water = new SurfaceTool();
-        water.Begin(Mesh.PrimitiveType.Triangles);
-        bool anyGlossy = false, anyWater = false;
+        float deepest = 0;
+        foreach (var c in map.Cells)
+            if (Board.IsPit(c.Terrain))
+                deepest = Math.Max(deepest, Math.Min(Board.PitDepth(c.Terrain), 1.6f));
+        BaseY = minH * Board.LevelHeight - 0.45f - deepest * 0.5f;
 
         var decor = new DecorBatches();
-
         foreach (var cell in map.Cells)
         {
-            var t = cell.Terrain;
-            var baseColor = Ui.Parse(t.Color, new Color(0.5f, 0.6f, 0.4f));
-            float v = 0.94f + 0.1f * Hash01(cell.Coord, 1);
-            // Higher cells are slightly lighter: reads height without contours.
-            float hl = 1f + Math.Clamp(cell.Height, -3, 4) * 0.035f;
-            var top = new Color(baseColor.R * v * hl, baseColor.G * v * hl, baseColor.B * v * hl);
-            float y = Board.SurfaceY(cell);
-            var st = matte;
-            float bevel = 0.06f;
-            switch (t.Visual)
-            {
-                case TerrainVisual.Water:
-                    y = Board.TopY(cell);
-                    top = top.Darkened(0.45f);
-                    st = glossy;
-                    anyGlossy = true;
-                    AddWaterSheet(water, cell, Ui.Parse(t.Color, new Color(0.3f, 0.5f, 0.8f)));
-                    anyWater = true;
-                    break;
-                case TerrainVisual.Ice:
-                    st = glossy;
-                    anyGlossy = true;
-                    break;
-                case TerrainVisual.Pit:
-                    top = new Color(0.07f, 0.065f, 0.06f);
-                    bevel = 0.0f;
-                    break;
-                case TerrainVisual.Wall:
-                    bevel = 0.09f;
-                    break;
-                case TerrainVisual.Special:
-                    st = glossy;
-                    anyGlossy = true;
-                    break;
-            }
-            AddPrism(st, map, cell, y, top, bevel);
+            BuildCell(cell);
             AddDecor(decor, cell, Board.TopY(cell));
+            AddSymbol(cell);
         }
 
-        var mesh = new ArrayMesh();
-        matte.Index();
-        matte.Commit(mesh);
-        mesh.SurfaceSetMaterial(0, Mats.VertexColor(roughness: 0.9f));
-        if (anyGlossy)
+        foreach (var (key, b) in _batches)
         {
-            glossy.Index();
-            glossy.Commit(mesh);
-            mesh.SurfaceSetMaterial(1, Mats.VertexColor(roughness: 0.25f));
+            if (!b.Any) continue;
+            var mesh = b.St.Commit();
+            mesh.SurfaceSetMaterial(0, MaterialFor(key));
+            var mi = new MeshInstance3D { Mesh = mesh, Name = "Terrain_" + key };
+            if (key.StartsWith("accent", StringComparison.Ordinal) || key.StartsWith("holo", StringComparison.Ordinal) || key.EndsWith("_noshadow", StringComparison.Ordinal) || key.StartsWith("liquid", StringComparison.Ordinal))
+                mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+            AddChild(mi);
         }
-        _terrain = new MeshInstance3D { Mesh = mesh, Name = "Terrain" };
-        AddChild(_terrain);
-
-        if (anyWater)
-        {
-            var wm = water.Commit();
-            var mat = new StandardMaterial3D
-            {
-                VertexColorUseAsAlbedo = true,
-                VertexColorIsSrgb = true,
-                Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                Roughness = 0.08f,
-                Metallic = 0.1f,
-            };
-            wm.SurfaceSetMaterial(0, mat);
-            _water = new MeshInstance3D { Mesh = wm, Name = "Water", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-            AddChild(_water);
-        }
-
         foreach (var n in decor.Build()) AddChild(n);
     }
 
-    private static void Tri(SurfaceTool st, Vector3 n, Color c, Vector3 a, Vector3 b, Vector3 d)
+    private static Material MaterialFor(string key)
     {
-        st.SetNormal(n);
-        st.SetColor(c);
-        st.AddVertex(a);
-        st.SetNormal(n);
-        st.SetColor(c);
-        st.AddVertex(b);
-        st.SetNormal(n);
-        st.SetColor(c);
-        st.AddVertex(d);
+        string k = key.Replace("_noshadow", "");
+        switch (k)
+        {
+            case "liquid":
+                return new ShaderMaterial { Shader = LoadShader(ref _liquidShader, "res://shaders/liquid.gdshader") };
+            case "accent":
+                return new ShaderMaterial { Shader = LoadShader(ref _accentShader, "res://shaders/accent.gdshader") };
+            case "holo":
+                return new ShaderMaterial { Shader = LoadShader(ref _holoShader, "res://shaders/hologram.gdshader") };
+            case "glass":
+                return new StandardMaterial3D
+                {
+                    VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+                    Roughness = 0.06f, Metallic = 0.1f, MetallicSpecular = 0.8f,
+                };
+            case "metal":
+                return new StandardMaterial3D { VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Roughness = 0.55f, Metallic = 0.15f, MetallicSpecular = 0.45f };
+            case "glossy":
+                return new StandardMaterial3D { VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Roughness = 0.2f, MetallicSpecular = 0.6f };
+            default:
+                return new StandardMaterial3D { VertexColorUseAsAlbedo = true, VertexColorIsSrgb = true, Roughness = 0.9f, MetallicSpecular = 0.3f };
+        }
     }
 
-    private void AddPrism(SurfaceTool st, BattleMap map, Cell cell, float y, Color top, float bevel)
+    private static string SolidKey(TerrainLookDef look)
     {
-        var c = cell.Coord;
-        float outer = 1f - Board.Gap;
-        float inner = outer - bevel * 0.9f;
-        var center = Board.Center(c, y);
-        var up = Vector3.Up;
-        var inn = new Vector3[6];
-        var outT = new Vector3[6];
-        var outB = new Vector3[6];
-        for (int i = 0; i < 6; i++)
+        string k = look.Material switch
         {
-            inn[i] = Board.Corner(c, i, y, inner);
-            outT[i] = Board.Corner(c, i, y - bevel, outer);
-            outB[i] = Board.Corner(c, i, BaseY, outer);
+            TerrainMaterial.Metal => "metal",
+            TerrainMaterial.Glossy => "glossy",
+            TerrainMaterial.Glass => "glass",
+            TerrainMaterial.Hologram => "holo",
+            TerrainMaterial.Liquid => "metal",
+            _ => "matte",
+        };
+        if (!look.CastShadow && k != "holo") k += "_noshadow";
+        return k;
+    }
+
+    private void BuildCell(Cell cell)
+    {
+        var t = cell.Terrain;
+        var look = t.Look;
+        var c = cell.Coord;
+        var baseColor = Ui.Parse(t.Color, new Color(0.45f, 0.48f, 0.52f));
+        float v = 0.96f + 0.06f * Hash01(c, 1);
+        var top = new Color(baseColor.R * v, baseColor.G * v, baseColor.B * v);
+        var side = string.IsNullOrEmpty(look.SideColor) ? top.Darkened(0.4f) : Ui.Parse(look.SideColor, top.Darkened(0.4f));
+        var accent = Ui.Parse(look.AccentColor, new Color(0.37f, 0.83f, 1f));
+        float y = cell.Height * Board.LevelHeight;
+        bool pit = Board.IsPit(t);
+        bool liquid = Board.IsLiquid(t);
+        float bevel = (float)look.Bevel;
+
+        var shape = new TileShape
+        {
+            Coord = c,
+            HexSize = Board.HexSize,
+            Gap = Board.Gap,
+            TopY = y,
+            BaseY = BaseY,
+            Bevel = pit ? Math.Min(bevel, 0.04f) : bevel,
+            ExtraHeight = pit || liquid ? 0 : Board.ExtraHeight(t),
+            Depth = pit ? Board.PitDepth(t) : liquid ? Board.LiquidDepth(t) : 0,
+            LiquidDrop = liquid ? Board.LiquidDrop : -1,
+        };
+        var tris = HexGeometry.Build(shape);
+        string solidKey = SolidKey(look);
+        float alpha = 1f - (float)Math.Clamp(look.Transparency, 0, 0.95);
+        bool holo = look.Material == TerrainMaterial.Hologram;
+        float glow = (float)look.Glow;
+        var frame = new Color(0.27f, 0.30f, 0.34f);
+
+        foreach (var tri in tris)
+        {
+            Color col;
+            string key = solidKey;
+            var uv = Vector2.Zero;
+            switch (tri.Part)
+            {
+                case TilePart.Top:
+                    col = top;
+                    break;
+                case TilePart.Bevel:
+                    col = top.Lightened(0.12f);
+                    break;
+                case TilePart.Side:
+                    col = side;
+                    break;
+                case TilePart.Rim:
+                    col = pit ? new Color(0.20f, 0.22f, 0.25f) : frame;
+                    key = "metal";
+                    break;
+                case TilePart.InnerWall:
+                    col = pit ? new Color(0.09f, 0.10f, 0.12f) : top.Darkened(0.55f);
+                    key = "matte";
+                    break;
+                case TilePart.Bottom:
+                    col = pit ? new Color(0.012f, 0.014f, 0.018f) : top.Darkened(0.65f);
+                    key = "matte";
+                    break;
+                default:
+                    col = new Color(top, liquid ? Math.Min(alpha, look.Transparency > 0 ? alpha : 1f) : 1f);
+                    key = "liquid";
+                    uv = new Vector2(glow, (float)look.Animation);
+                    break;
+            }
+            if (liquid && tri.Part is TilePart.Side) key = "metal";
+            if (holo && tri.Part is TilePart.Top or TilePart.Bevel or TilePart.Side)
+            {
+                key = "holo";
+                col = new Color(accent, alpha);
+                uv = new Vector2(glow, 0);
+            }
+            else if (key == "glass" && tri.Part is TilePart.Top or TilePart.Bevel)
+            {
+                col = new Color(col, alpha);
+            }
+            Color Shade(float s) => s >= 0.999f ? col : new Color(col.R * s, col.G * s, col.B * s, col.A);
+            B(key).Tri(V(tri.A), V(tri.B), V(tri.C), V(tri.Normal), Shade(tri.ShadeA), Shade(tri.ShadeB), Shade(tri.ShadeC), uv);
         }
+
+        float topY = pit || liquid ? y : y + Board.ExtraHeight(t);
+        float outer = 1f - Board.Gap;
+        float inner = pit || liquid ? outer - Math.Max(0.06f, Math.Min(bevel, 0.04f) + 0.05f) : outer - bevel * 0.9f;
+        var acc = B("accent");
+
+        // Outline of the top face.
+        if (!string.IsNullOrEmpty(look.OutlineColor) && !pit)
+            Ring(acc, c, topY + 0.004f, inner, inner - (float)look.OutlineWidth, Ui.Parse(look.OutlineColor, Colors.White), new Vector2(glow > 0 ? glow * 0.5f : 0.05f, 0));
+        // Glowing accent: pit/liquid rim edge, platform edge, wall stripe.
+        if (glow > 0)
+        {
+            if (pit)
+                Ring(acc, c, y + 0.006f, inner + 0.004f, inner - 0.035f, accent, new Vector2(glow, 2.2f));
+            else if (liquid)
+                Ring(acc, c, y + 0.004f, inner + 0.004f, inner - 0.025f, accent, new Vector2(glow * 0.4f, 0));
+            else if (Board.ExtraHeight(t) > 0 && !holo)
+                SideBand(acc, c, topY - 0.12f, topY - 0.07f, outer + 0.004f, accent, new Vector2(glow, 0));
+            else if (!holo)
+                Ring(acc, c, topY + 0.005f, inner - 0.01f, inner - 0.045f, accent, new Vector2(glow, 0));
+        }
+        if (look.Pattern != TerrainPattern.None) AddPattern(acc, c, pit ? y + 0.007f : topY + 0.006f, pit ? outer : inner - 0.06f, pit ? inner : 0, look.Pattern, accent, glow);
+    }
+
+    private static void Ring(Batch b, HexCoord c, float y, float outer, float inner, Color col, Vector2 uv)
+    {
         for (int i = 0; i < 6; i++)
         {
             int j = (i + 1) % 6;
-            Tri(st, up, top, center, inn[i], inn[j]);
-            if (bevel > 0)
+            var o0 = Board.Corner(c, i, y, outer);
+            var o1 = Board.Corner(c, j, y, outer);
+            var i0 = Board.Corner(c, i, y, inner);
+            var i1 = Board.Corner(c, j, y, inner);
+            b.Quad(o0, o1, i1, i0, col, uv);
+        }
+    }
+
+    private static void SideBand(Batch b, HexCoord c, float y0, float y1, float radius, Color col, Vector2 uv)
+    {
+        var ctr = Board.Center(c, 0);
+        for (int i = 0; i < 6; i++)
+        {
+            int j = (i + 1) % 6;
+            var a0 = Board.Corner(c, i, y0, radius);
+            var a1 = Board.Corner(c, j, y0, radius);
+            var b0 = Board.Corner(c, i, y1, radius);
+            var b1 = Board.Corner(c, j, y1, radius);
+            var mid = (a0 + a1) * 0.5f;
+            var n = new Vector3(mid.X - ctr.X, 0, mid.Z - ctr.Z).Normalized();
+            b.Quad(a0, a1, b1, b0, col, uv, n);
+        }
+    }
+
+    private static void Strip(Batch b, Vector3 a, Vector3 c, float width, Color col, Vector2 uv)
+    {
+        var d = c - a;
+        d.Y = 0;
+        if (d.LengthSquared() < 1e-8f) return;
+        var side = new Vector3(-d.Z, 0, d.X).Normalized() * (width / 2);
+        b.Quad(a + side, c + side, c - side, a - side, col, uv);
+    }
+
+    /// <summary>Patterns: an extra cue besides colour (docs/DECISIONS_2.md §20).</summary>
+    private static void AddPattern(Batch b, HexCoord c, float y, float outer, float innerHole, TerrainPattern p, Color accent, float glow)
+    {
+        var ctr = Board.Center(c, y);
+        var uv = new Vector2(Math.Max(0.15f, glow * 0.35f), 0);
+        var dim = new Color(accent, 0.9f);
+        switch (p)
+        {
+            case TerrainPattern.Stripes:
+                for (int s = -2; s <= 2; s++)
+                {
+                    float off = s * 0.22f;
+                    float half = Mathf.Sqrt(Math.Max(0.01f, outer * outer * 0.72f - off * off));
+                    Strip(b, ctr + new Vector3(off, 0, -half), ctr + new Vector3(off, 0, half), 0.05f, dim, uv);
+                }
+                break;
+            case TerrainPattern.Grid:
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    Strip(b, ctr + new Vector3(s * 0.25f, 0, -outer * 0.7f), ctr + new Vector3(s * 0.25f, 0, outer * 0.7f), 0.035f, dim, uv);
+                    Strip(b, ctr + new Vector3(-outer * 0.7f, 0, s * 0.25f), ctr + new Vector3(outer * 0.7f, 0, s * 0.25f), 0.035f, dim, uv);
+                }
+                break;
+            case TerrainPattern.Chevrons:
+                for (int k = -1; k <= 1; k++)
+                {
+                    var tip = ctr + new Vector3(k * 0.28f + 0.12f, 0, 0);
+                    Strip(b, tip + new Vector3(-0.2f, 0, -0.32f), tip, 0.07f, dim, uv);
+                    Strip(b, tip + new Vector3(-0.2f, 0, 0.32f), tip, 0.07f, dim, uv);
+                }
+                break;
+            case TerrainPattern.Dots:
+                for (int k = 0; k < 6; k++)
+                {
+                    float a = k * Mathf.Pi / 3 + 0.3f;
+                    Disc(b, ctr + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * outer * 0.45f, 0.07f, dim, uv);
+                }
+                Disc(b, ctr, 0.08f, dim, uv);
+                break;
+            case TerrainPattern.Cross:
+                Strip(b, ctr + new Vector3(-0.4f, 0, -0.4f), ctr + new Vector3(0.4f, 0, 0.4f), 0.08f, dim, uv);
+                Strip(b, ctr + new Vector3(-0.4f, 0, 0.4f), ctr + new Vector3(0.4f, 0, -0.4f), 0.08f, dim, uv);
+                break;
+            case TerrainPattern.Ring:
+                Ring(b, c, y, outer * 0.62f, outer * 0.52f, dim, uv);
+                break;
+            case TerrainPattern.Hazard:
             {
-                var bn = (inn[j] - inn[i]).Cross(outT[i] - inn[i]).Normalized();
-                if (bn.Y < 0) bn = -bn;
-                var bc = top.Lightened(0.10f);
-                Tri(st, bn, bc, inn[j], inn[i], outT[i]);
-                Tri(st, bn, bc, inn[j], outT[i], outT[j]);
+                // Yellow / black warning band: on the rim of a hole, or around the top of a tile.
+                float o = outer, i = innerHole > 0 ? innerHole : outer - 0.12f;
+                var black = new Color(0.05f, 0.05f, 0.05f);
+                for (int k = 0; k < 6; k++)
+                for (int part = 0; part < 3; part++)
+                {
+                    float t0 = part / 3f, t1 = (part + 1) / 3f;
+                    var o0 = Board.Corner(c, k, y, o).Lerp(Board.Corner(c, (k + 1) % 6, y, o), t0);
+                    var o1 = Board.Corner(c, k, y, o).Lerp(Board.Corner(c, (k + 1) % 6, y, o), t1);
+                    var i0 = Board.Corner(c, k, y, i).Lerp(Board.Corner(c, (k + 1) % 6, y, i), t0);
+                    var i1 = Board.Corner(c, k, y, i).Lerp(Board.Corner(c, (k + 1) % 6, y, i), t1);
+                    b.Quad(o0, o1, i1, i0, (k * 3 + part) % 2 == 0 ? new Color(1f, 0.82f, 0.2f) : black, (k * 3 + part) % 2 == 0 ? uv : Vector2.Zero);
+                }
+                break;
             }
         }
-        // Sides are always drawn: the gaps between tiles read as a subtle grid.
-        var side = top.Darkened(0.32f);
-        var sideLow = top.Darkened(0.55f);
-        for (int i = 0; i < 6; i++)
-        {
-            int j = (i + 1) % 6;
-            var mid = (outT[i] + outT[j]) * 0.5f;
-            var n = new Vector3(mid.X - center.X, 0, mid.Z - center.Z).Normalized();
-            // Vertical gradient: darker towards the bottom.
-            st.SetNormal(n);
-            st.SetColor(side);
-            st.AddVertex(outT[j]);
-            st.SetNormal(n);
-            st.SetColor(side);
-            st.AddVertex(outT[i]);
-            st.SetNormal(n);
-            st.SetColor(sideLow);
-            st.AddVertex(outB[i]);
-            st.SetNormal(n);
-            st.SetColor(side);
-            st.AddVertex(outT[j]);
-            st.SetNormal(n);
-            st.SetColor(sideLow);
-            st.AddVertex(outB[i]);
-            st.SetNormal(n);
-            st.SetColor(sideLow);
-            st.AddVertex(outB[j]);
-        }
     }
 
-    private static void AddWaterSheet(SurfaceTool st, Cell cell, Color color)
+    private static void Disc(Batch b, Vector3 p, float r, Color col, Vector2 uv)
     {
-        float y = Board.SurfaceY(cell);
-        var c = cell.Coord;
-        var col = new Color(color.R * 1.05f, color.G * 1.1f, color.B * 1.15f, 0.62f);
-        var center = Board.Center(c, y);
-        for (int i = 0; i < 6; i++)
+        const int seg = 8;
+        for (int s = 0; s < seg; s++)
         {
-            var a = Board.Corner(c, i, y, 1.0f);
-            var b = Board.Corner(c, (i + 1) % 6, y, 1.0f);
-            Tri(st, Vector3.Up, col, center, a, b);
+            float a0 = s * Mathf.Tau / seg, a1 = (s + 1) * Mathf.Tau / seg;
+            b.Tri(p, p + new Vector3(Mathf.Cos(a0), 0, Mathf.Sin(a0)) * r, p + new Vector3(Mathf.Cos(a1), 0, Mathf.Sin(a1)) * r, Vector3.Up, col, col, col, uv);
         }
     }
 
-    // ------------------------------------------------------------------ decorations
+    private void AddSymbol(Cell cell)
+    {
+        var sym = cell.Terrain.Look.Symbol;
+        if (string.IsNullOrWhiteSpace(sym)) return;
+        float y = Board.SurfaceY(cell) + 0.02f;
+        var accent = Ui.Parse(cell.Terrain.Look.AccentColor, Colors.White);
+        var l = new Label3D
+        {
+            Text = sym,
+            FontSize = 96,
+            PixelSize = 0.0042f,
+            Modulate = new Color(accent, 0.9f),
+            OutlineSize = 10,
+            OutlineModulate = new Color(0, 0, 0, 0.6f),
+            Billboard = BaseMaterial3D.BillboardModeEnum.Disabled,
+            Shaded = false,
+            DoubleSided = true,
+            Position = Board.Center(cell.Coord, y) + new Vector3(0.38f, 0, 0.22f),
+            RotationDegrees = new Vector3(-90, 0, 0),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Name = "Symbol",
+        };
+        AddChild(l);
+    }
+
+    // ------------------------------------------------------------------ props
 
     private sealed class DecorBatches
     {
-        public readonly List<Transform3D> Rocks = new();
-        public readonly List<Color> RockColors = new();
-        public readonly List<Transform3D> Trunks = new();
-        public readonly List<Transform3D> Crowns = new();
-        public readonly List<Color> CrownColors = new();
-        public readonly List<Transform3D> Bushes = new();
-        public readonly List<Color> BushColors = new();
+        public readonly List<Transform3D> Blocks = new();
+        public readonly List<Color> BlockColors = new();
+        public readonly List<Transform3D> Pillars = new();
+        public readonly List<Transform3D> PillarRings = new();
+        public readonly List<Color> RingColors = new();
+        public readonly List<Transform3D> Rails = new();
         public readonly List<Transform3D> Crates = new();
+        public readonly List<Transform3D> CrateStripes = new();
         public readonly List<Transform3D> Rubble = new();
         public readonly List<Transform3D> Bubbles = new();
-        public readonly List<Vector3> Altars = new();
+        public readonly List<Color> BubbleColors = new();
+        public readonly List<Transform3D> Spikes = new();
+        public readonly List<(Vector3 Pos, Color Accent)> Terminals = new();
 
-        private static MultiMeshInstance3D Batch(Mesh mesh, List<Transform3D> xf, List<Color>? colors, Material mat, string name)
+        private static MultiMeshInstance3D Batch(Mesh mesh, List<Transform3D> xf, List<Color>? colors, Material mat, string name, bool shadow = true)
         {
             var mm = new MultiMesh
             {
@@ -245,42 +443,52 @@ public partial class TerrainNode : Node3D
                 mm.SetInstanceTransform(i, xf[i]);
                 if (colors != null) mm.SetInstanceColor(i, colors[i]);
             }
-            return new MultiMeshInstance3D { Multimesh = mm, MaterialOverride = mat, Name = name };
+            return new MultiMeshInstance3D
+            {
+                Multimesh = mm, MaterialOverride = mat, Name = name,
+                CastShadow = shadow ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
+            };
         }
 
         public IEnumerable<Node3D> Build()
         {
-            var vc = Mats.VertexColor(roughness: 0.85f);
-            if (Rocks.Count > 0)
-                yield return Batch(new SphereMesh { Radius = 0.5f, Height = 0.8f, RadialSegments = 7, Rings = 3 }, Rocks, RockColors, vc, "Rocks");
-            if (Trunks.Count > 0)
-                yield return Batch(new CylinderMesh { TopRadius = 0.06f, BottomRadius = 0.09f, Height = 0.5f, RadialSegments = 6, Rings = 1 }, Trunks, null,
-                    Mats.Solid(new Color(0.42f, 0.30f, 0.20f)), "Trunks");
-            if (Crowns.Count > 0)
-                yield return Batch(new CylinderMesh { TopRadius = 0.0f, BottomRadius = 0.42f, Height = 0.95f, RadialSegments = 7, Rings = 1 }, Crowns, CrownColors, vc, "Crowns");
-            if (Bushes.Count > 0)
-                yield return Batch(new SphereMesh { Radius = 0.22f, Height = 0.32f, RadialSegments = 8, Rings = 4 }, Bushes, BushColors, vc, "Bushes");
+            var vc = Mats.VertexColor(roughness: 0.6f);
+            if (Blocks.Count > 0)
+                yield return Batch(new BoxMesh { Size = new Vector3(0.62f, 0.5f, 0.55f) }, Blocks, BlockColors, vc, "Blocks");
+            if (Pillars.Count > 0)
+                yield return Batch(new CylinderMesh { TopRadius = 0.14f, BottomRadius = 0.17f, Height = 1f, RadialSegments = 6, Rings = 1 }, Pillars, null,
+                    Mats.Solid(new Color(0.34f, 0.38f, 0.43f), 0.4f, 0.3f), "Pillars");
+            if (PillarRings.Count > 0)
+                yield return Batch(new CylinderMesh { TopRadius = 0.18f, BottomRadius = 0.18f, Height = 0.05f, RadialSegments = 6, Rings = 1 }, PillarRings, RingColors,
+                    Mats.VertexColor(unshaded: true), "PillarRings", false);
+            if (Rails.Count > 0)
+                yield return Batch(new BoxMesh { Size = new Vector3(0.9f, 0.07f, 0.07f) }, Rails, null, Mats.Solid(new Color(0.55f, 0.6f, 0.66f), 0.35f, 0.4f), "Rails");
             if (Crates.Count > 0)
-                yield return Batch(new BoxMesh { Size = new Vector3(0.5f, 0.5f, 0.5f) }, Crates, null, Mats.Solid(new Color(0.62f, 0.45f, 0.26f), 0.9f), "Crates");
+                yield return Batch(new BoxMesh { Size = new Vector3(0.5f, 0.5f, 0.5f) }, Crates, null, Mats.Solid(new Color(0.76f, 0.46f, 0.18f), 0.5f, 0.25f), "Crates");
+            if (CrateStripes.Count > 0)
+                yield return Batch(new BoxMesh { Size = new Vector3(0.52f, 0.06f, 0.52f) }, CrateStripes, null, Mats.Emissive(new Color(1f, 0.82f, 0.25f), 0.6f), "CrateStripes", false);
             if (Rubble.Count > 0)
-                yield return Batch(new BoxMesh { Size = new Vector3(0.16f, 0.1f, 0.14f) }, Rubble, null, Mats.Solid(new Color(0.52f, 0.49f, 0.45f)), "Rubble");
+                yield return Batch(new BoxMesh { Size = new Vector3(0.16f, 0.1f, 0.14f) }, Rubble, null, Mats.Solid(new Color(0.45f, 0.47f, 0.5f)), "Rubble");
             if (Bubbles.Count > 0)
-                yield return Batch(new SphereMesh { Radius = 0.07f, Height = 0.1f, RadialSegments = 6, Rings = 3 }, Bubbles, null,
-                    Mats.Emissive(new Color(0.65f, 0.80f, 0.25f), 0.6f), "Bubbles");
-            foreach (var p in Altars)
+                yield return Batch(new SphereMesh { Radius = 0.07f, Height = 0.1f, RadialSegments = 6, Rings = 3 }, Bubbles, BubbleColors, Mats.VertexColor(unshaded: true), "Bubbles", false);
+            if (Spikes.Count > 0)
+                yield return Batch(new CylinderMesh { TopRadius = 0f, BottomRadius = 0.05f, Height = 0.12f, RadialSegments = 4, Rings = 1 }, Spikes, null,
+                    Mats.Solid(new Color(0.75f, 0.78f, 0.82f), 0.3f, 0.6f), "Spikes");
+            foreach (var (p, accent) in Terminals)
             {
-                var n = new Node3D { Position = p, Name = "Altar" };
+                var n = new Node3D { Position = p, Name = "Terminal" };
                 n.AddChild(new MeshInstance3D
                 {
-                    Mesh = new CylinderMesh { TopRadius = 0.32f, BottomRadius = 0.42f, Height = 0.16f, RadialSegments = 6 },
-                    MaterialOverride = Mats.Solid(new Color(0.78f, 0.66f, 0.30f), 0.35f, 0.6f),
-                    Position = new Vector3(0, 0.08f, 0),
+                    Mesh = new CylinderMesh { TopRadius = 0.3f, BottomRadius = 0.42f, Height = 0.18f, RadialSegments = 6 },
+                    MaterialOverride = Mats.Solid(new Color(0.22f, 0.26f, 0.31f), 0.35f, 0.4f),
+                    Position = new Vector3(0, 0.09f, 0),
                 });
                 n.AddChild(new MeshInstance3D
                 {
-                    Mesh = new TorusMesh { InnerRadius = 0.5f, OuterRadius = 0.56f, Rings = 24, RingSegments = 6 },
-                    MaterialOverride = Mats.Emissive(new Color(1f, 0.85f, 0.4f), 1.2f),
-                    Position = new Vector3(0, 0.03f, 0),
+                    Mesh = new BoxMesh { Size = new Vector3(0.36f, 0.24f, 0.03f) },
+                    MaterialOverride = Mats.Emissive(accent, 1.6f),
+                    Position = new Vector3(0, 0.34f, 0),
+                    RotationDegrees = new Vector3(-20, 0, 0),
                     CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                 });
                 yield return n;
@@ -294,55 +502,54 @@ public partial class TerrainNode : Node3D
     private static void AddDecor(DecorBatches d, Cell cell, float y)
     {
         var c = cell.Coord;
+        var t = cell.Terrain;
         var center = Board.Center(c, y);
         float r1 = Hash01(c, 7), r2 = Hash01(c, 11), r3 = Hash01(c, 13);
         Vector3 Jit(float amount, int salt) => new((Hash01(c, salt) - 0.5f) * amount, 0, (Hash01(c, salt + 1) - 0.5f) * amount);
-        var tc = Ui.Parse(cell.Terrain.Color, Colors.Gray);
-        switch (cell.Terrain.Visual)
+        var tc = Ui.Parse(t.Color, Colors.Gray);
+        var accent = Ui.Parse(t.Look.AccentColor, new Color(0.37f, 0.83f, 1f));
+        var visual = t.Visual;
+        if (visual == TerrainVisual.Vegetation) visual = t.ObstacleHeight >= 1.5 ? TerrainVisual.Pillars : TerrainVisual.Railing;
+        switch (visual)
         {
             case TerrainVisual.Rock:
             {
-                float s = 0.75f + r1 * 0.35f;
-                d.Rocks.Add(Xf(center + Jit(0.2f, 3) + new Vector3(0, 0.22f * s, 0), r2 * 6.28f, new Vector3(1.1f * s, 0.95f * s, 0.9f * s)));
-                d.RockColors.Add(tc.Lightened(0.05f));
-                if (r3 > 0.4f)
+                float s = 0.85f + r1 * 0.3f;
+                d.Blocks.Add(Xf(center + Jit(0.2f, 3) + new Vector3(0, 0.25f * s, 0), r2 * 1.2f, new Vector3(s, s, s)));
+                d.BlockColors.Add(tc);
+                if (r3 > 0.45f)
                 {
-                    d.Rocks.Add(Xf(center + new Vector3(0.35f, 0.08f, 0.2f) + Jit(0.15f, 5), r3 * 6.28f, new Vector3(0.45f, 0.35f, 0.4f)));
-                    d.RockColors.Add(tc.Darkened(0.08f));
+                    d.Blocks.Add(Xf(center + new Vector3(0.33f, 0.12f, 0.22f), r3 * 1.5f, new Vector3(0.45f, 0.45f, 0.45f)));
+                    d.BlockColors.Add(tc.Darkened(0.12f));
                 }
                 break;
             }
-            case TerrainVisual.Vegetation:
+            case TerrainVisual.Pillars:
             {
-                bool tall = cell.Terrain.ObstacleHeight >= 1.5;
-                if (tall)
+                float h = (float)Math.Max(1.0, t.ObstacleHeight * Board.LevelHeight * 1.1);
+                for (int i = 0; i < 3; i++)
                 {
-                    int n = r1 > 0.5f ? 2 : 1;
-                    for (int i = 0; i < n; i++)
-                    {
-                        var p = center + Jit(n == 1 ? 0.25f : 0.9f, 20 + i * 3);
-                        float s = 0.85f + Hash01(c, 30 + i) * 0.35f;
-                        d.Trunks.Add(Xf(p + new Vector3(0, 0.25f * s, 0), 0, new Vector3(s, s, s)));
-                        d.Crowns.Add(Xf(p + new Vector3(0, (0.5f + 0.47f) * s, 0), Hash01(c, 40 + i) * 6.28f, new Vector3(s, s, s)));
-                        d.CrownColors.Add(tc.Lightened(0.05f * i));
-                        d.Crowns.Add(Xf(p + new Vector3(0, (0.95f + 0.3f) * s, 0), Hash01(c, 50 + i) * 6.28f, new Vector3(0.7f * s, 0.6f * s, 0.7f * s)));
-                        d.CrownColors.Add(tc.Lightened(0.12f));
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < 3; i++)
-                    {
-                        var p = center + Jit(0.8f, 60 + i * 3) + new Vector3(0, 0.1f, 0);
-                        float s = 0.8f + Hash01(c, 70 + i) * 0.5f;
-                        d.Bushes.Add(Xf(p, 0, new Vector3(s, s, s)));
-                        d.BushColors.Add(tc.Lightened(0.05f + 0.06f * i));
-                    }
+                    float a = i * Mathf.Tau / 3 + r1;
+                    var p = center + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.42f;
+                    d.Pillars.Add(Xf(p + new Vector3(0, h / 2, 0), 0, new Vector3(1, h, 1)));
+                    d.PillarRings.Add(Xf(p + new Vector3(0, h * 0.82f, 0), 0, Vector3.One));
+                    d.RingColors.Add(accent * 1.8f);
                 }
                 break;
             }
+            case TerrainVisual.Railing:
+                for (int i = 0; i < 3; i++)
+                {
+                    float yaw = (i * 2 + (int)(r1 * 6)) * Mathf.Pi / 3 + Mathf.Pi / 6;
+                    var dir = new Vector3(Mathf.Cos(yaw), 0, Mathf.Sin(yaw));
+                    var p = center + dir * 0.62f;
+                    d.Rails.Add(Xf(p + new Vector3(0, 0.32f, 0), -yaw + Mathf.Pi / 2, Vector3.One));
+                    d.Rails.Add(Xf(p + new Vector3(0, 0.16f, 0), -yaw + Mathf.Pi / 2, Vector3.One));
+                }
+                break;
             case TerrainVisual.Crate:
                 d.Crates.Add(Xf(center + Jit(0.2f, 80) + new Vector3(0, 0.25f, 0), r1 * 0.8f, Vector3.One));
+                d.CrateStripes.Add(Xf(center + Jit(0.2f, 80) + new Vector3(0, 0.38f, 0), r1 * 0.8f, Vector3.One));
                 d.Crates.Add(Xf(center + new Vector3(0.28f, 0.2f, 0.18f), r2, new Vector3(0.8f, 0.8f, 0.8f)));
                 if (r3 > 0.3f) d.Crates.Add(Xf(center + Jit(0.15f, 85) + new Vector3(0, 0.7f, 0), r3, new Vector3(0.7f, 0.7f, 0.7f)));
                 break;
@@ -351,11 +558,24 @@ public partial class TerrainNode : Node3D
                     d.Rubble.Add(Xf(center + Jit(1.0f, 90 + i * 2) + new Vector3(0, 0.05f, 0), Hash01(c, 100 + i) * 6.28f, Vector3.One * (0.8f + Hash01(c, 110 + i))));
                 break;
             case TerrainVisual.Hazard:
+            case TerrainVisual.Acid:
                 for (int i = 0; i < 3; i++)
-                    d.Bubbles.Add(Xf(center + Jit(1.0f, 120 + i * 2) + new Vector3(0, 0.03f, 0), 0, Vector3.One * (0.7f + Hash01(c, 130 + i))));
+                {
+                    d.Bubbles.Add(Xf(Board.Center(c, Board.SurfaceY(cell)) + Jit(1.0f, 120 + i * 2) + new Vector3(0, 0.03f, 0), 0, Vector3.One * (0.7f + Hash01(c, 130 + i))));
+                    d.BubbleColors.Add(accent * 1.6f);
+                }
+                break;
+            case TerrainVisual.Trap:
+                for (int i = 0; i < 7; i++)
+                {
+                    float a = i * Mathf.Tau / 6;
+                    var p = i == 6 ? center : center + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.32f;
+                    d.Spikes.Add(Xf(p + new Vector3(0, 0.05f, 0), 0, Vector3.One));
+                }
                 break;
             case TerrainVisual.Special:
-                d.Altars.Add(center);
+            case TerrainVisual.Terminal:
+                d.Terminals.Add((center, accent));
                 break;
         }
     }

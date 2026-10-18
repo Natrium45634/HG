@@ -12,6 +12,7 @@ public sealed class RulesDef
     [Ed("Очки действия")] public ApRules Ap { get; set; } = new();
     [Ed("Поворот")] public TurnRules Turn { get; set; } = new();
     [Ed("Движение")] public MoveRules Move { get; set; } = new();
+    [Ed("Слои существ")] public LayerRules Layers { get; set; } = new();
     [Ed("Высота")] public HeightRules Height { get; set; } = new();
     [Ed("Обнаружение и неожиданность")] public DetectionRules Detection { get; set; } = new();
     [Ed("Бой")] public CombatRules Combat { get; set; } = new();
@@ -224,6 +225,7 @@ public sealed class LimitRules
     [Ed("Макс. юнитов"), EdRange(1, 10000)] public int MaxUnits { get; set; } = 500;
     [Ed("Макс. клеток карты"), EdRange(1, 100000)] public int MaxMapCells { get; set; } = 16384;
     [Ed("Макс. стаков состояния"), EdRange(1, 1000)] public int MaxStatusStacks { get; set; } = 20;
+    [Ed("Макс. существ на гексе", "Для режима «разрешено всем»"), EdRange(1, 24)] public int MaxPerHex { get; set; } = 6;
     [Ed("Разрешить глобальные навыки")] public bool AllowGlobalSkills { get; set; } = true;
 }
 

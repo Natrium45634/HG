@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "statuses",
   "items": [
     {
@@ -1096,6 +1096,165 @@
       "blockedBy": [],
       "color": "#60e080",
       "icon": "Р",
+      "showBar": true
+    },
+    {
+      "id": "heat",
+      "name": "Температура",
+      "description": "Растёт на лаве и рядом с ней, спадает вдали; перегрев поджигает",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Accumulating",
+      "negative": true,
+      "duration": 5,
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "maxPoints": 100,
+      "decayPerSecond": 8,
+      "levels": [
+        {
+          "name": "жар",
+          "threshold": 30,
+          "statMods": [{ "stat": "accuracy", "add": -0.05, "mul": 0 }],
+          "flags": {
+            "blocksMovement": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        },
+        {
+          "name": "перегрев",
+          "threshold": 70,
+          "statMods": [],
+          "flags": {
+            "blocksMovement": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "tickInterval": 1,
+          "onTick": [
+            {
+              "type": "Damage",
+              "filter": { "enemies": true, "allies": true, "neutrals": true, "self": true },
+              "chance": 1,
+              "requiresHit": false,
+              "damageType": "fire",
+              "amount": 3,
+              "scalingStat": "",
+              "scalingFactor": 0,
+              "formula": "",
+              "status": "",
+              "duration": 0,
+              "distance": 1,
+              "facing": "TowardSource",
+              "setDirection": "E",
+              "resource": "",
+              "terrain": "",
+              "cellEffect": "",
+              "level": 1,
+              "obstacleDamage": 1000,
+              "summonUnit": "",
+              "targetsUnits": true
+            }
+          ],
+          "onEnter": [
+            {
+              "type": "ApplyStatus",
+              "filter": { "enemies": true, "allies": true, "neutrals": true, "self": true },
+              "chance": 1,
+              "requiresHit": false,
+              "damageType": "physical",
+              "amount": 1,
+              "scalingStat": "",
+              "scalingFactor": 0,
+              "formula": "",
+              "status": "burning",
+              "duration": 0,
+              "distance": 1,
+              "facing": "TowardSource",
+              "setDirection": "E",
+              "resource": "",
+              "terrain": "",
+              "cellEffect": "",
+              "level": 1,
+              "obstacleDamage": 1000,
+              "summonUnit": "",
+              "targetsUnits": true
+            }
+          ]
+        }
+      ],
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#ff7a2a",
+      "icon": "♨",
+      "showBar": true
+    },
+    {
+      "id": "levitation",
+      "name": "Левитация",
+      "description": "Парит над поверхностью: ямы и провалы не страшны, можно идти над ними",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "kind": "Timed",
+      "negative": false,
+      "duration": 8,
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [],
+          "flags": {
+            "blocksMovement": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#a98bff",
+      "icon": "⇡",
       "showBar": true
     }
   ]

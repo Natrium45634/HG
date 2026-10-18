@@ -41,6 +41,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_new_map_standard_template", EditorNewMapStandard));
         _tests.Add(("editor_save_map_as_template", EditorSaveAsTemplate));
         _tests.Add(("battle_fit_map_to_screen", BattleFitMap));
+        _tests.Add(("battle_layers_melee_vs_flyer", BattleLayersMeleeVsFlyer));
         _ = Run();
     }
 
@@ -372,5 +373,29 @@ public partial class UiTestRunner : Node
             Check(p.X >= ins.Left - 4 && p.X <= vp.X - ins.Right + 4 && p.Y >= ins.Top - 4 && p.Y <= vp.Y - ins.Bottom + 4,
                 $"клетка {c.Coord} вне рабочей области: {p}, область {ins}");
         }
+    }
+
+    private async Task BattleLayersMeleeVsFlyer()
+    {
+        var bs = await OpenBattle("facility_breach");
+        Check(bs.Sim.Map.Count == 80, "карта технокомплекса должна быть 10 × 8");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        var archer = bs.Sim.Units.First(u => u.Def.Id == "archer");
+        var drone = bs.Sim.Units.First(u => u.Def.Id == "drone");
+        Check(drone.Layer == "air", "дрон не в воздушном слое");
+        // Bring the drone next to the knight (test setup), then try a melee attack by clicking on it.
+        bs.Sim.Map.Get(drone.Pos)!.Occupants.Remove(drone);
+        var near = knight.Pos + new HexCoord(1, 0);
+        bs.Sim.Map.Get(near)!.Occupants.Add(drone);
+        typeof(Unit).GetProperty("Pos")!.SetValue(drone, near);
+        bs.Select(knight);
+        await Frames(10);
+        await Key(Godot.Key.F);
+        await Click(HexScreen(bs, near));
+        Check(knight.Queue.Count == 0, "ближняя атака по летящему не должна попасть в очередь");
+        await Key(Godot.Key.Escape);
+        var shot = bs.Sim.Planner.Actions(archer).First(a => a.Key == "attack");
+        Check(bs.Sim.Skills.Validate(archer, shot.Skill!, null, drone.Id, null, archer.Pos, archer.Facing).Reason != FailureReason.Invalid,
+            "дальняя атака должна допускать воздушную цель");
     }
 }

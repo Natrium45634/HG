@@ -1,5 +1,5 @@
 {
-  "formatVersion": 2,
+  "formatVersion": 3,
   "kind": "stats",
   "items": [
     {
@@ -312,6 +312,19 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
+      "showInPanel": false
+    },
+    {
+      "id": "tremor_sense",
+      "name": "Обнаружение подземных",
+      "description": "> 0 — видит существ подземного слоя в пределах дальности обнаружения",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": 0,
+      "max": 10,
+      "format": "Number",
       "showInPanel": false
     }
   ]
