@@ -363,6 +363,7 @@ public sealed class ScenarioDef : Def
 
     [Ed("Карта", Group = "Основное"), EdRef(DefCategory.Map, AllowEmpty = false)] public string Map { get; set; } = "";
     [Ed("Seed случайности", "0 = случайный при каждом запуске", Group = "Основное")] public ulong Seed { get; set; } = 12345;
+    [Ed("Пресет правил", "Пусто — глобальные правила", Group = "Основное"), EdRef(DefCategory.RulesPreset)] public string RulesPreset { get; set; } = "";
     [Ed("Вступление", Group = "Основное"), EdMultiline] public string Intro { get; set; } = "";
     [Ed("Стороны", Group = "Стороны")] public List<ScenarioSideDef> Sides { get; set; } = new()
     {

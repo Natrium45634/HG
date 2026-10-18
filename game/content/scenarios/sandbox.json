@@ -10,6 +10,7 @@
     "version": 1,
     "map": "proving_ground",
     "seed": 1,
+    "rulesPreset": "",
     "intro": "Песочница: мишени не атакуют. Попробуйте огонь по ядовитому облаку и искру по воде.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [

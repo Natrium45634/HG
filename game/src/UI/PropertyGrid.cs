@@ -503,12 +503,36 @@ public partial class PropertyGrid : VBoxContainer
         }
         if (!string.IsNullOrEmpty(current) && !ids.Contains(current))
         {
-            ids.Add(current);
-            ob.AddItem($"⚠ {current} (не найден)");
+            // A pinned reference "id@N" (docs/DECISIONS_2.md §31): the old instance; choosing the plain id follows the latest version.
+            var (bare, pin) = ContentRef.Parse(current);
+            int at = ids.IndexOf(bare);
+            bool ok = _db != null && pin != null && _db.Exists(refAttr.Category, current);
+            string label = pin == null ? $"⚠ {current} (не найден)"
+                : ok ? $"📌 {LabelOf(refAttr.Category, bare)} · v{pin} (старый экземпляр)"
+                : $"⚠ {LabelOf(refAttr.Category, bare)} · v{pin} (версия не найдена)";
+            if (at >= 0)
+            {
+                ids.Insert(at + 1, current);
+                ob.AddItem(label);
+                // OptionButton has no insert: move the item right after the latest version.
+                for (int i = ob.ItemCount - 1; i > at + 1; i--) SwapItems(ob, i, i - 1);
+            }
+            else
+            {
+                ids.Add(current);
+                ob.AddItem(label);
+            }
         }
         ob.Selected = Math.Max(0, ids.IndexOf(current));
         ob.ItemSelected += idx => set(ids[(int)idx]);
         return ob;
+    }
+
+    private static void SwapItems(OptionButton ob, int a, int b)
+    {
+        string ta = ob.GetItemText(a);
+        ob.SetItemText(a, ob.GetItemText(b));
+        ob.SetItemText(b, ta);
     }
 
     private string LabelOf(DefCategory c, string id)

@@ -114,6 +114,8 @@ public static class ContentIO
         }
 
         ContentDefaults.Ensure(db, result.Issues);
+        // Pinned versions ("id@N") come from the library history before the references are checked.
+        new ContentLibrary(storage).LoadPins(db);
         if (validate) result.Issues.AddRange(ContentValidator.Validate(db));
         return result;
     }
@@ -223,25 +225,7 @@ public static class ContentIO
     /// </summary>
     public static List<string> Save(ContentDatabase db, IContentStorage storage, string? backupStamp = null)
     {
-        var plan = new Dictionary<string, string>(StringComparer.Ordinal) { [RulesFile] = SerializeRules(db.Rules) };
-        foreach (var (cat, _, file) in ContentDatabase.Layout)
-        {
-            if (ContentDatabase.IsFolderCategory(cat))
-            {
-                foreach (var d in db.Table(cat).Items) plan[file + "/" + SafeFileName(d.Id) + ".json"] = SerializeSingle(d);
-                continue;
-            }
-            plan[file] = SerializeCategory(db, cat);
-        }
-
-        var toDelete = new List<string>();
-        foreach (var dir in ContentDatabase.Layout.Where(l => ContentDatabase.IsFolderCategory(l.Category)).Select(l => l.File))
-        foreach (var name in storage.ListFiles(dir, ".json"))
-        {
-            var rel = dir + "/" + name;
-            if (!plan.ContainsKey(rel)) toDelete.Add(rel);
-        }
-
+        var (plan, toDelete) = BuildPlan(db, storage);
         if (backupStamp != null)
         {
             foreach (var rel in plan.Keys.Concat(toDelete))
@@ -265,6 +249,31 @@ public static class ContentIO
             written.Add(rel + " (удалён)");
         }
         return written;
+    }
+
+    /// <summary>Files of a content pack (path → text) and the folder files that are no longer present.</summary>
+    public static (Dictionary<string, string> Plan, List<string> ToDelete) BuildPlan(ContentDatabase db, IContentStorage storage)
+    {
+        var plan = new Dictionary<string, string>(StringComparer.Ordinal) { [RulesFile] = SerializeRules(db.Rules) };
+        foreach (var (cat, _, file) in ContentDatabase.Layout)
+        {
+            if (ContentDatabase.IsFolderCategory(cat))
+            {
+                foreach (var d in db.Table(cat).Items) plan[file + "/" + SafeFileName(d.Id) + ".json"] = SerializeSingle(d);
+                continue;
+            }
+            plan[file] = SerializeCategory(db, cat);
+        }
+
+        var toDelete = new List<string>();
+        foreach (var dir in ContentDatabase.Layout.Where(l => ContentDatabase.IsFolderCategory(l.Category)).Select(l => l.File))
+        foreach (var name in storage.ListFiles(dir, ".json"))
+        {
+            var rel = dir + "/" + name;
+            if (!plan.ContainsKey(rel)) toDelete.Add(rel);
+        }
+
+        return (plan, toDelete);
     }
 
     public static string SafeFileName(string id)

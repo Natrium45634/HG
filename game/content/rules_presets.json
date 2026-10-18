@@ -1,0 +1,299 @@
+{
+  "formatVersion": 4,
+  "kind": "rules_presets",
+  "items": [
+    {
+      "id": "hardcore",
+      "name": "Хардкор",
+      "description": "Слабее стойка защиты (уклонение +5%, блок +10%, восстановление ОД ×0.25), туман войны всегда включён. Выбирается в сценарии: «Пресет правил».",
+      "tags": ["difficulty"],
+      "group": "Сложность",
+      "version": 1,
+      "rules": {
+        "time": {
+          "ticksPerSecond": 20,
+          "speedPresets": [0.25, 0.5, 1, 2, 4],
+          "defaultSpeedIndex": 2,
+          "maxTicksPerFrame": 40,
+          "startPaused": true
+        },
+        "ap": {
+          "movePerCost": 1,
+          "reactionsRespectReserve": true,
+          "defendCost": 1,
+          "defendEvasionBonus": 0.05,
+          "defendBlockBonus": 0.1,
+          "defendRegenMultiplier": 0.25
+        },
+        "turn": {
+          "apPerStep": 0.25,
+          "secondsPerStep": 0.1,
+          "autoFaceOnMove": true,
+          "autoFaceCostsAp": false,
+          "autoFaceTarget": true
+        },
+        "move": { "movementCategories": ["walk", "fly", "swim"], "alliesBlockPath": true, "hazardPenalty": 0.01 },
+        "layers": {
+          "default": "ground",
+          "meleeTargets": ["ground"],
+          "rangedTargets": ["ground", "air"],
+          "spellTargets": ["ground", "air"],
+          "cellEffectLayers": ["ground"]
+        },
+        "height": {
+          "maxClimb": 1,
+          "maxDrop": 2,
+          "climbCostPerLevel": 1,
+          "descendCostPerLevel": 0,
+          "accuracyPerLevel": 0.05,
+          "rangePerLevel": 0.5,
+          "eyeHeight": 1,
+          "terrainBlocksLoS": true
+        },
+        "detection": {
+          "sectors": [
+            { "sector": "Front", "surpriseChance": 0, "noticeChance": 1 },
+            { "sector": "NearFlank", "surpriseChance": 0.3, "noticeChance": 0.7 },
+            { "sector": "FarFlank", "surpriseChance": 0.7, "noticeChance": 0.3 },
+            { "sector": "Rear", "surpriseChance": 1, "noticeChance": 0 }
+          ],
+          "noSectorNotice": 1,
+          "noSectorSurprise": 0,
+          "unseenNoticeFactor": 0,
+          "blindNoticeFactor": 0,
+          "noticePenaltyPerHex": 0,
+          "noticeFreeDistance": 1,
+          "darknessNoticePenalty": 0.3,
+          "surpriseBonusVsUnaware": 0,
+          "unnoticedEvasionFactor": 0,
+          "surpriseAccuracy": 0.25,
+          "surpriseDamageMul": 1.25,
+          "surpriseCrit": 0.15,
+          "surpriseInterrupt": 0.5
+        },
+        "info": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        },
+        "combat": {
+          "baseHit": 0.85,
+          "minHit": 0.05,
+          "maxHit": 0.98,
+          "coverFactor": 1,
+          "minArmorFraction": 0.2,
+          "minDamageOnHit": 1,
+          "friendlyFire": true,
+          "healCanCrit": false,
+          "hitFormula": "",
+          "damageFormula": ""
+        },
+        "damage": {
+          "minTotalPercent": -500,
+          "maxTotalPercent": 500,
+          "sources": [
+            {
+              "source": "Skill",
+              "rollHit": false,
+              "canCrit": true,
+              "attackerBonuses": true,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": true,
+              "elementEffects": true
+            },
+            {
+              "source": "AutoAttack",
+              "rollHit": false,
+              "canCrit": true,
+              "attackerBonuses": true,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": true,
+              "elementEffects": true
+            },
+            {
+              "source": "Periodic",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            },
+            {
+              "source": "CellEffect",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            },
+            {
+              "source": "Terrain",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            },
+            {
+              "source": "Synergy",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            },
+            {
+              "source": "Reflection",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": false,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": false
+            },
+            {
+              "source": "Fall",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": false,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": false
+            },
+            {
+              "source": "Scenario",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            },
+            {
+              "source": "Passive",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            },
+            {
+              "source": "Other",
+              "rollHit": false,
+              "canCrit": false,
+              "attackerBonuses": false,
+              "armor": true,
+              "shields": true,
+              "absorption": true,
+              "reflection": false,
+              "elementEffects": true
+            }
+          ],
+          "reflectMaxDepth": 1,
+          "crit": {
+            "meleeBonus": 0,
+            "rangedBonus": 0,
+            "spellBonus": 0,
+            "flankBonus": 0.05,
+            "rearBonus": 0.1,
+            "minMultiplier": 1.1
+          },
+          "overhealToShieldPercent": 0,
+          "overhealShieldMaxPercent": 30,
+          "overhealShieldDuration": 8,
+          "adminBreakdown": true
+        },
+        "autoAttacks": {
+          "enabled": true,
+          "playerUnits": true,
+          "aiUnits": true,
+          "protectedTag": "protected",
+          "bossTag": "boss"
+        },
+        "spawnWarnings": {
+          "enabled": true,
+          "minSeconds": 3,
+          "vanishBefore": 1,
+          "speedFactor": 1,
+          "width": 0.3333333333333333,
+          "mode": "Growing",
+          "cometCells": 3,
+          "fog": "Show"
+        },
+        "vision": {
+          "updateInterval": 0.25,
+          "fogOfWar": true,
+          "stealthRangeFactor": 1,
+          "invisibleDetectRange": 1,
+          "blindDetectRange": 1
+        },
+        "queue": {
+          "notEnoughAp": { "action": "Wait", "waitSeconds": 10, "then": "Skip", "maxAttempts": 3 },
+          "notEnoughResource": { "action": "Wait", "waitSeconds": 10, "then": "Skip", "maxAttempts": 3 },
+          "pathBlocked": { "action": "Repath", "waitSeconds": 1, "then": "CancelQueue", "maxAttempts": 3 },
+          "noPath": { "action": "CancelQueue", "waitSeconds": 0, "then": "Skip", "maxAttempts": 3 },
+          "targetLost": { "action": "Skip", "waitSeconds": 0, "then": "Skip", "maxAttempts": 3 },
+          "outOfRange": { "action": "Wait", "waitSeconds": 5, "then": "Skip", "maxAttempts": 3 },
+          "noLineOfSight": { "action": "Wait", "waitSeconds": 5, "then": "Skip", "maxAttempts": 3 },
+          "cooldown": { "action": "Wait", "waitSeconds": 30, "then": "Skip", "maxAttempts": 3 },
+          "disabled": { "action": "Wait", "waitSeconds": 10, "then": "Skip", "maxAttempts": 3 },
+          "maxWaitSeconds": 60
+        },
+        "limits": {
+          "maxReactionDepth": 8,
+          "maxEventsPerTick": 5000,
+          "maxEffectsPerCell": 8,
+          "maxSynergyChain": 6,
+          "maxUnits": 500,
+          "maxMapCells": 16384,
+          "maxStatusStacks": 20,
+          "maxPerHex": 6,
+          "allowGlobalSkills": true
+        },
+        "autopause": {
+          "enemySpotted": true,
+          "allyCriticalDamage": true,
+          "criticalHpFraction": 0.3,
+          "unitDied": true,
+          "skillInterrupted": false,
+          "pathUnavailable": true,
+          "waveStarted": true,
+          "commandFailed": false,
+          "queueEmpty": false
+        },
+        "death": { "summonsDieWithOwner": true, "corpseCellEffect": "" }
+      }
+    }
+  ]
+}

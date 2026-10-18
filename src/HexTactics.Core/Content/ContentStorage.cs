@@ -14,6 +14,10 @@ public interface IContentStorage
     void Delete(string relativePath);
     /// <summary>File names (not paths) in a sub directory matching an extension.</summary>
     IEnumerable<string> ListFiles(string relativeDir, string extension);
+    /// <summary>Names (not paths) of the sub directories of a directory.</summary>
+    IEnumerable<string> ListDirectories(string relativeDir);
+    /// <summary>Removes a directory with everything in it.</summary>
+    void DeleteDirectory(string relativeDir);
     bool IsReadOnly { get; }
     string Describe(string relativePath);
 }
@@ -62,7 +66,23 @@ public sealed class FileSystemStorage : IContentStorage
     {
         var d = Full(relativeDir);
         if (!Directory.Exists(d)) return Enumerable.Empty<string>();
-        return Directory.GetFiles(d, "*" + extension).Select(Path.GetFileName).Where(n => n != null).Select(n => n!).OrderBy(n => n, StringComparer.Ordinal);
+        return Directory.GetFiles(d, "*" + extension).Select(Path.GetFileName).Where(n => n != null).Select(n => n!)
+            .Where(n => !n.EndsWith(".tmp", StringComparison.Ordinal) || extension.EndsWith(".tmp", StringComparison.Ordinal))
+            .OrderBy(n => n, StringComparer.Ordinal);
+    }
+
+    public IEnumerable<string> ListDirectories(string relativeDir)
+    {
+        var d = Full(relativeDir);
+        if (!Directory.Exists(d)) return Enumerable.Empty<string>();
+        return Directory.GetDirectories(d).Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n)).Select(n => n!).OrderBy(n => n, StringComparer.Ordinal);
+    }
+
+    public void DeleteDirectory(string relativeDir)
+    {
+        if (IsReadOnly) throw new InvalidOperationException("Хранилище только для чтения");
+        var d = Full(relativeDir);
+        if (Directory.Exists(d)) Directory.Delete(d, true);
     }
 
     public string Describe(string relativePath) => Full(relativePath);
@@ -85,6 +105,19 @@ public sealed class MemoryStorage : IContentStorage
         return Files.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal) && k.EndsWith(extension, StringComparison.Ordinal)
                                      && k.IndexOf('/', prefix.Length) < 0)
             .Select(k => k.Substring(prefix.Length)).OrderBy(k => k, StringComparer.Ordinal);
+    }
+
+    public IEnumerable<string> ListDirectories(string relativeDir)
+    {
+        var prefix = relativeDir.TrimEnd('/') + "/";
+        return Files.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal) && k.IndexOf('/', prefix.Length) > 0)
+            .Select(k => k.Substring(prefix.Length, k.IndexOf('/', prefix.Length) - prefix.Length)).Distinct().OrderBy(k => k, StringComparer.Ordinal);
+    }
+
+    public void DeleteDirectory(string relativeDir)
+    {
+        var prefix = relativeDir.TrimEnd('/') + "/";
+        foreach (var k in Files.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList()) Files.Remove(k);
     }
 
     public string Describe(string relativePath) => "mem:" + relativePath;

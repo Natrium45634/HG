@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
@@ -49,6 +50,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_autoattack_panel_toggle", BattleAutoAttackPanel));
         _tests.Add(("battle_spawn_warning_and_objectives", BattleSpawnWarningObjectives));
         _tests.Add(("editor_route_tool", EditorRouteTool));
+        // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
+        _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _ = Run();
     }
 
@@ -137,6 +140,14 @@ public partial class UiTestRunner : Node
         var b = Find<Button>(GetTree().Root).FirstOrDefault(x => x.IsVisibleInTree() && !x.Disabled && x.Text.Contains(text, StringComparison.Ordinal));
         Check(b != null, $"кнопка «{text}» не найдена");
         await Click(b!.GetGlobalRect().GetCenter());
+    }
+
+    private async Task PressButton(string text)
+    {
+        var b = Find<Button>(GetTree().Root).LastOrDefault(x => x.IsVisibleInTree() && !x.Disabled && x.Text.Contains(text, StringComparison.Ordinal));
+        Check(b != null, $"кнопка «{text}» не найдена");
+        b!.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames(3);
     }
 
     private BattleScreen Battle()
@@ -422,6 +433,127 @@ public partial class UiTestRunner : Node
         bs.Sim.Vision.Recompute();
         bs.Sim.Knowledge.Update();
     }
+
+    private static void Confirm(Window? dlg)
+    {
+        Check(dlg != null, "диалог не открыт");
+        dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+    }
+
+    private ConfirmationDialog? Dialog(string title) =>
+        Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == title);
+
+    /// <summary>
+    /// Library (docs/DECISIONS_2.md §31): favourites filter, mass tag, publication with usages
+    /// (keep old instances for some, update the rest), versions and history, pinned old instance,
+    /// dependencies view, and a simulated crash during publication that is rolled back.
+    /// </summary>
+    private async Task EditorLibraryPublish()
+    {
+        var cm = Main.Instance.Content;
+        await OpenEditor("skills");
+        var panel = Find<DefListPanel>(GetTree().Root).First();
+        var list = Find<ItemList>(panel).First();
+
+        // Favourites + filter.
+        panel.Select("cleave");
+        await Frames(4);
+        await ClickButton("★ Избранное");
+        Check(cm.IsFavorite(cm.Draft!.Skill("cleave")!), "«★ Избранное» не отметил объект");
+        var filter = Find<OptionButton>(panel).First(o => o.ItemCount > 3 && o.GetItemText(3) == "Избранное");
+        filter.Select(3);
+        filter.EmitSignal(OptionButton.SignalName.ItemSelected, 3);
+        await Frames(3);
+        Check(list.ItemCount == 1 && list.GetItemText(0).Contains("★"), $"фильтр «Избранное» показывает {list.ItemCount} объектов");
+        filter.Select(0);
+        filter.EmitSignal(OptionButton.SignalName.ItemSelected, 0);
+        await Frames(3);
+
+        // Mass operation: a tag on two selected objects.
+        int i1 = Enumerable.Range(0, list.ItemCount).First(i => list.GetItemText(i).Contains("[cleave]"));
+        int i2 = Enumerable.Range(0, list.ItemCount).First(i => list.GetItemText(i).Contains("[quake]"));
+        list.DeselectAll();
+        list.Select(i1, false);
+        list.Select(i2, false);
+        var mass = Find<MenuButton>(panel).First(m => m.Text.StartsWith("Массово"));
+        mass.GetPopup().EmitSignal(PopupMenu.SignalName.IdPressed, 1);
+        await Frames(3);
+        var prompt = Dialog("Добавить тег");
+        Check(prompt != null, "нет диалога тега");
+        Find<LineEdit>(prompt!).First().Text = "melee_aoe";
+        Confirm(prompt);
+        await Frames(3);
+        Check(cm.Draft!.Skill("cleave")!.HasTag("melee_aoe") && cm.Draft.Skill("quake")!.HasTag("melee_aoe"), "массовое добавление тега не сработало");
+
+        // Change the skill and publish: usages are listed; the enemies keep the old instance.
+        var cleave = cm.Draft!.Skill("cleave")!;
+        string oldDescription = cleave.Description;
+        cleave.Description = "Новая версия рассечения";
+        cm.DraftDirty = true;
+        await ClickButton("Сохранить");
+        var pub = Dialog("Опубликовать изменения");
+        Check(pub != null, "нет диалога публикации");
+        Check(LabelVisible("v1 → v2"), "диалог должен показать смену версии");
+        var boxes = Find<CheckBox>(pub!).ToList();
+        Check(boxes.Count >= 3, $"должны быть показаны использования рассечения (найдено {boxes.Count})");
+        foreach (var b in boxes) b.ButtonPressed = b.Text.Contains("Рыцарь") || b.Text.Contains("knight");
+        Confirm(pub);
+        await Frames(4);
+        var published = cm.Published;
+        Check(published.Skill("cleave")!.Version == 2, "версия не увеличилась");
+        Check(published.Unit("knight")!.Skills.Contains("cleave"), "рыцарь должен перейти на новую версию");
+        Check(published.Unit("orc_brute")!.Skills.Contains("cleave@1") && published.Unit("titan")!.Skills.Contains("cleave@1"), "враги должны сохранить старый экземпляр");
+        Check(published.Get<SkillDef>("cleave@1")!.Description == oldDescription, "старый экземпляр должен браться из истории");
+        Check(cm.Library.Versions(DefCategory.Skill, "cleave").SequenceEqual(new[] { 1 }), "в истории должна быть v1");
+        Check(cm.Library.CheckIntegrity().Ok, "после публикации целостность должна быть в порядке");
+        Check(cm.ErrorCount == 0, "после публикации не должно быть ошибок: " + string.Join("; ", cm.LoadIssues.Where(i => i.Severity == IssueSeverity.Error).Take(3)));
+        Check(InfoVisible("v1 → v2"), "итог публикации должен назвать версии");
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+        await Frames(2);
+
+        // Dependencies and history of the skill.
+        panel = Find<DefListPanel>(GetTree().Root).First();
+        panel.Select("cleave");
+        await Frames(4);
+        await ClickButton("Связи…");
+        Check(LabelVisible("Используется в") && LabelVisible("закреплено на v1"), "окно связей должно показать закреплённые использования");
+        Confirm(Dialog("Связи: " + cleave.DisplayName + " [cleave]"));
+        await Frames(2);
+        await ClickButton("Версии…");
+        await PressButton("Различия"); // inside a dialog window: press directly
+        Check(LabelVisible("v1 → текущая"), "окно версий должно показать различия");
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+        await Frames(2);
+
+        // A battle uses the pinned old instance for the titan.
+        var bs = await OpenBattle("titan_lair");
+        var titan = bs.Sim.Units.First(u => u.Def.Id == "titan");
+        Check(bs.Sim.Content.Get<SkillDef>(titan.Def.Skills.First(x => x.StartsWith("cleave")))!.Description == oldDescription, "титан в бою должен использовать старую версию навыка");
+
+        // Crash during publication (fault injection): the pack is rolled back, the draft is kept.
+        await OpenEditor("skills");
+        var skills = File.ReadAllText(System.IO.Path.Combine(cm.UserRoot, "skills.json"));
+        cm.Draft!.Skill("cleave")!.Description = "Версия, которую прервёт сбой";
+        cm.DraftDirty = true;
+        int writes = 0;
+        cm.FaultInjection = _ =>
+        {
+            if (++writes == 2) throw new IOException("имитация сбоя питания");
+        };
+        await ClickButton("Сохранить");
+        Confirm(Dialog("Опубликовать изменения"));
+        await Frames(4);
+        cm.FaultInjection = null;
+        Check(InfoVisible("Пакет возвращён"), "должно быть сообщение об откате");
+        Check(File.ReadAllText(System.IO.Path.Combine(cm.UserRoot, "skills.json")) == skills, "файл навыков должен быть восстановлен");
+        Check(!File.Exists(System.IO.Path.Combine(cm.UserRoot, ContentLibrary.JournalFile)), "журнал должен быть снят после отката");
+        Check(cm.Library.CheckIntegrity().Ok, "после отката целостность должна быть в порядке");
+        Check(cm.Draft!.Skill("cleave")!.Description == "Версия, которую прервёт сбой", "черновик не должен теряться");
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+    }
+
+    private bool InfoVisible(string text) =>
+        Find<AcceptDialog>(GetTree().Root).Any(d => d.Visible && d.DialogText.Contains(text, StringComparison.Ordinal));
 
     private bool LabelVisible(string text) =>
         Find<Label>(GetTree().Root).Any(l => l.IsVisibleInTree() && l.Text.Contains(text, StringComparison.Ordinal));

@@ -10,6 +10,7 @@
     "version": 1,
     "map": "titan_lair",
     "seed": 77,
+    "rulesPreset": "",
     "intro": "Хранитель недр: при 70 % здоровья призывает дронов, при 40 % впадает в ярость и поджигает землю. Пилоны питают логово — уничтожьте их для бонуса.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [

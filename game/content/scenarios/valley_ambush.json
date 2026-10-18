@@ -10,6 +10,7 @@
     "version": 1,
     "map": "valley",
     "seed": 2024,
+    "rulesPreset": "",
     "intro": "Разведка доносит: гоблины заняли руины форта за рекой. Очистите долину! (Пробел — пауза)",
     "sides": [
       { "faction": "player", "controller": "Player" },

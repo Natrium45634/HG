@@ -26,6 +26,8 @@ public sealed class SimOptions
     public bool? FogOfWar { get; init; }
     /// <summary>Admin/diagnostic mode: the player may command every unit and sees everything.</summary>
     public bool AdminMode { get; init; }
+    /// <summary>Rules of a preset chosen by the scenario (null = the global rules of the content).</summary>
+    public RulesDef? Rules { get; init; }
 }
 
 /// <summary>
@@ -46,8 +48,8 @@ public sealed class Simulation
     public Simulation(ContentDatabase content, MapDef mapDef, SimOptions? options = null)
     {
         Content = content;
-        Rules = content.Rules;
         Options = options ?? new SimOptions();
+        Rules = Options.Rules ?? content.Rules;
         Rng = new SimRng(Options.Seed);
         TicksPerSecond = Math.Max(1, Rules.Time.TicksPerSecond);
         Dt = 1.0 / TicksPerSecond;

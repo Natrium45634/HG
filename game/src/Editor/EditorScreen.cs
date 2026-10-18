@@ -50,6 +50,7 @@ public partial class EditorScreen : Control
         ("ai", "Профили ИИ", DefCategory.AiProfile),
         ("scenarios", "Сценарии", DefCategory.Scenario),
         ("rules", "Правила боя", null),
+        ("presets", "Пресеты правил", DefCategory.RulesPreset),
         ("check", "Проверка", null),
         ("test", "Тестирование", null),
     };
@@ -86,7 +87,8 @@ public partial class EditorScreen : Control
         _issues = Ui.Label("", 14, Ui.TextDim);
         top.AddChild(_issues);
         top.AddChild(Ui.Spacer(20));
-        top.AddChild(Ui.Button("Сохранить", Publish, "Опубликовать: записать черновик в пользовательский пакет контента (с резервной копией)"));
+        top.AddChild(Ui.Button("Сохранить", Publish, "Опубликовать: записать черновик в пользовательский пакет контента (версии, история, резервная копия)"));
+        top.AddChild(Ui.Button("Библиотека…", () => LibraryDialogs.PackState(this, ReloadAfterRestore), "Целостность пакета, резервные копии, история версий"));
         top.AddChild(Ui.Button("Отменить", Revert, "Отменить неопубликованные изменения и вернуть опубликованную версию"));
         top.AddChild(Ui.Button("Автосохранение", RestoreAutosave, "Восстановить автосохранённый черновик (сохраняется раз в минуту)"));
         top.AddChild(Ui.Button("К встроенному", ResetBuiltIn, "Удалить пользовательский пакет (с копией) и вернуться к встроенному контенту"));
@@ -183,6 +185,11 @@ public partial class EditorScreen : Control
             "ai" => new DefListPanel(_ctx, DefCategory.AiProfile, "Профили ИИ"),
             "scenarios" => new ScenarioEditorPanel(_ctx, TestScenario),
             "rules" => new RulesPanel(_ctx),
+            "presets" => new DefListPanel(_ctx, DefCategory.RulesPreset, "Пресеты правил (выбираются в сценарии)", null, () => new RulesPresetDef
+            {
+                Name = "Новый пресет",
+                Rules = ContentJson.Clone(_ctx.Db.Rules),
+            }),
             "check" => new ValidationPanel(_ctx),
             _ => new TestPanel(_ctx, (sc, seed) => RunTest(sc, seed)),
         };
@@ -212,6 +219,7 @@ public partial class EditorScreen : Control
             DefCategory.Faction => "factions",
             DefCategory.AiProfile => "ai",
             DefCategory.Scenario => "scenarios",
+            DefCategory.RulesPreset => "presets",
             _ => "rules",
         };
         ShowSection(key);
@@ -220,25 +228,26 @@ public partial class EditorScreen : Control
 
     // ------------------------------------------------------------------ publish / revert
 
+    /// <summary>Publication through the library: usages of changed objects, versions, transactional write (docs/DECISIONS_2.md §31).</summary>
     private void Publish()
     {
-        _ctx.Validate();
-        string warn = _ctx.Errors > 0 ? $"\n\n⚠ В контенте {_ctx.Errors} ошибок. Объекты с ошибками будут сохранены, но навыки с ошибками останутся отключёнными, а проблемные карты/сценарии могут не запуститься." : "";
+        LibraryDialogs.Publish(this, _ctx, (result, pinned) =>
+        {
+            // Versions changed in the draft: refresh the open form.
+            ShowSection(_currentKey);
+            if (_lastDef is { } ld) Navigate(ld.Item1, ld.Item2);
+            Dialogs.Info(this, "Сохранено", LibraryDialogs.DescribeResult(result, pinned));
+        });
+    }
+
+    private void ReloadAfterRestore()
+    {
         var cm = Main.Instance.Content;
-        Dialogs.Confirm(this, "Опубликовать изменения",
-            $"Записать черновик в пользовательский пакет контента?\n{cm.UserRoot}\nПредыдущая версия будет сохранена в папку backups.{warn}", () =>
-            {
-                try
-                {
-                    var written = cm.PublishDraft();
-                    _ctx.ClearDirty();
-                    Dialogs.Info(this, "Сохранено", written.Count == 0 ? "Изменений нет." : $"Записано файлов: {written.Count}\n" + string.Join("\n", written.Take(20)));
-                }
-                catch (Exception e)
-                {
-                    Dialogs.Info(this, "Ошибка сохранения", e.Message);
-                }
-            }, "Сохранить");
+        if (cm.DraftDirty) return;
+        var draft = cm.BeginEdit();
+        _ctx.Replace(draft);
+        _ctx.ClearDirty();
+        ShowSection(_currentKey);
     }
 
     private void Revert()

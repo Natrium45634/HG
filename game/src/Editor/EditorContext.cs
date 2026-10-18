@@ -109,7 +109,9 @@ public static class Dialogs
         parent.AddChild(d);
         d.Confirmed += () =>
         {
-            if (onOk()) d.QueueFree();
+            if (!onOk()) return;
+            d.Hide(); // before follow-up dialogs: only one exclusive child window at a time
+            d.QueueFree();
         };
         d.Canceled += () => d.QueueFree();
         d.PopupCentered(size ?? new Vector2I(560, 0));
@@ -166,7 +168,26 @@ public static class Dialogs
         fd.PopupCentered(new Vector2I(820, 520));
     }
 
-    public static void SaveFile(Node parent, string title, string defaultName, Action<string> onPath)
+    public static void OpenDir(Node parent, string title, Action<string> onPath)
+    {
+        var fd = new FileDialog
+        {
+            Title = title,
+            FileMode = FileDialog.FileModeEnum.OpenDir,
+            Access = FileDialog.AccessEnum.Filesystem,
+            UseNativeDialog = true,
+        };
+        parent.AddChild(fd);
+        fd.DirSelected += p =>
+        {
+            onPath(p);
+            fd.QueueFree();
+        };
+        fd.Canceled += () => fd.QueueFree();
+        fd.PopupCentered(new Vector2I(820, 520));
+    }
+
+        public static void SaveFile(Node parent, string title, string defaultName, Action<string> onPath)
     {
         var fd = new FileDialog
         {

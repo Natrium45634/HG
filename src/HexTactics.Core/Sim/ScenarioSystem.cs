@@ -110,13 +110,15 @@ public sealed class ScenarioSystem
         var player = new HashSet<string>(sc.Sides.Where(s => s.Controller == SideController.Player).Select(s => s.Faction));
         var ai = new HashSet<string>(sc.Sides.Where(s => s.Controller == SideController.Ai).Select(s => s.Faction));
         ulong s0 = seed ?? (sc.Seed != 0 ? sc.Seed : (ulong)DateTime.UtcNow.Ticks);
+        var rules = db.Get<RulesPresetDef>(sc.RulesPreset)?.Rules ?? db.Rules;
         var sim = new Simulation(db, map, new SimOptions
         {
+            Rules = rules,
             Seed = s0,
             PlayerFactions = player,
             AiFactions = ai,
             Stacking = sc.Limits.Stacking,
-            FogOfWar = sc.Limits.FogOfWar && db.Rules.Vision.FogOfWar,
+            FogOfWar = sc.Limits.FogOfWar && rules.Vision.FogOfWar,
             AdminMode = admin,
         });
         sim.Scenario.Load(sc);

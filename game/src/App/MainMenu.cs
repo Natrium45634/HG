@@ -44,7 +44,19 @@ public partial class MainMenu : Control
             var warn = Ui.Label($"⚠ В контенте {app.Content.ErrorCount} ошибок — откройте редактор → «Проверка».", 13, Ui.Bad, wrap: true).MinSize(300);
             left.AddChild(warn);
         }
+        if (app.Content.Integrity is { HasManifest: true, Ok: false } integrity)
+        {
+            left.AddChild(Ui.Label("⚠ Проверка целостности: " + integrity.Describe(), 13, Ui.Bad, wrap: true).MinSize(300));
+            left.AddChild(Ui.Button("Восстановить из резервной копии", RestoreDamaged, "Повреждённые и отсутствующие файлы берутся из копии опубликованного состояния").MinSize(300, 34));
+        }
         root.AddChild(Ui.PanelBox(left, null, 22));
+
+        // A crash during the previous publication was rolled back at start: tell the admin once.
+        if (app.Content.RecoveryMessage is { Length: > 0 } msg && !app.Args.ContainsKey("uitest"))
+        {
+            app.Content.RecoveryMessage = null;
+            Callable.From(() => Editor.Dialogs.Info(this, "Восстановление после сбоя", msg)).CallDeferred();
+        }
 
         // Right: scenarios.
         var right = Ui.VBox(8);
@@ -68,6 +80,14 @@ public partial class MainMenu : Control
         }
         var first = app.Content.Published.All<ScenarioDef>().FirstOrDefault();
         if (first != null) Choose(first);
+    }
+
+    private void RestoreDamaged()
+    {
+        var restored = Main.Instance.Content.RestoreDamaged();
+        var integrity = Main.Instance.Content.Integrity;
+        Editor.Dialogs.Info(this, "Восстановление", $"Восстановлено файлов: {restored.Count}.\n" + (integrity?.Describe() ?? ""));
+        Main.Instance.ShowMainMenu();
     }
 
     private void Choose(ScenarioDef sc)

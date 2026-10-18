@@ -37,11 +37,20 @@ public partial class Main : Node
             if (eq > 0) Args[s[..eq]] = s[(eq + 1)..];
             else Args[s] = "1";
         }
+        // UI tests run in a sandbox of user data (fresh each run): they publish content and toggle favourites.
+        string? sandbox = null;
+        if (Args.ContainsKey("uitest"))
+        {
+            sandbox = "uitest";
+            var dir = ProjectSettings.GlobalizePath("user://uitest");
+            if (System.IO.Directory.Exists(dir)) System.IO.Directory.Delete(dir, true);
+            Settings.FileName = "user://uitest/settings.json";
+        }
         Settings = Settings.Load();
         ApplyWindowSettings();
         Ui.InstallFontFallback();
         Theme = Ui.BuildTheme();
-        Content = new ContentManager();
+        Content = new ContentManager(sandbox);
         Content.Load();
 
         if (Args.ContainsKey("selftest"))

@@ -25,6 +25,7 @@ public enum DefCategory
     MapTemplate,
     Layer,
     Element,
+    RulesPreset,
 }
 
 /// <summary>Base class of every content definition.</summary>
@@ -47,6 +48,10 @@ public abstract class Def
 
     [Ed("Версия", "Увеличивается автоматически при публикации изменений", Order = -95), EdReadOnly, JsonPropertyOrder(-5)]
     public int Version { get; set; } = 1;
+
+    [Ed("Неполный (черновик)", "Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются", Order = -94),
+     JsonPropertyOrder(-4), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Incomplete { get; set; }
 
     [JsonIgnore]
     public abstract DefCategory Category { get; }

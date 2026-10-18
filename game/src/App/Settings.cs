@@ -23,7 +23,13 @@ public sealed class Settings
     [Ed("Тени")] public bool Shadows { get; set; } = true;
     [Ed("Затенение (SSAO)")] public bool Ssao { get; set; } = true;
 
-    private static string PathOnDisk => ProjectSettings.GlobalizePath("user://settings.json");
+    /// <summary>Favourite library objects ("Category:id"): a personal mark, not part of the content.</summary>
+    [EdHidden] public System.Collections.Generic.List<string> Favorites { get; set; } = new();
+
+    /// <summary>Settings file (user://settings.json; UI tests use a sandbox copy).</summary>
+    public static string FileName { get; set; } = "user://settings.json";
+
+    private static string PathOnDisk => ProjectSettings.GlobalizePath(FileName);
 
     public static Settings Load()
     {
@@ -43,6 +49,7 @@ public sealed class Settings
     {
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(PathOnDisk)!);
             File.WriteAllText(PathOnDisk, JsonSerializer.Serialize(this, ContentJson.Options));
         }
         catch (Exception e)

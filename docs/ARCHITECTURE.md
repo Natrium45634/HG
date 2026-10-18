@@ -181,7 +181,8 @@ HG/
 | `Sim/DamagePipeline`, `Content/DamageTaxonomy` | единый расчёт урона, щиты, поглощение, отражение; иерархия типов и элементов | `ResistanceTests`, `DamageMechanicsTests`, `ElementTests` |
 | `Sim/AutoAttackSystem` | автоатаки (9 шагов, общий путь навыка и конвейер урона) | `AutoAttackTests` |
 | `Sim/ScenarioSystem` (цели, дерево условий, действия, волны, фазы босса), `Sim/SpawnWarningSystem` | сценарии и маркеры появления | `ObjectiveTests`, `SpawnWarningTests` |
-| `Content/Library`, `Content/Packages` | версии, история, надёжная запись, пакеты `.hexpack` | `LibraryTests`, `PackageTests` |
+| `Content/ContentLibrary` (+ `ContentRef`, `ContentDependencies`, `ContentDiff`) | версии и история, закреплённые ссылки `id@N`, транзакционная публикация (журнал, копии, манифест SHA-256), восстановление после сбоя, целостность, зависимости, различия версий | `LibraryTests` |
+| `Content/Packages` | пакеты `.hexpack` | `PackageTests` |
 | `Content/AssetValidator` | проверка импортируемых ресурсов | `AssetTests` |
 
 ### 9.3 Порядок тика (дополнение)

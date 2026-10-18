@@ -49,5 +49,16 @@ public sealed class ResStorage : IContentStorage
         return names;
     }
 
+    public IEnumerable<string> ListDirectories(string relativeDir)
+    {
+        var dir = DirAccess.Open(Full(relativeDir));
+        if (dir == null) return Enumerable.Empty<string>();
+        var names = dir.GetDirectories().ToList();
+        names.Sort(StringComparer.Ordinal);
+        return names;
+    }
+
+    public void DeleteDirectory(string relativeDir) => throw new InvalidOperationException("res:// только для чтения");
+
     public string Describe(string relativePath) => Full(relativePath);
 }

@@ -10,6 +10,7 @@
     "version": 1,
     "map": "checkpoint",
     "seed": 44,
+    "rulesPreset": "",
     "intro": "Белая линия показывает путь врага до его появления — она исчезает за секунду до выхода. Не пропустите больше трёх врагов к ядру; волны идут одна за другой. Бонус: удержите терминал 12 с.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [

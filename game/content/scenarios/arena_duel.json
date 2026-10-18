@@ -10,6 +10,7 @@
     "version": 1,
     "map": "arena",
     "seed": 7,
+    "rulesPreset": "",
     "intro": "Победите всех противников на арене.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [

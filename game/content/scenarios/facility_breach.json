@@ -10,6 +10,7 @@
     "version": 1,
     "map": "facility",
     "seed": 21,
+    "rulesPreset": "",
     "intro": "Технокомплекс 10 × 8. Дроны летают (ближний бой их не достаёт), землерой под полом (виден разведчику). Ямы смертельны — толкайте туда врагов!",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [

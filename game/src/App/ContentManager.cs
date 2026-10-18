@@ -10,17 +10,20 @@ namespace HexTactics.Game.App;
 /// <summary>
 /// Owns the published content and the editor draft.
 /// Built-in pack: res://content (read-only, inside the build).
-/// User pack: &lt;user data&gt;/content (written by the editor; preferred when present).
-/// Backups: &lt;user data&gt;/content/backups/&lt;stamp&gt;/…, editor autosave: &lt;user data&gt;/autosave/.
+/// User pack: &lt;user data&gt;/content (written by the editor through <see cref="ContentLibrary"/>:
+/// versions + history, journal, manifest, backups — docs/DECISIONS_2.md §31; preferred when present).
+/// Editor autosave: &lt;user data&gt;/autosave/.
 /// </summary>
 public sealed class ContentManager
 {
     public const string BuiltInRoot = "res://content";
 
-    public ContentManager()
+    /// <param name="sandbox">Sub folder of user data for isolated runs (UI tests): the real user pack is never touched.</param>
+    public ContentManager(string? sandbox = null)
     {
-        UserRoot = ProjectSettings.GlobalizePath("user://content");
-        AutosaveRoot = ProjectSettings.GlobalizePath("user://autosave");
+        string root = sandbox == null ? "user://" : $"user://{sandbox}/";
+        UserRoot = ProjectSettings.GlobalizePath(root + "content");
+        AutosaveRoot = ProjectSettings.GlobalizePath(root + "autosave");
     }
 
     public string UserRoot { get; }
@@ -36,15 +39,42 @@ public sealed class ContentManager
 
     public int ErrorCount => LoadIssues.Count(i => i.Severity == IssueSeverity.Error);
 
+    /// <summary>Library of the user pack (history, journal, manifest, backups).</summary>
+    public ContentLibrary Library => new(new FileSystemStorage(UserRoot)) { BeforeWrite = FaultInjection };
+
+    /// <summary>UI tests: called before every file write of a publication (throw to simulate a crash).</summary>
+    public Action<string>? FaultInjection { get; set; }
+
+    /// <summary>Set when the previous publication had crashed and the pack was rolled back at start.</summary>
+    public string? RecoveryMessage { get; set; }
+
+    /// <summary>Integrity of the user pack at the last load (null for the built-in pack).</summary>
+    public IntegrityReport? Integrity { get; private set; }
+
     public string SourceDescription => UsingUserContent ? $"пользовательский пакет ({UserRoot})" : "встроенный пакет";
 
     public void Load()
     {
         IContentStorage storage;
+        Integrity = null;
+        if (File.Exists(Path.Combine(UserRoot, ContentLibrary.JournalFile)))
+        {
+            // An unfinished publication (crash, power loss): roll the pack back before reading it.
+            try
+            {
+                var rec = Library.RecoverIfNeeded();
+                if (rec.Message.Length > 0) RecoveryMessage = rec.Message;
+            }
+            catch (Exception e)
+            {
+                RecoveryMessage = "Не удалось восстановить пакет после сбоя: " + e.Message;
+            }
+        }
         if (File.Exists(Path.Combine(UserRoot, ContentIO.RulesFile)))
         {
             storage = new FileSystemStorage(UserRoot);
             UsingUserContent = true;
+            Integrity = Library.CheckIntegrity();
         }
         else
         {
@@ -114,19 +144,70 @@ public sealed class ContentManager
         }
     }
 
-    /// <summary>Publishes the draft: backup of the previous user pack, then write. Returns written files.</summary>
-    public List<string> PublishDraft()
+    /// <summary>
+    /// Publishes the draft transactionally (docs/DECISIONS_2.md §31): versions of changed objects grow,
+    /// previous versions go to the history, the pack is written with a journal, a backup and a manifest.
+    /// A failure rolls the pack back immediately and is rethrown.
+    /// </summary>
+    public LibraryPublishResult PublishDraft()
     {
-        if (Draft == null) return new List<string>();
-        var storage = new FileSystemStorage(UserRoot);
-        string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var written = ContentIO.Save(Draft, storage, UsingUserContent ? stamp : null);
+        if (Draft == null) return new LibraryPublishResult();
+        var lib = Library;
+        LibraryPublishResult result;
+        try
+        {
+            result = lib.Publish(Draft, Published);
+        }
+        catch (Exception)
+        {
+            try
+            {
+                lib.RecoverIfNeeded();
+            }
+            catch (Exception e2)
+            {
+                GD.PushWarning("Откат после неудачной публикации не удался: " + e2.Message);
+            }
+            throw;
+        }
+        lib.LoadPins(Draft);
         Published = Draft.Clone();
         LoadIssues = ContentValidator.Validate(Published);
         UsingUserContent = true;
+        Integrity = lib.CheckIntegrity();
         DraftDirty = false;
         ClearAutosave();
-        return written;
+        return result;
+    }
+
+    /// <summary>Restores damaged/missing files of the user pack from the copies and reloads it.</summary>
+    public List<string> RestoreDamaged()
+    {
+        var report = Library.CheckIntegrity();
+        var restored = Library.RestoreFromBackup(report.Damaged.Concat(report.Missing));
+        Load();
+        if (Draft != null && !DraftDirty)
+        {
+            Draft = Published.Clone();
+            ContentValidator.Validate(Draft);
+        }
+        return restored;
+    }
+
+    // ------------------------------------------------------------------ favourites (personal, not content)
+
+    private static string FavKey(Def d) => $"{d.Category}:{d.Id}";
+
+    public bool IsFavorite(Def d) => Main.Instance.Settings.Favorites.Contains(FavKey(d));
+
+    public void SetFavorite(Def d, bool on)
+    {
+        var fav = Main.Instance.Settings.Favorites;
+        bool has = fav.Contains(FavKey(d));
+        if (on == has) return;
+        if (on) fav.Add(FavKey(d));
+        else fav.Remove(FavKey(d));
+        Main.Instance.Settings.Save();
     }
 
     /// <summary>Removes the user pack (after a backup copy) so the built-in pack is used again.</summary>

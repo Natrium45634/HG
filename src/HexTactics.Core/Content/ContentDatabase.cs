@@ -102,6 +102,7 @@ public sealed class ContentDatabase
         (DefCategory.Passive, typeof(PassiveDef), "passives.json"),
         (DefCategory.AiProfile, typeof(AiProfileDef), "ai_profiles.json"),
         (DefCategory.Unit, typeof(UnitDef), "units.json"),
+        (DefCategory.RulesPreset, typeof(RulesPresetDef), "rules_presets.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),
         (DefCategory.Map, typeof(MapDef), "maps"),
         (DefCategory.Scenario, typeof(ScenarioDef), "scenarios"),
@@ -161,11 +162,29 @@ public sealed class ContentDatabase
 
     public bool Add(Def d) => _tables[d.Category].Add(d);
 
+    /// <summary>
+    /// Pinned versions loaded from the library history: a reference "id@N" (docs/DECISIONS_2.md §31)
+    /// resolves here when N is not the current version.
+    /// </summary>
+    public Dictionary<(DefCategory Category, string Id, int Version), Def> Pinned { get; } = new();
+
+    /// <summary>A definition by a plain id (the latest) or a pinned reference "id@N".</summary>
+    public Def? Resolve(DefCategory c, string? reference)
+    {
+        if (string.IsNullOrEmpty(reference) || !_tables.TryGetValue(c, out var table)) return null;
+        var (id, version) = ContentRef.Parse(reference);
+        var current = table.Get(id);
+        if (version == null || (current != null && current.Version == version)) return current;
+        // A pin that was not loaded falls back to the current version (the validator reports it).
+        return Pinned.TryGetValue((c, id, version.Value), out var pinned) ? pinned : current;
+    }
+
     public T? Get<T>(string? id) where T : Def
     {
         if (string.IsNullOrEmpty(id)) return null;
         var cat = CategoryOf(typeof(T));
         if (cat == null) return null;
+        if (id.IndexOf('@') >= 0) return Resolve(cat.Value, id) as T;
         return _tables[cat.Value].Get(id) as T;
     }
 
@@ -175,7 +194,11 @@ public sealed class ContentDatabase
     public bool Exists(DefCategory c, string id)
     {
         if (c == DefCategory.MoveCategory) return Rules.Move.MovementCategories.Contains(id);
-        return _tables.TryGetValue(c, out var t) && t.Contains(id);
+        if (!_tables.TryGetValue(c, out var t)) return false;
+        if (id.IndexOf('@') < 0) return t.Contains(id);
+        var (bare, version) = ContentRef.Parse(id);
+        var cur = t.Get(bare);
+        return cur != null && (version == null || cur.Version == version || Pinned.ContainsKey((c, bare, version.Value)));
     }
 
     public IEnumerable<string> Ids(DefCategory c)
@@ -232,6 +255,7 @@ public sealed class ContentDatabase
         var copy = new ContentDatabase { Rules = ContentJson.Clone(Rules) };
         foreach (var d in AllDefs()) copy.Add(ContentJson.Clone(d));
         foreach (var kv in DisabledSkills) copy.DisabledSkills[kv.Key] = kv.Value;
+        foreach (var kv in Pinned) copy.Pinned[kv.Key] = kv.Value;
         return copy;
     }
 
@@ -247,3 +271,23 @@ public sealed class ContentDatabase
     /// <summary>Finds every definition that references the given one (for delete confirmation).</summary>
     public List<ReferenceInfo> FindReferences(DefCategory c, string id) => ReferenceWalker.FindReferences(this, c, id);
 }
+
+/// <summary>References to definitions: "id" — the latest version, "id@N" — a pinned version.</summary>
+public static class ContentRef
+{
+    public static (string Id, int? Version) Parse(string reference)
+    {
+        int at = reference.LastIndexOf('@');
+        if (at <= 0 || at == reference.Length - 1) return (reference, null);
+        return int.TryParse(reference.AsSpan(at + 1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var v)
+            ? (reference[..at], v)
+            : (reference, null);
+    }
+
+    public static string Pin(string id, int version) => $"{id}@{version}";
+
+    public static string IdOf(string reference) => Parse(reference).Id;
+
+    public static bool Refers(string reference, string id) => reference == id || (reference.StartsWith(id, StringComparison.Ordinal) && Parse(reference).Id == id);
+}
+

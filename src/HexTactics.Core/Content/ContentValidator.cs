@@ -38,8 +38,11 @@ public static class ContentValidator
                 return;
             }
             if (attr != null && attr.AllowTags && value.StartsWith("tag:", StringComparison.Ordinal)) return;
-            if (!db.Exists(cat, value))
-                issues.Add(new ContentIssue(IssueSeverity.Error, Src(owner), path, $"Ссылка на несуществующий объект {CatName(cat)} '{value}'"));
+            if (db.Exists(cat, value)) return;
+            var (bare, pin) = ContentRef.Parse(value);
+            issues.Add(pin != null && db.Exists(cat, bare)
+                ? new ContentIssue(IssueSeverity.Error, Src(owner), path, $"Закреплённая версия v{pin} объекта {CatName(cat)} '{bare}' не найдена в истории библиотеки — выберите текущую версию")
+                : new ContentIssue(IssueSeverity.Error, Src(owner), path, $"Ссылка на несуществующий объект {CatName(cat)} '{value}'"));
         });
 
         // Numeric ranges from [EdRange]; damage matches ("*", type, el:, cat:, tag:).
@@ -48,7 +51,9 @@ public static class ContentValidator
         CheckHierarchies(db, issues);
         CheckRanges(null, db.Rules, "rules", issues, 0);
 
-        CheckRules(db, issues);
+        CheckRules(db, db.Rules, "Правила", issues);
+        foreach (var p in db.All<RulesPresetDef>()) CheckRules(db, p.Rules, Src(p), issues);
+        CheckIncomplete(db, issues);
         foreach (var t in db.All<TerrainDef>()) CheckTerrain(db, t, issues);
         foreach (var u in db.All<UnitDef>()) CheckUnit(db, u, issues);
         foreach (var s in db.All<StatusDef>()) CheckStatus(s, issues);
@@ -102,6 +107,7 @@ public static class ContentValidator
         DefCategory.MapTemplate => "шаблон карты",
         DefCategory.Layer => "слой",
         DefCategory.Element => "элемент",
+        DefCategory.RulesPreset => "пресет правил",
         _ => c.ToString(),
     };
 
@@ -263,22 +269,36 @@ public static class ContentValidator
         }
     }
 
-    private static void CheckRules(ContentDatabase db, List<ContentIssue> issues)
+    /// <summary>Incomplete drafts are allowed in the library, but a scenario that depends on one cannot start.</summary>
+    private static void CheckIncomplete(ContentDatabase db, List<ContentIssue> issues)
     {
-        var r = db.Rules;
+        foreach (var d in db.AllDefs().Where(d => d.Incomplete))
+            issues.Add(Warn(d, "Incomplete", "Объект отмечен как неполный (черновик) — проверьте зависимости и снимите отметку"));
+        if (!db.AllDefs().Any(d => d.Incomplete)) return;
+        foreach (var s in db.All<ScenarioDef>())
+        {
+            var bad = ContentDependencies.Closure(db, new Def[] { s }).Where(d => d.Incomplete && d != s).Take(5).ToList();
+            if (bad.Count > 0)
+                issues.Add(Err(s, "Incomplete", "Сценарий использует неполные объекты: " + string.Join(", ", bad.Select(b => $"{CatName(b.Category)} «{b.DisplayName}»"))));
+        }
+    }
+
+    private static void CheckRules(ContentDatabase db, RulesDef r, string src, List<ContentIssue> issues)
+    {
         if (r.Time.SpeedPresets.Count == 0)
-            issues.Add(new ContentIssue(IssueSeverity.Error, "Правила", "Time.SpeedPresets", "Нужна хотя бы одна скорость"));
+            issues.Add(new ContentIssue(IssueSeverity.Error, src, "Time.SpeedPresets", "Нужна хотя бы одна скорость"));
         if (r.Time.SpeedPresets.Any(s => s <= 0 || s > 64))
-            issues.Add(new ContentIssue(IssueSeverity.Error, "Правила", "Time.SpeedPresets", "Скорость должна быть в (0; 64]"));
+            issues.Add(new ContentIssue(IssueSeverity.Error, src, "Time.SpeedPresets", "Скорость должна быть в (0; 64]"));
         if (r.Time.DefaultSpeedIndex >= r.Time.SpeedPresets.Count)
-            issues.Add(new ContentIssue(IssueSeverity.Warning, "Правила", "Time.DefaultSpeedIndex", "Индекс скорости вне списка — будет использована первая"));
+            issues.Add(new ContentIssue(IssueSeverity.Warning, src, "Time.DefaultSpeedIndex", "Индекс скорости вне списка — будет использована первая"));
         if (r.Detection.Sectors.Select(s => s.Sector).Distinct().Count() != 4)
-            issues.Add(new ContentIssue(IssueSeverity.Warning, "Правила", "Detection.Sectors", "Должны быть заданы все 4 сектора (недостающие = 0%)"));
+            issues.Add(new ContentIssue(IssueSeverity.Warning, src, "Detection.Sectors", "Должны быть заданы все 4 сектора (недостающие = 0%)"));
         if (r.Move.MovementCategories.Count == 0)
-            issues.Add(new ContentIssue(IssueSeverity.Error, "Правила", "Move.MovementCategories", "Нужна хотя бы одна категория движения"));
+            issues.Add(new ContentIssue(IssueSeverity.Error, src, "Move.MovementCategories", "Нужна хотя бы одна категория движения"));
+        if (r != db.Rules) return;
         foreach (var stat in Stats.All)
             if (db.Stat(stat) == null)
-                issues.Add(new ContentIssue(IssueSeverity.Warning, "Правила", "stats", $"Нет определения базовой характеристики '{stat}' — значение по умолчанию 0"));
+                issues.Add(new ContentIssue(IssueSeverity.Warning, src, "stats", $"Нет определения базовой характеристики '{stat}' — значение по умолчанию 0"));
     }
 
     private static void CheckTerrain(ContentDatabase db, TerrainDef t, List<ContentIssue> issues)

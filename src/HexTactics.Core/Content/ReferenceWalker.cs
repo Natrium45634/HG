@@ -121,7 +121,7 @@ public static class ReferenceWalker
         var result = new List<ReferenceInfo>();
         Walk(db, (owner, path, cat, value, _, _) =>
         {
-            if (cat == category && value == id && !(owner != null && owner.Category == category && owner.Id == id && path == owner.Id + ".Id"))
+            if (cat == category && ContentRef.Refers(value, id) && !(owner != null && owner.Category == category && owner.Id == id && path == owner.Id + ".Id"))
                 result.Add(new ReferenceInfo(owner, path, cat, value));
         });
         return result;
@@ -129,11 +129,16 @@ public static class ReferenceWalker
 
     public static void ReplaceReferences(ContentDatabase db, DefCategory category, string oldId, string newId)
     {
-        var setters = new List<Action<string>>();
+        var setters = new List<(Action<string> Set, string Value)>();
         Walk(db, (_, _, cat, value, set, _) =>
         {
-            if (cat == category && value == oldId) setters.Add(set);
+            if (cat == category && ContentRef.Refers(value, oldId)) setters.Add((set, value));
         });
-        foreach (var s in setters) s(newId);
+        // Pinned references keep their version: "old@2" → "new@2".
+        foreach (var (set, value) in setters)
+        {
+            var (_, v) = ContentRef.Parse(value);
+            set(v == null ? newId : ContentRef.Pin(newId, v.Value));
+        }
     }
 }
