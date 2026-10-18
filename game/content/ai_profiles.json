@@ -21,6 +21,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Агрессивный"
     },
     {
@@ -42,6 +43,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Защитный"
     },
     {
@@ -63,6 +65,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Удерживает позицию"
     },
     {
@@ -84,6 +87,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Поддержка"
     },
     {
@@ -105,6 +109,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Дальнобойный"
     },
     {
@@ -126,6 +131,7 @@
       "decisionInterval": 0.4,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Преследователь"
     },
     {
@@ -147,7 +153,30 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
+      "advanceWhenIdle": false,
       "displayName": "Пугливый"
+    },
+    {
+      "id": "hunter",
+      "name": "Охотник",
+      "description": "Агрессивный, наступает к позициям противника даже без обзора",
+      "tags": [],
+      "aggression": 0.9,
+      "targetPriority": "Nearest",
+      "preferredRange": 1,
+      "keepDistance": false,
+      "retreatHpFraction": 0,
+      "holdPosition": false,
+      "holdRadius": 2,
+      "pursue": true,
+      "support": false,
+      "supportHpThreshold": 0.6,
+      "hazardAvoidance": 4,
+      "decisionInterval": 0.5,
+      "faceThreats": true,
+      "alert": true,
+      "advanceWhenIdle": true,
+      "displayName": "Охотник"
     }
   ]
 }

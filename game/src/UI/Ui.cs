@@ -52,6 +52,24 @@ public static class Ui
         return sb;
     }
 
+    /// <summary>
+    /// Bundled DejaVu Sans as a glyph fallback for the engine font, so UI symbols (arrows, markers, ✓/✗)
+    /// render identically on systems without symbol fonts. Also affects Label3D.
+    /// </summary>
+    public static void InstallFontFallback()
+    {
+        var symbols = GD.Load<FontFile>("res://fonts/DejaVuSans.ttf");
+        if (symbols == null) return;
+        var theme = ThemeDB.GetDefaultTheme();
+        var font = new FontVariation
+        {
+            BaseFont = theme.DefaultFont ?? ThemeDB.FallbackFont,
+            Fallbacks = new Godot.Collections.Array<Font> { symbols },
+        };
+        theme.DefaultFont = font;
+        ThemeDB.FallbackFont = font;
+    }
+
     public static Theme BuildTheme()
     {
         var t = new Theme { DefaultFontSize = 15 };

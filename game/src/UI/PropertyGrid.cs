@@ -390,7 +390,7 @@ public partial class PropertyGrid : VBoxContainer
                 status.AddThemeColorOverride("font_color", Ui.Bad);
             }
         }
-        var menu = new MenuButton { Text = "＋ вставить", Flat = false, FocusMode = FocusModeEnum.None };
+        var menu = new MenuButton { Text = "+ вставить", Flat = false, FocusMode = FocusModeEnum.None };
         var pm = menu.GetPopup();
         int i = 0;
         foreach (var v in fa.Variables) pm.AddItem(v, i++);
@@ -616,7 +616,7 @@ public partial class PropertyGrid : VBoxContainer
                 head.AddChild(caption);
                 head.AddChild(Ui.Button("↑", () => Move(idx, -1), "Выше (раньше)"));
                 head.AddChild(Ui.Button("↓", () => Move(idx, 1), "Ниже (позже)"));
-                head.AddChild(Ui.Button("⧉", () =>
+                head.AddChild(Ui.Button("❐", () =>
                 {
                     list.Insert(idx + 1, ContentJson.Clone(item));
                     RaiseChanged(owner, prop.Name);

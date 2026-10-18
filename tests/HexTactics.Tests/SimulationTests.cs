@@ -127,6 +127,23 @@ public class AiAndScenarioTests
     }
 
     [Fact]
+    public void Ai_AdvanceWhenIdle_MovesTowardPlayerStart()
+    {
+        var db = TestUtil.Minimal();
+        var map = TestUtil.Field(30, 3);
+        map.Markers.Add(new MapMarkerDef { Type = MarkerType.PlayerStart, C = new HexCoord(1, 1) });
+        var sim = TestUtil.Sim(db, map, ai: true);
+        var enemy = sim.Spawn(db.Unit("dummy")!, null, new HexCoord(28, 1), HexDirection.W);
+        sim.RunSeconds(4);
+        Assert.Equal(new HexCoord(28, 1), enemy.Pos); // default profile waits
+
+        db.Get<AiProfileDef>(enemy.Def.AiProfile)!.AdvanceWhenIdle = true;
+        sim.RunSeconds(6);
+        Assert.True(HexCoord.Distance(enemy.Pos, new HexCoord(1, 1)) < 27, enemy.Ai.Explanation);
+        Assert.Contains("наступает", enemy.Ai.Explanation);
+    }
+
+    [Fact]
     public void Scenario_Waves_And_Victory()
     {
         var db = TestUtil.Shipped();

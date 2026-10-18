@@ -231,4 +231,5 @@ public sealed class AiProfileDef : Def
     [Ed("Интервал решений, с"), EdRange(0.1, 10)] public double DecisionInterval { get; set; } = 0.5;
     [Ed("Поворачиваться к угрозе", "Разворачиваться лицом к видимому врагу")] public bool FaceThreats { get; set; } = true;
     [Ed("Поднимать тревогу", "Сообщать союзникам о замеченном враге")] public bool Alert { get; set; } = true;
+    [Ed("Наступать без обзора", "Если врагов не видно — идти к стартовой зоне игрока (или центру карты)")] public bool AdvanceWhenIdle { get; set; }
 }

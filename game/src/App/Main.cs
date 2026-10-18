@@ -39,10 +39,16 @@ public partial class Main : Node
         }
         Settings = Settings.Load();
         ApplyWindowSettings();
+        Ui.InstallFontFallback();
         Theme = Ui.BuildTheme();
         Content = new ContentManager();
         Content.Load();
 
+        if (Args.ContainsKey("selftest"))
+        {
+            RunSelfTest();
+            return;
+        }
         if (Args.TryGetValue("uitest", out var uitest))
         {
             ShowMainMenu();
@@ -67,6 +73,36 @@ public partial class Main : Node
                 ShowMainMenu();
                 break;
         }
+    }
+
+    /// <summary>
+    /// Smoke test of a build: content loads without errors and every scenario simulates 30 s.
+    /// Prints a report and exits with code 0/1 (used for exported builds and CI).
+    /// </summary>
+    private void RunSelfTest()
+    {
+        int failures = 0;
+        GD.Print($"SELFTEST: контент — {Content.SourceDescription}, ошибок {Content.ErrorCount}");
+        foreach (var i in Content.LoadIssues.Where(i => i.Severity == HexTactics.Core.Content.IssueSeverity.Error)) GD.Print("  " + i);
+        if (Content.ErrorCount > 0) failures++;
+        foreach (var sc in Content.Published.All<ScenarioDef>())
+        {
+            try
+            {
+                var sim = HexTactics.Core.Sim.ScenarioSystem.Create(Content.Published, sc, 1);
+                foreach (var u in sim.Units) u.AiControlled = true;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                sim.RunSeconds(30);
+                GD.Print($"SELFTEST: «{sc.DisplayName}» 30 с за {sw.ElapsedMilliseconds} мс, юнитов {sim.AliveUnits.Count()}/{sim.Units.Count}, событий {sim.Log.TotalCount}, итог {sim.Outcome}");
+            }
+            catch (Exception e)
+            {
+                failures++;
+                GD.PrintErr($"SELFTEST: «{sc.DisplayName}» ошибка: {e.Message}");
+            }
+        }
+        GD.Print(failures == 0 ? "SELFTEST: OK" : $"SELFTEST: FAILED ({failures})");
+        GetTree().Quit(failures == 0 ? 0 : 1);
     }
 
     public void ApplyWindowSettings()

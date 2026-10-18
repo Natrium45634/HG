@@ -136,12 +136,31 @@ public sealed class AiSystem
             if (MoveTo(u, center, 0, "возвращается на позицию")) return;
         }
 
+        if (p.AdvanceWhenIdle && !p.HoldPosition && (cur == null || cur.Type == CommandType.Defend))
+        {
+            var start = _sim.Map.Def.Markers.Where(m => m.Type == MarkerType.PlayerStart).Select(m => (HexCoord?)m.C).FirstOrDefault();
+            var goal = start ?? MapCenter();
+            if (HexCoord.Distance(u.Pos, goal) > 2 && MoveTo(u, goal, 2, $"наступает к {(start.HasValue ? "стартовой зоне противника" : "центру карты")} {goal}")) return;
+        }
+
         if (u.Ai.KnownEnemies.Count > 0 && p.FaceThreats)
         {
             var k = u.Ai.KnownEnemies.Values.OrderByDescending(v => v.Tick).First();
             FaceTowards(u, k.Pos);
         }
         if (cur == null) Explain(u, "врагов не видно — ожидание");
+    }
+
+    private HexCoord MapCenter()
+    {
+        if (_sim.Map.Count == 0) return HexCoord.Zero;
+        double q = 0, r = 0;
+        foreach (var c in _sim.Map.Cells)
+        {
+            q += c.Coord.Q;
+            r += c.Coord.R;
+        }
+        return HexCoord.Round(q / _sim.Map.Count, r / _sim.Map.Count);
     }
 
     private Unit ChooseTarget(Unit u, List<Unit> visible, AiProfileDef p, out string why)

@@ -616,8 +616,8 @@ public partial class BattleScreen : Node
                 CommandType.Turn => $"{i + 1}↻",
                 CommandType.Attack => $"{i + 1}⚔",
                 CommandType.Skill => $"{i + 1}★",
-                CommandType.Defend => $"{i + 1}⛨",
-                CommandType.Wait => $"{i + 1}⏸",
+                CommandType.Defend => $"{i + 1}▣",
+                CommandType.Wait => $"{i + 1}‖",
                 _ => $"{i + 1}",
             };
             var color = cmd.Status == CommandStatus.Waiting ? Ui.Warn : cmd.Status == CommandStatus.Active ? Ui.Accent : Colors.White;
@@ -669,7 +669,7 @@ public partial class BattleScreen : Node
             double ap = _path.Cost * Sim.Rules.Ap.MovePerCost;
             double secs = _path.StepCosts.Sum(c => c / Math.Max(0.01, u.Stat(Stats.MoveSpeed)));
             bool short_ = ap > freeAp + 1e-9;
-            _labels.Add(LabelPos(to, 0.85f), $"{ap:0.#} ОД · {secs:0.#} с" + (short_ ? " ⏳" : ""), short_ ? Ui.Warn : new Color(1f, 0.92f, 0.6f), 30);
+            _labels.Add(LabelPos(to, 0.85f), $"{ap:0.#} ОД · {secs:0.#} с" + (short_ ? " ◷" : ""), short_ ? Ui.Warn : new Color(1f, 0.92f, 0.6f), 30);
         }
         else
         {

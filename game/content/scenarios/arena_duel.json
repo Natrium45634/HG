@@ -40,14 +40,22 @@
         "aiProfile": "",
         "name": ""
       },
-      { "unit": "wolf", "faction": "", "c": [6, -2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [6, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "hunter",
+        "name": ""
+      },
       {
         "unit": "goblin_archer",
         "faction": "",
         "c": [5, -2],
         "facing": "W",
         "tag": "",
-        "aiProfile": "",
+        "aiProfile": "hunter",
         "name": ""
       }
     ],

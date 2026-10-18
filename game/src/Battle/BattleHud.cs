@@ -120,7 +120,7 @@ public partial class BattleHud : Control
     private void BuildTopBar()
     {
         var bar = Ui.HBox(6);
-        _pauseBtn = Ui.Button("⏸", () => _bs.TogglePause(), "Пауза (Пробел)", 44);
+        _pauseBtn = Ui.Button("‖", () => _bs.TogglePause(), "Пауза (Пробел)", 44);
         bar.AddChild(_pauseBtn);
         for (int i = 0; i < _bs.Driver.Speeds.Count; i++)
         {
@@ -555,7 +555,7 @@ public partial class BattleHud : Control
 
         // Top bar.
         var d = _bs.Driver;
-        _pauseBtn.Text = d.Paused ? "▶" : "⏸";
+        _pauseBtn.Text = d.Paused ? "▶" : "‖";
         _pauseBtn.TooltipText = d.Paused ? "Продолжить (Пробел)" : "Пауза (Пробел)";
         for (int i = 0; i < _speedBtns.Count; i++) _speedBtns[i].ButtonPressed = !d.Paused && i == d.SpeedIndex;
         _time.Text = Ui.FormatTime(Sim.Time);
@@ -716,10 +716,10 @@ public partial class BattleHud : Control
             if (a.Key == "queue" || a.Key == "info") continue;
             string hot = a.Key switch { "move" => "M", "turn" => "T", "attack" => "F", "defend" => "B", "wait" => "H", _ => "" };
             if (a.Key.StartsWith("skill:")) hot = (++skillN).ToString();
-            string icon = a.Skill != null && !string.IsNullOrEmpty(a.Skill.Icon) ? a.Skill.Icon + " " : a.Key switch { "move" => "➜ ", "turn" => "↻ ", "defend" => "⛨ ", "wait" => "⏸ ", _ => "" };
+            string icon = a.Skill != null && !string.IsNullOrEmpty(a.Skill.Icon) ? a.Skill.Icon + " " : a.Key switch { "move" => "➜ ", "turn" => "↻ ", "defend" => "▣ ", "wait" => "‖ ", _ => "" };
             string cost = a.Skill != null ? $"\n{a.Skill.ApCost:0.#} ОД" : a.Key == "defend" ? $"\n{Sim.Rules.Ap.DefendCost:0.#} ОД" : "\n";
             long cd = a.Skill != null ? u.CooldownRemaining(a.Skill.Id, Sim.Tick) : 0;
-            if (cd > 0) cost = $"\n⌛ {cd * Sim.Dt:0.#} с";
+            if (cd > 0) cost = $"\n◷ {cd * Sim.Dt:0.#} с";
             var b = new Button
             {
                 Text = $"{icon}{a.Label}{cost}",
