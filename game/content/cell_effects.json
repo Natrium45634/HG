@@ -106,8 +106,7 @@
       "color": "#ff7a2a",
       "visual": "Flames",
       "icon": "О",
-      "priority": 0,
-      "displayName": "Огонь"
+      "priority": 0
     },
     {
       "id": "poison_cloud",
@@ -166,8 +165,7 @@
       "color": "#8acc3a",
       "visual": "Gas",
       "icon": "Я",
-      "priority": 0,
-      "displayName": "Ядовитое облако"
+      "priority": 0
     },
     {
       "id": "miasma",
@@ -226,8 +224,7 @@
       "color": "#9aa03a",
       "visual": "Gas",
       "icon": "м",
-      "priority": 0,
-      "displayName": "Миазмы"
+      "priority": 0
     },
     {
       "id": "frost",
@@ -310,8 +307,7 @@
       "color": "#a8e4ff",
       "visual": "Ice",
       "icon": "И",
-      "priority": 0,
-      "displayName": "Изморозь"
+      "priority": 0
     },
     {
       "id": "electric",
@@ -370,8 +366,7 @@
       "color": "#ffe04a",
       "visual": "Sparks",
       "icon": "Э",
-      "priority": 0,
-      "displayName": "Электричество"
+      "priority": 0
     },
     {
       "id": "smoke",
@@ -406,8 +401,7 @@
       "color": "#9a9a9a",
       "visual": "Smoke",
       "icon": "Д",
-      "priority": 0,
-      "displayName": "Дым"
+      "priority": 0
     },
     {
       "id": "steam",
@@ -466,8 +460,7 @@
       "color": "#e8eef0",
       "visual": "Smoke",
       "icon": "П",
-      "priority": 0,
-      "displayName": "Пар"
+      "priority": 0
     },
     {
       "id": "wet",
@@ -502,8 +495,7 @@
       "color": "#6aa8e0",
       "visual": "Liquid",
       "icon": "В",
-      "priority": 0,
-      "displayName": "Влага"
+      "priority": 0
     },
     {
       "id": "holy",
@@ -585,8 +577,7 @@
       "color": "#ffe9a0",
       "visual": "Runes",
       "icon": "С",
-      "priority": 0,
-      "displayName": "Святая земля"
+      "priority": 0
     },
     {
       "id": "cursed",
@@ -668,8 +659,7 @@
       "color": "#8a4ac0",
       "visual": "Runes",
       "icon": "П",
-      "priority": 0,
-      "displayName": "Проклятая земля"
+      "priority": 0
     },
     {
       "id": "mire",
@@ -704,8 +694,7 @@
       "color": "#6a5a3a",
       "visual": "Liquid",
       "icon": "Т",
-      "priority": 0,
-      "displayName": "Трясина"
+      "priority": 0
     },
     {
       "id": "trap",
@@ -787,8 +776,7 @@
       "color": "#b0a090",
       "visual": "Runes",
       "icon": "К",
-      "priority": 0,
-      "displayName": "Капкан"
+      "priority": 0
     },
     {
       "id": "barrier",
@@ -823,8 +811,7 @@
       "color": "#80d0ff",
       "visual": "Barrier",
       "icon": "Б",
-      "priority": 0,
-      "displayName": "Барьер"
+      "priority": 0
     }
   ]
 }

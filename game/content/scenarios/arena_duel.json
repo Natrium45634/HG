@@ -63,7 +63,6 @@
     "victory": [{ "type": "AllEnemiesDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
     "defeat": [{ "type": "AllPlayerUnitsDead", "seconds": 60, "marker": "", "unitTag": "", "count": 5, "wave": 0 }],
     "triggers": [],
-    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 },
-    "displayName": "Арена"
+    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 }
   }
 }

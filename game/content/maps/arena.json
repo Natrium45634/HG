@@ -181,7 +181,6 @@
     "markers": [
       { "id": "west", "type": "PlayerStart", "c": [-6, 3], "label": "Запад", "radius": 2 },
       { "id": "east", "type": "EnemySpawn", "c": [6, -3], "label": "Восток", "radius": 2 }
-    ],
-    "displayName": "Арена"
+    ]
   }
 }

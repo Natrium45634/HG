@@ -10,8 +10,7 @@
       "color": "#3c78d8",
       "shape": "Circle",
       "hostileTo": ["enemy"],
-      "alliedWith": [],
-      "displayName": "Отряд"
+      "alliedWith": []
     },
     {
       "id": "enemy",
@@ -21,8 +20,7 @@
       "color": "#d04a3a",
       "shape": "Diamond",
       "hostileTo": ["player"],
-      "alliedWith": [],
-      "displayName": "Противник"
+      "alliedWith": []
     },
     {
       "id": "neutral",
@@ -32,8 +30,7 @@
       "color": "#c8a848",
       "shape": "Square",
       "hostileTo": [],
-      "alliedWith": [],
-      "displayName": "Нейтралы"
+      "alliedWith": []
     }
   ]
 }

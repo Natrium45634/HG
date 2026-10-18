@@ -131,7 +131,6 @@
         "once": true
       }
     ],
-    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 },
-    "displayName": "Засада в долине"
+    "limits": { "allowStacking": false, "fogOfWar": true, "timeLimit": 0 }
   }
 }

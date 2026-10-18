@@ -42,7 +42,7 @@ public abstract class Def
     [JsonIgnore]
     public abstract DefCategory Category { get; }
 
-    public string DisplayName => string.IsNullOrEmpty(Name) ? Id : Name;
+    [JsonIgnore] public string DisplayName => string.IsNullOrEmpty(Name) ? Id : Name;
 
     public bool HasTag(string tag) => Tags.Contains(tag);
 

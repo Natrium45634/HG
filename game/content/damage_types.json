@@ -8,8 +8,7 @@
       "description": "",
       "tags": [],
       "color": "#d8d8d8",
-      "armorApplies": true,
-      "displayName": "Физический"
+      "armorApplies": true
     },
     {
       "id": "fire",
@@ -17,8 +16,7 @@
       "description": "",
       "tags": [],
       "color": "#ff7a2a",
-      "armorApplies": false,
-      "displayName": "Огненный"
+      "armorApplies": false
     },
     {
       "id": "ice",
@@ -26,8 +24,7 @@
       "description": "",
       "tags": [],
       "color": "#8fd8ff",
-      "armorApplies": false,
-      "displayName": "Ледяной"
+      "armorApplies": false
     },
     {
       "id": "electric",
@@ -35,8 +32,7 @@
       "description": "",
       "tags": [],
       "color": "#ffe04a",
-      "armorApplies": false,
-      "displayName": "Электрический"
+      "armorApplies": false
     },
     {
       "id": "poison",
@@ -44,8 +40,7 @@
       "description": "",
       "tags": [],
       "color": "#7ad04a",
-      "armorApplies": false,
-      "displayName": "Ядовитый"
+      "armorApplies": false
     },
     {
       "id": "magic",
@@ -53,8 +48,7 @@
       "description": "",
       "tags": [],
       "color": "#c08aff",
-      "armorApplies": false,
-      "displayName": "Магический"
+      "armorApplies": false
     },
     {
       "id": "true",
@@ -62,8 +56,7 @@
       "description": "Не снижается бронёй",
       "tags": [],
       "color": "#ff4a6a",
-      "armorApplies": false,
-      "displayName": "Чистый"
+      "armorApplies": false
     }
   ]
 }

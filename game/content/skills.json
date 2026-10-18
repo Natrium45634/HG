@@ -79,8 +79,7 @@
       "vfx": "Slash",
       "icon": "У",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Удар"
+      "isHarmful": true
     },
     {
       "id": "shot",
@@ -159,8 +158,7 @@
       "vfx": "Projectile",
       "icon": "В",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Выстрел"
+      "isHarmful": true
     },
     {
       "id": "bite",
@@ -262,8 +260,7 @@
       "vfx": "Slash",
       "icon": "К",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Укус"
+      "isHarmful": true
     },
     {
       "id": "cleave",
@@ -342,8 +339,7 @@
       "vfx": "Slash",
       "icon": "Р",
       "usesChosenDirection": true,
-      "isHarmful": true,
-      "displayName": "Рассекающий удар"
+      "isHarmful": true
     },
     {
       "id": "shield_bash",
@@ -468,8 +464,7 @@
       "vfx": "Slash",
       "icon": "Щ",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Удар щитом"
+      "isHarmful": true
     },
     {
       "id": "fireball",
@@ -594,8 +589,7 @@
       "vfx": "Projectile",
       "icon": "Ш",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Огненный шар"
+      "isHarmful": true
     },
     {
       "id": "frost_cone",
@@ -720,8 +714,7 @@
       "vfx": "Burst",
       "icon": "Л",
       "usesChosenDirection": true,
-      "isHarmful": true,
-      "displayName": "Ледяной конус"
+      "isHarmful": true
     },
     {
       "id": "chain_lightning",
@@ -823,8 +816,7 @@
       "vfx": "Beam",
       "icon": "М",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Цепная молния"
+      "isHarmful": true
     },
     {
       "id": "poison_cloud",
@@ -903,8 +895,7 @@
       "vfx": "Burst",
       "icon": "Я",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Ядовитое облако"
+      "isHarmful": false
     },
     {
       "id": "heal",
@@ -983,8 +974,7 @@
       "vfx": "Glow",
       "icon": "+",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Лечение"
+      "isHarmful": false
     },
     {
       "id": "smoke_bomb",
@@ -1063,8 +1053,7 @@
       "vfx": "Slash",
       "icon": "Д",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Дымовая шашка"
+      "isHarmful": false
     },
     {
       "id": "charge",
@@ -1143,8 +1132,7 @@
       "vfx": "Slash",
       "icon": "»",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Рывок"
+      "isHarmful": false
     },
     {
       "id": "meteor",
@@ -1311,8 +1299,7 @@
       "vfx": "Slash",
       "icon": "☄",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Метеор"
+      "isHarmful": true
     },
     {
       "id": "quake",
@@ -1448,8 +1435,7 @@
       "vfx": "Slash",
       "icon": "С",
       "usesChosenDirection": true,
-      "isHarmful": true,
-      "displayName": "Сотрясение"
+      "isHarmful": true
     },
     {
       "id": "water_wave",
@@ -1597,8 +1583,7 @@
       "vfx": "Slash",
       "icon": "~",
       "usesChosenDirection": true,
-      "isHarmful": true,
-      "displayName": "Волна"
+      "isHarmful": true
     },
     {
       "id": "barrier",
@@ -1681,8 +1666,7 @@
       "vfx": "Slash",
       "icon": "Б",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Барьер"
+      "isHarmful": false
     },
     {
       "id": "sneak",
@@ -1761,8 +1745,7 @@
       "vfx": "Slash",
       "icon": "Т",
       "usesChosenDirection": true,
-      "isHarmful": false,
-      "displayName": "Скрытность"
+      "isHarmful": false
     },
     {
       "id": "war_cry",
@@ -1864,8 +1847,7 @@
       "vfx": "Slash",
       "icon": "!",
       "usesChosenDirection": true,
-      "isHarmful": false,
-      "displayName": "Боевой клич"
+      "isHarmful": false
     },
     {
       "id": "dominate",
@@ -1944,8 +1926,7 @@
       "vfx": "Slash",
       "icon": "П",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Подчинение"
+      "isHarmful": false
     },
     {
       "id": "blinding_flash",
@@ -2024,8 +2005,7 @@
       "vfx": "Slash",
       "icon": "*",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Ослепляющая вспышка"
+      "isHarmful": false
     },
     {
       "id": "net",
@@ -2104,8 +2084,7 @@
       "vfx": "Slash",
       "icon": "#",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Сеть"
+      "isHarmful": true
     },
     {
       "id": "consecrate",
@@ -2184,8 +2163,7 @@
       "vfx": "Slash",
       "icon": "О",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Освящение"
+      "isHarmful": false
     },
     {
       "id": "curse_ground",
@@ -2264,8 +2242,7 @@
       "vfx": "Slash",
       "icon": "П",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Проклятие земли"
+      "isHarmful": false
     },
     {
       "id": "summon_wolf",
@@ -2344,8 +2321,7 @@
       "vfx": "Slash",
       "icon": "В",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Призыв волка"
+      "isHarmful": false
     },
     {
       "id": "spark",
@@ -2447,8 +2423,7 @@
       "vfx": "Slash",
       "icon": "Э",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Искра"
+      "isHarmful": true
     },
     {
       "id": "torch",
@@ -2527,8 +2502,7 @@
       "vfx": "Slash",
       "icon": "О",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Поджог"
+      "isHarmful": false
     },
     {
       "id": "demolish",
@@ -2630,8 +2604,7 @@
       "vfx": "Slash",
       "icon": "П",
       "usesChosenDirection": false,
-      "isHarmful": true,
-      "displayName": "Пролом"
+      "isHarmful": true
     },
     {
       "id": "set_trap",
@@ -2710,8 +2683,7 @@
       "vfx": "Slash",
       "icon": "К",
       "usesChosenDirection": false,
-      "isHarmful": false,
-      "displayName": "Капкан"
+      "isHarmful": false
     }
   ]
 }

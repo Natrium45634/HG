@@ -10,8 +10,7 @@
       "color": "#4a7fd0",
       "defaultMax": 50,
       "defaultRegen": 1,
-      "showBar": true,
-      "displayName": "Мана"
+      "showBar": true
     },
     {
       "id": "energy",
@@ -21,8 +20,7 @@
       "color": "#d0b030",
       "defaultMax": 100,
       "defaultRegen": 5,
-      "showBar": true,
-      "displayName": "Энергия"
+      "showBar": true
     },
     {
       "id": "ammo",
@@ -32,8 +30,7 @@
       "color": "#9a9a9a",
       "defaultMax": 20,
       "defaultRegen": 0,
-      "showBar": true,
-      "displayName": "Боеприпасы"
+      "showBar": true
     }
   ]
 }

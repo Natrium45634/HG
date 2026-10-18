@@ -164,8 +164,7 @@
       "blockedBy": [],
       "color": "#7ad04a",
       "icon": "Я",
-      "showBar": true,
-      "displayName": "Отравление"
+      "showBar": true
     },
     {
       "id": "burning",
@@ -325,8 +324,7 @@
       "blockedBy": [],
       "color": "#ff7a2a",
       "icon": "Г",
-      "showBar": true,
-      "displayName": "Горение"
+      "showBar": true
     },
     {
       "id": "bleeding",
@@ -394,8 +392,7 @@
       "blockedBy": [],
       "color": "#c03030",
       "icon": "К",
-      "showBar": true,
-      "displayName": "Кровотечение"
+      "showBar": true
     },
     {
       "id": "stunned",
@@ -439,8 +436,7 @@
       "blockedBy": [],
       "color": "#f0e060",
       "icon": "О",
-      "showBar": true,
-      "displayName": "Оглушение"
+      "showBar": true
     },
     {
       "id": "blinded",
@@ -484,8 +480,7 @@
       "blockedBy": [],
       "color": "#e0e0e0",
       "icon": "С",
-      "showBar": true,
-      "displayName": "Ослепление"
+      "showBar": true
     },
     {
       "id": "rooted",
@@ -529,8 +524,7 @@
       "blockedBy": [],
       "color": "#a07850",
       "icon": "Ц",
-      "showBar": true,
-      "displayName": "Обездвиживание"
+      "showBar": true
     },
     {
       "id": "slowed",
@@ -574,8 +568,7 @@
       "blockedBy": [],
       "color": "#80a0c0",
       "icon": "З",
-      "showBar": true,
-      "displayName": "Замедление"
+      "showBar": true
     },
     {
       "id": "chilled",
@@ -663,8 +656,7 @@
       "blockedBy": [],
       "color": "#8fd8ff",
       "icon": "Х",
-      "showBar": true,
-      "displayName": "Охлаждение"
+      "showBar": true
     },
     {
       "id": "fear",
@@ -708,8 +700,7 @@
       "blockedBy": [],
       "color": "#9a60c0",
       "icon": "!",
-      "showBar": true,
-      "displayName": "Страх"
+      "showBar": true
     },
     {
       "id": "silenced",
@@ -753,8 +744,7 @@
       "blockedBy": [],
       "color": "#6070a0",
       "icon": "Н",
-      "showBar": true,
-      "displayName": "Немота"
+      "showBar": true
     },
     {
       "id": "vulnerable",
@@ -802,8 +792,7 @@
       "blockedBy": [],
       "color": "#d06080",
       "icon": "У",
-      "showBar": true,
-      "displayName": "Уязвимость"
+      "showBar": true
     },
     {
       "id": "shielded",
@@ -847,8 +836,7 @@
       "blockedBy": [],
       "color": "#60b0ff",
       "icon": "З",
-      "showBar": true,
-      "displayName": "Защита"
+      "showBar": true
     },
     {
       "id": "invisible",
@@ -892,8 +880,7 @@
       "blockedBy": [],
       "color": "#b0b0d0",
       "icon": "Н",
-      "showBar": true,
-      "displayName": "Невидимость"
+      "showBar": true
     },
     {
       "id": "resistant",
@@ -942,8 +929,7 @@
       "blockedBy": [],
       "color": "#c0c060",
       "icon": "С",
-      "showBar": true,
-      "displayName": "Сопротивление стихиям"
+      "showBar": true
     },
     {
       "id": "mind_control",
@@ -987,8 +973,7 @@
       "blockedBy": [],
       "color": "#e050e0",
       "icon": "К",
-      "showBar": true,
-      "displayName": "Контроль разума"
+      "showBar": true
     },
     {
       "id": "shocked",
@@ -1032,8 +1017,7 @@
       "blockedBy": [],
       "color": "#ffe04a",
       "icon": "Ш",
-      "showBar": true,
-      "displayName": "Шок"
+      "showBar": true
     },
     {
       "id": "regeneration",
@@ -1101,8 +1085,7 @@
       "blockedBy": [],
       "color": "#60e080",
       "icon": "Р",
-      "showBar": true,
-      "displayName": "Регенерация"
+      "showBar": true
     }
   ]
 }

@@ -11,8 +11,7 @@
       "min": 1,
       "max": 100000,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Макс. здоровье"
+      "showInPanel": true
     },
     {
       "id": "move_speed",
@@ -23,8 +22,7 @@
       "min": 0,
       "max": 20,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Скорость"
+      "showInPanel": true
     },
     {
       "id": "ap_max",
@@ -35,8 +33,7 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Макс. ОД"
+      "showInPanel": true
     },
     {
       "id": "ap_regen",
@@ -47,8 +44,7 @@
       "min": 0,
       "max": 100,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Восстановление ОД/с"
+      "showInPanel": true
     },
     {
       "id": "detection_range",
@@ -59,8 +55,7 @@
       "min": 0,
       "max": 50,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Дальность обнаружения"
+      "showInPanel": true
     },
     {
       "id": "accuracy",
@@ -71,8 +66,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Точность"
+      "showInPanel": true
     },
     {
       "id": "evasion",
@@ -83,8 +77,7 @@
       "min": 0,
       "max": 0.95,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Уклонение"
+      "showInPanel": true
     },
     {
       "id": "block_chance",
@@ -95,8 +88,7 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Шанс блока"
+      "showInPanel": true
     },
     {
       "id": "block_reduction",
@@ -107,8 +99,7 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Снижение урона блоком"
+      "showInPanel": true
     },
     {
       "id": "armor",
@@ -119,8 +110,7 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Броня"
+      "showInPanel": true
     },
     {
       "id": "crit_chance",
@@ -131,8 +121,7 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Шанс крита"
+      "showInPanel": true
     },
     {
       "id": "crit_mult",
@@ -143,8 +132,7 @@
       "min": 1,
       "max": 10,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Множитель крита"
+      "showInPanel": true
     },
     {
       "id": "perception",
@@ -155,8 +143,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Внимательность"
+      "showInPanel": true
     },
     {
       "id": "stealth",
@@ -167,8 +154,7 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Скрытность"
+      "showInPanel": true
     },
     {
       "id": "interrupt_resist",
@@ -179,8 +165,7 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Устойчивость к прерыванию"
+      "showInPanel": true
     },
     {
       "id": "power",
@@ -191,8 +176,7 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true,
-      "displayName": "Сила"
+      "showInPanel": true
     },
     {
       "id": "heal_power",
@@ -203,8 +187,7 @@
       "min": -1,
       "max": 10,
       "format": "Percent",
-      "showInPanel": true,
-      "displayName": "Сила лечения"
+      "showInPanel": true
     },
     {
       "id": "resist_physical",
@@ -215,8 +198,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление физическому"
+      "showInPanel": false
     },
     {
       "id": "resist_fire",
@@ -227,8 +209,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление огню"
+      "showInPanel": false
     },
     {
       "id": "resist_ice",
@@ -239,8 +220,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление холоду"
+      "showInPanel": false
     },
     {
       "id": "resist_electric",
@@ -251,8 +231,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление электричеству"
+      "showInPanel": false
     },
     {
       "id": "resist_poison",
@@ -263,8 +242,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление яду"
+      "showInPanel": false
     },
     {
       "id": "resist_magic",
@@ -275,8 +253,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление магии"
+      "showInPanel": false
     },
     {
       "id": "resist_true",
@@ -287,8 +264,7 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false,
-      "displayName": "Сопротивление чистому урону"
+      "showInPanel": false
     }
   ]
 }

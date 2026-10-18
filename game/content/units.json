@@ -29,8 +29,7 @@
       "passives": ["counter", "vigilant"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Soldier", "color": "", "scale": 1, "symbol": "Р" },
-      "displayName": "Рыцарь"
+      "visual": { "shape": "Soldier", "color": "", "scale": 1, "symbol": "Р" }
     },
     {
       "id": "archer",
@@ -58,8 +57,7 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "Л" },
-      "displayName": "Лучница"
+      "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "Л" }
     },
     {
       "id": "mage",
@@ -79,8 +77,7 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "М" },
-      "displayName": "Маг"
+      "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "М" }
     },
     {
       "id": "priestess",
@@ -100,8 +97,7 @@
       "passives": ["second_wind"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Mage", "color": "#e8e4d8", "scale": 1, "symbol": "Ж" },
-      "displayName": "Жрица"
+      "visual": { "shape": "Mage", "color": "#e8e4d8", "scale": 1, "symbol": "Ж" }
     },
     {
       "id": "scout",
@@ -130,8 +126,7 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "Р" },
-      "displayName": "Разведчик"
+      "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "Р" }
     },
     {
       "id": "goblin",
@@ -151,8 +146,7 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "г" },
-      "displayName": "Гоблин"
+      "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "г" }
     },
     {
       "id": "goblin_archer",
@@ -172,8 +166,7 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "ranged",
-      "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "л" },
-      "displayName": "Гоблин-лучник"
+      "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "л" }
     },
     {
       "id": "orc_brute",
@@ -201,8 +194,7 @@
       "passives": ["thick_hide"],
       "startingStatuses": [],
       "aiProfile": "aggressive",
-      "visual": { "shape": "Brute", "color": "", "scale": 1, "symbol": "О" },
-      "displayName": "Орк-громила"
+      "visual": { "shape": "Brute", "color": "", "scale": 1, "symbol": "О" }
     },
     {
       "id": "shaman",
@@ -222,8 +214,7 @@
       "passives": [],
       "startingStatuses": [],
       "aiProfile": "support",
-      "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "ш" },
-      "displayName": "Шаман"
+      "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "ш" }
     },
     {
       "id": "wolf",
@@ -243,8 +234,7 @@
       "passives": ["pack_howl"],
       "startingStatuses": [],
       "aiProfile": "pursuer",
-      "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "в" },
-      "displayName": "Волк"
+      "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "в" }
     },
     {
       "id": "sentinel",
@@ -264,8 +254,7 @@
       "passives": ["thorns"],
       "startingStatuses": [],
       "aiProfile": "hold",
-      "visual": { "shape": "Construct", "color": "", "scale": 1, "symbol": "С" },
-      "displayName": "Страж"
+      "visual": { "shape": "Construct", "color": "", "scale": 1, "symbol": "С" }
     },
     {
       "id": "deer",
@@ -285,8 +274,7 @@
       "passives": ["regrowth"],
       "startingStatuses": [],
       "aiProfile": "skittish",
-      "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "о" },
-      "displayName": "Олень"
+      "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "о" }
     }
   ]
 }

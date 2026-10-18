@@ -63,6 +63,7 @@ HG/
 ├─ game/                     Godot-проект
 │  ├─ project.godot, HexTactics.csproj, export_presets.cfg
 │  ├─ content/               встроенный пакет контента (JSON)
+│  ├─ fonts/                 DejaVu Sans — резервный шрифт для символов UI
 │  ├─ scenes/                минимальные .tscn (UI строится из кода)
 │  └─ src/
 │     ├─ App/                автозагрузка, настройки, переключение экранов
@@ -70,7 +71,8 @@ HG/
 │     ├─ Battle/             экран боя, HUD, ввод → команды
 │     ├─ Editor/             административный режим и все редакторы
 │     └─ UI/                 общие виджеты, PropertyGrid, тема
-└─ tools/                    скрипты сборки/экспорта
+├─ tools/ContentBootstrap/   однократный генератор стартового контента
+└─ .github/workflows/        CI: тесты, экспорт Windows/Linux, самотест сборки
 ```
 
 ## 4. Модули ядра
@@ -78,20 +80,20 @@ HG/
 | Модуль | Назначение | Интерфейс | Зависит от | Тесты |
 |---|---|---|---|---|
 | `Hex` | Координаты axial/cube, 6 направлений, расстояния, линии, кольца, повороты, мир↔гекс | `HexCoord`, `HexDirection`, `HexLayout` | — | `HexTests` |
-| `Content` | Определения контента, БД, загрузка/сохранение, проверка ссылок и диапазонов, миграции | `ContentDatabase`, `ContentPack`, `ContentValidator`, `ContentMigrator` | `Hex` | `ContentTests` |
+| `Content` | Определения контента, БД, загрузка/сохранение, проверка ссылок и диапазонов, миграции | `ContentDatabase`, `ContentIO`, `ContentValidator`, `ContentMigrator`, `ReferenceWalker`, `MapAnalysis` | `Hex` | `ContentTests` |
 | `Expr` | Безопасные формулы: числа, переменные из белого списка, `+ - * / ^`, `min max clamp abs floor ceil round` | `SafeExpression.Parse/Evaluate` | — | `ExprTests` |
-| `Sim.Core` | Время (тик), RNG с seed, шина событий, журнал | `Simulation`, `SimRng`, `SimEvent`, `CombatLog` | Content | `TimeTests` |
-| `Sim.Map` | Рантайм-карта: клетки, местность, высота, переопределения, эффекты, занятость | `BattleMap`, `Cell` | Hex, Content | `MapTests` |
-| `Sim.Units` | Юниты, характеристики с модификаторами, ресурсы, ОД | `Unit`, `StatBlock`, `ResourcePool` | Content | `ApTests` |
-| `Sim.Movement` | A* с минимальной суммарной стоимостью, правила высоты/проходимости, постепенное движение | `Pathfinder`, `MovementRules` | Map, Units | `PathTests` |
-| `Sim.Commands` | Очередь команд юнита, резерв ОД, политики при неудаче | `Command`, `CommandQueue`, `CommandSystem` | всё выше | `CommandTests` |
-| `Sim.Vision` | Линия видимости с высотой/препятствиями/дымом, видимость по фракциям | `LineOfSight`, `VisionSystem` | Map | `LosTests` |
-| `Sim.Combat` | Секторы атаки, обнаружение/неожиданность, попадание/блок/крит, урон, сопротивления | `CombatResolver`, `AttackSectors` | Units, Vision | `CombatTests` |
-| `Sim.Skills` | Области (формы и маски) и их поворот, подготовка, этапы, прерывания, эффекты | `AreaResolver`, `SkillSystem` | Combat | `AreaTests`, `SkillTests` |
+| `Sim.Core` | Время (тик), RNG с seed, шина событий, журнал | `Simulation`, `SimDriver`, `SimRng`, `SimEvent`, `CombatLog`, `SimProfiler` | Content | `TimeTests` |
+| `Sim.Map` | Рантайм-карта: клетки, местность, высота, переопределения, эффекты, занятость | `BattleMap`, `Cell` | Hex, Content | `PathfindingTests`, `CellEffectTests` |
+| `Sim.Units` | Юниты, характеристики с модификаторами, ресурсы, ОД | `Unit`, `StatBlock`, `ResourceState` | Content | `MovementAndApTests` |
+| `Sim.Movement` | A* с минимальной суммарной стоимостью, правила высоты/проходимости, постепенное движение | `Pathfinder`, `MovementRules` | Map, Units | `PathfindingTests`, `MovementAndApTests` |
+| `Sim.Commands` | Очередь команд юнита, резерв ОД, политики при неудаче | `Command`, `CommandQueue`, `CommandSystem`, `Planner` (проекция очереди) | всё выше | `MovementAndApTests`, `CombatTests` |
+| `Sim.Vision` | Линия видимости с высотой/препятствиями/дымом, видимость по фракциям | `LineOfSight`, `VisionSystem` | Map | `AreaTests`, `AiAndScenarioTests` (туман войны) |
+| `Sim.Combat` | Секторы атаки, обнаружение/неожиданность, попадание/блок/крит, урон, сопротивления | `CombatSystem` (`SectorOf`, `AttackRoll`, `DamageBreakdown`) | Units, Vision | `CombatTests` |
+| `Sim.Skills` | Области (формы и маски) и их поворот, подготовка, этапы, прерывания, эффекты | `AreaResolver`, `SkillSystem`, `ReactionSystem` | Combat | `AreaTests`, `CombatTests` |
 | `Sim.CellEffects` | Эффекты клеток, тики, распространение, ограничения местности, синергии | `CellEffectSystem` | Map | `CellEffectTests` |
 | `Sim.Statuses` | Состояния, накопления, пороги, повторное наложение, иммунитеты | `StatusSystem` | Units | `StatusTests` |
-| `Sim.AI` | Профили поведения, выбор цели/действия, объяснение решения | `AiSystem` | Commands | `AiTests` |
-| `Sim.Scenario` | Стороны, волны, триггеры, условия победы/поражения | `ScenarioSystem` | всё | `ScenarioTests` |
+| `Sim.AI` | Профили поведения, выбор цели/действия, объяснение решения | `AiSystem` | Commands | `AiAndScenarioTests` |
+| `Sim.Scenario` | Стороны, волны, триггеры, условия победы/поражения | `ScenarioSystem` | всё | `AiAndScenarioTests` |
 
 ## 5. Порядок тика симуляции
 

@@ -41,8 +41,7 @@
       ],
       "radiusCellEffects": ["fire"],
       "cooldownPerCell": 3,
-      "logText": "ядовитое облако вспыхивает и взрывается!",
-      "displayName": "Взрыв ядовитого облака"
+      "logText": "ядовитое облако вспыхивает и взрывается!"
     },
     {
       "id": "fire_miasma",
@@ -83,8 +82,7 @@
       ],
       "radiusCellEffects": [],
       "cooldownPerCell": 4,
-      "logText": "болотный газ вспыхивает",
-      "displayName": "Вспышка миазмов"
+      "logText": "болотный газ вспыхивает"
     },
     {
       "id": "electric_water",
@@ -148,8 +146,7 @@
       ],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "электричество бьёт по воде",
-      "displayName": "Разряд по воде"
+      "logText": "электричество бьёт по воде"
     },
     {
       "id": "electric_wet",
@@ -213,8 +210,7 @@
       ],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "электричество проходит по мокрой земле",
-      "displayName": "Разряд по влаге"
+      "logText": "электричество проходит по мокрой земле"
     },
     {
       "id": "fire_frost_steam",
@@ -231,8 +227,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "огонь растапливает лёд — пар",
-      "displayName": "Таяние"
+      "logText": "огонь растапливает лёд — пар"
     },
     {
       "id": "frost_water_freeze",
@@ -249,8 +244,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "вода замерзает",
-      "displayName": "Замерзание"
+      "logText": "вода замерзает"
     },
     {
       "id": "fire_ice_melt",
@@ -267,8 +261,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "лёд тает — вода и пар",
-      "displayName": "Оттаивание"
+      "logText": "лёд тает — вода и пар"
     },
     {
       "id": "fire_burnable",
@@ -285,8 +278,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "растительность/дерево сгорает",
-      "displayName": "Горение"
+      "logText": "растительность/дерево сгорает"
     },
     {
       "id": "water_wash_poison",
@@ -303,8 +295,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 0.5,
-      "logText": "вода смывает яд",
-      "displayName": "Смывание яда"
+      "logText": "вода смывает яд"
     },
     {
       "id": "wet_poison",
@@ -321,8 +312,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 0.5,
-      "logText": "влага смывает яд",
-      "displayName": "Смывание яда влагой"
+      "logText": "влага смывает яд"
     },
     {
       "id": "wet_fire",
@@ -339,8 +329,7 @@
       "unitEffects": [],
       "radiusCellEffects": [],
       "cooldownPerCell": 1,
-      "logText": "огонь гаснет — пар",
-      "displayName": "Тушение"
+      "logText": "огонь гаснет — пар"
     }
   ]
 }

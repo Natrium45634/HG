@@ -394,7 +394,6 @@
       { "id": "east_gate", "type": "EnemySpawn", "c": [20, 6], "label": "Восточные ворота", "radius": 1 },
       { "id": "south", "type": "EnemySpawn", "c": [14, 14], "label": "Южный лес", "radius": 1 },
       { "id": "altar", "type": "Objective", "c": [15, 6], "label": "Алтарь", "radius": 0 }
-    ],
-    "displayName": "Долина у реки"
+    ]
   }
 }

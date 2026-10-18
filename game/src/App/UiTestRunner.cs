@@ -25,7 +25,8 @@ public partial class UiTestRunner : Node
 
     public UiTestRunner(string which)
     {
-        _which = which;
+        // "--uitest" without a value arrives as "1": run everything.
+        _which = string.IsNullOrEmpty(which) || which == "1" ? "all" : which;
     }
 
     public override void _Ready()
@@ -43,9 +44,11 @@ public partial class UiTestRunner : Node
     private async Task Run()
     {
         await Frames(3);
+        int ran = 0;
         foreach (var (name, body) in _tests)
         {
             if (_which != "all" && _which != name) continue;
+            ran++;
             _current = name;
             try
             {
@@ -58,7 +61,12 @@ public partial class UiTestRunner : Node
                 GD.PrintErr($"FAIL {name}: {e.Message}");
             }
         }
-        GD.Print(_failed == 0 ? "UI TESTS: ALL PASSED" : $"UI TESTS: {_failed} FAILED");
+        if (ran == 0)
+        {
+            _failed++;
+            GD.PrintErr($"FAIL: нет теста '{_which}'. Доступны: {string.Join(", ", _tests.Select(t => t.Item1))}");
+        }
+        GD.Print(_failed == 0 ? $"UI TESTS: ALL PASSED ({ran})" : $"UI TESTS: {_failed} FAILED");
         GetTree().Quit(_failed == 0 ? 0 : 1);
     }
 

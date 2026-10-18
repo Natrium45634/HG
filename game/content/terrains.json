@@ -20,8 +20,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Трава"
+      "intrinsicEffects": []
     },
     {
       "id": "dirt",
@@ -41,8 +40,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Земля"
+      "intrinsicEffects": []
     },
     {
       "id": "stone",
@@ -62,8 +60,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Каменный пол"
+      "intrinsicEffects": []
     },
     {
       "id": "sand",
@@ -83,8 +80,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Песок"
+      "intrinsicEffects": []
     },
     {
       "id": "highland",
@@ -104,8 +100,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Возвышенность"
+      "intrinsicEffects": []
     },
     {
       "id": "lowland",
@@ -125,8 +120,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Низина"
+      "intrinsicEffects": []
     },
     {
       "id": "shallow_water",
@@ -146,8 +140,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Мелководье"
+      "intrinsicEffects": []
     },
     {
       "id": "deep_water",
@@ -167,8 +160,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Глубокая вода"
+      "intrinsicEffects": []
     },
     {
       "id": "pit",
@@ -188,8 +180,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Пропасть"
+      "intrinsicEffects": []
     },
     {
       "id": "toxic_swamp",
@@ -209,8 +200,7 @@
       "hazard": true,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": ["miasma"],
-      "displayName": "Ядовитое болото"
+      "intrinsicEffects": ["miasma"]
     },
     {
       "id": "wall",
@@ -230,8 +220,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Стена"
+      "intrinsicEffects": []
     },
     {
       "id": "rock",
@@ -251,8 +240,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Скала"
+      "intrinsicEffects": []
     },
     {
       "id": "crates",
@@ -272,8 +260,7 @@
       "hazard": false,
       "destructibleHp": 30,
       "destroyedTerrain": "rubble",
-      "intrinsicEffects": [],
-      "displayName": "Ящики"
+      "intrinsicEffects": []
     },
     {
       "id": "bushes",
@@ -293,8 +280,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Кусты"
+      "intrinsicEffects": []
     },
     {
       "id": "trees",
@@ -314,8 +300,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Деревья"
+      "intrinsicEffects": []
     },
     {
       "id": "rubble",
@@ -335,8 +320,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Обломки"
+      "intrinsicEffects": []
     },
     {
       "id": "ash",
@@ -356,8 +340,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Пепелище"
+      "intrinsicEffects": []
     },
     {
       "id": "ice_floor",
@@ -377,8 +360,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Лёд"
+      "intrinsicEffects": []
     },
     {
       "id": "altar",
@@ -398,8 +380,7 @@
       "hazard": false,
       "destructibleHp": 0,
       "destroyedTerrain": "",
-      "intrinsicEffects": [],
-      "displayName": "Алтарь"
+      "intrinsicEffects": []
     }
   ]
 }

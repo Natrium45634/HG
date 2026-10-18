@@ -21,8 +21,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Агрессивный"
+      "advanceWhenIdle": false
     },
     {
       "id": "defensive",
@@ -43,8 +42,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Защитный"
+      "advanceWhenIdle": false
     },
     {
       "id": "hold",
@@ -65,8 +63,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Удерживает позицию"
+      "advanceWhenIdle": false
     },
     {
       "id": "support",
@@ -87,8 +84,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Поддержка"
+      "advanceWhenIdle": false
     },
     {
       "id": "ranged",
@@ -109,8 +105,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Дальнобойный"
+      "advanceWhenIdle": false
     },
     {
       "id": "pursuer",
@@ -131,8 +126,7 @@
       "decisionInterval": 0.4,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Преследователь"
+      "advanceWhenIdle": false
     },
     {
       "id": "skittish",
@@ -153,8 +147,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": false,
-      "displayName": "Пугливый"
+      "advanceWhenIdle": false
     },
     {
       "id": "hunter",
@@ -175,8 +168,7 @@
       "decisionInterval": 0.5,
       "faceThreats": true,
       "alert": true,
-      "advanceWhenIdle": true,
-      "displayName": "Охотник"
+      "advanceWhenIdle": true
     }
   ]
 }
