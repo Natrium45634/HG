@@ -1,0 +1,79 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.4.1
+  GODOT_BASE: https://github.com/godotengine/godot/releases/download/4.4.1-stable
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Core tests
+        run: dotnet test tests/HexTactics.Tests -c Release
+
+      - name: Install Godot .NET and export templates
+        run: |
+          mkdir -p ~/godot && cd ~/godot
+          curl -fsSLO "$GODOT_BASE/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip"
+          curl -fsSLO "$GODOT_BASE/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip"
+          ln -s "$PWD/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64/Godot_v${GODOT_VERSION}-stable_mono_linux.x86_64" ~/godot/godot
+          tpl=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
+          mkdir -p "$tpl"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz" -d tpz
+          mv tpz/templates/* "$tpl/"
+
+      - name: Import project
+        run: ~/godot/godot --headless --path game --import
+
+      - name: Export Windows and Linux
+        run: |
+          mkdir -p build/windows build/linux
+          ~/godot/godot --headless --path game --export-release "Windows Desktop"
+          ~/godot/godot --headless --path game --export-release "Linux"
+          test -f build/windows/HexTactics.exe
+          test -f build/windows/HexTactics.pck
+          test -f build/linux/HexTactics.x86_64
+
+      - name: Self-test of the Linux build
+        run: ./build/linux/HexTactics.x86_64 --headless -- --selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HexTactics-windows-x64
+          path: build/windows/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HexTactics-linux-x64
+          path: build/linux/
+
+  windows-selftest:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: HexTactics-windows-x64
+          path: HexTactics
+
+      - name: Self-test of the Windows build
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath HexTactics\HexTactics.exe -ArgumentList '--headless','--','--selftest' `
+               -NoNewWindow -Wait -PassThru -RedirectStandardOutput selftest.log
+          Get-Content selftest.log
+          # The exit code is authoritative; the log is checked when the GUI-subsystem exe produced one.
+          if ($p.ExitCode -ne 0) { Write-Error "selftest exit code $($p.ExitCode)"; exit 1 }
+          if ((Get-Item selftest.log).Length -gt 0 -and -not (Select-String -Path selftest.log -Pattern 'SELFTEST: OK' -Quiet)) { exit 1 }

@@ -9,7 +9,7 @@ Windows 10/11 x64. Бойцы, навыки, эффекты клеток, сос
 
 Графика минималистичная, но объёмная: гексы — призмы с фаской и уровнями
 высоты, фишки юнитов со стрелкой взгляда, камера смотрит на поле «как на
-стол» под наклоном 60° (настраивается от 35° до 85°).
+стол» под наклоном 60° (настраивается от 35° до 89°).
 
 | | |
 |---|---|
@@ -94,8 +94,9 @@ godot --path .            # или открыть game/project.godot в реда
 Из командной строки (работает на Windows и Linux):
 
 ```bash
+mkdir -p build/windows             # Godot не создаёт папку назначения сам
 cd game
-dotnet build -c Release
+godot --headless --path . --import      # только для свежего клона (нет папки .godot)
 godot --headless --path . --export-release "Windows Desktop"
 ```
 
@@ -109,7 +110,7 @@ data_HexTactics_windows_x86_64/      сборки .NET (рантайм вход�
 
 Распространять нужно **всю папку** целиком; установка .NET на
 компьютере игрока не требуется. Аналогично `--export-release "Linux"`
-собирает `build/linux/`.
+собирает `build/linux/` (папку тоже нужно создать заранее).
 
 Сборку для Windows также делает CI
 ([.github/workflows/build.yml](.github/workflows/build.yml)): тесты →
