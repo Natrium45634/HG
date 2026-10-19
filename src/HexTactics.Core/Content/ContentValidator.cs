@@ -109,6 +109,8 @@ public static class ContentValidator
         DefCategory.Layer => "слой",
         DefCategory.Element => "элемент",
         DefCategory.RulesPreset => "пресет правил",
+        DefCategory.Asset => "ресурс",
+        DefCategory.Vfx => "визуальный эффект",
         _ => c.ToString(),
     };
 

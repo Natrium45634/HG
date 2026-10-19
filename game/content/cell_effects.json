@@ -164,6 +164,7 @@
       },
       "color": "#ff7a2a",
       "visual": "Flames",
+      "appearVfx": "",
       "icon": "О",
       "priority": 0
     },
@@ -248,6 +249,7 @@
       },
       "color": "#8acc3a",
       "visual": "Gas",
+      "appearVfx": "",
       "icon": "Я",
       "priority": 0
     },
@@ -332,6 +334,7 @@
       },
       "color": "#9aa03a",
       "visual": "Gas",
+      "appearVfx": "",
       "icon": "м",
       "priority": 0
     },
@@ -457,6 +460,7 @@
       },
       "color": "#a8e4ff",
       "visual": "Ice",
+      "appearVfx": "",
       "icon": "И",
       "priority": 0
     },
@@ -541,6 +545,7 @@
       },
       "color": "#ffe04a",
       "visual": "Sparks",
+      "appearVfx": "",
       "icon": "Э",
       "priority": 0
     },
@@ -584,6 +589,7 @@
       },
       "color": "#9a9a9a",
       "visual": "Smoke",
+      "appearVfx": "",
       "icon": "Д",
       "priority": 0
     },
@@ -668,6 +674,7 @@
       },
       "color": "#e8eef0",
       "visual": "Smoke",
+      "appearVfx": "",
       "icon": "П",
       "priority": 0
     },
@@ -711,6 +718,7 @@
       },
       "color": "#6aa8e0",
       "visual": "Liquid",
+      "appearVfx": "",
       "icon": "В",
       "priority": 0
     },
@@ -835,6 +843,7 @@
       },
       "color": "#ffe9a0",
       "visual": "Runes",
+      "appearVfx": "",
       "icon": "С",
       "priority": 0
     },
@@ -959,6 +968,7 @@
       },
       "color": "#8a4ac0",
       "visual": "Runes",
+      "appearVfx": "",
       "icon": "П",
       "priority": 0
     },
@@ -1002,6 +1012,7 @@
       },
       "color": "#6a5a3a",
       "visual": "Liquid",
+      "appearVfx": "",
       "icon": "Т",
       "priority": 0
     },
@@ -1126,6 +1137,7 @@
       },
       "color": "#b0a090",
       "visual": "Runes",
+      "appearVfx": "",
       "icon": "К",
       "priority": 0
     },
@@ -1169,6 +1181,7 @@
       },
       "color": "#80d0ff",
       "visual": "Barrier",
+      "appearVfx": "",
       "icon": "Б",
       "priority": 0
     },
@@ -1334,6 +1347,7 @@
       },
       "color": "#ff6a1f",
       "visual": "Glow",
+      "appearVfx": "",
       "icon": "",
       "priority": -5
     },
@@ -1459,6 +1473,7 @@
       },
       "color": "#9be22d",
       "visual": "Liquid",
+      "appearVfx": "",
       "icon": "",
       "priority": -5
     },
@@ -1583,6 +1598,7 @@
       },
       "color": "#ffd23f",
       "visual": "Runes",
+      "appearVfx": "",
       "icon": "✕",
       "priority": 0
     }

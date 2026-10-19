@@ -37,6 +37,23 @@ public partial class UnitView : Node3D
     private Color _bodyColor;
     private readonly List<MeshInstance3D> _bodyParts = new();
 
+    // Replaceable representation (docs/DECISIONS_2.md §34): an imported model instead of the figure.
+    private Node3D? _model;
+    private AnimationPlayer? _anim;
+    private readonly List<GeometryInstance3D> _modelParts = new();
+    private readonly Dictionary<AnimRole, (string Clip, float Speed, bool Loop)> _clips = new();
+    private float _baseScale = 1;
+    private float _roleTime;
+    private bool _roleStarted;
+
+    /// <summary>The animation role being shown (ожидание, движение, атака…).</summary>
+    public AnimRole Role { get; private set; } = AnimRole.Spawn;
+    /// <summary>The model clip playing for the role ("" — procedural animation).</summary>
+    public string CurrentClip { get; private set; } = "";
+    public bool UsesModel => _model != null;
+    /// <summary>Why the model was not used (missing/damaged file) — the figure is shown instead.</summary>
+    public string ModelProblem { get; private set; } = "";
+
     public Unit Unit { get; }
     public bool Selected { get; set; }
     public bool Hovered { get; set; }
@@ -65,9 +82,117 @@ public partial class UnitView : Node3D
         BuildBase(faction?.Shape ?? FactionShape.Circle, fcol);
         AddChild(_body);
         BuildBody(unit.Def.Visual.Shape, _bodyColor, fcol);
+        _baseScale = scale;
         _body.Scale = Vector3.One * scale;
+        AttachModel(db);
         BuildBars(scale);
         _visualYaw = Board.YawOf(unit.Facing);
+    }
+
+    /// <summary>Puts the unit's model in place of the figure; on any problem the figure stays.</summary>
+    private void AttachModel(ContentDatabase db)
+    {
+        var id = Unit.Def.Visual.Model;
+        if (string.IsNullOrEmpty(id)) return;
+        var asset = db.Get<AssetDef>(id);
+        var model = Assets.Model(asset);
+        if (asset == null || model == null)
+        {
+            ModelProblem = asset == null ? $"ресурс «{id}» не найден" : Assets.Problems.GetValueOrDefault(asset.Id, "модель не загружена");
+            return;
+        }
+        var holder = new Node3D
+        {
+            Name = "Model",
+            Position = new Vector3(0, 0.12f + (float)asset.YOffset, 0),
+            RotationDegrees = new Vector3(0, (float)asset.RotationY, 0),
+            Scale = Vector3.One * (float)asset.Scale,
+        };
+        holder.AddChild(model);
+        _body.AddChild(holder);
+        _model = holder;
+        foreach (var part in _bodyParts) part.Visible = false;
+        CollectGeometry(model);
+        _anim = Assets.PlayerOf(model);
+        if (_anim == null) return;
+        var clips = _anim.GetAnimationList();
+        foreach (var m in asset.Animations)
+            if (clips.Contains(m.Clip) && !_clips.ContainsKey(m.Role))
+                _clips[m.Role] = (m.Clip, (float)m.Speed, m.Loop || VisualState.Loops(m.Role));
+        foreach (var role in Enum.GetValues<AnimRole>())
+            if (!_clips.ContainsKey(role) && AssetValidator.GuessClip(role, clips) is { } guess)
+                _clips[role] = (guess, 1f, VisualState.Loops(role));
+    }
+
+    private void CollectGeometry(Node n)
+    {
+        if (n is GeometryInstance3D g) _modelParts.Add(g);
+        foreach (var c in n.GetChildren()) CollectGeometry(c);
+    }
+
+    /// <summary>Starts the animation of a new role: the model clip if mapped, otherwise procedural.</summary>
+    private void EnterRole(AnimRole role)
+    {
+        _roleStarted = true;
+        Role = role;
+        _roleTime = 0;
+        CurrentClip = "";
+        if (_anim == null || !_clips.TryGetValue(role, out var c)) return;
+        var anim = _anim.GetAnimation(c.Clip);
+        if (anim != null) anim.LoopMode = c.Loop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
+        _anim.Play(c.Clip, -1, c.Speed);
+        CurrentClip = c.Clip;
+    }
+
+    /// <summary>
+    /// Procedural animation of the figure (and of model roles without a clip): breathing, lean when
+    /// moving, lunge on attack, rise on a skill, shake on a hit, crouch when blocking, wobble under
+    /// control, grow on appearance.
+    /// </summary>
+    private void Procedural(float yaw)
+    {
+        float t = _roleTime;
+        var pos = Vector3.Zero;
+        var rot = new Vector3(0, yaw, 0);
+        var scl = Vector3.One;
+        var fwd = new Vector3(-Mathf.Sin(yaw), 0, -Mathf.Cos(yaw));
+        if (CurrentClip.Length == 0)
+            switch (Role)
+            {
+                case AnimRole.Idle:
+                    scl = new Vector3(1, 1 + 0.025f * Mathf.Sin(t * 2.2f + Unit.Id), 1);
+                    break;
+                case AnimRole.Move:
+                    rot.X = -0.1f;
+                    break;
+                case AnimRole.Attack:
+                    pos = fwd * 0.16f * Mathf.Sin(Mathf.Clamp(t / 0.35f, 0, 1) * Mathf.Pi);
+                    break;
+                case AnimRole.Skill:
+                    pos = new Vector3(0, 0.08f * (1 - Mathf.Cos(t * 5f)), 0);
+                    rot.Y += 0.25f * Mathf.Sin(t * 4f);
+                    break;
+                case AnimRole.Hit:
+                    pos = -fwd * 0.06f * Mathf.Sin(t * 50f) * Math.Max(0, 1 - t / (float)VisualState.HitSeconds);
+                    break;
+                case AnimRole.Block:
+                    scl = new Vector3(1.04f, 0.9f, 1.04f);
+                    rot.X = 0.08f;
+                    break;
+                case AnimRole.Control:
+                    rot.Z = 0.14f * Mathf.Sin(t * 5f);
+                    break;
+                case AnimRole.Spawn:
+                {
+                    float k = Mathf.Clamp(t / (float)VisualState.SpawnSeconds, 0, 1);
+                    scl = Vector3.One * (0.2f + 0.8f * k);
+                    pos = new Vector3(0, -0.3f * (1 - k), 0);
+                    break;
+                }
+            }
+        _body.Position = pos;
+        _body.Rotation = rot;
+        _body.Scale = scl * _baseScale;
     }
 
     private MeshInstance3D Part(Node3D parent, Mesh mesh, Material mat, Vector3 pos, Vector3? rot = null, Vector3? scale = null, bool shadow = true)
@@ -284,6 +409,7 @@ public partial class UnitView : Node3D
         if (Math.Abs(t - _transparency) < 0.01f) return;
         _transparency = t;
         foreach (var m in _bodyParts) m.Transparency = t;
+        foreach (var m in _modelParts) m.Transparency = t;
     }
 
     /// <summary>Hover shadow + beam for flyers, translucency + ring for hidden (underground) layers.</summary>
@@ -323,6 +449,7 @@ public partial class UnitView : Node3D
         var u = Unit;
         if (!u.Alive)
         {
+            if (Role != AnimRole.Death || !_roleStarted) EnterRole(AnimRole.Death);
             if (_deathTime < 0) _deathTime = 0;
             _deathTime += delta;
             _bars.Visible = false;
@@ -349,6 +476,13 @@ public partial class UnitView : Node3D
                 return;
             }
             float k = Math.Min(1, _deathTime / 0.8f);
+            if (CurrentClip.Length > 0)
+            {
+                // The model's own death clip, then the figure fades out.
+                foreach (var g in _modelParts) g.Transparency = Math.Max(0, (_deathTime - 1.0f) / 0.6f);
+                Visible = _deathTime < 1.6f && visible;
+                return;
+            }
             _body.RotationDegrees = new Vector3(k * 80, 0, 0);
             Scale = Vector3.One * (1 - k * 0.3f);
             Visible = _deathTime < 1.6f && visible;
@@ -385,7 +519,10 @@ public partial class UnitView : Node3D
 
         float targetYaw = Board.YawOf(u.Facing);
         _visualYaw = Mathf.LerpAngle(_visualYaw, targetYaw, Math.Min(1, delta * 14));
-        _body.Rotation = new Vector3(0, _visualYaw, 0);
+        var role = VisualState.RoleOf(sim, u);
+        if (role != Role || !_roleStarted) EnterRole(role);
+        _roleTime += delta;
+        Procedural(_visualYaw);
         _arrow.Position = new Vector3(-Mathf.Sin(_visualYaw) * 0.52f, 0.145f, -Mathf.Cos(_visualYaw) * 0.52f);
         _arrow.Basis = new Basis(Vector3.Up, _visualYaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
         foreach (var (m, off) in _extraArrows)
@@ -465,10 +602,11 @@ public partial class UnitView : Node3D
         {
             _hitFlash -= delta;
             float f = Math.Max(0, _hitFlash) * 4;
-            _body.Scale = Vector3.One * (float)Math.Clamp(u.Def.Visual.Scale, 0.3, 3.0) * 1.2f * (1 + f * 0.08f);
+            _body.Scale *= 1 + f * 0.08f;
         }
 
         // Ghost (last known position): semi-transparent.
         foreach (var part in _bodyParts) part.Transparency = ghost ? 0.65f : 0f;
+        foreach (var part in _modelParts) part.Transparency = ghost ? 0.65f : 0f;
     }
 }

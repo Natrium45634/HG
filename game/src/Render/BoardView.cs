@@ -153,7 +153,7 @@ public partial class BoardView : Node3D
     public void RebuildTerrain()
     {
         if (_map == null) return;
-        Terrain.Build(_map);
+        Terrain.Build(_map, true, _db);
         _terrainVersion = _map.TerrainVersion;
         _pickLevels = Board.PickLevels(_map);
         if (_table == null)

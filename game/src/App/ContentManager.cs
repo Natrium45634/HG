@@ -84,6 +84,9 @@ public sealed class ContentManager
         var res = ContentIO.Load(storage);
         Published = res.Db;
         LoadIssues = res.Issues;
+        // Resource files (models, textures, sounds): missing or damaged ones are reported, the game uses the base representation.
+        Render.Assets.Reset();
+        LoadIssues.AddRange(AssetValidator.CheckFiles(Published, Render.Assets.Read));
         foreach (var i in LoadIssues.Where(i => i.Severity == IssueSeverity.Error)) GD.PushWarning(i.ToString());
     }
 
@@ -173,6 +176,8 @@ public sealed class ContentManager
         lib.LoadPins(Draft);
         Published = Draft.Clone();
         LoadIssues = ContentValidator.Validate(Published);
+        Render.Assets.Reset();
+        LoadIssues.AddRange(AssetValidator.CheckFiles(Published, Render.Assets.Read));
         UsingUserContent = true;
         Integrity = lib.CheckIntegrity();
         DraftDirty = false;

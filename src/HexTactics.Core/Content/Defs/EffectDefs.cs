@@ -77,6 +77,7 @@ public sealed class CellEffectDef : Def
 
     [Ed("Цвет", Group = "Вид"), EdColor] public string Color { get; set; } = "#e07030";
     [Ed("Стиль", Group = "Вид")] public CellEffectVisual Visual { get; set; } = CellEffectVisual.Glow;
+    [Ed("Эффект появления", Group = "Вид"), EdRef(DefCategory.Vfx)] public string AppearVfx { get; set; } = "";
     [Ed("Значок", "1–2 символа", Group = "Вид")] public string Icon { get; set; } = "";
     [Ed("Приоритет обработки", "Меньше — раньше", Group = "Прочее")] public int Priority { get; set; }
 }
@@ -232,4 +233,5 @@ public sealed class StatusDef : Def
     [Ed("Цвет", Group = "Вид"), EdColor] public string Color { get; set; } = "#80c040";
     [Ed("Значок", "1–2 символа", Group = "Вид")] public string Icon { get; set; } = "";
     [Ed("Показывать шкалу", Group = "Вид")] public bool ShowBar { get; set; } = true;
+    [Ed("Эффект наложения", Group = "Вид"), EdRef(DefCategory.Vfx)] public string Vfx { get; set; } = "";
 }

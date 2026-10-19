@@ -49,6 +49,8 @@ public partial class EditorScreen : Control
         ("factions", "Фракции", DefCategory.Faction),
         ("ai", "Профили ИИ", DefCategory.AiProfile),
         ("scenarios", "Сценарии", DefCategory.Scenario),
+        ("assets", "Ресурсы", DefCategory.Asset),
+        ("vfx", "Визуальные эффекты", DefCategory.Vfx),
         ("rules", "Правила боя", null),
         ("presets", "Пресеты правил", DefCategory.RulesPreset),
         ("catalog", "Каталог операций", null),
@@ -187,6 +189,8 @@ public partial class EditorScreen : Control
             "ai" => new DefListPanel(_ctx, DefCategory.AiProfile, "Профили ИИ"),
             "scenarios" => new ScenarioEditorPanel(_ctx, TestScenario),
             "rules" => new RulesPanel(_ctx),
+            "assets" => new AssetPanel(_ctx),
+            "vfx" => new VfxPanel(_ctx),
             "presets" => new DefListPanel(_ctx, DefCategory.RulesPreset, "Пресеты правил (выбираются в сценарии)", null, () => new RulesPresetDef
             {
                 Name = "Новый пресет",
@@ -223,6 +227,8 @@ public partial class EditorScreen : Control
             DefCategory.AiProfile => "ai",
             DefCategory.Scenario => "scenarios",
             DefCategory.RulesPreset => "presets",
+            DefCategory.Asset => "assets",
+            DefCategory.Vfx => "vfx",
             _ => "rules",
         };
         ShowSection(key);

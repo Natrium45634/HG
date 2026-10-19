@@ -183,6 +183,7 @@ public sealed class Simulation
         if (!string.IsNullOrEmpty(name)) u.Name = name!;
         u.Pos = pos;
         u.LastSafePos = pos;
+        u.SpawnTick = Tick;
         u.Facing = facing;
         SetLayerInternal(u, LayerResolver.LayerIdOf(Content, def));
         foreach (var sid in def.Skills)

@@ -100,6 +100,13 @@ public partial class CameraRig : Node3D
     }
 
     /// <summary>«Стандартный масштаб»: zoom of the standard 10 × 8 map, pivot unchanged.</summary>
+    /// <summary>Automation/screenshots: a fixed camera distance right away.</summary>
+    public void SetZoom(float distance)
+    {
+        AutoFit = false;
+        Distance = _targetDistance = Math.Clamp(distance, MinDistance, MaxDistance);
+    }
+
     public void ResetStandardZoom()
     {
         _targetDistance = Math.Clamp(StandardDistance, MinDistance, MaxDistance);

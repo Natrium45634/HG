@@ -26,6 +26,8 @@ public enum DefCategory
     Layer,
     Element,
     RulesPreset,
+    Asset,
+    Vfx,
 }
 
 /// <summary>Base class of every content definition.</summary>

@@ -48,7 +48,7 @@ public static class PackageDialogs
         v.AddChild(Ui.Label("В пакете: manifest.json (версии формата и объектов, зависимости, SHA-256), objects/…, assets/… — только относительные пути.", 12, Ui.TextDim, wrap: true));
         Dialogs.Custom(parent, "Экспорт пакета", Scroll(v, 620, 320), "Сохранить пакет…", () =>
         {
-            var opts = new PackageExportOptions { Name = name.Text.Trim(), Author = author.Text.Trim(), Description = desc.Text.Trim() };
+            var opts = new PackageExportOptions { Name = name.Text.Trim(), Author = author.Text.Trim(), Description = desc.Text.Trim(), ReadAsset = Render.Assets.Read };
             Later(() => Dialogs.SaveFile(parent, "Экспорт пакета", ContentIO.SafeFileName(roots[0].Id) + ContentPackage.Extension, path =>
             {
                 try
@@ -208,7 +208,14 @@ public static class PackageDialogs
         ImportReport report;
         try
         {
-            report = ContentPackage.Apply(ctx.Db, plan, asDraft);
+            report = ContentPackage.Apply(ctx.Db, plan, asDraft, Render.Assets.Read);
+            // Resource files (already checked) go into the user pack; another file is never overwritten.
+            foreach (var (rel, bytes) in report.AssetFiles)
+            {
+                var full = Path.Combine(App.Main.Instance.Content.UserRoot, rel.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                if (!File.Exists(full)) File.WriteAllBytes(full, bytes);
+            }
         }
         catch (Exception e)
         {

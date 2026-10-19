@@ -104,6 +104,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "У",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -208,6 +211,9 @@
       "color": "#e0a040",
       "vfx": "Projectile",
       "icon": "В",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -352,6 +358,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "К",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -456,6 +465,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Р",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -640,6 +652,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Щ",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -824,6 +839,9 @@
       "color": "#ff7a2a",
       "vfx": "Projectile",
       "icon": "Ш",
+      "castVfx": "",
+      "impactVfx": "fire_burst",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -1008,6 +1026,9 @@
       "color": "#8fd8ff",
       "vfx": "Burst",
       "icon": "Л",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -1152,6 +1173,9 @@
       "color": "#ffe04a",
       "vfx": "Beam",
       "icon": "М",
+      "castVfx": "",
+      "impactVfx": "spark_burst",
+      "sound": "zap",
       "isHarmful": true
     },
     {
@@ -1256,6 +1280,9 @@
       "color": "#8acc3a",
       "vfx": "Burst",
       "icon": "Я",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -1360,6 +1387,9 @@
       "color": "#60e080",
       "vfx": "Glow",
       "icon": "+",
+      "castVfx": "",
+      "impactVfx": "heal_glow",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -1464,6 +1494,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Д",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -1609,6 +1642,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "»",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -1852,6 +1888,9 @@
       "color": "#ff5a1a",
       "vfx": "Slash",
       "icon": "☄",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -2047,6 +2086,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "С",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -2271,6 +2313,9 @@
       "color": "#5aa0e0",
       "vfx": "Slash",
       "icon": "~",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -2379,6 +2424,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Б",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -2483,6 +2531,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Т",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -2627,6 +2678,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "!",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -2731,6 +2785,9 @@
       "color": "#e050e0",
       "vfx": "Slash",
       "icon": "П",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -2835,6 +2892,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "*",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -2939,6 +2999,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "#",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -3043,6 +3106,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "О",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -3147,6 +3213,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "П",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -3251,6 +3320,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "В",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -3395,6 +3467,9 @@
       "color": "#ffe04a",
       "vfx": "Slash",
       "icon": "Э",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -3499,6 +3574,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "О",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -3643,6 +3721,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "П",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -3747,6 +3828,9 @@
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "К",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -3851,6 +3935,9 @@
       "color": "#9fe8ff",
       "vfx": "Beam",
       "icon": "Ϟ",
+      "castVfx": "",
+      "impactVfx": "spark_burst",
+      "sound": "",
       "isHarmful": true
     },
     {
@@ -3955,6 +4042,9 @@
       "color": "#a98bff",
       "vfx": "Glow",
       "icon": "⇡",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     },
     {
@@ -4059,6 +4149,9 @@
       "color": "#8fd8ff",
       "vfx": "Glow",
       "icon": "Щ",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
       "isHarmful": false
     }
   ]

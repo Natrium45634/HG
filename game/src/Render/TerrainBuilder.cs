@@ -87,7 +87,7 @@ public partial class TerrainNode : Node3D
 
     private static Vector3 V(System.Numerics.Vector3 v) => new(v.X, v.Y, v.Z);
 
-    public void Build(BattleMap map, bool showGrid = true)
+    public void Build(BattleMap map, bool showGrid = true, ContentDatabase? db = null)
     {
         foreach (var c in GetChildren())
         {
@@ -108,7 +108,9 @@ public partial class TerrainNode : Node3D
         foreach (var cell in map.Cells)
         {
             BuildCell(cell);
-            AddDecor(decor, cell, Board.TopY(cell));
+            // An imported prop model replaces the built-in decoration (docs/DECISIONS_2.md §34); on any problem the decoration stays.
+            if (!AddPropModel(cell, db)) AddDecor(decor, cell, Board.TopY(cell));
+            AddTopMaterial(cell, db);
             AddSymbol(cell);
         }
 
@@ -123,6 +125,44 @@ public partial class TerrainNode : Node3D
             AddChild(mi);
         }
         foreach (var n in decor.Build()) AddChild(n);
+    }
+
+    private bool AddPropModel(Cell cell, ContentDatabase? db)
+    {
+        var id = cell.Terrain.Look.PropModel;
+        if (db == null || string.IsNullOrEmpty(id)) return false;
+        var asset = db.Get<AssetDef>(id);
+        var model = Assets.Model(asset);
+        if (asset == null || model == null) return false;
+        var holder = new Node3D
+        {
+            Name = "Prop_" + cell.Coord,
+            Position = Board.Center(cell.Coord, Board.TopY(cell) + (float)asset.YOffset),
+            RotationDegrees = new Vector3(0, (float)asset.RotationY + Hash01(cell.Coord, 21) * 360f, 0),
+            Scale = Vector3.One * (float)asset.Scale * (0.9f + Hash01(cell.Coord, 22) * 0.2f),
+        };
+        holder.AddChild(model);
+        AddChild(holder);
+        return true;
+    }
+
+    private void AddTopMaterial(Cell cell, ContentDatabase? db)
+    {
+        var id = cell.Terrain.Look.TopMaterial;
+        if (db == null || string.IsNullOrEmpty(id)) return;
+        var mat = Assets.Material(db.Get<AssetDef>(id), db);
+        if (mat == null) return;
+        // A thin hexagonal plate over the top face (pointy-top hexes: the prism's corners at 30°).
+        var plate = new MeshInstance3D
+        {
+            Name = "TopMat_" + cell.Coord,
+            Mesh = new CylinderMesh { TopRadius = Board.HexSize * 0.9f, BottomRadius = Board.HexSize * 0.9f, Height = 0.012f, RadialSegments = 6, Rings = 1 },
+            MaterialOverride = mat,
+            Position = Board.Center(cell.Coord, Board.TopY(cell) + 0.008f),
+            RotationDegrees = new Vector3(0, 30, 0),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        AddChild(plate);
     }
 
     private static Material MaterialFor(string key)

@@ -20,6 +20,8 @@ public sealed class RulesDef
     [Ed("Расчёт урона", "Единый порядок для всех источников и его исключения")] public DamageRulesDef Damage { get; set; } = new();
     [Ed("Автоатаки")] public AutoAttackRules AutoAttacks { get; set; } = new();
     [Ed("Маркеры появления врагов")] public SpawnWarningRules SpawnWarnings { get; set; } = new();
+    [Ed("Эффекты окружения", "Визуальные эффекты и звуки событий: появление эффектов, ловушки, разрушение, смена местности, падение")]
+    public EnvironmentVisualsDef Visuals { get; set; } = new();
     [Ed("Видимость")] public VisionRules Vision { get; set; } = new();
     [Ed("Очередь команд")] public QueueRules Queue { get; set; } = new();
     [Ed("Ограничения")] public LimitRules Limits { get; set; } = new();

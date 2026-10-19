@@ -139,6 +139,8 @@ public sealed class ImportReport
     public int PinnedAdded { get; set; }
     public List<ContentIssue> Issues { get; } = new();
     public int Assets { get; set; }
+    /// <summary>Resource files to write into the library (pack-relative path → bytes), already checked.</summary>
+    public Dictionary<string, byte[]> AssetFiles { get; } = new(StringComparer.Ordinal);
 
     public string Describe()
     {
@@ -151,7 +153,7 @@ public sealed class ImportReport
         if (PinnedAdded > 0) lines.Add($"Старых экземпляров (закреплённых версий): {PinnedAdded}");
         if (MarkedIncomplete.Count > 0)
             lines.Add($"Отмечены как неполные (черновики): {string.Join(", ", MarkedIncomplete.Take(8).Select(d => d.DisplayName))}");
-        if (Assets > 0) lines.Add($"Ресурсов в пакете: {Assets}");
+        if (Assets > 0) lines.Add($"Ресурсов в пакете: {Assets}, записано файлов: {AssetFiles.Count}");
         int errors = Issues.Count(i => i.Severity == IssueSeverity.Error);
         int warns = Issues.Count(i => i.Severity == IssueSeverity.Warning);
         lines.Add(errors + warns == 0 ? "Проверка импортированного: без замечаний." : $"Проверка импортированного: ошибок {errors}, предупреждений {warns}.");
@@ -235,7 +237,9 @@ public static class ContentPackage
             foreach (var m in ContentDependencies.Missing(db, d))
                 manifest.MissingDependencies.Add($"{d.Category}:{d.Id} → {m.Category}:{m.Reference}");
         }
-        foreach (var rel in options.AssetPaths.Distinct())
+        // Files of the resources in the package (models, textures, sounds) travel with it.
+        var assetPaths = options.AssetPaths.Concat(objects.OfType<AssetDef>().Where(a => a.HasFile && a.Path.Length > 0).Select(a => a.Path)).Distinct().ToList();
+        foreach (var rel in assetPaths)
         {
             if (!IsSafePath(rel)) throw new ArgumentException($"Недопустимый путь ресурса '{rel}': только относительные пути внутри пакета");
             var bytes = options.ReadAsset?.Invoke(rel);
@@ -244,7 +248,7 @@ public static class ContentPackage
                 manifest.MissingDependencies.Add("ресурс " + rel);
                 continue;
             }
-            var path = "assets/" + rel;
+            var path = rel.StartsWith("assets/", StringComparison.Ordinal) ? rel : "assets/" + rel;
             files[path] = bytes;
             manifest.Assets.Add(new PackageAssetInfo { Path = path, Sha256 = Sha(bytes), Size = bytes.Length });
         }
@@ -373,8 +377,15 @@ public static class ContentPackage
                 var bytes = ReadBytes(e);
                 var sha = Sha(bytes);
                 hashes.Add((a.Path, sha));
-                if (sha != a.Sha256) result.Issues.Add(new ContentIssue(IssueSeverity.Error, "пакет", a.Path, "Файл ресурса повреждён (контрольная сумма не совпадает)"));
-                else result.Assets[a.Path["assets/".Length..]] = bytes;
+                if (sha != a.Sha256)
+                {
+                    result.Issues.Add(new ContentIssue(IssueSeverity.Error, "пакет", a.Path, "Файл ресурса повреждён (контрольная сумма не совпадает)"));
+                    continue;
+                }
+                // Resources are checked like on a direct import: white list, signature, size, safe glTF references.
+                var check = AssetValidator.Check(bytes, a.Path);
+                if (!check.Ok) result.Issues.Add(new ContentIssue(IssueSeverity.Error, "пакет", a.Path, "Ресурс отклонён: " + check.Error));
+                else result.Assets[a.Path] = bytes;
             }
             if (result.Ok && TotalHash(hashes) != manifest.Hash)
                 result.Issues.Add(new ContentIssue(IssueSeverity.Error, "пакет", "hash", "Общая контрольная сумма пакета не совпадает — пакет изменён или повреждён"));
@@ -498,7 +509,8 @@ public static class ContentPackage
     /// Imports into the target (the editor draft). A plan with missing dependencies imports only with
     /// allowIncomplete — the objects that lack something are marked «неполный».
     /// </summary>
-    public static ImportReport Apply(ContentDatabase target, ImportPlan plan, bool allowIncomplete = false)
+    /// <param name="existingAsset">Reads a resource file already in the target library (to never overwrite a different file).</param>
+    public static ImportReport Apply(ContentDatabase target, ImportPlan plan, bool allowIncomplete = false, Func<string, byte[]?>? existingAsset = null)
     {
         if (!plan.Package.Ok) throw new InvalidOperationException("Пакет не прошёл проверку — импорт невозможен");
         if (plan.NeedsIncomplete && !allowIncomplete)
@@ -574,6 +586,22 @@ public static class ContentPackage
             if ((cur != null && cur.Version == d.Version) || target.Pinned.ContainsKey(key)) continue;
             target.Pinned[key] = d;
             report.PinnedAdded++;
+        }
+
+        // Files of the imported resources: a different file already at the path keeps its place, ours gets a checksum prefix.
+        foreach (var a in imported.OfType<AssetDef>().Where(a => a.HasFile))
+        {
+            if (!plan.Package.Assets.TryGetValue(a.Path, out var bytes)) continue;
+            var sha = AssetValidator.Sha256(bytes);
+            var old = existingAsset?.Invoke(a.Path);
+            if (old != null && AssetValidator.Sha256(old) != sha)
+            {
+                int slash = a.Path.LastIndexOf('/');
+                a.Path = a.Path[..(slash + 1)] + sha[..8] + "_" + a.Path[(slash + 1)..];
+            }
+            a.Sha256 = sha;
+            a.Size = bytes.LongLength;
+            report.AssetFiles[a.Path] = bytes;
         }
 
         var sources = new HashSet<string>(imported.Select(d => $"{d.Category}:{d.Id}"));

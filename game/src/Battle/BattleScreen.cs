@@ -141,6 +141,8 @@ public partial class BattleScreen : Node
             var p = f.Split(',');
             Board.Rig.FocusOn(Render.Board.Center(new HexCoord(int.Parse(p[0]), int.Parse(p[1]))));
         }
+        if (Main.Instance.Args.TryGetValue("zoom", out var z) && float.TryParse(z, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dist))
+            Callable.From(() => Board.Rig.SetZoom(dist)).CallDeferred();
     }
 
     /// <summary>Automation: --cast=skill:q,r[;skill:q,r…] — the first unit knowing the skill uses it, then the battle runs --after seconds.</summary>
@@ -381,6 +383,7 @@ public partial class BattleScreen : Node
     {
         bool visible = e.PlayerVisible || _admin;
         _hud.AppendLog(e, visible);
+        if (visible) PlayEventVisuals(e);
         if (!visible || !Settings.FloatingNumbers) return;
         var target = Sim.GetUnit(e.TargetUnit);
         Vector3? pos = target != null ? Board.UnitPos(target) : e.Cell.HasValue ? Render.Board.Center(e.Cell.Value, Render.Board.TopY(Sim.Map.Get(e.Cell.Value))) : null;
@@ -423,6 +426,74 @@ public partial class BattleScreen : Node
                 if (t.Count > 24) t.RemoveAt(0);
                 break;
             }
+        }
+    }
+
+    /// <summary>Visual effects and sounds of events (docs/DECISIONS_2.md §34) — never part of the battle logic.</summary>
+    private void PlayEventVisuals(SimEvent e)
+    {
+        var db = Sim.Content;
+        var visuals = Sim.Rules.Visuals;
+        var src = Sim.GetUnit(e.SourceUnit);
+        var target = Sim.GetUnit(e.TargetUnit);
+        Vector3 CellPos(HexCoord c) => Render.Board.Center(c, Render.Board.TopY(Sim.Map.Get(c)) + 0.05f);
+        Vector3? at = target != null ? Board.UnitPos(target) : e.Cell.HasValue ? CellPos(e.Cell.Value) : src != null ? Board.UnitPos(src) : null;
+        void Fx(string id, Vector3? p)
+        {
+            if (string.IsNullOrEmpty(id) || p == null) return;
+            Render.Vfx.Play(Board, db.Get<VfxDef>(id), p.Value, db);
+        }
+        void Snd(string id, Vector3? p)
+        {
+            if (!string.IsNullOrEmpty(id) && p != null) Render.Assets.PlayAt(Board, db.Get<AssetDef>(id), p.Value);
+        }
+        switch (e.Type)
+        {
+            case SimEventType.Vfx:
+                if (at != null) Render.Vfx.Play(Board, db.Get<VfxDef>(e.Text), at.Value, db); // unknown ID → the default burst
+                break;
+            case SimEventType.Sound:
+                Snd(e.Text, at);
+                break;
+            case SimEventType.CastStarted when src?.Casting != null:
+                Fx(src.Casting.Skill.CastVfx, Board.UnitPos(src));
+                break;
+            case SimEventType.CastReleased when src?.Casting != null:
+            {
+                var skill = src.Casting.Skill;
+                Fx(skill.ImpactVfx, CellPos(src.Casting.Anchor));
+                Snd(string.IsNullOrEmpty(skill.Sound) ? src.Def.Visual.AttackSound : skill.Sound, Board.UnitPos(src));
+                break;
+            }
+            case SimEventType.Damage when e.Value > 0 && target != null:
+                Fx(visuals.Hit, at);
+                Snd(string.IsNullOrEmpty(target.Def.Visual.HitSound) ? visuals.HitSound : target.Def.Visual.HitSound, at);
+                break;
+            case SimEventType.Death when (target ?? src) is { } dead:
+                Fx(string.IsNullOrEmpty(dead.Def.Visual.DeathVfx) ? visuals.UnitDeath : dead.Def.Visual.DeathVfx, Board.UnitPos(dead));
+                Snd(dead.Def.Visual.DeathSound, Board.UnitPos(dead));
+                break;
+            case SimEventType.UnitSpawned when (target ?? src) is { } born:
+                Fx(string.IsNullOrEmpty(born.Def.Visual.SpawnVfx) ? visuals.UnitSpawn : born.Def.Visual.SpawnVfx, Board.UnitPos(born));
+                break;
+            case SimEventType.CellEffectAdded when e.Cell.HasValue:
+            {
+                var last = Sim.Map.Get(e.Cell.Value)?.Effects.LastOrDefault();
+                Fx(last != null && !string.IsNullOrEmpty(last.Def.AppearVfx) ? last.Def.AppearVfx : visuals.EffectAppear, CellPos(e.Cell.Value));
+                break;
+            }
+            case SimEventType.TrapTriggered:
+                Fx(visuals.TrapTriggered, at);
+                break;
+            case SimEventType.ObstacleDestroyed when e.Cell.HasValue:
+                Fx(visuals.ObstacleDestroyed, CellPos(e.Cell.Value));
+                break;
+            case SimEventType.TerrainChanged when e.Cell.HasValue:
+                Fx(visuals.TerrainChanged, CellPos(e.Cell.Value));
+                break;
+            case SimEventType.Fall:
+                Fx(visuals.Fall, at);
+                break;
         }
     }
 

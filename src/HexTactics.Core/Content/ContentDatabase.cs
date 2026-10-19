@@ -92,6 +92,8 @@ public sealed class ContentDatabase
         (DefCategory.Resource, typeof(ResourceDef), "resources.json"),
         (DefCategory.Element, typeof(ElementDef), "elements.json"),
         (DefCategory.DamageType, typeof(DamageTypeDef), "damage_types.json"),
+        (DefCategory.Asset, typeof(AssetDef), "assets.json"),
+        (DefCategory.Vfx, typeof(VfxDef), "vfx.json"),
         (DefCategory.Faction, typeof(FactionDef), "factions.json"),
         (DefCategory.Layer, typeof(LayerDef), "layers.json"),
         (DefCategory.Terrain, typeof(TerrainDef), "terrains.json"),

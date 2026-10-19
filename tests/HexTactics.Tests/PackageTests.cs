@@ -253,14 +253,16 @@ public class PackageTests
     public void Assets_AreIncluded_WithIntegrity()
     {
         var db = ScenarioSetup.Db();
-        var files = new Dictionary<string, byte[]> { ["models/guard.glb"] = new byte[] { 1, 2, 3, 4 } };
+        var glb = AssetTests.Glb("idle", "attack");
+        var files = new Dictionary<string, byte[]> { ["assets/models/guard.glb"] = glb };
+        db.Add(new AssetDef { Id = "guard_model", Kind = AssetKind.Model, Path = "assets/models/guard.glb", Sha256 = AssetValidator.Sha256(glb) });
+        db.Unit("soldier")!.Visual.Model = "guard_model";
         var o = Opts();
-        o.AssetPaths.Add("models/guard.glb");
         o.ReadAsset = p => files.GetValueOrDefault(p);
         var bytes = ContentPackage.Export(db, new Def[] { db.Unit("soldier")! }, o, out var manifest);
-        Assert.Single(manifest.Assets);
+        Assert.Single(manifest.Assets); // the model file came with the unit's resource
         var pkg = ContentPackage.Read(bytes);
-        Assert.Equal(new byte[] { 1, 2, 3, 4 }, pkg.Assets["models/guard.glb"]);
+        Assert.Equal(glb, pkg.Assets["assets/models/guard.glb"]);
         o.AssetPaths.Add("../outside.png");
         Assert.Throws<ArgumentException>(() => ContentPackage.Export(db, new Def[] { db.Unit("soldier")! }, o));
     }

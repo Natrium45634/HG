@@ -119,7 +119,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Soldier", "color": "", "scale": 1, "symbol": "Р" }
+      "visual": {
+        "shape": "Soldier",
+        "color": "",
+        "scale": 1,
+        "symbol": "Р",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "archer",
@@ -226,7 +238,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "Л" }
+      "visual": {
+        "shape": "Archer",
+        "color": "",
+        "scale": 1,
+        "symbol": "Л",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "mage",
@@ -301,7 +325,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "М" }
+      "visual": {
+        "shape": "Mage",
+        "color": "",
+        "scale": 1,
+        "symbol": "М",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "priestess",
@@ -376,7 +412,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Mage", "color": "#e8e4d8", "scale": 1, "symbol": "Ж" }
+      "visual": {
+        "shape": "Mage",
+        "color": "#e8e4d8",
+        "scale": 1,
+        "symbol": "Ж",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "scout",
@@ -462,7 +510,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "Р" }
+      "visual": {
+        "shape": "Pawn",
+        "color": "",
+        "scale": 1,
+        "symbol": "Р",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "goblin",
@@ -537,7 +597,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Pawn", "color": "", "scale": 1, "symbol": "г" }
+      "visual": {
+        "shape": "Pawn",
+        "color": "",
+        "scale": 1,
+        "symbol": "г",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "goblin_archer",
@@ -633,7 +705,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Archer", "color": "", "scale": 1, "symbol": "л" }
+      "visual": {
+        "shape": "Archer",
+        "color": "",
+        "scale": 1,
+        "symbol": "л",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "orc_brute",
@@ -726,7 +810,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Brute", "color": "", "scale": 1, "symbol": "О" }
+      "visual": {
+        "shape": "Brute",
+        "color": "",
+        "scale": 1,
+        "symbol": "О",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "shaman",
@@ -801,7 +897,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Mage", "color": "", "scale": 1, "symbol": "ш" }
+      "visual": {
+        "shape": "Mage",
+        "color": "",
+        "scale": 1,
+        "symbol": "ш",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "wolf",
@@ -876,7 +984,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "в" }
+      "visual": {
+        "shape": "Beast",
+        "color": "",
+        "scale": 1,
+        "symbol": "в",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "sentinel",
@@ -985,7 +1105,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Construct", "color": "", "scale": 1, "symbol": "С" }
+      "visual": {
+        "shape": "Construct",
+        "color": "",
+        "scale": 1,
+        "symbol": "С",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "deer",
@@ -1060,7 +1192,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Beast", "color": "", "scale": 1, "symbol": "о" }
+      "visual": {
+        "shape": "Beast",
+        "color": "",
+        "scale": 1,
+        "symbol": "о",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "drone",
@@ -1153,7 +1297,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Orb", "color": "#ff6b6b", "scale": 0.8, "symbol": "Д" }
+      "visual": {
+        "shape": "Orb",
+        "color": "#ff6b6b",
+        "scale": 0.8,
+        "symbol": "Д",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "burrower",
@@ -1228,7 +1384,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Beast", "color": "#c98b4a", "scale": 0.9, "symbol": "З" }
+      "visual": {
+        "shape": "Beast",
+        "color": "#c98b4a",
+        "scale": 0.9,
+        "symbol": "З",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "titan",
@@ -1526,7 +1694,19 @@
         ]
       },
       "spawnWarning": true,
-      "visual": { "shape": "Brute", "color": "#c8503c", "scale": 1.6, "symbol": "Т" }
+      "visual": {
+        "shape": "Brute",
+        "color": "#c8503c",
+        "scale": 1.6,
+        "symbol": "Т",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
     },
     {
       "id": "pylon",
@@ -1609,7 +1789,19 @@
       },
       "boss": { "isBoss": false, "title": "", "phases": [] },
       "spawnWarning": true,
-      "visual": { "shape": "Totem", "color": "#7ad0ff", "scale": 1.1, "symbol": "П" }
+      "visual": {
+        "shape": "Totem",
+        "color": "#7ad0ff",
+        "scale": 1.1,
+        "symbol": "П",
+        "model": "crystal_pylon",
+        "icon": "crystal_icon",
+        "spawnVfx": "",
+        "deathVfx": "crystal_shatter",
+        "attackSound": "",
+        "hitSound": "zap",
+        "deathSound": ""
+      }
     }
   ]
 }

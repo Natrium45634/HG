@@ -83,6 +83,8 @@ public sealed class TerrainLookDef
     [Ed("Символ", "1–2 знака поверх клетки (⚠, ☣, ✕…)")] public string Symbol { get; set; } = "";
     [Ed("Глубина", "Ямы и жидкости: глубина в уровнях высоты"), EdRange(0, 30)] public double Depth { get; set; }
     [Ed("Анимация")] public TerrainAnimation Animation { get; set; } = TerrainAnimation.None;
+    [Ed("Материал верхней грани", "Ресурс «Материал»; пусто — по настройкам выше"), EdRef(DefCategory.Asset)] public string TopMaterial { get; set; } = "";
+    [Ed("Модель объекта на клетке", "Например, ящик или колонна; при ошибке файла — базовая геометрия"), EdRef(DefCategory.Asset)] public string PropModel { get; set; } = "";
 }
 
 public enum FallConsequence

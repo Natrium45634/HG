@@ -771,6 +771,7 @@ public partial class PropertyGrid : VBoxContainer
             WaveDef w => $"{w.Name} @ {w.Time:0} с",
             TriggerDef t => $"{t.Name}: {t.Condition.Describe()} → {string.Join("; ", t.Actions.Select(a => a.Describe()))}",
             TriggerActionDef a => a.Describe(),
+            AnimationMapDef am => $"{Names.Of(am.Role)} → {(string.IsNullOrEmpty(am.Clip) ? "(процедурно)" : am.Clip)}",
             AiRuleDef r => $"{r.Name}: {r.When.Describe()} → {string.Join("; ", r.Actions.Select(a => a.Describe()))}",
             BossPhaseDef bp => $"{bp.Name}: {bp.When.Describe()}",
             SectorRule sr => $"{Names.Of(sr.Sector)}: неожиданность {sr.SurpriseChance:P0}, заметить {sr.NoticeChance:P0}",

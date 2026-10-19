@@ -26,7 +26,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -76,7 +78,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -126,7 +130,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -176,7 +182,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -226,7 +234,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -276,7 +286,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -326,7 +338,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0.25,
-        "animation": "Shimmer"
+        "animation": "Shimmer",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -376,7 +390,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0.7,
-        "animation": "Shimmer"
+        "animation": "Shimmer",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -426,7 +442,9 @@
         "pattern": "Hazard",
         "symbol": "",
         "depth": 2.5,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -476,7 +494,9 @@
         "pattern": "Dots",
         "symbol": "☠",
         "depth": 0,
-        "animation": "Pulse"
+        "animation": "Pulse",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -526,7 +546,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -576,7 +598,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -626,7 +650,9 @@
         "pattern": "Stripes",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": "supply_crate"
       },
       "pit": {
         "enterable": true,
@@ -676,7 +702,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -726,7 +754,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -776,7 +806,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -826,7 +858,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -876,7 +910,9 @@
         "pattern": "Stripes",
         "symbol": "❄",
         "depth": 0,
-        "animation": "Shimmer"
+        "animation": "Shimmer",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -926,7 +962,9 @@
         "pattern": "None",
         "symbol": "◈",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -976,7 +1014,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -1026,7 +1066,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "tech_panel",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -1076,7 +1118,9 @@
         "pattern": "None",
         "symbol": "",
         "depth": 14,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -1126,7 +1170,9 @@
         "pattern": "None",
         "symbol": "♨",
         "depth": 0.35,
-        "animation": "Flow"
+        "animation": "Flow",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -1176,7 +1222,9 @@
         "pattern": "Dots",
         "symbol": "☣",
         "depth": 0.3,
-        "animation": "Pulse"
+        "animation": "Pulse",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -1226,7 +1274,9 @@
         "pattern": "Chevrons",
         "symbol": "",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,
@@ -1276,7 +1326,9 @@
         "pattern": "Hazard",
         "symbol": "✕",
         "depth": 0,
-        "animation": "None"
+        "animation": "None",
+        "topMaterial": "",
+        "propModel": ""
       },
       "pit": {
         "enterable": true,

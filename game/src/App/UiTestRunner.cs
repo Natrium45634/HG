@@ -51,6 +51,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_spawn_warning_and_objectives", BattleSpawnWarningObjectives));
         _tests.Add(("editor_route_tool", EditorRouteTool));
         _tests.Add(("editor_catalog_and_publish_gate", EditorCatalogAndGate));
+        _tests.Add(("battle_models_animations_fallback", BattleModelsAndFallback));
+        _tests.Add(("editor_asset_import", EditorAssetImport));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -637,6 +639,100 @@ public partial class UiTestRunner : Node
         await Frames(2);
         sc.Triggers.RemoveRange(sc.Triggers.Count - 2, 2);
         sc.Incomplete = false;
+    }
+
+    /// <summary>
+    /// TZ §16 п. 20–21: the pylon shows its imported model and plays the clips of its animation roles;
+    /// a damaged model file falls back to the base figure with a reported problem and the battle goes on;
+    /// operations and events play visual effects.
+    /// </summary>
+    private async Task BattleModelsAndFallback()
+    {
+        Render.Assets.Reset();
+        var bs = await OpenBattle("titan_lair");
+        var pylon = bs.Sim.Units.First(u => u.Def.Id == "pylon");
+        var view = bs.Board.ViewOf(pylon);
+        Check(view.UsesModel, "пилон должен отображаться импортированной моделью: " + view.ModelProblem);
+        Check(view.Role == AnimRole.Spawn && view.CurrentClip == "Spawn", $"сначала — клип появления (роль {view.Role}, клип «{view.CurrentClip}»)");
+        for (int i = 0; i < bs.Sim.TicksFor(0.7); i++) bs.Sim.Step();
+        await Frames(3);
+        Check(view.Role == AnimRole.Idle && view.CurrentClip == "Idle", $"затем — ожидание (роль {view.Role}, клип «{view.CurrentClip}»)");
+        bs.Sim.Combat.DealDamage(null, pylon, 5, "physical", null, "тест", null, DamageSource.Other);
+        await Frames(2);
+        Check(view.Role == AnimRole.Hit && view.CurrentClip == "Hit", "получение урона — клип «Hit»");
+        // The knight has no model: its roles are procedural.
+        var knight = bs.Board.ViewOf(bs.Sim.Units.First(u => u.Def.Id == "knight"));
+        Check(!knight.UsesModel && knight.CurrentClip == "", "у фишки анимации процедурные");
+
+        // Visual effects of operations and events.
+        int played = Render.Vfx.Played;
+        bs.Sim.Combat.ApplyGlobal(new SkillEffectDef { Type = EffectType.PlayVfx, Text = "spark_burst" }, null, pylon.Pos, "тест");
+        bs.Sim.Combat.ApplyGlobal(new SkillEffectDef { Type = EffectType.PlayVfx, Text = "нет_такого" }, null, pylon.Pos, "тест");
+        await Frames(3);
+        Check(Render.Vfx.Played >= played + 2, "эффекты (и эффект по умолчанию для неизвестного ID) должны проигрываться");
+
+        // A damaged model file in the user pack: the base figure, a reported problem, the battle goes on.
+        var cm = Main.Instance.Content;
+        string damaged = System.IO.Path.Combine(cm.UserRoot, "assets", "models", "crystal_pylon.glb");
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(damaged)!);
+        File.WriteAllBytes(damaged, System.Text.Encoding.ASCII.GetBytes("glTF this file was cut in half"));
+        try
+        {
+            Render.Assets.Reset();
+            bs = await OpenBattle("titan_lair");
+            pylon = bs.Sim.Units.First(u => u.Def.Id == "pylon");
+            view = bs.Board.ViewOf(pylon);
+            Check(!view.UsesModel, "повреждённая модель не должна использоваться");
+            Check(view.ModelProblem.Contains("повреждён") || view.ModelProblem.Contains("GLB"), "должна быть указана причина: " + view.ModelProblem);
+            Check(Render.Assets.Problems.ContainsKey("crystal_pylon"), "проблема должна попасть в список ресурсов");
+            for (int i = 0; i < 100; i++) bs.Sim.Step();
+            await Frames(3);
+            Check(bs.Sim.Units.Count(u => u.Alive) > 0 && bs.IsInsideTree(), "бой продолжается");
+            Check(AssetValidator.CheckFiles(cm.Published, Render.Assets.Read).Any(i => i.Source == "Asset:crystal_pylon"), "проверка файлов сообщает о повреждении");
+        }
+        finally
+        {
+            File.Delete(damaged);
+            Render.Assets.Reset();
+        }
+    }
+
+    /// <summary>The editor imports a model (checked, copied into the pack, clips mapped) and rejects a script.</summary>
+    private async Task EditorAssetImport()
+    {
+        var cm = Main.Instance.Content;
+        string dir = ProjectSettings.GlobalizePath("user://uitest/import");
+        Directory.CreateDirectory(dir);
+        string model = System.IO.Path.Combine(dir, "Scout Drone.glb");
+        File.WriteAllBytes(model, Render.Assets.Read("assets/models/crystal_pylon.glb")!);
+        string script = System.IO.Path.Combine(dir, "evil.gd");
+        File.WriteAllText(script, "extends Node\nfunc _ready(): OS.execute(\"rm\", [\"-rf\", \"/\"])");
+        string next = model;
+        Dialogs.AutoPath = _ => next;
+        try
+        {
+            await OpenEditor("assets");
+            await ClickButton("Импорт файла…");
+            Check(Find<AcceptDialog>(GetTree().Root).Any(d => d.Visible && d.Title == "Ресурс импортирован"),
+                "модель должна импортироваться: " + string.Join(" | ", Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).Select(d => d.Title + ": " + d.DialogText)));
+            var def = cm.Draft!.Get<AssetDef>("scout_drone");
+            Check(def != null && def.Kind == AssetKind.Model && def.Clips.Contains("Idle") && def.Animations.Any(a => a.Role == AnimRole.Death && a.Clip == "Death"),
+                "ресурс должен описать модель, клипы и роли анимаций");
+            Check(File.Exists(System.IO.Path.Combine(cm.UserRoot, "assets", "models", "scout_drone.glb")), "файл должен быть скопирован в пакет");
+            Check(Render.Assets.Model(def) != null, "импортированная модель должна загружаться");
+            CloseDialogs();
+            await Frames(2);
+            next = script;
+            int before = cm.Draft!.All<AssetDef>().Count();
+            await ClickButton("Импорт файла…");
+            Check(InfoVisible("исполняемый код"), "скрипт должен быть отклонён");
+            Check(cm.Draft.All<AssetDef>().Count() == before, "отклонённый файл не создаёт ресурс");
+            CloseDialogs();
+        }
+        finally
+        {
+            Dialogs.AutoPath = null;
+        }
     }
 
     private void CloseDialogs()

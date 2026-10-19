@@ -100,6 +100,9 @@ public sealed class SkillDef : Def
     [Ed("Цвет", Group = "Вид"), EdColor] public string Color { get; set; } = "#e0a040";
     [Ed("Визуальный эффект", Group = "Вид")] public SkillVfx Vfx { get; set; } = SkillVfx.Slash;
     [Ed("Значок", "1–2 символа на кнопке", Group = "Вид")] public string Icon { get; set; } = "";
+    [Ed("Эффект подготовки", "Ресурс «Визуальный эффект» у исполнителя", Group = "Вид"), EdRef(DefCategory.Vfx)] public string CastVfx { get; set; } = "";
+    [Ed("Эффект срабатывания", "В точке навыка", Group = "Вид"), EdRef(DefCategory.Vfx)] public string ImpactVfx { get; set; } = "";
+    [Ed("Звук", Group = "Вид"), EdRef(DefCategory.Asset)] public string Sound { get; set; } = "";
 
     /// <summary>Directions are player-chosen for self/direction targeting.</summary>
     [JsonIgnore] public bool UsesChosenDirection => Targeting == TargetingMode.Self || Targeting == TargetingMode.Direction;

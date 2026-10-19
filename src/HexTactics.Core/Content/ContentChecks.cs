@@ -53,6 +53,7 @@ public static class ContentChecks
         foreach (var p in db.All<PassiveDef>()) CheckPassive(p, issues);
         foreach (var a in db.All<AiProfileDef>()) CheckAiProfile(a, issues);
         CheckSynergyCycles(db, issues);
+        CheckAssets(db, issues);
         foreach (var d in db.AllDefs()) CheckOperations(d, issues);
     }
 
@@ -328,6 +329,65 @@ public static class ContentChecks
             issues.Add(Warn(first, "AddEffects", "Цикл синергий: " + string.Join(" → ", cycle.Append(cycle[0]).Select(i => $"«{syns[i].DisplayName}»")) +
                                                  " — потенциально бесконечная реакция (ограничивается только перезарядкой на клетку)"));
         }
+    }
+
+    // ------------------------------------------------------------------ resources (models, textures, sounds, effects)
+
+    private static void CheckAssets(ContentDatabase db, List<ContentIssue> issues)
+    {
+        foreach (var a in db.All<AssetDef>())
+        {
+            if (!a.HasFile)
+            {
+                if (!string.IsNullOrEmpty(a.Texture)) Kind(db, a, "Texture", a.Texture, issues, AssetKind.Texture);
+                continue;
+            }
+            if (string.IsNullOrWhiteSpace(a.Path)) issues.Add(Err(a, "Path", "Не указан файл ресурса"));
+            else if (!ContentPackage.IsSafePath(a.Path)) issues.Add(Err(a, "Path", $"Недопустимый путь «{a.Path}»: только относительные пути внутри пакета, без «..»"));
+            else if (AssetValidator.KindByExtension(a.Path) is not { } fileKind) issues.Add(Err(a, "Path", $"Формат файла «{a.Path}» не поддерживается"));
+            else if (!AssetValidator.Compatible(fileKind, a.Kind)) issues.Add(Err(a, "Kind", $"Файл «{a.Path}» не подходит для вида «{a.Kind}»"));
+            if (a.Kind == AssetKind.Model && a.Clips.Count > 0)
+                foreach (var m in a.Animations.Where(m => !string.IsNullOrEmpty(m.Clip) && !a.Clips.Contains(m.Clip)))
+                    issues.Add(Warn(a, "Animations", $"Клипа «{m.Clip}» нет в модели (есть: {string.Join(", ", a.Clips)}) — роль «{m.Role}» будет анимирована процедурно"));
+            foreach (var dup in a.Animations.GroupBy(m => m.Role).Where(g => g.Count() > 1))
+                issues.Add(Warn(a, "Animations", $"Роль «{dup.Key}» указана несколько раз — используется первая"));
+        }
+        foreach (var u in db.All<UnitDef>())
+        {
+            Kind(db, u, "Visual.Model", u.Visual.Model, issues, AssetKind.Model);
+            Kind(db, u, "Visual.Icon", u.Visual.Icon, issues, AssetKind.Icon, AssetKind.Texture, AssetKind.Sprite);
+            Kind(db, u, "Visual.AttackSound", u.Visual.AttackSound, issues, AssetKind.Sound);
+            Kind(db, u, "Visual.HitSound", u.Visual.HitSound, issues, AssetKind.Sound);
+            Kind(db, u, "Visual.DeathSound", u.Visual.DeathSound, issues, AssetKind.Sound);
+        }
+        foreach (var sk in db.All<SkillDef>()) Kind(db, sk, "Sound", sk.Sound, issues, AssetKind.Sound);
+        foreach (var v in db.All<VfxDef>())
+        {
+            Kind(db, v, "Sound", v.Sound, issues, AssetKind.Sound);
+            Kind(db, v, "Sprite", v.Sprite, issues, AssetKind.Texture, AssetKind.Sprite);
+        }
+        foreach (var t in db.All<TerrainDef>())
+        {
+            Kind(db, t, "Look.TopMaterial", t.Look.TopMaterial, issues, AssetKind.Material);
+            Kind(db, t, "Look.PropModel", t.Look.PropModel, issues, AssetKind.Model);
+        }
+        // «Визуальный эффект» / «Звук» operations name a resource by ID.
+        foreach (var d in db.AllDefs())
+        foreach (var (e, path) in Operations(d))
+        {
+            if (e.Type == EffectType.PlayVfx && !string.IsNullOrWhiteSpace(e.Text) && db.Get<VfxDef>(e.Text) == null)
+                issues.Add(Warn(d, path, $"Визуальный эффект «{e.Text}» не найден — будет показан эффект по умолчанию"));
+            if (e.Type == EffectType.PlaySound && !string.IsNullOrWhiteSpace(e.Text) && db.Get<AssetDef>(e.Text) is not { Kind: AssetKind.Sound })
+                issues.Add(Warn(d, path, $"Звук «{e.Text}» не найден — ничего не прозвучит"));
+        }
+    }
+
+    private static void Kind(ContentDatabase db, Def owner, string path, string id, List<ContentIssue> issues, params AssetKind[] allowed)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+        var a = db.Get<AssetDef>(id);
+        if (a != null && !allowed.Contains(a.Kind))
+            issues.Add(Err(owner, path, $"Ресурс «{a.DisplayName}» — {a.Kind}, а здесь нужен {string.Join(" или ", allowed)}"));
     }
 
     // ------------------------------------------------------------------ operations anywhere

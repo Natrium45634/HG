@@ -251,6 +251,17 @@
           "cometCells": 3,
           "fog": "Show"
         },
+        "visuals": {
+          "effectAppear": "",
+          "trapTriggered": "spark_burst",
+          "obstacleDestroyed": "dust_puff",
+          "terrainChanged": "shock_ring",
+          "fall": "dust_puff",
+          "unitSpawn": "shock_ring",
+          "unitDeath": "",
+          "hit": "",
+          "hitSound": "thud"
+        },
         "vision": {
           "updateInterval": 0.25,
           "fogOfWar": true,

@@ -233,6 +233,9 @@ public sealed class Unit
     public List<OffenseDef> Offenses { get; } = new();
     public long LastDamagedTick { get; internal set; } = -1;
 
+    /// <summary>Tick the unit appeared on the field (for the «появление» animation).</summary>
+    public long SpawnTick { get; set; } = -1;
+
     public double ReservedAp => Queue.ReservedAp;
     public double FreeAp => Ap - ReservedAp;
 

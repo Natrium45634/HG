@@ -108,6 +108,13 @@ public sealed class UnitVisualDef
     [Ed("Цвет фигуры", "Пусто — цвет фракции"), EdColor] public string Color { get; set; } = "";
     [Ed("Масштаб"), EdRange(0.3, 3)] public double Scale { get; set; } = 1.0;
     [Ed("Символ", "1–2 буквы на фишке")] public string Symbol { get; set; } = "";
+    [Ed("3D-модель", "Заменяет фишку; если файл отсутствует или повреждён — используется фишка"), EdRef(DefCategory.Asset)] public string Model { get; set; } = "";
+    [Ed("Иконка", "Для панелей; пусто — символ"), EdRef(DefCategory.Asset)] public string Icon { get; set; } = "";
+    [Ed("Эффект появления"), EdRef(DefCategory.Vfx)] public string SpawnVfx { get; set; } = "";
+    [Ed("Эффект гибели"), EdRef(DefCategory.Vfx)] public string DeathVfx { get; set; } = "";
+    [Ed("Звук атаки"), EdRef(DefCategory.Asset)] public string AttackSound { get; set; } = "";
+    [Ed("Звук получения урона"), EdRef(DefCategory.Asset)] public string HitSound { get; set; } = "";
+    [Ed("Звук гибели"), EdRef(DefCategory.Asset)] public string DeathSound { get; set; } = "";
 }
 
 public sealed class UnitResourceDef

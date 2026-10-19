@@ -255,7 +255,8 @@
       "blockedBy": [],
       "color": "#7ad04a",
       "icon": "Я",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "burning",
@@ -509,7 +510,8 @@
       "blockedBy": [],
       "color": "#ff7a2a",
       "icon": "Г",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "bleeding",
@@ -614,7 +616,8 @@
       "blockedBy": [],
       "color": "#c03030",
       "icon": "К",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "stunned",
@@ -678,7 +681,8 @@
       "blockedBy": [],
       "color": "#f0e060",
       "icon": "О",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "blinded",
@@ -742,7 +746,8 @@
       "blockedBy": [],
       "color": "#e0e0e0",
       "icon": "С",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "rooted",
@@ -806,7 +811,8 @@
       "blockedBy": [],
       "color": "#a07850",
       "icon": "Ц",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "slowed",
@@ -870,7 +876,8 @@
       "blockedBy": [],
       "color": "#80a0c0",
       "icon": "З",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "chilled",
@@ -998,7 +1005,8 @@
       "blockedBy": [],
       "color": "#8fd8ff",
       "icon": "Х",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "fear",
@@ -1062,7 +1070,8 @@
       "blockedBy": [],
       "color": "#9a60c0",
       "icon": "!",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "silenced",
@@ -1126,7 +1135,8 @@
       "blockedBy": [],
       "color": "#6070a0",
       "icon": "Н",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "vulnerable",
@@ -1194,7 +1204,8 @@
       "blockedBy": [],
       "color": "#d06080",
       "icon": "У",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "shielded",
@@ -1258,7 +1269,8 @@
       "blockedBy": [],
       "color": "#60b0ff",
       "icon": "З",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "invisible",
@@ -1322,7 +1334,8 @@
       "blockedBy": [],
       "color": "#b0b0d0",
       "icon": "Н",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "resistant",
@@ -1391,7 +1404,8 @@
       "blockedBy": [],
       "color": "#c0c060",
       "icon": "С",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "mind_control",
@@ -1455,7 +1469,8 @@
       "blockedBy": [],
       "color": "#e050e0",
       "icon": "К",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "shocked",
@@ -1519,7 +1534,8 @@
       "blockedBy": [],
       "color": "#ffe04a",
       "icon": "Ш",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "regeneration",
@@ -1624,7 +1640,8 @@
       "blockedBy": [],
       "color": "#60e080",
       "icon": "Р",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "heat",
@@ -1802,7 +1819,8 @@
       "blockedBy": [],
       "color": "#ff7a2a",
       "icon": "♨",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "levitation",
@@ -1866,7 +1884,8 @@
       "blockedBy": [],
       "color": "#a98bff",
       "icon": "⇡",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "wet",
@@ -1930,7 +1949,8 @@
       "blockedBy": [],
       "color": "#4aa8ff",
       "icon": "М",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "titan_fury",
@@ -1997,7 +2017,8 @@
       "blockedBy": [],
       "color": "#ff5a3c",
       "icon": "Я",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "absorb_ward",
@@ -2071,7 +2092,8 @@
       "blockedBy": [],
       "color": "#80c040",
       "icon": "",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "mirror_ward",
@@ -2145,7 +2167,8 @@
       "blockedBy": [],
       "color": "#80c040",
       "icon": "",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "grounding",
@@ -2209,7 +2232,8 @@
       "blockedBy": [],
       "color": "#80c040",
       "icon": "",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     },
     {
       "id": "entrenched",
@@ -2273,7 +2297,8 @@
       "blockedBy": [],
       "color": "#80c040",
       "icon": "",
-      "showBar": true
+      "showBar": true,
+      "vfx": ""
     }
   ]
 }
