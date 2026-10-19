@@ -71,14 +71,15 @@ public partial class MainMenu : Control
         right.AddChild(Ui.Label("Пробел — пауза · ЛКМ по юниту — меню действий · ПКМ — быстрое движение/атака", 12, Ui.TextDim, wrap: true).MinSize(380));
         root.AddChild(Ui.PanelBox(right, null, 22).MinSize(430, 0));
 
-        foreach (var sc in app.Content.Published.All<ScenarioDef>())
+        // Drafts marked «неполный» are kept in the library but are not played.
+        foreach (var sc in app.Content.Published.All<ScenarioDef>().Where(x => !x.Incomplete))
         {
             var s = sc;
             var b = Ui.Button(sc.DisplayName, () => Choose(s)).MinSize(380, 38);
             b.Alignment = HorizontalAlignment.Left;
             _scenarioList.AddChild(b);
         }
-        var first = app.Content.Published.All<ScenarioDef>().FirstOrDefault();
+        var first = app.Content.Published.All<ScenarioDef>().FirstOrDefault(x => !x.Incomplete);
         if (first != null) Choose(first);
     }
 

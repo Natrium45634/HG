@@ -172,6 +172,16 @@ public sealed class StatusLevelDef
     [Ed("Эффекты при достижении уровня")] public List<SkillEffectDef> OnEnter { get; set; } = new();
 }
 
+/// <summary>How long a status (a temporary modifier) lasts (TZ §15.2).</summary>
+public enum StatusLasts
+{
+    [Ed("В течение времени")] Timed,
+    [Ed("До конца боя")] UntilBattleEnd,
+    [Ed("Пока выполняется условие")] WhileCondition,
+    [Ed("Пока юнит стоит на клетке")] WhileOnCell,
+    [Ed("Пока активен другой эффект")] WhileEffectActive,
+}
+
 public sealed class StatusDef : Def
 {
     [JsonIgnore] public override DefCategory Category => DefCategory.Status;
@@ -181,6 +191,15 @@ public sealed class StatusDef : Def
 
     [Ed("Длительность, с", "0 = бессрочно", Group = "Временное"), EdRange(0, 36000), EdShowIf(nameof(Kind), StatusKind.Timed)]
     public double Duration { get; set; } = 5;
+    [Ed("Действует", "В течение времени (длительность), до конца боя, пока выполняется условие, пока юнит стоит на клетке наложения или пока активен другой эффект", Group = "Основное")]
+    public StatusLasts Lasts { get; set; } = StatusLasts.Timed;
+    [Ed("Пока выполняется условие", "Проверяется каждый тик для носителя (без метки — сам носитель)", Group = "Основное"),
+     EdShowIf(nameof(Lasts), StatusLasts.WhileCondition)]
+    public ConditionDef? WhileCondition { get; set; }
+    [Ed("Пока активно состояние", Group = "Основное"), EdRef(DefCategory.Status), EdShowIf(nameof(Lasts), StatusLasts.WhileEffectActive)]
+    public string WhileStatus { get; set; } = "";
+    [Ed("Пока на клетке есть эффект", Group = "Основное"), EdRef(DefCategory.CellEffect), EdShowIf(nameof(Lasts), StatusLasts.WhileEffectActive)]
+    public string WhileCellEffect { get; set; } = "";
     [Ed("Повторное наложение", Group = "Временное"), EdShowIf(nameof(Kind), StatusKind.Timed)]
     public ReapplyPolicy Reapply { get; set; } = ReapplyPolicy.Refresh;
     [Ed("Макс. стаков/уровней", Group = "Временное"), EdRange(1, 100), EdShowIf(nameof(Kind), StatusKind.Timed)]

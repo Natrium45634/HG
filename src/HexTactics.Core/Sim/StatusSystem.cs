@@ -83,6 +83,7 @@ public sealed class StatusSystem
         var applied = target.Statuses.LastOrDefault(x => x.Def == def);
         if (applied != null)
         {
+            if (target.Statuses.Count(x => x.Def == def) > countBefore) applied.AppliedCell = target.Pos;
             TakeSnapshot(target, applied);
             if (def.TickOnApply && target.Statuses.Count(x => x.Def == def) > countBefore) PeriodicTick(target, applied);
         }
@@ -121,7 +122,8 @@ public sealed class StatusSystem
 
     private bool ApplyTimed(Unit target, StatusDef def, double amount, double duration, int source)
     {
-        double dur = duration > 0 ? duration : def.Duration;
+        // Only «в течение времени» counts down; the other modes end by their own rule (docs/DECISIONS_2.md §33).
+        double dur = def.Lasts != StatusLasts.Timed ? 0 : duration > 0 ? duration : def.Duration;
         long ticks = dur > 0 ? _sim.TicksFor(dur) : -1;
         int stacks = Math.Max(1, (int)Math.Round(amount));
         int maxStacks = Math.Min(Math.Max(1, def.MaxStacks), _sim.Rules.Limits.MaxStatusStacks);
@@ -266,15 +268,75 @@ public sealed class StatusSystem
             _sim.Skills.Interrupt(u, InterruptCause.Control, inst.Def.DisplayName);
     }
 
+    /// <summary>
+    /// Changes the points of an accumulating status (or the stacks of a timed one) by delta, also downwards
+    /// (operation «изменить накопление»).
+    /// </summary>
+    public bool ModifyAccumulation(Unit target, StatusDef def, double delta, int source)
+    {
+        if (!target.Alive || Math.Abs(delta) < 1e-9) return false;
+        if (delta > 0) return Apply(target, def, delta, 0, source, force: true);
+        var inst = target.FindStatus(def.Id);
+        if (inst == null) return false;
+        if (def.Kind == StatusKind.Accumulating)
+        {
+            inst.Points = Math.Max(0, inst.Points + delta);
+            if (inst.Points <= 1e-9) Remove(target, inst, "накопление снижено");
+            else
+            {
+                UpdateLevel(target, inst);
+                RecalculateModifiers(target);
+            }
+        }
+        else
+        {
+            inst.Stacks += (int)Math.Round(delta);
+            if (inst.Stacks <= 0) Remove(target, inst, "стаки сняты");
+            else
+            {
+                UpdateLevel(target, inst);
+                RecalculateModifiers(target);
+            }
+        }
+        _sim.Emit(SimEventType.StatusLevel, LogLevel.Detail, $"{target.Name}: «{def.DisplayName}» {delta:+0.#;-0.#}", source, target.Id);
+        return true;
+    }
+
+    /// <summary>A status of a mode other than «в течение времени» ends when its rule stops holding.</summary>
+    private string? EndReason(Unit u, StatusInstance inst)
+    {
+        var d = inst.Def;
+        switch (d.Lasts)
+        {
+            case StatusLasts.WhileCondition:
+                return d.WhileCondition != null && !_sim.Scenario.Evaluate(d.WhileCondition, u) ? "условие больше не выполняется" : null;
+            case StatusLasts.WhileOnCell:
+                return u.Pos != inst.AppliedCell ? "юнит ушёл с клетки" : null;
+            case StatusLasts.WhileEffectActive:
+                if (!string.IsNullOrEmpty(d.WhileStatus) && u.FindStatus(d.WhileStatus) == null) return $"«{_sim.Content.Status(d.WhileStatus)?.DisplayName ?? d.WhileStatus}» закончилось";
+                if (!string.IsNullOrEmpty(d.WhileCellEffect) && _sim.Map.Get(u.Pos)?.Effects.Any(e => e.Def.Id == d.WhileCellEffect) != true)
+                    return $"на клетке нет «{_sim.Content.CellEffect(d.WhileCellEffect)?.DisplayName ?? d.WhileCellEffect}»";
+                return null;
+            default:
+                return null;
+        }
+    }
+
     /// <summary>Per-tick update: durations, decay, level changes and periodic effects.</summary>
     public void UpdateUnit(Unit u)
     {
+        if (u.StatChanges.Count > 0 && u.StatChanges.RemoveAll(c => c.UntilTick >= 0 && c.UntilTick <= _sim.Tick) > 0) RecalculateModifiers(u);
         if (u.Statuses.Count == 0) return;
         var snapshot = u.Statuses.ToArray();
         foreach (var inst in snapshot)
         {
             if (!u.Alive) return;
             if (!u.Statuses.Contains(inst)) continue;
+            if (inst.Def.Lasts != StatusLasts.Timed && EndReason(u, inst) is { } why)
+            {
+                Remove(u, inst, why);
+                continue;
+            }
             if (inst.Def.Kind == StatusKind.Timed)
             {
                 if (inst.RemainingTicks > 0)
@@ -401,6 +463,7 @@ public sealed class StatusSystem
             if (!level.Defense.IsEmpty) u.Defenses.Add(level.Defense);
             if (!level.Offense.IsEmpty) u.Offenses.Add(level.Offense);
         }
+        foreach (var (mod, _) in u.StatChanges) u.Stats.AddModifier(mod);
         if (u.Defending)
         {
             u.Stats.AddFlat(Content.Stats.Evasion, _sim.Rules.Ap.DefendEvasionBonus);

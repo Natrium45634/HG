@@ -37,6 +37,13 @@ public static class LibraryDialogs
     {
         var cm = Main.Instance.Content;
         ctx.Validate();
+        // TZ §15.3: critical errors block the publication; warnings are accepted with a confirmation.
+        var gate = ContentChecks.PublishGate(ctx.Db, ctx.Issues);
+        if (!gate.CanPublish)
+        {
+            Blocked(parent, ctx, gate);
+            return;
+        }
         var changes = ContentLibrary.Changes(ctx.Db, cm.Published);
         var created = ctx.Db.AllDefs().Where(d => !cm.Published.Exists(d.Category, d.Id)).ToList();
         var removed = cm.Published.AllDefs().Where(d => !ctx.Db.Exists(d.Category, d.Id)).ToList();
@@ -44,8 +51,17 @@ public static class LibraryDialogs
         var v = Ui.VBox(6);
         v.AddChild(Ui.Label($"Пакет: {cm.UserRoot}", 13, Ui.TextDim, wrap: true));
         v.AddChild(Ui.Label("Запись транзакционная: журнал → резервная копия → атомарная запись файлов → манифест. При сбое пакет откатывается.", 13, Ui.TextDim, wrap: true));
-        if (ctx.Errors > 0)
-            v.AddChild(Ui.Label($"⚠ В контенте {ctx.Errors} ошибок: объекты сохранятся, но навыки с ошибками останутся отключёнными, а проблемные сценарии могут не запуститься.", 13, Ui.Bad, wrap: true));
+        if (gate.DraftErrors.Count > 0)
+            v.AddChild(Ui.Label($"Черновики (отмечены «неполный»): ошибок {gate.DraftErrors.Count} — публикацию не блокируют, такие объекты не используются в бою.", 13, Ui.Warn, wrap: true));
+        CheckBox? acceptWarnings = null;
+        if (gate.Warnings.Count > 0)
+        {
+            v.AddChild(Ui.Label($"Предупреждения ({gate.Warnings.Count}):", 14, Ui.Warn));
+            foreach (var w in gate.Warnings.Take(8)) v.AddChild(Ui.Label($"   ⚠ {w.Source} — {w.Message}", 12, Ui.Warn, wrap: true));
+            if (gate.Warnings.Count > 8) v.AddChild(Ui.Label($"   … и ещё {gate.Warnings.Count - 8} (раздел «Проверка»)", 12, Ui.TextDim));
+            acceptWarnings = new CheckBox { Text = $"Принимаю предупреждения ({gate.Warnings.Count})" };
+            v.AddChild(acceptWarnings);
+        }
         v.AddChild(Ui.Label($"Изменено: {changes.Count} · создано: {created.Count} · удалено: {removed.Count}", 15, Ui.Text));
 
         var choices = new List<UsageChoice>();
@@ -87,8 +103,14 @@ public static class LibraryDialogs
         if (removed.Count > 0)
             v.AddChild(Ui.Label("Удалённые: " + string.Join(", ", removed.Take(12).Select(d => d.DisplayName)) + (removed.Count > 12 ? " …" : ""), 12, Ui.Warn, wrap: true));
 
-        Dialogs.Custom(parent, "Опубликовать изменения", Scroll(v, 680, Math.Min(560, 160 + changes.Count * 70 + choices.Count * 28)), "Опубликовать", () =>
+        ConfirmationDialog? dialog = null;
+        dialog = Dialogs.Custom(parent, "Опубликовать изменения", Scroll(v, 680, Math.Min(560, 200 + changes.Count * 70 + choices.Count * 28 + Math.Min(8, gate.Warnings.Count) * 22)), "Опубликовать", () =>
         {
+            if (acceptWarnings != null && !acceptWarnings.ButtonPressed)
+            {
+                Dialogs.Info(dialog!, "Предупреждения", "Отметьте «Принимаю предупреждения», чтобы опубликовать с ними, или исправьте их (раздел «Проверка»).");
+                return false;
+            }
             // «Сохранить старые экземпляры» for the unchecked usages: references are pinned to the previous version.
             var keepOld = choices.Where(c => !c.Box.ButtonPressed).GroupBy(c => c.Change).ToList();
             // After this dialog has closed (follow-up dialogs need the exclusive slot).
@@ -110,6 +132,22 @@ public static class LibraryDialogs
             }).CallDeferred();
             return true;
         }, new Vector2I(720, 0));
+    }
+
+    /// <summary>Critical errors: the list with a jump to each object; nothing is written.</summary>
+    private static void Blocked(Node parent, EditorContext ctx, ContentChecks.Gate gate)
+    {
+        var v = Ui.VBox(4);
+        v.AddChild(Ui.Label($"Публикация заблокирована: критических ошибок {gate.Blocking.Count}. Исправьте их — или отметьте объект «неполный (черновик)», чтобы сохранить его без использования в бою.", 14, Ui.Bad, wrap: true));
+        foreach (var i in gate.Blocking.Take(40))
+        {
+            var parts = i.Source.Split(':', 2);
+            Action? go = parts.Length == 2 && Enum.TryParse<DefCategory>(parts[0], out var cat) ? () => ctx.Navigate(cat, parts[1]) : null;
+            v.AddChild(Row($"✗ {i.Message}", $"{i.Source} · {i.Path}", go, true));
+        }
+        if (gate.Blocking.Count > 40) v.AddChild(Ui.Label($"… и ещё {gate.Blocking.Count - 40}", 12, Ui.TextDim));
+        if (gate.Warnings.Count > 0) v.AddChild(Ui.Label($"Также предупреждений: {gate.Warnings.Count} (их можно будет принять).", 12, Ui.Warn));
+        Dialogs.Custom(parent, "Публикация заблокирована", Scroll(v, 680, 380), "Закрыть", () => true, new Vector2I(720, 0));
     }
 
     public static string DescribeResult(LibraryPublishResult r, int pinned)

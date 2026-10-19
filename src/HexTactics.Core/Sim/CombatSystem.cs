@@ -545,6 +545,41 @@ public sealed class CombatSystem
             case EffectType.RemoveShield:
                 _sim.Damage.RemoveShields(target, e.ShieldName, cause);
                 break;
+            case EffectType.ModifyStat:
+            {
+                if (string.IsNullOrEmpty(e.Stat)) break;
+                var mod = new StatModDef { Stat = e.Stat, Add = e.StatAdd * scale, Mul = e.StatMul * scale };
+                long until = e.Duration > 0 ? _sim.Tick + _sim.TicksFor(e.Duration) : -1;
+                target.StatChanges.Add((mod, until));
+                _sim.Statuses.RecalculateModifiers(target);
+                _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{target.Name}: {_sim.Content.Stat(e.Stat)?.DisplayName ?? e.Stat} " +
+                    $"{(mod.Add != 0 ? $"{mod.Add:+0.##;-0.##}" : "")}{(mod.Mul != 0 ? $" {mod.Mul:+0%;-0%}" : "")} " + (until < 0 ? "до конца боя" : $"на {e.Duration:0.#} с") + $" — {cause}",
+                    source?.Id ?? -1, target.Id);
+                break;
+            }
+            case EffectType.ModifyAccumulation:
+            {
+                var sd = _sim.Content.Status(e.Status);
+                if (sd != null) _sim.Statuses.ModifyAccumulation(target, sd, e.Amount * scale, source?.Id ?? -1);
+                break;
+            }
+            case EffectType.SetRoute:
+            {
+                var route = _sim.Map.Def.Routes.FirstOrDefault(r => r.Id == e.Route);
+                if (route == null) break;
+                target.Route = new List<HexCoord>(route.Points);
+                target.RouteIndex = 0;
+                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{target.Name}: новый маршрут «{route.Name}» — {cause}", source?.Id ?? -1, target.Id);
+                break;
+            }
+            case EffectType.SetAiProfile:
+            {
+                var p = _sim.Content.Get<AiProfileDef>(e.AiProfile);
+                if (p == null) break;
+                target.AiProfile = p;
+                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{target.Name}: поведение «{p.DisplayName}» — {cause}", source?.Id ?? -1, target.Id);
+                break;
+            }
             case EffectType.ModifyAp:
             {
                 double before = target.Ap;
@@ -553,6 +588,29 @@ public sealed class CombatSystem
                     _sim.Emit(SimEventType.ResourceChanged, LogLevel.Normal, $"{target.Name}: ОД {target.Ap - before:+0.#;-0.#} — {cause}", source?.Id ?? -1, target.Id);
                 break;
             }
+        }
+    }
+
+    /// <summary>Operations without a target: message, visual/sound effect, scenario flag, scenario trigger.</summary>
+    public void ApplyGlobal(SkillEffectDef e, Unit? source, HexCoord at, string cause)
+    {
+        switch (e.Type)
+        {
+            case EffectType.Message:
+                _sim.Emit(SimEventType.Message, LogLevel.Normal, string.IsNullOrEmpty(e.Text) ? cause : e.Text, source?.Id ?? -1, cell: at);
+                break;
+            case EffectType.PlayVfx:
+                _sim.Emit(SimEventType.Vfx, LogLevel.Diagnostic, e.Text, source?.Id ?? -1, cell: at);
+                break;
+            case EffectType.PlaySound:
+                _sim.Emit(SimEventType.Sound, LogLevel.Diagnostic, e.Text, source?.Id ?? -1, cell: at);
+                break;
+            case EffectType.SetFlag:
+                _sim.Scenario.SetFlag(e.Text);
+                break;
+            case EffectType.ActivateTrigger:
+                _sim.Scenario.ActivateTrigger(e.Text, source);
+                break;
         }
     }
 
@@ -603,6 +661,11 @@ public sealed class CombatSystem
             if (!target.Alive) return;
             if (e.Chance < 1 && !_sim.Rng.Chance(e.Chance)) continue;
             double Amount() => fixedAmounts?.Invoke(i) * scale ?? EffectAmount(e, source, target, scale);
+            if (e.IsGlobal)
+            {
+                ApplyGlobal(e, source, target.Pos, cause);
+                continue;
+            }
             switch (e.Type)
             {
                 case EffectType.Damage:

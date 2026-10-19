@@ -451,13 +451,15 @@ public sealed class SkillSystem
         // 7. Statuses and shields.
         foreach (var t in entries)
         foreach (var e in t.Effects)
-            if ((e.Type is EffectType.ApplyStatus or EffectType.RemoveStatus or EffectType.Shield or EffectType.RemoveShield) && Passes(t, e))
+            if ((e.Type is EffectType.ApplyStatus or EffectType.RemoveStatus or EffectType.Shield or EffectType.RemoveShield
+                     or EffectType.ModifyStat or EffectType.ModifyAccumulation) && Passes(t, e))
                 _sim.Combat.ApplyUnitEffect(e, caster, t.Unit, origin, 1.0, cause);
 
         // 8. Displacement, facing, resources/AP.
         foreach (var t in entries)
         foreach (var e in t.Effects)
-            if ((e.Type is EffectType.Push or EffectType.Pull or EffectType.ChangeFacing or EffectType.ModifyResource or EffectType.ModifyAp) && Passes(t, e))
+            if ((e.Type is EffectType.Push or EffectType.Pull or EffectType.ChangeFacing or EffectType.ModifyResource or EffectType.ModifyAp
+                     or EffectType.SetRoute or EffectType.SetAiProfile) && Passes(t, e))
             {
                 // Area blasts around a target point push away from that point; melee shoves from the caster.
                 bool fromAnchor = (e.Type is EffectType.Push or EffectType.Pull) && stage.Area.Shape != AreaShape.Single && skill.Targeting == TargetingMode.Cell;
@@ -493,7 +495,12 @@ public sealed class SkillSystem
             }
         }
 
-        // 12. Reactions are processed by the reaction queue (depth-limited).
+        // 12. Operations without a target (message, visual/sound effect, flag, trigger): once per stage.
+        foreach (var e in stage.Effects)
+            if (e.IsGlobal)
+                _sim.Combat.ApplyGlobal(e, caster, cast.Anchor, cause);
+
+        // 13. Reactions are processed by the reaction queue (depth-limited).
         _sim.Reactions.Process();
     }
 

@@ -26,6 +26,12 @@ public sealed class CellEffectSystem
     public int ActiveEffectCount { get; private set; }
     public long SynergiesTriggered { get; private set; }
 
+    /// <summary>Synergies that happened (id and cell) — for the «комбинация эффектов» condition.</summary>
+    public List<(string Id, HexCoord Cell)> SynergyLog { get; } = new();
+
+    /// <summary>Cells whose obstacle was destroyed — for the «препятствие разрушено» condition.</summary>
+    public List<HexCoord> DestroyedObstacles { get; } = new();
+
     public void ApplyIntrinsicEffects()
     {
         foreach (var cell in _sim.Map.Cells) AddIntrinsic(cell);
@@ -220,6 +226,7 @@ public sealed class CellEffectSystem
         var into = _sim.Content.Terrain(cell.Terrain.DestroyedTerrain);
         if (into == null) return;
         _sim.Emit(SimEventType.ObstacleDestroyed, LogLevel.Normal, $"{cell.Coord}: «{cell.Terrain.DisplayName}» разрушено — {cause}", source?.Id ?? -1, cell: cell.Coord);
+        DestroyedObstacles.Add(cell.Coord);
         ChangeTerrain(cell, into, "разрушение");
     }
 
@@ -404,6 +411,7 @@ public sealed class CellEffectSystem
     private void ApplySynergy(SynergyDef syn, Cell cell, CellEffectInstance a, CellEffectInstance? b, int depth)
     {
         SynergiesTriggered++;
+        if (SynergyLog.Count < 100_000) SynergyLog.Add((syn.Id, cell.Coord));
         if (syn.CooldownPerCell > 0) _synergyCooldown[(cell.Index, syn.Id)] = _sim.Tick + _sim.TicksFor(syn.CooldownPerCell);
         else _synergyCooldown[(cell.Index, syn.Id)] = _sim.Tick + 1;
         var src = a.SourceUnit >= 0 ? a.SourceUnit : b?.SourceUnit ?? -1;

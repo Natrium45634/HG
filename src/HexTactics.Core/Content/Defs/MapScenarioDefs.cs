@@ -212,6 +212,22 @@ public enum ConditionType
     [Ed("Здоровье ниже доли")] HpBelow,
     [Ed("Пропущено N врагов")] EnemiesLeaked,
     [Ed("Всегда")] Always,
+    // Stage 9: catalog of conditions (docs/DECISIONS_2.md §33).
+    [Ed("Противник в дальности")] TargetInRange,
+    [Ed("Обнаружен противник")] EnemySpotted,
+    [Ed("Юнит покинул область")] UnitLeftArea,
+    [Ed("Ресурс достиг значения")] ResourceReached,
+    [Ed("Наложено состояние")] HasStatus,
+    [Ed("Прошло N с после события")] FlagTimer,
+    [Ed("Препятствие разрушено")] ObstacleDestroyed,
+    [Ed("Босс сменил фазу")] BossPhase,
+    [Ed("Произошла комбинация эффектов")] SynergyOccurred,
+}
+
+public enum CompareMode
+{
+    [Ed("не меньше")] AtLeast,
+    [Ed("не больше")] AtMost,
 }
 
 public enum AreaSide
@@ -226,21 +242,32 @@ public sealed class ConditionDef
     [Ed("Условие")] public ConditionType Type { get; set; } = ConditionType.AllEnemiesDead;
     [Ed("Вложенные условия"), EdShowIf(nameof(Type), ConditionType.All, ConditionType.Any, ConditionType.Not, ConditionType.InOrder)]
     public List<ConditionDef> Children { get; set; } = new();
-    [Ed("Время, с"), EdRange(0, 36000), EdShowIf(nameof(Type), ConditionType.SurviveTime, ConditionType.TimeElapsed, ConditionType.UnitInArea)]
+    [Ed("Время, с"), EdRange(0, 36000), EdShowIf(nameof(Type), ConditionType.SurviveTime, ConditionType.TimeElapsed, ConditionType.UnitInArea, ConditionType.FlagTimer)]
     public double Seconds { get; set; } = 60;
-    [Ed("Метка карты"), EdShowIf(nameof(Type), ConditionType.ReachMarker, ConditionType.UnitInArea)] public string Marker { get; set; } = "";
-    [Ed("Метка юнита", "Пусто — для «здоровье ниже» — сам владелец (босс)"),
-     EdShowIf(nameof(Type), ConditionType.UnitDead, ConditionType.UnitAlive, ConditionType.ReachMarker, ConditionType.HpBelow, ConditionType.UnitInArea)]
+    [Ed("Метка карты", "Для разрушения и комбинаций — пусто: где угодно"),
+     EdShowIf(nameof(Type), ConditionType.ReachMarker, ConditionType.UnitInArea, ConditionType.UnitLeftArea, ConditionType.ObstacleDestroyed, ConditionType.SynergyOccurred)]
+    public string Marker { get; set; } = "";
+    [Ed("Метка юнита", "Пусто — сам владелец (босс, носитель состояния, юнит с пассивкой или правилом ИИ)"),
+     EdShowIf(nameof(Type), ConditionType.UnitDead, ConditionType.UnitAlive, ConditionType.ReachMarker, ConditionType.HpBelow, ConditionType.UnitInArea,
+         ConditionType.UnitLeftArea, ConditionType.TargetInRange, ConditionType.ResourceReached, ConditionType.HasStatus, ConditionType.BossPhase)]
     public string UnitTag { get; set; } = "";
-    [Ed("Сторона"), EdShowIf(nameof(Type), ConditionType.UnitInArea)] public AreaSide Side { get; set; } = AreaSide.Player;
-    [Ed("Количество"), EdRange(0, 100000), EdShowIf(nameof(Type), ConditionType.KillCount, ConditionType.WavesCleared, ConditionType.EnemiesLeaked)]
+    [Ed("Сторона"), EdShowIf(nameof(Type), ConditionType.UnitInArea, ConditionType.UnitLeftArea, ConditionType.EnemySpotted)] public AreaSide Side { get; set; } = AreaSide.Player;
+    [Ed("Ресурс"), EdRef(DefCategory.Resource), EdShowIf(nameof(Type), ConditionType.ResourceReached)] public string Resource { get; set; } = "";
+    [Ed("Значение", "Ресурс; для состояния — минимум очков/стаков (0 — любое)"), EdShowIf(nameof(Type), ConditionType.ResourceReached, ConditionType.HasStatus)]
+    public double Value { get; set; }
+    [Ed("Сравнение"), EdShowIf(nameof(Type), ConditionType.ResourceReached)] public CompareMode Compare { get; set; } = CompareMode.AtLeast;
+    [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), ConditionType.HasStatus)] public string Status { get; set; } = "";
+    [Ed("Синергия"), EdRef(DefCategory.Synergy), EdShowIf(nameof(Type), ConditionType.SynergyOccurred)] public string Synergy { get; set; } = "";
+    [Ed("Количество", "Убитые/волны/прорывы; дальность для «в дальности»; номер фазы босса; число разрушений и комбинаций"), EdRange(0, 100000),
+     EdShowIf(nameof(Type), ConditionType.KillCount, ConditionType.WavesCleared, ConditionType.EnemiesLeaked, ConditionType.TargetInRange,
+         ConditionType.BossPhase, ConditionType.ObstacleDestroyed, ConditionType.SynergyOccurred)]
     public int Count { get; set; } = 5;
     [Ed("Категории врагов", "Для подсчёта убитых: категории существ или tag:тег; пусто — все"), EdShowIf(nameof(Type), ConditionType.KillCount)]
     public List<string> Categories { get; set; } = new();
     [Ed("Волна (индекс)"), EdRange(0, 1000), EdShowIf(nameof(Type), ConditionType.WaveSpawned, ConditionType.WaveCleared)] public int Wave { get; set; }
     [Ed("Цель (ID)"), EdShowIf(nameof(Type), ConditionType.ObjectiveCompleted, ConditionType.ObjectiveFailed, ConditionType.EnemiesLeaked)]
     public string Objective { get; set; } = "";
-    [Ed("Флаг"), EdShowIf(nameof(Type), ConditionType.FlagSet)] public string Flag { get; set; } = "";
+    [Ed("Флаг"), EdShowIf(nameof(Type), ConditionType.FlagSet, ConditionType.FlagTimer)] public string Flag { get; set; } = "";
     [Ed("Доля здоровья"), EdRange(0, 1), EdShowIf(nameof(Type), ConditionType.HpBelow)] public double Fraction { get; set; } = 0.5;
 
     public string Describe() => Type switch
@@ -267,8 +294,19 @@ public sealed class ConditionDef
         ConditionType.HpBelow => $"{(string.IsNullOrEmpty(UnitTag) ? "Здоровье" : $"Здоровье «{UnitTag}»")} ниже {Fraction:P0}",
         ConditionType.EnemiesLeaked => $"Пропущено врагов: {Count}",
         ConditionType.Always => "Всегда",
+        ConditionType.TargetInRange => $"{Who()}: противник в {Count} гекс.",
+        ConditionType.EnemySpotted => Side == AreaSide.Enemy ? "Враги обнаружили юнита игрока" : "Обнаружен противник",
+        ConditionType.UnitLeftArea => $"{(Side == AreaSide.Enemy ? "Враг" : Side == AreaSide.Player ? "Юнит игрока" : "Юнит")} покинул «{Marker}»",
+        ConditionType.ResourceReached => $"{Who()}: {Resource} {(Compare == CompareMode.AtLeast ? "≥" : "≤")} {Value:0.#}",
+        ConditionType.HasStatus => $"{Who()}: состояние «{Status}»" + (Value > 0 ? $" ≥ {Value:0.#}" : ""),
+        ConditionType.FlagTimer => $"{Seconds:0.#} с после «{Flag}»",
+        ConditionType.ObstacleDestroyed => $"Разрушено препятствий: {System.Math.Max(1, Count)}" + (string.IsNullOrEmpty(Marker) ? "" : $" в «{Marker}»"),
+        ConditionType.BossPhase => $"{(string.IsNullOrEmpty(UnitTag) ? "Босс" : $"«{UnitTag}»")}: фаза {System.Math.Max(1, Count)}",
+        ConditionType.SynergyOccurred => $"Комбинация «{Synergy}» ×{System.Math.Max(1, Count)}" + (string.IsNullOrEmpty(Marker) ? "" : $" в «{Marker}»"),
         _ => Type.ToString(),
     };
+
+    private string Who() => string.IsNullOrEmpty(UnitTag) ? "владелец" : $"«{UnitTag}»";
 }
 
 public enum TriggerActionType
@@ -293,6 +331,14 @@ public enum TriggerActionType
     [Ed("Навык автоатаки")] SetAutoAttackSkill,
     [Ed("Профиль ИИ")] SetAiProfile,
     [Ed("Лечение, % HP")] HealPercent,
+    // Stage 9: catalog of operations (docs/DECISIONS_2.md §33).
+    [Ed("Операции над юнитами (урон, лечение, ресурсы, состояния, щиты, характеристики…)")] Effects,
+    [Ed("Сменить маршрут")] SetRoute,
+    [Ed("Разрушить препятствия")] DestroyObstacle,
+    [Ed("Запустить триггер")] ActivateTrigger,
+    [Ed("Сменить фазу босса")] SetBossPhase,
+    [Ed("Визуальный эффект")] PlayVfx,
+    [Ed("Звук")] PlaySound,
 }
 
 public enum ActionTarget
@@ -306,14 +352,22 @@ public enum ActionTarget
 public sealed class TriggerActionDef
 {
     [Ed("Действие")] public TriggerActionType Type { get; set; } = TriggerActionType.Message;
-    [Ed("Текст"), EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat, TriggerActionType.Autopause)]
+    [Ed("Текст / ID", "Сообщение; имя триггера; ID визуального или звукового эффекта"),
+     EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat, TriggerActionType.Autopause,
+         TriggerActionType.ActivateTrigger, TriggerActionType.PlayVfx, TriggerActionType.PlaySound)]
     public string Text { get; set; } = "";
     [Ed("Волна (индекс)"), EdRange(0, 1000), EdShowIf(nameof(Type), TriggerActionType.SpawnWave, TriggerActionType.CancelWave)] public int Wave { get; set; }
     [Ed("Эффект клетки"), EdRef(DefCategory.CellEffect), EdShowIf(nameof(Type), TriggerActionType.AddCellEffect)] public string CellEffect { get; set; } = "";
     [Ed("Метка карты", "Пусто — вокруг владельца"),
-     EdShowIf(nameof(Type), TriggerActionType.AddCellEffect, TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits)]
+     EdShowIf(nameof(Type), TriggerActionType.AddCellEffect, TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits, TriggerActionType.DestroyObstacle,
+         TriggerActionType.PlayVfx, TriggerActionType.PlaySound)]
     public string Marker { get; set; } = "";
-    [Ed("Радиус"), EdRange(0, 20), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits)] public int Radius { get; set; } = 1;
+    [Ed("Радиус"), EdRange(0, 20), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits, TriggerActionType.DestroyObstacle)]
+    public int Radius { get; set; } = 1;
+    [Ed("Маршрут карты"), EdShowIf(nameof(Type), TriggerActionType.SetRoute)] public string Route { get; set; } = "";
+    [Ed("Фаза босса (номер)", "1 — первая фаза из списка босса"), EdRange(1, 50), EdShowIf(nameof(Type), TriggerActionType.SetBossPhase)] public int Phase { get; set; } = 1;
+    [Ed("Операции", "Каталог операций навыков: применяются к выбранным юнитам"), EdShowIf(nameof(Type), TriggerActionType.Effects)]
+    public List<SkillEffectDef> Effects { get; set; } = new();
     [Ed("Флаг"), EdShowIf(nameof(Type), TriggerActionType.SetFlag)] public string Flag { get; set; } = "";
     [Ed("Цель (ID)"), EdShowIf(nameof(Type), TriggerActionType.CompleteObjective, TriggerActionType.FailObjective)] public string Objective { get; set; } = "";
     [Ed("Местность"), EdRef(DefCategory.Terrain), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain)] public string Terrain { get; set; } = "";
@@ -321,7 +375,8 @@ public sealed class TriggerActionDef
     [Ed("Количество"), EdRange(1, 100), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)] public int Count { get; set; } = 1;
     [Ed("На кого"),
      EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus, TriggerActionType.AddSkill, TriggerActionType.RemoveSkill,
-         TriggerActionType.SetAutoAttackSkill, TriggerActionType.SetAiProfile, TriggerActionType.HealPercent)]
+         TriggerActionType.SetAutoAttackSkill, TriggerActionType.SetAiProfile, TriggerActionType.HealPercent, TriggerActionType.Effects, TriggerActionType.SetRoute,
+         TriggerActionType.SetBossPhase)]
     public ActionTarget Target { get; set; } = ActionTarget.Self;
     [Ed("Метка юнита"), EdShowIf(nameof(Target), ActionTarget.UnitTag)] public string UnitTag { get; set; } = "";
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus)] public string Status { get; set; } = "";
@@ -345,6 +400,20 @@ public sealed class TriggerActionDef
         TriggerActionType.AddSkill => $"+навык {Skill}",
         TriggerActionType.RemoveSkill => $"−навык {Skill}",
         TriggerActionType.SetAutoAttackSkill => $"Автоатака → {Skill}",
+        TriggerActionType.SetAiProfile => $"Профиль ИИ → {AiProfile}",
+        TriggerActionType.HealPercent => $"Лечение {Amount:0.#}%",
+        TriggerActionType.RemoveStatus => $"Снять {Status}",
+        TriggerActionType.AddCellEffect => $"Эффект клетки {CellEffect}",
+        TriggerActionType.Autopause => "Автопауза",
+        TriggerActionType.Victory => "Победа",
+        TriggerActionType.Defeat => "Поражение",
+        TriggerActionType.Effects => Effects.Count == 0 ? "Операции (нет)" : string.Join("; ", Effects.ConvertAll(e => e.Describe())),
+        TriggerActionType.SetRoute => $"Маршрут → {Route}",
+        TriggerActionType.DestroyObstacle => "Разрушить препятствия" + (string.IsNullOrEmpty(Marker) ? "" : $" в «{Marker}»"),
+        TriggerActionType.ActivateTrigger => $"Триггер «{Text}»",
+        TriggerActionType.SetBossPhase => $"Фаза босса {Phase}",
+        TriggerActionType.PlayVfx => $"Визуальный эффект {Text}",
+        TriggerActionType.PlaySound => $"Звук {Text}",
         _ => Type.ToString(),
     };
 }

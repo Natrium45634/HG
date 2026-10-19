@@ -50,6 +50,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_autoattack_panel_toggle", BattleAutoAttackPanel));
         _tests.Add(("battle_spawn_warning_and_objectives", BattleSpawnWarningObjectives));
         _tests.Add(("editor_route_tool", EditorRouteTool));
+        _tests.Add(("editor_catalog_and_publish_gate", EditorCatalogAndGate));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -495,9 +496,17 @@ public partial class UiTestRunner : Node
         var pub = Dialog("Опубликовать изменения");
         Check(pub != null, "нет диалога публикации");
         Check(LabelVisible("v1 → v2"), "диалог должен показать смену версии");
-        var boxes = Find<CheckBox>(pub!).ToList();
+        var boxes = Find<CheckBox>(pub!).Where(b => !b.Text.StartsWith("Принимаю")).ToList();
         Check(boxes.Count >= 3, $"должны быть показаны использования рассечения (найдено {boxes.Count})");
         foreach (var b in boxes) b.ButtonPressed = b.Text.Contains("Рыцарь") || b.Text.Contains("knight");
+        // Warnings of the shipped content (a pylon that does not move…) must be accepted explicitly.
+        var accept = Find<CheckBox>(pub!).FirstOrDefault(b => b.Text.StartsWith("Принимаю"));
+        Check(accept != null, "предупреждения должны требовать подтверждения");
+        Confirm(pub);
+        await Frames(3);
+        Check(Dialog("Опубликовать изменения") != null && cm.Published.Skill("cleave")!.Version == 1, "без подтверждения предупреждений публикация не выполняется");
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible && d is not ConfirmationDialog).ToList()) d.QueueFree();
+        accept!.ButtonPressed = true;
         Confirm(pub);
         await Frames(4);
         var published = cm.Published;
@@ -542,7 +551,10 @@ public partial class UiTestRunner : Node
             if (++writes == 2) throw new IOException("имитация сбоя питания");
         };
         await ClickButton("Сохранить");
-        Confirm(Dialog("Опубликовать изменения"));
+        var pub2 = Dialog("Опубликовать изменения");
+        Check(pub2 != null, "нет диалога публикации");
+        Find<CheckBox>(pub2!).First(b => b.Text.StartsWith("Принимаю")).ButtonPressed = true;
+        Confirm(pub2);
         await Frames(4);
         cm.FaultInjection = null;
         Check(InfoVisible("Пакет возвращён"), "должно быть сообщение об откате");
@@ -551,6 +563,80 @@ public partial class UiTestRunner : Node
         Check(cm.Library.CheckIntegrity().Ok, "после отката целостность должна быть в порядке");
         Check(cm.Draft!.Skill("cleave")!.Description == "Версия, которую прервёт сбой", "черновик не должен теряться");
         foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+    }
+
+    /// <summary>
+    /// Editor without programming (docs/DECISIONS_2.md §33): an operation added from the catalog menu,
+    /// objective hexes picked on the board, the catalog reference, and the publication gate — a cycle
+    /// of triggers blocks it until the scenario is fixed or marked as an incomplete draft.
+    /// </summary>
+    private async Task EditorCatalogAndGate()
+    {
+        var cm = Main.Instance.Content;
+        await OpenEditor("statuses");
+        var panel = Find<DefListPanel>(GetTree().Root).First();
+        panel.Select("burning");
+        await Frames(6);
+        var burning = cm.Draft!.Status("burning")!;
+        int before = burning.Levels[0].OnTick.Count;
+        // The «+ из каталога» of the level's periodic operations (the condition lists have their own).
+        var menu = Find<MenuButton>(panel).FirstOrDefault(m => m.IsVisibleInTree() && m.Text.StartsWith("+ из каталога")
+            && m.GetPopup().GetChildren().OfType<PopupMenu>().Any(g => Enumerable.Range(0, g.ItemCount).Any(i => g.GetItemText(i) == "Изменить накопление")));
+        Check(menu != null, "в списке операций должна быть кнопка «+ из каталога»");
+        var groups = menu!.GetPopup().GetChildren().OfType<PopupMenu>().ToList();
+        var states = groups.FirstOrDefault(g => Enumerable.Range(0, g.ItemCount).Any(i => g.GetItemText(i) == "Изменить накопление"));
+        Check(states != null, $"в меню каталога нет «Изменить накопление» (групп {groups.Count})");
+        int idx = Enumerable.Range(0, states!.ItemCount).First(i => states.GetItemText(i) == "Изменить накопление");
+        states.EmitSignal(PopupMenu.SignalName.IdPressed, states.GetItemId(idx));
+        await Frames(3);
+        Check(burning.Levels[0].OnTick.Count == before + 1 && burning.Levels[0].OnTick[^1].Type == EffectType.ModifyAccumulation,
+            "операция из каталога должна добавиться в список");
+        burning.Levels[0].OnTick.RemoveAt(burning.Levels[0].OnTick.Count - 1);
+
+        // The catalog reference.
+        await OpenEditor("catalog");
+        Check(LabelVisible("Каталог операций и условий") && LabelVisible("Изменить накопление") && LabelVisible("Босс сменил фазу"), "справочник каталога");
+
+        // Objective hexes picked on the board.
+        await OpenEditor("scenarios");
+        var sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+        sp.Select("gate_defense");
+        await Frames(30);
+        var sc = cm.Draft!.Get<ScenarioDef>("gate_defense")!;
+        var core = sc.Objectives.First(o => o.Id == "core");
+        await ClickButton("Клетки цели");
+        var objOpt = Find<OptionButton>(sp).FirstOrDefault(o => o.ItemCount > 0 && o.GetItemText(0).Contains("[core]"));
+        Check(objOpt != null, "нет списка целей у инструмента «Клетки цели»");
+        objOpt!.Select(0);
+        var vp = Find<BoardViewport>(sp).First();
+        var targetCell = vp.Board.Map!.Cells.FirstOrDefault(c => c.Terrain.IsPassableFor("walk") && !core.Cells.Contains(c.Coord) && c.Coord.Q + c.Coord.R / 2 == 4);
+        Check(targetCell != null, "нет подходящего гекса");
+        var target = targetCell!.Coord;
+        var cell = vp.Board.Map.Get(target)!;
+        var local = vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(target, Render.Board.PickY(cell)));
+        await Click(vp.GetGlobalRect().Position + local);
+        Check(core.Cells.Contains(target), $"клик по гексу должен добавить его в цель (курсор над {vp.HoverHex}, нужен {target})");
+        await Click(vp.GetGlobalRect().Position + local);
+        Check(!core.Cells.Contains(target), "повторный клик убирает гекс из цели");
+
+        // Publication gate: a cycle of triggers is a critical error.
+        sc.Triggers.Add(new TriggerDef { Name = "А", Condition = new ConditionDef { Type = ConditionType.TimeElapsed, Seconds = 5 }, Actions = { new TriggerActionDef { Type = TriggerActionType.ActivateTrigger, Text = "Б" } } });
+        sc.Triggers.Add(new TriggerDef { Name = "Б", Condition = new ConditionDef { Type = ConditionType.TimeElapsed, Seconds = 9 }, Actions = { new TriggerActionDef { Type = TriggerActionType.ActivateTrigger, Text = "А" } } });
+        cm.DraftDirty = true;
+        await ClickButton("Сохранить");
+        Check(Dialog("Публикация заблокирована") != null && LabelVisible("Циклические триггеры"), "цикл триггеров должен блокировать публикацию");
+        Check(Dialog("Опубликовать изменения") == null, "окно публикации не должно открываться");
+        Confirm(Dialog("Публикация заблокирована"));
+        await Frames(3);
+        // Marked as an incomplete draft, the scenario no longer blocks (and is not played).
+        sc.Incomplete = true;
+        await ClickButton("Сохранить");
+        var pub = Dialog("Опубликовать изменения");
+        Check(pub != null && LabelVisible("Черновики"), "черновик не блокирует публикацию");
+        pub!.EmitSignal(ConfirmationDialog.SignalName.Canceled);
+        await Frames(2);
+        sc.Triggers.RemoveRange(sc.Triggers.Count - 2, 2);
+        sc.Incomplete = false;
     }
 
     private void CloseDialogs()

@@ -82,6 +82,15 @@ public sealed class ScenarioSystem
     private readonly Dictionary<ConditionDef, int> _orderProgress = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<int, HashSet<int>> _bossPhases = new();
     private readonly HashSet<string> _taggedSeen = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _flagTicks = new(StringComparer.Ordinal);
+    private readonly Dictionary<ConditionDef, HashSet<int>> _areaInside = new(ReferenceEqualityComparer.Instance);
+    /// <summary>AI rules: (unit, profile, rule index) → next allowed tick (long.MaxValue — fired once).</summary>
+    private readonly Dictionary<(int Unit, AiProfileDef Profile, int Rule), long> _aiRules = new();
+    private int _triggerDepth;
+
+    /// <summary>Nested trigger activations deeper than this are cut (a cycle of «запустить триггер»).</summary>
+    public const int MaxTriggerDepth = 8;
+    public long TriggerCycleCuts { get; private set; }
     private bool _hadPlayerUnits;
     private int _nextSpawnId = 1;
 
@@ -391,6 +400,70 @@ public sealed class ScenarioSystem
         UpdateLeaks();
         UpdateObjectives();
         UpdateBosses();
+        UpdateAiRules();
+    }
+
+    /// <summary>Sets a scenario flag (event); flags remember when they were set (for «через N с после события»).</summary>
+    public void SetFlag(string flag)
+    {
+        if (string.IsNullOrEmpty(flag) || !_flags.Add(flag)) return;
+        _flagTicks[flag] = _sim.Tick;
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Событие «{flag}»");
+    }
+
+    /// <summary>
+    /// «Запустить триггер»: runs the actions of the named trigger now (a once-only trigger runs once).
+    /// Nested activations are depth-limited, so a cycle of triggers cannot hang the battle.
+    /// </summary>
+    public bool ActivateTrigger(string name, Unit? actor)
+    {
+        if (Def == null) return false;
+        int i = Def.Triggers.FindIndex(t => t.Name == name);
+        if (i < 0)
+        {
+            _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Триггер «{name}» не найден");
+            return false;
+        }
+        var tr = Def.Triggers[i];
+        if (tr.Once && _firedTriggers.Contains(i)) return false;
+        if (_triggerDepth >= MaxTriggerDepth)
+        {
+            TriggerCycleCuts++;
+            _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Цепочка триггеров глубже {MaxTriggerDepth} — «{name}» не запущен (цикл?)");
+            return false;
+        }
+        _triggerDepth++;
+        try
+        {
+            if (tr.Once) _firedTriggers.Add(i);
+            foreach (var a in tr.Actions) Execute(a, tr.Name, actor);
+        }
+        finally
+        {
+            _triggerDepth--;
+        }
+        return true;
+    }
+
+    /// <summary>Behaviour rules of AI profiles: condition (self = the unit) → actions (actor = the unit).</summary>
+    private void UpdateAiRules()
+    {
+        foreach (var u in _sim.Units.ToList())
+        {
+            var p = u.AiProfile;
+            if (!u.Alive || p == null || p.Rules.Count == 0) continue;
+            for (int i = 0; i < p.Rules.Count; i++)
+            {
+                var r = p.Rules[i];
+                var key = (u.Id, p, i);
+                if (_aiRules.TryGetValue(key, out var next) && next > _sim.Tick) continue;
+                if (!Evaluate(r.When, u)) continue;
+                _aiRules[key] = r.Once ? long.MaxValue : _sim.Tick + Math.Max(1, _sim.TicksFor(r.Cooldown));
+                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{u.Name}: правило «{r.Name}»", u.Id);
+                foreach (var a in r.Actions) Execute(a, $"{u.Name}: {r.Name}", u);
+                if (!u.Alive || u.AiProfile != p) break;
+            }
+        }
     }
 
     // ------------------------------------------------------------------ actions
@@ -455,8 +528,7 @@ public sealed class ScenarioSystem
                 break;
             }
             case TriggerActionType.SetFlag:
-                if (!string.IsNullOrEmpty(a.Flag) && _flags.Add(a.Flag))
-                    _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Событие «{a.Flag}»");
+                SetFlag(a.Flag);
                 break;
             case TriggerActionType.CompleteObjective:
                 Finish(Objective(a.Objective), ObjectiveState.Completed, source);
@@ -526,8 +598,76 @@ public sealed class ScenarioSystem
             case TriggerActionType.HealPercent:
                 foreach (var u in Targets(a, actor)) _sim.Combat.Heal(null, u, a.Amount, source, HealMode.PercentMax, applyPower: false);
                 break;
+            case TriggerActionType.Effects:
+            {
+                // The whole catalog of skill operations, applied to the chosen units (global ones once).
+                var unitOps = a.Effects.Where(e => !e.IsGlobal).ToList();
+                foreach (var e in a.Effects.Where(e => e.IsGlobal)) _sim.Combat.ApplyGlobal(e, actor, actor?.Pos ?? default, source);
+                if (unitOps.Count > 0)
+                    foreach (var u in Targets(a, actor)) _sim.Combat.ApplyDirect(actor, u, unitOps, 1.0, source, DamageSource.Scenario);
+                break;
+            }
+            case TriggerActionType.SetRoute:
+            {
+                var route = _sim.Map.Def.Routes.FirstOrDefault(r => r.Id == a.Route);
+                if (route == null) break;
+                foreach (var u in Targets(a, actor))
+                {
+                    u.Route = new List<HexCoord>(route.Points);
+                    u.RouteIndex = 0;
+                }
+                break;
+            }
+            case TriggerActionType.DestroyObstacle:
+                foreach (var cell in AreaCells(a, actor).ToList())
+                    if (cell.Terrain.DestructibleHp > 0)
+                        _sim.CellEffects.DamageObstacle(cell, int.MaxValue / 2, actor, source);
+                break;
+            case TriggerActionType.ActivateTrigger:
+                ActivateTrigger(a.Text, actor);
+                break;
+            case TriggerActionType.SetBossPhase:
+                foreach (var u in Targets(a, actor)) ForcePhase(u, a.Phase - 1, source);
+                break;
+            case TriggerActionType.PlayVfx:
+            case TriggerActionType.PlaySound:
+            {
+                var at = (string.IsNullOrEmpty(a.Marker) ? null : _sim.Map.Def.FindMarker(a.Marker))?.C ?? actor?.Pos;
+                _sim.Emit(a.Type == TriggerActionType.PlayVfx ? SimEventType.Vfx : SimEventType.Sound, LogLevel.Diagnostic, a.Text, actor?.Id ?? -1, cell: at);
+                break;
+            }
         }
     }
+
+    /// <summary>«Сменить фазу босса»: the phase starts now (its actions run once), regardless of its condition.</summary>
+    private void ForcePhase(Unit u, int index, string source)
+    {
+        var phases = u.Def.Boss.Phases;
+        if (!u.Def.Boss.IsBoss || index < 0 || index >= phases.Count) return;
+        if (!_bossPhases.TryGetValue(u.Id, out var fired)) _bossPhases[u.Id] = fired = new HashSet<int>();
+        if (!fired.Add(index)) return;
+        var ph = phases[index];
+        _sim.Emit(SimEventType.Message, LogLevel.Normal, string.IsNullOrEmpty(ph.Message) ? $"{u.Name}: фаза «{ph.Name}»" : ph.Message, u.Id);
+        foreach (var act in ph.Actions) Execute(act, $"{u.Name}: {ph.Name}", u);
+    }
+
+    /// <summary>Units a condition is about: the tagged ones, or the owner (self) without a tag.</summary>
+    private IEnumerable<Unit> Subjects(ConditionDef c, Unit? self)
+    {
+        if (string.IsNullOrEmpty(c.UnitTag))
+        {
+            if (self != null && self.Alive) yield return self;
+            yield break;
+        }
+        foreach (var u in _sim.Units)
+            if (u.Alive && u.Tag == c.UnitTag)
+                yield return u;
+    }
+
+    private bool SideMatches(AreaSide side, Unit u) =>
+        side == AreaSide.Any || (side == AreaSide.Player ? _sim.IsPlayerFaction(u.FactionId) : IsPlayerEnemy(u));
+
+    private static bool InMarker(MapMarkerDef? m, HexCoord c) => m == null || HexCoord.Distance(c, m.C) <= m.Radius;
 
     // ------------------------------------------------------------------ conditions
 
@@ -645,6 +785,57 @@ public sealed class ScenarioSystem
             {
                 int leaks = string.IsNullOrEmpty(c.Objective) ? _objectives.Sum(o => o.Leaks) : Objective(c.Objective)?.Leaks ?? 0;
                 return leaks >= c.Count;
+            }
+            case ConditionType.TargetInRange:
+                return Subjects(c, self).Any(s => _sim.Units.Any(o => o.Alive && o != s && _sim.Content.RelationOf(s.FactionId, o.FactionId) == Relation.Enemy
+                                                                       && HexCoord.Distance(s.Pos, o.Pos) <= Math.Max(0, c.Count)));
+            case ConditionType.EnemySpotted:
+            {
+                bool playerSees = _sim.Units.Any(u => u.Alive && IsPlayerEnemy(u) && _sim.Vision.IsVisibleToPlayer(u));
+                bool enemiesSee = _sim.Units.Any(u => u.Alive && _sim.IsPlayerFaction(u.FactionId)
+                                                      && _sim.Units.Any(e => e.Alive && IsPlayerEnemy(e) && _sim.Vision.CanSee(e, u)));
+                return c.Side switch
+                {
+                    AreaSide.Enemy => enemiesSee,
+                    AreaSide.Any => playerSees || enemiesSee,
+                    _ => playerSees,
+                };
+            }
+            case ConditionType.UnitLeftArea:
+            {
+                // True on the tick a unit that was inside has left (moved out, not died).
+                var m = _sim.Map.Def.FindMarker(c.Marker);
+                if (m == null) return false;
+                var now = new HashSet<int>(_sim.Units.Where(u => u.Alive && HexCoord.Distance(u.Pos, m.C) <= m.Radius && SideMatches(c.Side, u)
+                                                                  && (string.IsNullOrEmpty(c.UnitTag) || u.Tag == c.UnitTag)).Select(u => u.Id));
+                bool left = _areaInside.TryGetValue(c, out var before) && before.Any(id => !now.Contains(id) && _sim.GetUnit(id)?.Alive == true);
+                _areaInside[c] = now;
+                return left;
+            }
+            case ConditionType.ResourceReached:
+                return Subjects(c, self).Any(u => u.Resources.TryGetValue(c.Resource, out var r)
+                                                  && (c.Compare == CompareMode.AtLeast ? r.Current + 1e-9 >= c.Value : r.Current <= c.Value + 1e-9));
+            case ConditionType.HasStatus:
+                return Subjects(c, self).Any(u => u.FindStatus(c.Status) is { } st && (st.Def.Kind == StatusKind.Accumulating ? st.Points : st.Stacks) + 1e-9 >= c.Value);
+            case ConditionType.FlagTimer:
+                return _flagTicks.TryGetValue(c.Flag, out var at) && (_sim.Tick - at) * _sim.Dt + 1e-9 >= c.Seconds;
+            case ConditionType.ObstacleDestroyed:
+            {
+                var m = string.IsNullOrEmpty(c.Marker) ? null : _sim.Map.Def.FindMarker(c.Marker);
+                return _sim.CellEffects.DestroyedObstacles.Count(x => InMarker(m, x)) >= Math.Max(1, c.Count);
+            }
+            case ConditionType.BossPhase:
+            {
+                IEnumerable<Unit> bosses = string.IsNullOrEmpty(c.UnitTag)
+                    ? self != null && self.Def.Boss.IsBoss ? new[] { self } : _sim.Units.Where(u => u.Def.Boss.IsBoss)
+                    : _sim.Units.Where(u => u.Tag == c.UnitTag);
+                int need = Math.Max(1, c.Count) - 1;
+                return bosses.Any(b => _bossPhases.TryGetValue(b.Id, out var f) && f.Any(i => i >= need));
+            }
+            case ConditionType.SynergyOccurred:
+            {
+                var m = string.IsNullOrEmpty(c.Marker) ? null : _sim.Map.Def.FindMarker(c.Marker);
+                return _sim.CellEffects.SynergyLog.Count(x => (string.IsNullOrEmpty(c.Synergy) || x.Id == c.Synergy) && InMarker(m, x.Cell)) >= Math.Max(1, c.Count);
             }
         }
         return false;

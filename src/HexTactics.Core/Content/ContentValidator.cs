@@ -54,6 +54,7 @@ public static class ContentValidator
         CheckRules(db, db.Rules, "Правила", issues);
         foreach (var p in db.All<RulesPresetDef>()) CheckRules(db, p.Rules, Src(p), issues);
         CheckIncomplete(db, issues);
+        ContentChecks.Run(db, issues);
         foreach (var t in db.All<TerrainDef>()) CheckTerrain(db, t, issues);
         foreach (var u in db.All<UnitDef>()) CheckUnit(db, u, issues);
         foreach (var s in db.All<StatusDef>()) CheckStatus(s, issues);

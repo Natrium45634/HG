@@ -60,6 +60,10 @@ public enum SimEventType
     Fall,
     LayerChanged,
     TrapTriggered,
+    /// <summary>A visual effect by ID (text) at the cell — catalog operation; drawn by the renderer.</summary>
+    Vfx,
+    /// <summary>A sound by ID (text) at the cell.</summary>
+    Sound,
 }
 
 public enum LogLevel

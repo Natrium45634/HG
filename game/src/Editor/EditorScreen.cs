@@ -51,6 +51,7 @@ public partial class EditorScreen : Control
         ("scenarios", "Сценарии", DefCategory.Scenario),
         ("rules", "Правила боя", null),
         ("presets", "Пресеты правил", DefCategory.RulesPreset),
+        ("catalog", "Каталог операций", null),
         ("check", "Проверка", null),
         ("test", "Тестирование", null),
     };
@@ -192,6 +193,7 @@ public partial class EditorScreen : Control
                 Rules = ContentJson.Clone(_ctx.Db.Rules),
             }),
             "check" => new ValidationPanel(_ctx),
+            "catalog" => new CatalogPanel(),
             _ => new TestPanel(_ctx, (sc, seed) => RunTest(sc, seed)),
         };
         _current.SizeFlagsHorizontal = SizeFlags.ExpandFill;

@@ -212,6 +212,8 @@ public sealed class PassiveDef : Def
     public double Interval { get; set; } = 1;
     [Ed("Порог HP", "Доля HP для «при низком HP»"), EdRange(0, 1), EdShowIf(nameof(Trigger), PassiveTrigger.OnLowHp)]
     public double HpThreshold { get; set; } = 0.3;
+    [Ed("Дополнительное условие", "Пассивка срабатывает, только если условие выполнено (без метки — для самого владельца)")]
+    public ConditionDef? Condition { get; set; }
     [Ed("Действие")] public PassiveAction Action { get; set; } = PassiveAction.None;
     [Ed("Эффекты"), EdShowIf(nameof(Action), PassiveAction.EffectsOnSelf, PassiveAction.EffectsOnSource)]
     public List<SkillEffectDef> Effects { get; set; } = new();
@@ -228,11 +230,23 @@ public enum AiTargetPriority
     LowestHpFraction,
 }
 
+/// <summary>A behaviour rule of an AI profile: a condition (self = the unit) and actions (actor = the unit).</summary>
+public sealed class AiRuleDef
+{
+    [Ed("Название")] public string Name { get; set; } = "Правило";
+    [Ed("Условие")] public ConditionDef When { get; set; } = new() { Type = ConditionType.HpBelow, Fraction = 0.3 };
+    [Ed("Действия")] public List<TriggerActionDef> Actions { get; set; } = new();
+    [Ed("Однократно", "Иначе — повторно с перезарядкой")] public bool Once { get; set; } = true;
+    [Ed("Перезарядка, с"), EdRange(0, 3600), EdShowIf(nameof(Once), false)] public double Cooldown { get; set; } = 5;
+}
+
 public sealed class AiProfileDef : Def
 {
     [JsonIgnore] public override DefCategory Category => DefCategory.AiProfile;
 
     [Ed("Агрессивность", "0 — осторожный, 1 — всегда атакует"), EdRange(0, 1)] public double Aggression { get; set; } = 0.8;
+    [Ed("Правила поведения", "Условие → действия из каталога, для каждого юнита с этим профилем (например, «здоровье ниже 30 % → профиль «отступление»»)")]
+    public List<AiRuleDef> Rules { get; set; } = new();
     [Ed("Приоритет целей")] public AiTargetPriority TargetPriority { get; set; } = AiTargetPriority.Nearest;
     [Ed("Предпочитаемая дистанция", "0 = ближний бой"), EdRange(0, 30)] public int PreferredRange { get; set; } = 1;
     [Ed("Держать дистанцию", "Отходить, если враг ближе предпочитаемой дистанции")] public bool KeepDistance { get; set; }

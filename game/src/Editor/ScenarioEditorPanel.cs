@@ -54,7 +54,7 @@ public partial class ScenarioEditorPanel : DefListPanel
         var bar = new HFlowContainer();
         bar.AddThemeConstantOverride("h_separation", 4);
         _toolButtons.Clear();
-        string[] tools = { "Поставить", "Убрать", "Повернуть", "Выбрать" };
+        string[] tools = { "Поставить", "Убрать", "Повернуть", "Выбрать", "Клетки цели" };
         for (int i = 0; i < tools.Length; i++)
         {
             int ti = i;
@@ -73,6 +73,11 @@ public partial class ScenarioEditorPanel : DefListPanel
         _faction.AddItem("из шаблона");
         foreach (var f in Ctx.Db.Ids(DefCategory.Faction)) _faction.AddItem(f);
         bar.AddChild(_faction);
+        bar.AddChild(Ui.Label("Цель:", 13, Ui.TextDim));
+        _objective = new OptionButton { FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(150, 0), TooltipText = "Инструмент «Клетки цели»: ЛКМ по гексу добавляет/убирает его в гексах выбранной цели" };
+        foreach (var o in _sc.Objectives) _objective.AddItem($"{o.Name} [{o.Id}]");
+        if (_sc.Objectives.Count == 0) _objective.AddItem("(целей нет)");
+        bar.AddChild(_objective);
         bar.AddChild(Ui.Label("Взгляд:", 13, Ui.TextDim));
         _facing = new OptionButton { FocusMode = FocusModeEnum.None };
         for (int i = 0; i < 6; i++) _facing.AddItem(((HexDirection)i).RuShortName());
@@ -118,9 +123,22 @@ public partial class ScenarioEditorPanel : DefListPanel
         return v;
     }
 
+    private OptionButton _objective = null!;
+
+    private ObjectiveDef? ChosenObjective => _sc != null && _objective.Selected >= 0 && _objective.Selected < _sc.Objectives.Count ? _sc.Objectives[_objective.Selected] : null;
+
     private void SetTool(int t)
     {
         _tool = t;
+        if (t == 4 && _sc != null)
+        {
+            // Objectives may have been added on the «Сценарий» tab meanwhile.
+            int keep = _objective.Selected;
+            _objective.Clear();
+            foreach (var o in _sc.Objectives) _objective.AddItem($"{o.Name} [{o.Id}]");
+            if (_sc.Objectives.Count == 0) _objective.AddItem("(целей нет)");
+            _objective.Selected = Math.Clamp(keep, 0, Math.Max(0, _objective.ItemCount - 1));
+        }
         for (int i = 0; i < _toolButtons.Count; i++) _toolButtons[i].ButtonPressed = i == t;
     }
 
@@ -171,6 +189,13 @@ public partial class ScenarioEditorPanel : DefListPanel
                 _view.Labels.Add(Render.Board.Center(m.C, (cell == null ? 0 : Render.Board.SurfaceY(cell)) + 0.5f), m.Label, col, 22);
             }
         if (_view.HoverHex is HexCoord h) o.RingHex(h, new Color(1, 1, 1, 0.8f), 0.06f);
+        // Hexes of the objectives (the chosen one brighter).
+        if (_sc != null)
+            foreach (var obj in _sc.Objectives)
+            {
+                bool chosen = obj == ChosenObjective && _tool == 4;
+                foreach (var c in obj.Cells) o.RingHex(c, chosen ? new Color(0.4f, 1f, 0.55f, 0.95f) : new Color(0.4f, 0.9f, 0.5f, 0.45f), chosen ? 0.1f : 0.05f);
+            }
         if (_sc != null)
             foreach (var w in _sc.Waves)
             {
@@ -228,6 +253,20 @@ public partial class ScenarioEditorPanel : DefListPanel
             case 3:
                 _selected = existing;
                 break;
+            case 4:
+            {
+                var obj = ChosenObjective;
+                if (obj == null)
+                {
+                    _status.Text = "Сначала добавьте цель на вкладке «Сценарий» → «Цели» и выберите её в списке «Цель».";
+                    return;
+                }
+                if (!obj.Cells.Remove(hex.Value)) obj.Cells.Add(hex.Value);
+                _status.Text = $"Цель «{obj.Name}»: гексов {obj.Cells.Count}";
+                OnEdited(_sc);
+                RefreshProps();
+                return;
+            }
         }
         OnEdited(_sc);
         RebuildPreview(false);

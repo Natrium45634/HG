@@ -269,15 +269,19 @@ public partial class PropertyGrid : VBoxContainer
         // Nested object.
         if (type.IsClass && type != typeof(string) && !typeof(IEnumerable).IsAssignableFrom(type))
         {
-            if (value == null)
-            {
-                value = Activator.CreateInstance(type);
-                if (prop.CanWrite) prop.SetValue(owner, value);
-            }
+            // An optional (null) nested object is shown with defaults and stored only once it is edited,
+            // so unused options do not fill the JSON.
+            bool wasNull = value == null;
+            value ??= Activator.CreateInstance(type);
             var section = Section(parent, ed.Label, 1, owner.GetType().Name + "." + prop.Name + "#" + owner.GetHashCode());
             var sub = new PropertyGrid { LabelWidth = Math.Max(140, LabelWidth - 14), ReadOnly = ReadOnly };
-            sub.SetTarget(value, _db, _depth + 1);
-            sub.Changed += () => Changed?.Invoke();
+            sub.SetTarget(value!, _db, _depth + 1);
+            var created = value;
+            sub.Changed += () =>
+            {
+                if (wasNull && prop.CanWrite && prop.GetValue(owner) == null) prop.SetValue(owner, created);
+                Changed?.Invoke();
+            };
             sub.PropertyChanged += (o, p) => PropertyChanged?.Invoke(o, p);
             section.AddChild(sub);
             return section.GetParent().GetParent() as Control;
@@ -765,7 +769,10 @@ public partial class PropertyGrid : VBoxContainer
             UnitResourceDef ur => $"{ur.Resource}: {ur.Start:0}/{ur.Max:0} (+{ur.Regen:0.##}/с)",
             ConditionDef c => c.Describe(),
             WaveDef w => $"{w.Name} @ {w.Time:0} с",
-            TriggerDef t => t.Name,
+            TriggerDef t => $"{t.Name}: {t.Condition.Describe()} → {string.Join("; ", t.Actions.Select(a => a.Describe()))}",
+            TriggerActionDef a => a.Describe(),
+            AiRuleDef r => $"{r.Name}: {r.When.Describe()} → {string.Join("; ", r.Actions.Select(a => a.Describe()))}",
+            BossPhaseDef bp => $"{bp.Name}: {bp.When.Describe()}",
             SectorRule sr => $"{Names.Of(sr.Sector)}: неожиданность {sr.SurpriseChance:P0}, заметить {sr.NoticeChance:P0}",
             ScenarioSideDef sd => $"{sd.Faction}: {Names.Of(sd.Controller)}",
             _ => item.GetType().GetProperty("Name")?.GetValue(item) as string ?? "",
@@ -819,12 +826,26 @@ public partial class PropertyGrid : VBoxContainer
                 box.AddChild(pad);
                 col.AddChild(Ui.PanelBox(box, new Color(0.12f, 0.13f, 0.15f, 0.9f), 6));
             }
-            col.AddChild(Ui.Button("+ добавить", () =>
+            var catalog = OperationCatalog.For(itemType);
+            if (catalog == null)
             {
-                list.Add(Activator.CreateInstance(itemType)!);
-                RaiseChanged(owner, prop.Name);
-                Fill();
-            }));
+                col.AddChild(Ui.Button("+ добавить", () =>
+                {
+                    list.Add(Activator.CreateInstance(itemType)!);
+                    RaiseChanged(owner, prop.Name);
+                    Fill();
+                }));
+            }
+            else
+            {
+                // The catalog of ready operations / conditions (docs/DECISIONS_2.md §33), grouped.
+                col.AddChild(CatalogButton(catalog, created =>
+                {
+                    list.Add(created);
+                    RaiseChanged(owner, prop.Name);
+                    Fill();
+                }));
+            }
         }
         void Move(int idx, int d)
         {
@@ -836,6 +857,29 @@ public partial class PropertyGrid : VBoxContainer
         }
         Fill();
         return section.GetParent().GetParent() as Control ?? section;
+    }
+
+    /// <summary>«+ из каталога ▾»: a menu of catalog entries by group; the chosen one is created with its defaults.</summary>
+    public static MenuButton CatalogButton(IReadOnlyList<CatalogEntry> catalog, Action<object> onCreated)
+    {
+        var mb = new MenuButton { Text = "+ из каталога ▾", Flat = false, TooltipText = "Готовые операции и условия — без программирования" };
+        var root = mb.GetPopup();
+        int id = 0;
+        var byId = new Dictionary<int, CatalogEntry>();
+        foreach (var group in catalog.GroupBy(e => e.Group))
+        {
+            var sub = new PopupMenu { Name = "g" + byId.Count };
+            foreach (var e in group)
+            {
+                sub.AddItem(e.Name, id);
+                if (e.Description.Length > 0) sub.SetItemTooltip(sub.ItemCount - 1, e.Description);
+                byId[id++] = e;
+            }
+            sub.IdPressed += i => onCreated(byId[(int)i].Create());
+            root.AddChild(sub);
+            root.AddSubmenuNodeItem(group.Key, sub);
+        }
+        return mb;
     }
 
     private void UpdateVisibility()

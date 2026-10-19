@@ -99,6 +99,7 @@ public sealed class ReactionSystem
     private void TryFire(Unit owner, PassiveDef p, Unit? source)
     {
         if (p.Action == PassiveAction.None) return;
+        if (p.Condition != null && !_sim.Scenario.Evaluate(p.Condition, owner)) return;
         if (owner.Flags.BlocksActions && p.Action is PassiveAction.CounterAttack or PassiveAction.UseSkillOnSource) return;
         if (owner.PassiveCooldownUntil.TryGetValue(p.Id, out var until) && until > _sim.Tick) return;
         if ((p.Action is PassiveAction.EffectsOnSource or PassiveAction.CounterAttack or PassiveAction.UseSkillOnSource) && (source == null || !source.Alive || source == owner)) return;

@@ -196,6 +196,18 @@ public enum EffectType
     DestroyObstacle,
     Summon,
     TeleportCaster,
+    // Part 2, catalog of operations (docs/DECISIONS_2.md §33).
+    /// <summary>Stat change: for a time, or until the end of the battle (cannot be dispelled).</summary>
+    ModifyStat,
+    /// <summary>Points of an accumulating status (or stacks of a timed one), up or down.</summary>
+    ModifyAccumulation,
+    SetRoute,
+    SetAiProfile,
+    Message,
+    PlayVfx,
+    PlaySound,
+    SetFlag,
+    ActivateTrigger,
 }
 
 public enum FacingMode
@@ -213,7 +225,8 @@ public sealed class SkillEffectDef
 
     [Ed("На кого действует"),
      EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.RemoveStatus, EffectType.Push,
-         EffectType.Pull, EffectType.ChangeFacing, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield, EffectType.RemoveShield)]
+         EffectType.Pull, EffectType.ChangeFacing, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield, EffectType.RemoveShield,
+         EffectType.ModifyStat, EffectType.ModifyAccumulation, EffectType.SetRoute, EffectType.SetAiProfile)]
     public TargetFilterDef Filter { get; set; } = TargetFilterDef.EnemiesOnly();
 
     [Ed("Шанс"), EdRange(0, 1)] public double Chance { get; set; } = 1;
@@ -226,8 +239,9 @@ public sealed class SkillEffectDef
     [Ed("Тип урона"), EdRef(DefCategory.DamageType, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.Damage)]
     public string DamageType { get; set; } = "physical";
 
-    [Ed("Величина", "Урон/лечение/очки состояния/изменение ресурса/объём щита"),
-     EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield)]
+    [Ed("Величина", "Урон/лечение/очки состояния/изменение ресурса/объём щита; для накопления — изменение очков (стаков), может быть отрицательным"),
+     EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield,
+         EffectType.ModifyAccumulation)]
     public double Amount { get; set; } = 10;
 
     [Ed("Масштаб от характеристики", "Величина += характеристика исполнителя × коэффициент"), EdRef(DefCategory.Stat),
@@ -251,12 +265,31 @@ public sealed class SkillEffectDef
     [Ed("Название снимаемого щита", "Пусто — все щиты"), EdShowIf(nameof(Type), EffectType.RemoveShield)]
     public string ShieldName { get; set; } = "";
 
-    [Ed("Состояние"), EdRef(DefCategory.Status, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.RemoveStatus)]
+    [Ed("Состояние"), EdRef(DefCategory.Status, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.RemoveStatus, EffectType.ModifyAccumulation)]
     public string Status { get; set; } = "";
 
-    [Ed("Длительность, с", "0 = по умолчанию"), EdRange(0, 3600),
-     EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.AddCellEffect, EffectType.Summon, EffectType.ChangeTerrain, EffectType.Shield)]
+    [Ed("Длительность, с", "0 = по умолчанию; для изменения характеристики — до конца боя"), EdRange(0, 3600),
+     EdShowIf(nameof(Type), EffectType.ApplyStatus, EffectType.AddCellEffect, EffectType.Summon, EffectType.ChangeTerrain, EffectType.Shield, EffectType.ModifyStat)]
     public double Duration { get; set; }
+
+    [Ed("Характеристика"), EdRef(DefCategory.Stat), EdShowIf(nameof(Type), EffectType.ModifyStat)]
+    public string Stat { get; set; } = "";
+
+    [Ed("Прибавка к характеристике"), EdShowIf(nameof(Type), EffectType.ModifyStat)]
+    public double StatAdd { get; set; }
+
+    [Ed("Множитель характеристики", "Доля: 0.2 = +20%"), EdShowIf(nameof(Type), EffectType.ModifyStat)]
+    public double StatMul { get; set; }
+
+    [Ed("Маршрут карты"), EdShowIf(nameof(Type), EffectType.SetRoute)]
+    public string Route { get; set; } = "";
+
+    [Ed("Профиль ИИ"), EdRef(DefCategory.AiProfile), EdShowIf(nameof(Type), EffectType.SetAiProfile)]
+    public string AiProfile { get; set; } = "";
+
+    [Ed("Текст / ID", "Сообщение; ID визуального или звукового эффекта; имя флага или триггера сценария"),
+     EdShowIf(nameof(Type), EffectType.Message, EffectType.PlayVfx, EffectType.PlaySound, EffectType.SetFlag, EffectType.ActivateTrigger)]
+    public string Text { get; set; } = "";
 
     [Ed("Расстояние"), EdRange(1, 20), EdShowIf(nameof(Type), EffectType.Push, EffectType.Pull)]
     public int Distance { get; set; } = 1;
@@ -289,8 +322,12 @@ public sealed class SkillEffectDef
     {
         EffectType.ChangeTerrain or EffectType.AddCellEffect or EffectType.RemoveCellEffect or EffectType.DestroyObstacle
             or EffectType.Summon or EffectType.TeleportCaster => false,
+        _ when IsGlobal => false,
         _ => true,
     };
+
+    /// <summary>Operations without a target (messages, effects, flags, triggers): once per application.</summary>
+    [JsonIgnore] public bool IsGlobal => Type is EffectType.Message or EffectType.PlayVfx or EffectType.PlaySound or EffectType.SetFlag or EffectType.ActivateTrigger;
 
     public string Describe()
     {
@@ -313,6 +350,15 @@ public sealed class SkillEffectDef
             EffectType.DestroyObstacle => "Разрушить препятствие",
             EffectType.Summon => $"Призыв {SummonUnit}",
             EffectType.TeleportCaster => "Переместить исполнителя",
+            EffectType.ModifyStat => $"{Stat} {(StatAdd != 0 ? $"{StatAdd:+0.##;-0.##}" : "")}{(StatMul != 0 ? $" {StatMul:+0%;-0%}" : "")} " + (Duration > 0 ? $"на {Duration:0.#} с" : "до конца боя"),
+            EffectType.ModifyAccumulation => $"Накопление {Status} {Amount:+0.#;-0.#}",
+            EffectType.SetRoute => $"Маршрут → {Route}",
+            EffectType.SetAiProfile => $"Профиль ИИ → {AiProfile}",
+            EffectType.Message => $"Сообщение «{Text}»",
+            EffectType.PlayVfx => $"Визуальный эффект {Text}",
+            EffectType.PlaySound => $"Звук {Text}",
+            EffectType.SetFlag => $"Флаг «{Text}»",
+            EffectType.ActivateTrigger => $"Триггер «{Text}»",
             _ => Type.ToString(),
         };
     }

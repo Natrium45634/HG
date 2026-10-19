@@ -246,8 +246,14 @@ public class StressTests
                        $"synergies {sim.CellEffects.SynergiesTriggered}, log {sim.Log.TotalCount}");
         foreach (var (sec, total, per) in sim.Profiler.Totals()) _out.WriteLine($"  {sec}: {per:0.000} мс/тик");
         Assert.Equal(200, spawned);
-        // 20 ticks per second at 4× speed = 80 ticks per real second → budget 12.5 ms per tick.
-        Assert.True(msPerTick < 12.5, $"слишком медленно: {msPerTick:0.00} мс/тик");
+        // 20 ticks per second at 4× speed = 80 ticks per real second → budget 12.5 ms per tick for the
+        // optimised build (CI and the game run Release); unoptimised Debug code gets twice the budget.
+#if DEBUG
+        const double budget = 25;
+#else
+        const double budget = 12.5;
+#endif
+        Assert.True(msPerTick < budget, $"слишком медленно: {msPerTick:0.00} мс/тик (бюджет {budget} мс)");
     }
 
     [Fact]

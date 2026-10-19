@@ -37,6 +37,8 @@ public sealed class StatusInstance
     public long TotalTicks { get; set; } = -1;
     public int LevelIndex { get; set; } = -1;
     public long TickTimer { get; set; }
+    /// <summary>Cell where the status was applied (for «пока юнит стоит на клетке»).</summary>
+    public HexTactics.Core.Hex.HexCoord AppliedCell { get; set; }
     public int SourceUnit { get; set; } = -1;
     /// <summary>Points gained this tick (to show "accumulating" in UI).</summary>
     public double LastGain { get; set; }
@@ -163,6 +165,9 @@ public sealed class Unit
     public StatBlock Stats { get; }
     public Dictionary<string, ResourceState> Resources { get; } = new(StringComparer.Ordinal);
     public List<StatusInstance> Statuses { get; } = new();
+
+    /// <summary>Stat changes of the «изменить характеристику» operation: until the tick (-1 — until the end of the battle).</summary>
+    public List<(StatModDef Mod, long UntilTick)> StatChanges { get; } = new();
     public ControlFlagsDef Flags { get; } = new();
     public List<PassiveDef> Passives { get; } = new();
     public List<SkillDef> Skills { get; } = new();
