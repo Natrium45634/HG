@@ -29,11 +29,13 @@ public static class Stats
     public const string HealReceived = "heal_received";
     public const string CritResist = "crit_resist";
     public const string CritBonus = "crit_bonus";
+    /// <summary>Magical power (part 3: target choice, modifiers).</summary>
+    public const string MagicPower = "magic_power";
 
     public static readonly string[] All =
     {
         HpMax, MoveSpeed, ApMax, ApRegen, DetectionRange, Accuracy, Evasion, BlockChance, BlockReduction,
-        Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit, HealReceived, CritResist, CritBonus,
+        Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit, HealReceived, CritResist, CritBonus, MagicPower,
     };
 }
 

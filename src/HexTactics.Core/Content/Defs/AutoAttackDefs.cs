@@ -16,15 +16,39 @@ public enum AutoTargetRule
     [Ed("Тот, кого я блокирую")] BlockedByMe,
     [Ed("Тот, кто блокирует меня")] BlockingMe,
     [Ed("Текущая цель")] CurrentTarget,
+    // Part 3 (docs/DECISIONS_3.md §43): the full list of criteria of automatic target choice.
+    [Ed("Случайная")] Random,
+    [Ed("Самая дальняя")] Farthest,
+    [Ed("Наибольшее здоровье")] HighestHp,
+    [Ed("Наибольшее макс. здоровье")] HighestMaxHp,
+    [Ed("Наименьшее макс. здоровье")] LowestMaxHp,
+    [Ed("Наибольшая физическая сила")] HighestPower,
+    [Ed("Наименьшая физическая сила")] LowestPower,
+    [Ed("Наибольшая магическая сила")] HighestMagicPower,
+    [Ed("Наименьшая магическая сила")] LowestMagicPower,
+    [Ed("Босс или элита")] BossOrElite,
+    [Ed("С уязвимостью к урону навыка")] Vulnerable,
+    [Ed("С состоянием")] WithStatus,
+    [Ed("Добивается одной атакой")] Killable,
+    [Ed("Больше всего противников рядом")] MostEnemiesNearby,
 }
 
 public sealed class AutoTargetRuleDef
 {
     [Ed("Правило")] public AutoTargetRule Rule { get; set; } = AutoTargetRule.Nearest;
     [Ed("Тег", "Тег типа юнита или тег сценария"), EdShowIf(nameof(Rule), AutoTargetRule.WithTag)] public string Tag { get; set; } = "";
+    [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Rule), AutoTargetRule.WithStatus)] public string Status { get; set; } = "";
+    [Ed("Радиус «рядом»", "Для «больше всего противников рядом»"), EdRange(1, 10), EdShowIf(nameof(Rule), AutoTargetRule.MostEnemiesNearby)]
+    public int Radius { get; set; } = 1;
+    [Ed("Только такие цели", "Фильтр: остальные цели не выбираются вовсе (иначе — приоритет: «если есть — их, иначе остальных»)")]
+    public bool Strict { get; set; }
     [Ed("Вес", "Для взвешенного выбора"), EdRange(0, 100)] public double Weight { get; set; } = 1;
 
-    public override string ToString() => Rule + (Rule == AutoTargetRule.WithTag ? $" {Tag}" : "");
+    public override string ToString() => Rule + (Rule == AutoTargetRule.WithTag ? $" {Tag}" : Rule == AutoTargetRule.WithStatus ? $" {Status}" : "") + (Strict ? " (фильтр)" : "");
+
+    /// <summary>Criteria with a yes/no answer (they can be a strict filter).</summary>
+    public bool IsBoolean => Rule is AutoTargetRule.Boss or AutoTargetRule.BossOrElite or AutoTargetRule.WithTag or AutoTargetRule.WithStatus or AutoTargetRule.Vulnerable
+        or AutoTargetRule.Killable or AutoTargetRule.BlockedByMe or AutoTargetRule.BlockingMe or AutoTargetRule.CurrentTarget;
 }
 
 public enum TargetSelectionMode
@@ -84,4 +108,19 @@ public sealed class AutoAttackRules
     [Ed("Для юнитов под ИИ", "ИИ и автоатаки используют одни и те же ОД; ручные приказы ИИ имеют приоритет")] public bool AiUnits { get; set; } = true;
     [Ed("Тег защищаемого объекта", "Юниты/объекты с этим тегом — для правила «ближайший к защищаемому»")] public string ProtectedTag { get; set; } = "protected";
     [Ed("Тег босса")] public string BossTag { get; set; } = "boss";
+    [Ed("Тег элиты", "Для правила «босс или элита»")] public string EliteTag { get; set; } = "elite";
+}
+
+/// <summary>
+/// Rules of automatic target choice of a skill (docs/DECISIONS_3.md §43): criteria in order (or weighted),
+/// filters, random choice among equals through the simulation's generator.
+/// </summary>
+public sealed class TargetSelectorDef
+{
+    [Ed("Правила выбора", "По порядку: каждое следующее решает ничьи предыдущего; пусто — ближайшая цель")]
+    public List<AutoTargetRuleDef> Rules { get; set; } = new();
+    [Ed("Способ")] public TargetSelectionMode Mode { get; set; } = TargetSelectionMode.Sequential;
+    [Ed("Случайно среди равных", "Через генератор симуляции — воспроизводимо")] public bool RandomTies { get; set; }
+
+    public override string ToString() => Rules.Count == 0 ? "ближайшая" : string.Join(" → ", Rules);
 }

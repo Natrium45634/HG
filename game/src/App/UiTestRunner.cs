@@ -40,6 +40,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_arrow_turn_and_route_gesture", BattleArrowGesture));
         _tests.Add(("battle_planning_autopause_and_cancel", BattlePlanningPauseAndCancel));
         _tests.Add(("battle_alternative_control_without_gestures", BattleAlternativeControl));
+        _tests.Add(("battle_enemy_hex_radial_menu_and_aim", BattleRadialMenuAndAim));
         _tests.Add(("editor_skill_mask_click", EditorSkillMaskClick));
         _tests.Add(("editor_map_paint", EditorMapPaint));
         _tests.Add(("editor_create_delete", EditorCreateDelete));
@@ -454,6 +455,9 @@ public partial class UiTestRunner : Node
             await Frames(6);
             await Key(Godot.Key.M);
             await Click(HexScreen(bs, enemy.Pos));
+            Check(bs.Hud.Radial.IsOpen, "указание врага не открыло меню навыков");
+            var basic = bs.Hud.Radial.Buttons.First(b => b.Name == "Radial_" + knight.BasicAttack!.Id);
+            await Click(basic.GetGlobalRect().GetCenter());
             Check(knight.Queue.Items.Last().Type == CommandType.Attack, "указание врага в режиме движения не стало атакой");
             Check(knight.Queue.Items.All(c => c.TargetCell != enemy.Pos || c.Type != CommandType.Move), "юнит пытается занять гекс врага");
         }
@@ -461,6 +465,77 @@ public partial class UiTestRunner : Node
         {
             s.Gestures = true;
         }
+    }
+
+    private async Task BattleRadialMenuAndAim()
+    {
+        var bs = await OpenBattle("sandbox");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        var mage = bs.Sim.Units.First(u => u.Def.Id == "mage");
+        var orc = bs.Sim.Units.First(u => u.Alive && bs.Sim.IsHostile(knight, u) && u.Def.Id.Contains("orc"));
+        bs.Select(knight);
+        bs.Board.Rig.FocusOn((bs.Board.UnitPos(knight) + bs.Board.UnitPos(orc)) / 2);
+        await Frames(10);
+
+        // The gesture released on the enemy hex opens the skill menu, never a move onto it.
+        await Drag(ArrowScreen(bs, bs.HeadArrow), HexScreen(bs, orc.Pos), 14);
+        var radial = bs.Hud.Radial;
+        Check(radial.IsOpen, "гекс врага не открыл радиальное меню: " + bs.Hud.LastBanner);
+        Check(knight.Queue.Count == 0, "указание врага создало приказ до выбора навыка");
+        Check(radial.CentreItem != null && (radial.CentreItem.Skill == null || radial.CentreItem.Skill.Kind == SkillKind.Defense), "в центре должен быть защитный навык");
+        var (_, first, _) = bs.Sim.Planner.RadialSkills(knight, HexTactics.Game.Battle.RadialMenu.FirstCapacity);
+        Check(radial.First.Select(i => i.Skill!.Id).SequenceEqual(first.Select(s => s.Id)), "порядок первого кольца не совпадает с порядком «от слабого к сильному»");
+        // The first slot is at 12 o'clock and the next goes clockwise.
+        var b0 = radial.Buttons.First(b => b.Name == "Radial_" + radial.First[0].Skill!.Id).GetGlobalRect().GetCenter();
+        var b1 = radial.Buttons.First(b => b.Name == "Radial_" + radial.First[1].Skill!.Id).GetGlobalRect().GetCenter();
+        string centreName = "Radial_" + (radial.CentreItem!.Skill?.Id ?? "stance");
+        var c = radial.Buttons.First(b => b.Name == centreName).GetGlobalRect().GetCenter();
+        Check(b0.Y < c.Y - 40 && Math.Abs(b0.X - c.X) < 8, "первый навык должен быть на 12 часах");
+        Check(b1.X > b0.X, "навыки должны идти по часовой стрелке");
+        // Choose the basic attack: the knight approaches and never takes the enemy hex.
+        await Click(radial.Buttons.First(b => b.Name == "Radial_" + knight.BasicAttack!.Id).GetGlobalRect().GetCenter());
+        Check(!radial.IsOpen && knight.Queue.Count == 1 && knight.Queue.Items[0].Type == CommandType.Attack && knight.Queue.Items[0].Approach,
+            "выбор навыка не создал приказ атаки с подходом");
+        bool entered = false;
+        for (int i = 0; i < 300 && orc.Hp >= orc.HpMax && knight.Queue.Count > 0; i++)
+        {
+            bs.Sim.Step();
+            entered |= knight.Pos == orc.Pos;
+        }
+        Check(!entered && HexCoord.Distance(knight.Pos, orc.Pos) == 1, $"рыцарь должен подойти вплотную, не занимая гекс врага (стоит в {knight.Pos}, враг {orc.Pos})");
+
+        // The second ring appears when a skill asks for it.
+        bs.Select(mage);
+        var meteor = bs.Db.Skill("meteor")!;
+        var ring = meteor.Ring;
+        try
+        {
+            meteor.Ring = MenuRing.Second;
+            bs.OpenSkillMenu(null, new Vector2(800, 450));
+            await Frames(3);
+            Check(radial.Second.Any(i => i.Skill == meteor), "второе кольцо не появилось");
+            await Key(Godot.Key.Escape);
+            Check(!radial.IsOpen, "Esc не закрыл меню");
+        }
+        finally
+        {
+            meteor.Ring = ring;
+        }
+
+        // An aimed skill: choose it, pull the arrow to the target cell — the order is fixed on release.
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(mage));
+        await Frames(6);
+        await Key(Godot.Key.Key1);
+        Check(bs.Mode == InputMode.Skill && bs.ModeSkill?.Id == "fireball", "клавиша 1 не выбрала огненный шар");
+        var cell = mage.Pos + new HexCoord(4, 0);
+        await Drag(ArrowScreen(bs, bs.HeadArrow), HexScreen(bs, cell), 12);
+        Check(mage.Queue.Count == 1 && mage.Queue.Items[0].SkillId == "fireball" && mage.Queue.Items[0].TargetCell == cell, "прицельная стрелка не задала цель навыка");
+
+        // An invalid target is rejected: chain lightning (enemies only) on an ally.
+        await Key(Godot.Key.Key3);
+        Check(bs.ModeSkill?.Id == "chain_lightning", "клавиша 3 не выбрала цепную молнию");
+        await Click(HexScreen(bs, knight.Pos));
+        Check(mage.Queue.Count == 1, "навык по союзнику принят, хотя допустимы только враги");
     }
 
     // ------------------------------------------------------------------ editor tests

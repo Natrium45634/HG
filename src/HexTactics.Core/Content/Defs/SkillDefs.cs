@@ -38,6 +38,16 @@ public enum FacingAfterUse
     [Ed("Заданное направление")] Set,
 }
 
+/// <summary>What a skill order does when its target dies, disappears or becomes unreachable (docs/DECISIONS_3.md §43).</summary>
+public enum TargetLostPolicy
+{
+    [Ed("Отменить приказ")] Cancel,
+    [Ed("Выбрать новую цель")] NewTarget,
+    [Ed("Ждать возвращения цели")] WaitReturn,
+    [Ed("Идти к последней известной позиции")] LastKnown,
+    [Ed("Завершить начатую последовательность")] FinishSequence,
+}
+
 public enum CostMoment
 {
     [Ed("При запуске")] Start,
@@ -122,6 +132,11 @@ public sealed class SkillDef : Def
     // Use (docs/DECISIONS_3.md §42, §43).
     [Ed("Режим применения", "Прицельный — игрок указывает цель; автоматический — цель выбирается правилами в момент применения", Group = "Применение")]
     public SkillUseMode UseMode { get; set; } = SkillUseMode.Aimed;
+    [Ed("Автоматический выбор цели", "Критерии, фильтры и приоритеты; ничьи — следующим правилом или случайно (генератор боя)", Group = "Применение"),
+     EdShowIf(nameof(UseMode), SkillUseMode.Auto, SkillUseMode.Both)]
+    public TargetSelectorDef AutoTarget { get; set; } = new();
+    [Ed("Потеря цели", "Цель погибла, исчезла, вышла из дальности или стала недоступной", Group = "Применение")]
+    public TargetLostPolicy OnTargetLost { get; set; } = TargetLostPolicy.Cancel;
     [Ed("Приоритет в меню", "0 — по силе навыка (от слабого к сильному); иначе — порядок вручную", Group = "Применение"), EdRange(0, 1000)]
     public int MenuPriority { get; set; }
     [Ed("Кольцо радиального меню", Group = "Применение")] public MenuRing Ring { get; set; } = MenuRing.Auto;

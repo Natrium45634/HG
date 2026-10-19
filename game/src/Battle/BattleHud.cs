@@ -107,6 +107,14 @@ public partial class BattleHud : Control
         BuildMenu();
         BuildDiag();
         BuildPopup();
+        AddChild(Radial);
+        _skillList = new PopupMenu { Name = "SkillList" };
+        _skillList.IdPressed += id =>
+        {
+            int i = (int)id;
+            if (i >= 0 && i < _skillListItems.Count) _skillListPick?.Invoke(_skillListItems[i]);
+        };
+        AddChild(_skillList);
         OnSelectionChanged();
     }
 
@@ -236,7 +244,33 @@ public partial class BattleHud : Control
         foreach (var p in _panels)
             if (p.Visible && p.IsVisibleInTree() && p.GetGlobalRect().HasPoint(m))
                 return true;
-        return _popup.Visible;
+        return _popup.Visible || Radial.Visible || _skillList.Visible;
+    }
+
+    /// <summary>The radial skill menu (docs/DECISIONS_3.md §42).</summary>
+    public RadialMenu Radial { get; } = new() { Name = "RadialMenu" };
+
+    private PopupMenu _skillList = null!;
+    private List<RadialItem> _skillListItems = new();
+    private Action<RadialItem>? _skillListPick;
+
+    /// <summary>The list form of the skill menu (the radial menu switched off in the settings).</summary>
+    public void ShowSkillList(Vector2 at, string title, List<RadialItem> items, Action<RadialItem> onPick)
+    {
+        _skillList.Clear();
+        _skillListItems = items;
+        _skillListPick = onPick;
+        _skillList.AddSeparator(title);
+        for (int i = 0; i < items.Count; i++)
+        {
+            var it = items[i];
+            _skillList.AddItem($"{it.Icon} {it.Label}" + (it.Enabled ? (it.Approach ? " (подойдёт)" : "") : " — " + it.Reason), i);
+            int idx = _skillList.GetItemIndex(i);
+            _skillList.SetItemDisabled(idx, !it.Enabled);
+            _skillList.SetItemTooltip(idx, it.Tooltip);
+        }
+        _skillList.Position = (Vector2I)at;
+        _skillList.Popup();
     }
 
     // ------------------------------------------------------------------ build
@@ -525,6 +559,16 @@ public partial class BattleHud : Control
         if (_popup.Visible)
         {
             _popup.Hide();
+            return true;
+        }
+        if (Radial.Visible)
+        {
+            Radial.Close();
+            return true;
+        }
+        if (_skillList.Visible)
+        {
+            _skillList.Hide();
             return true;
         }
         return false;
@@ -1093,7 +1137,16 @@ public partial class BattleHud : Control
             if (active) b.AddThemeStyleboxOverride("normal", Ui.Box(new Color(0.34f, 0.30f, 0.20f), Ui.Accent, 5, 2, 8));
             else if (a.Enabled && a.Warning != "") b.AddThemeStyleboxOverride("normal", Ui.Box(new Color(0.24f, 0.22f, 0.17f), Ui.Warn, 5, 1, 8));
             var act = a;
-            b.Pressed += () => _bs.Activate(act);
+            if (a.Skill != null)
+            {
+                // Skill icon: a click uses it automatically (if the skill allows), a drag onto the map aims it (docs/DECISIONS_3.md §43).
+                b.ButtonDown += () => _bs.BeginSkillPress(act);
+                b.Pressed += () => _bs.SkillClick(act);
+            }
+            else
+            {
+                b.Pressed += () => _bs.Activate(act);
+            }
             var wrap = Ui.VBox(1);
             wrap.AddChild(b);
             var hotLabel = Ui.Label(hot, 11, Ui.TextDim);
@@ -1110,9 +1163,26 @@ public partial class BattleHud : Control
             }
             _actions.AddChild(wrap);
         }
+        // Radial skill menu without a target: choose a skill, then aim (docs/DECISIONS_3.md §42).
+        var radial = new Button
+        {
+            Text = "◎ Навыки\nменю",
+            FocusMode = FocusModeEnum.None,
+            CustomMinimumSize = new Vector2(92, 52),
+            TooltipText = "[R] Радиальное меню навыков: защита в центре, навыки от слабого к сильному",
+            Name = "OpenRadial",
+        };
+        radial.AddThemeFontSizeOverride("font_size", 12);
+        radial.Pressed += () => _bs.OpenSkillMenu(null, radial.GetGlobalRect().GetCenter() + new Vector2(0, -220));
+        var rwrap = Ui.VBox(1);
+        rwrap.AddChild(radial);
+        var rh = Ui.Label("R", 11, Ui.TextDim);
+        rh.HorizontalAlignment = HorizontalAlignment.Center;
+        rwrap.AddChild(rh);
+        _actions.AddChild(rwrap);
     }
 
-    private string SkillTooltip(SkillDef s, Unit u)
+    public string SkillTooltip(SkillDef s, Unit u)
     {
         var lines = new List<string>();
         if (!string.IsNullOrEmpty(s.Description)) lines.Add(s.Description);

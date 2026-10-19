@@ -189,6 +189,12 @@ public partial class BattleScreen : Node
                 EnterSkill(sk);
             }
         }
+        if (Main.Instance.Args.ContainsKey("radial"))
+        {
+            // Screenshots: the skill menu against the nearest visible enemy.
+            var enemy = Sim.Units.Where(e => e.Alive && Sim.IsHostile(Selected, e) && UnitVisible(e)).OrderBy(e => HexCoord.Distance(e.Pos, Selected.Pos)).FirstOrDefault();
+            OpenSkillMenu(enemy, GetViewport().GetVisibleRect().Size / 2);
+        }
         if (Main.Instance.Args.TryGetValue("hover", out var h))
         {
             var parts = h.Split(',');
@@ -384,6 +390,7 @@ public partial class BattleScreen : Node
         Board.Effects.UpdateVisibility(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));
 
         UpdateProjection();
+        UpdateSkillPress();
         UpdateHover();
         UpdateArrows();
         DrawOverlay();
@@ -737,7 +744,7 @@ public partial class BattleScreen : Node
             {
                 DrawRoutePlanning(o, u, rg.Anchor, rg.AnchorFacing);
             }
-            else if (_gesture is { Moved: true } tg)
+            else if (_gesture is { Moved: true, Aim: false } tg)
             {
                 DrawFacingPreview(o, u, tg);
             }
@@ -957,7 +964,32 @@ public partial class BattleScreen : Node
                 o.FillHex(c, new Color(col.R, col.G, col.B, 0.07f), 0.9f, 0.022f);
             }
         }
+        // Valid targets ringed, invalid ones crossed with the reason under the cursor (docs/DECISIONS_3.md §43).
+        if (skill.Targeting == TargetingMode.Unit)
+        {
+            int reach = skill.RangeMax + (skill.Ranged ? 3 : 0) + 1;
+            foreach (var t in Sim.Units)
+            {
+                if (!t.Alive || t == u || !UnitVisible(t) || HexCoord.Distance(start, t.Pos) > reach) continue;
+                if (!Sim.FilterAccepts(skill.ValidTargets, u, t)) continue;
+                var chk = Sim.Skills.Validate(u, skill, t.Pos, t.Id, null, start, facing, checkCosts: false, checkState: false);
+                if (chk.Ok) o.RingHex(t.Pos, new Color(0.45f, 1f, 0.55f, 0.85f), 0.07f, 0.74f);
+                else _labels.Add(Board.UnitPos(t) + new Vector3(0, 1.45f, 0), "✕", new Color(1f, 0.4f, 0.35f), 30);
+            }
+        }
         if (_hover == null) return;
+        // Line of sight to the cell under the cursor: green, or red up to the obstacle (seen before confirming).
+        if (skill.RequiresLoS && skill.Targeting is TargetingMode.Unit or TargetingMode.Cell && _hover.Coord != start)
+        {
+            var block = Sim.Los.Check(Sim.Map, Sim.Rules, start, _hover.Coord, out var blocker);
+            if (block == LosBlock.None) o.Line(start, _hover.Coord, new Color(0.45f, 1f, 0.55f, 0.75f), 0.045f, 0.5f);
+            else if (blocker.HasValue)
+            {
+                o.Line(start, blocker.Value, new Color(1f, 0.35f, 0.3f, 0.85f), 0.05f, 0.5f);
+                o.HatchHex(blocker.Value, new Color(1f, 0.35f, 0.3f, 0.7f));
+                _labels.Add(LabelPos(blocker.Value, 0.9f), "⛔ " + LineOfSight.Describe(block), new Color(1f, 0.5f, 0.45f), 22);
+            }
+        }
         HexCoord? targetCell = null;
         int targetUnit = -1;
         HexDirection? dir = null;
@@ -1139,6 +1171,7 @@ public partial class BattleScreen : Node
         {
             if (_hoverUnit == null || _hoverUnit == u) return;
             cmd = Command.Attack(_hoverUnit.Id);
+            cmd.Approach = true;
         }
         else
         {
@@ -1147,9 +1180,11 @@ public partial class BattleScreen : Node
                 case TargetingMode.Unit:
                     if (_hoverUnit == null) return;
                     cmd = Command.Skill(skill.Id, null, _hoverUnit.Id);
+                    cmd.Approach = true;
                     break;
                 case TargetingMode.Cell:
                     cmd = Command.Skill(skill.Id, _hover.Coord);
+                    cmd.Approach = true;
                     break;
                 default:
                     cmd = Command.Skill(skill.Id, null, -1, start.DirectionTo(_hover.Coord) ?? facing);
@@ -1272,6 +1307,9 @@ public partial class BattleScreen : Node
             case Key.I:
                 _hud.ToggleInfo();
                 return true;
+            case Key.R when u != null:
+                OpenSkillMenu(_hoverUnit != null && Sim.IsHostile(u, _hoverUnit) && UnitVisible(_hoverUnit) ? _hoverUnit : null, _mouse);
+                return true;
             case Key.L:
                 _hud.ToggleLog();
                 return true;
@@ -1306,7 +1344,13 @@ public partial class BattleScreen : Node
         {
             int idx = (int)(k.Keycode - Key.Key1);
             var skills = actions.Where(a => a.Key.StartsWith("skill:")).ToList();
-            if (idx < skills.Count) Activate(skills[idx]);
+            if (idx >= skills.Count) return true;
+            var a = skills[idx];
+            var sk = a.Skill!;
+            // Automatic skills fire by the key; «both»: the first press aims, the second uses it automatically (docs/DECISIONS_3.md §43).
+            if (a.Enabled && sk.UseMode == SkillUseMode.Auto) SkillClick(a);
+            else if (a.Enabled && sk.UseMode == SkillUseMode.Both && Mode == InputMode.Skill && ModeSkill == sk) SkillClick(a);
+            else Activate(a);
             return true;
         }
         return false;

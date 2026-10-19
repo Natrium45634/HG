@@ -47,6 +47,8 @@ public sealed class CommandSystem
         var err = ValidateTemplate(u, c);
         if (err != null) return err;
         if (replaceQueue) ClearQueue(u, "заменено новой командой", CommandStatus.Cancelled);
+        // Where the target was seen when the order was given (policy «last known position»).
+        if (_sim.GetUnit(c.TargetUnitId) is { Alive: true } seen && _sim.Vision.CanFactionSee(u.FactionId, seen)) c.LastKnownTarget = seen.Pos;
         c.Id = _sim.NextCommandId();
         c.Status = CommandStatus.Pending;
         int idx = insertIndex < 0 ? u.Queue.Count : insertIndex;
@@ -78,15 +80,15 @@ public sealed class CommandSystem
                 if (u.BasicAttack == null) return "у юнита нет обычной атаки";
                 if (_sim.Content.DisabledSkills.ContainsKey(u.BasicAttack.Id)) return "обычная атака отключена из-за ошибки данных";
                 c.SkillId = u.BasicAttack.Id;
-                if (_sim.GetUnit(c.TargetUnitId) == null) return "не указана цель";
+                if (_sim.GetUnit(c.TargetUnitId) == null && !c.AutoTarget) return "не указана цель";
                 return null;
             case CommandType.Skill:
             {
                 var s = _sim.Content.Skill(c.SkillId);
                 if (s == null || !u.KnowsSkill(c.SkillId)) return "юнит не знает этот навык";
                 if (_sim.Content.DisabledSkills.TryGetValue(s.Id, out var why)) return "навык отключён: " + why;
-                if (s.Targeting == TargetingMode.Unit && _sim.GetUnit(c.TargetUnitId) == null) return "не указана цель";
-                if (s.Targeting == TargetingMode.Cell && (!c.TargetCell.HasValue || !_sim.Map.Contains(c.TargetCell.Value))) return "не указана клетка";
+                if (s.Targeting == TargetingMode.Unit && _sim.GetUnit(c.TargetUnitId) == null && !c.AutoTarget) return "не указана цель";
+                if (s.Targeting == TargetingMode.Cell && (!c.TargetCell.HasValue || !_sim.Map.Contains(c.TargetCell.Value)) && !c.AutoTarget) return "не указана клетка";
                 if (s.ApCost > u.ApMax + 1e-9) return $"стоимость {s.ApCost:0.#} ОД больше максимума {u.ApMax:0.#}";
                 foreach (var rc in s.ResourceCosts)
                 {
@@ -694,6 +696,7 @@ public sealed class CommandSystem
         if (cmd.Phase == 0)
         {
             if (cmd.StartedTick == _sim.Tick && cmd.ApproachSearches == 0) cmd.FacingBefore = u.Facing;
+            if (TargetPhase(u, cmd, skill) is { } tr) return tr;
             var check = _sim.Skills.Validate(u, skill, cmd.TargetCell, cmd.TargetUnitId, cmd.Direction, u.Pos, u.Facing);
             if (!check.Ok && ApproachStep(u, cmd, skill, check) is { } approach) return approach;
             if (!check.Ok) return Fail(check.Reason == FailureReason.None ? FailureReason.Invalid : check.Reason, check.Message);
@@ -728,6 +731,15 @@ public sealed class CommandSystem
                     _sim.Skills.Interrupt(u, InterruptCause.Cancelled, recheck.Message);
                     cmd.SpentAp = Math.Max(0, cmd.SpentAp - skill.ApCost);
                     cmd.Phase = 0;
+                    // The target was lost during the preparation: the policy may pick another one (nothing was spent).
+                    var policy = LostPolicy(cmd, skill);
+                    if (policy == TargetLostPolicy.NewTarget && recheck.Reason is FailureReason.TargetLost or FailureReason.OutOfRange or FailureReason.NoLineOfSight
+                        && PickTarget(u, cmd, skill, "цель потеряна при подготовке"))
+                        return Result.Continue;
+                    // Waiting for the target / going to its last known position: the policy runs from the next tick.
+                    if (policy is TargetLostPolicy.WaitReturn or TargetLostPolicy.LastKnown && recheck.Reason == FailureReason.TargetLost
+                        && _sim.GetUnit(cmd.TargetUnitId) is { Alive: true })
+                        return Result.Continue;
                     return Fail(recheck.Reason == FailureReason.None ? FailureReason.Invalid : recheck.Reason, recheck.Message);
                 }
             }
@@ -741,6 +753,88 @@ public sealed class CommandSystem
         }
 
         return Result.Done;
+    }
+
+    private static TargetLostPolicy LostPolicy(Command cmd, SkillDef skill) => cmd.OnTargetLost ?? skill.OnTargetLost;
+
+    /// <summary>
+    /// The target of a skill order before it starts (docs/DECISIONS_3.md §43): automatic choice by the skill's
+    /// rules, then the «target lost» policy — another target, waiting for its return (bounded), the last
+    /// known position, or the queue's failure policy. Null — go on with validation.
+    /// </summary>
+    private Result? TargetPhase(Unit u, Command cmd, SkillDef skill)
+    {
+        if (skill.Targeting is not (TargetingMode.Unit or TargetingMode.Cell) && !cmd.AutoTarget) return null;
+        var t = _sim.GetUnit(cmd.TargetUnitId);
+        if (cmd.AutoTarget && (t == null || !t.Alive) && cmd.LastKnownTarget == null)
+        {
+            if (!PickTarget(u, cmd, skill, "")) return Fail(FailureReason.TargetLost, "нет допустимых целей");
+            t = _sim.GetUnit(cmd.TargetUnitId);
+        }
+        if (t == null) return null; // a cell order without a unit
+        bool visible = t.Alive && _sim.Vision.CanFactionSee(u.FactionId, t);
+        if (visible)
+        {
+            cmd.LastKnownTarget = t.Pos;
+            cmd.LostSince = -1;
+            // A cell skill chosen against a unit follows it until it starts.
+            if (skill.Targeting == TargetingMode.Cell && cmd.AutoTarget) cmd.TargetCell = t.Pos;
+            if (skill.UsesChosenDirection && cmd.AutoTarget) cmd.Direction = u.Pos.DirectionTo(t.Pos) ?? cmd.Direction;
+            return null;
+        }
+        // Lost: dead, gone or hidden.
+        var policy = LostPolicy(cmd, skill);
+        string why = t.Alive ? "цель не видна" : "цель погибла";
+        if (cmd.LostSince < 0) cmd.LostSince = _sim.Tick;
+        switch (policy)
+        {
+            case TargetLostPolicy.NewTarget:
+                if (PickTarget(u, cmd, skill, why)) return null;
+                return Fail(FailureReason.TargetLost, why + ", других целей нет");
+            case TargetLostPolicy.WaitReturn when t.Alive:
+                if (_sim.Tick - cmd.LostSince > _sim.TicksFor(Rules.Queue.MaxWaitSeconds))
+                    return Fail(FailureReason.TargetLost, $"цель не вернулась за {Rules.Queue.MaxWaitSeconds:0} с");
+                cmd.Status = CommandStatus.Waiting;
+                cmd.StatusText = "ждёт возвращения цели";
+                return Result.Continue;
+            case TargetLostPolicy.LastKnown when t.Alive && cmd.LastKnownTarget is { } last:
+            {
+                if (u.Pos == last || HexCoord.Distance(u.Pos, last) <= 1 && !_sim.Map.Get(last)!.Occupants.All(o => o == t))
+                {
+                    cmd.LastKnownTarget = null;
+                    return Fail(FailureReason.TargetLost, "у последней известной позиции цели нет");
+                }
+                var r = StepTowards(u, cmd, last);
+                if (r == Result.Continue) cmd.StatusText = "идёт к последней известной позиции цели";
+                return r == Result.Done ? Result.Continue : r;
+            }
+            default:
+                return Fail(FailureReason.TargetLost, why);
+        }
+    }
+
+    /// <summary>Chooses a (new) target by the skill's rules; true if found.</summary>
+    private bool PickTarget(Unit u, Command cmd, SkillDef skill, string reason)
+    {
+        var (now, later) = _sim.Targets.Candidates(u, skill, u.Pos, u.Facing);
+        int old = cmd.TargetUnitId;
+        now.RemoveAll(x => x.Id == old && !x.Alive);
+        var pool = now.Count > 0 ? now : cmd.Approach && skill.Approach && skill.AllowMoveBeforeUse ? later : now;
+        if (pool.Count == 0) return false;
+        var sel = skill.AutoTarget;
+        var pick = _sim.Targets.Choose(u, pool, sel.Rules, sel.Mode, sel.RandomTies, skill, old, out var why);
+        if (pick == null) return false;
+        cmd.TargetUnitId = pick.Id;
+        cmd.TargetCell = pick.Pos;
+        if (skill.UsesChosenDirection) cmd.Direction = u.Pos.DirectionTo(pick.Pos) ?? u.Facing;
+        cmd.LastKnownTarget = pick.Pos;
+        cmd.LostSince = -1;
+        cmd.ApproachCell = null;
+        cmd.ApproachFor = null;
+        cmd.TargetChoice = why;
+        _sim.Emit(SimEventType.Info, LogLevel.Detail,
+            $"{u.Name}: «{skill.DisplayName}» — {(reason != "" ? reason + ", новая цель" : "цель")} {pick.Name} ({why})", u.Id, pick.Id, pick.Pos);
+        return true;
     }
 
     /// <summary>Facing after the attack and «continue the route» (docs/DECISIONS_3.md §42).</summary>

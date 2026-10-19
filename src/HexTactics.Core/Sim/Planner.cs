@@ -251,6 +251,25 @@ public sealed class Planner
             {
                 var s = SkillOf(u, c);
                 if (s == null) return new CommandEstimate { EndPos = pos, EndFacing = facing, Feasible = false, Problem = "навык не найден" };
+                if (c.AutoTarget && _sim.GetUnit(c.TargetUnitId) is not { Alive: true })
+                {
+                    // Automatic target: estimate against the target the rules would pick now (no random draws in planning).
+                    var (now, later) = _sim.Targets.Candidates(u, s, pos, facing);
+                    var pool = now.Count > 0 ? now : c.Approach ? later : now;
+                    var pick = pool.Count == 0 ? null : _sim.Targets.Choose(u, pool, s.AutoTarget.Rules, s.AutoTarget.Mode, false, s, -1, out _, allowRandom: false);
+                    if (pick == null) return new CommandEstimate { EndPos = pos, EndFacing = facing, Feasible = false, Problem = "сейчас нет допустимых целей — приказ подождёт" };
+                    var probe = c.CloneTemplate();
+                    probe.AutoTarget = false;
+                    probe.TargetUnitId = pick.Id;
+                    probe.TargetCell = pick.Pos;
+                    if (s.UsesChosenDirection) probe.Direction = pos.DirectionTo(pick.Pos) ?? facing;
+                    var e = Estimate(u, probe, pos, facing);
+                    return new CommandEstimate
+                    {
+                        Ap = e.Ap, Seconds = e.Seconds, EndPos = e.EndPos, EndFacing = e.EndFacing, Path = e.Path, Feasible = e.Feasible,
+                        Problem = $"цель сейчас: {pick.Name}" + (e.Problem != "" ? " · " + e.Problem : ""),
+                    };
+                }
                 var target = TargetPosOf(u, s, c, pos);
                 var orient = s.UsesChosenDirection ? c.Direction ?? facing : pos.DirectionTo(target) ?? facing;
                 int steps = s.FaceTarget && Rules.Turn.AutoFaceTarget ? HexDirectionExt.StepsBetween(facing, orient) : 0;

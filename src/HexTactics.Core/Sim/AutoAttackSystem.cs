@@ -15,6 +15,8 @@ public sealed class AutoAttackState
     public string Status { get; set; } = "";
     public int TargetId { get; set; } = -1;
     public int Fired { get; set; }
+    /// <summary>How the last target was chosen (diagnostics).</summary>
+    public string Choice { get; set; } = "";
 }
 
 /// <summary>
@@ -205,7 +207,9 @@ public sealed class AutoAttackSystem
         if (candidates.Count == 0) return Idle(st, "нет целей в зоне");
 
         // 6. Choose.
-        var (target, check) = Choose(u, a, candidates);
+        var (picked, check) = Choose(u, a, candidates);
+        if (picked == null) return Idle(st, "нет целей по правилам выбора");
+        var target = picked;
 
         // Facing the target follows the common turning rules (AP and time per step).
         bool wantFace = skill.FaceTarget && _sim.Rules.Turn.AutoFaceTarget && u.Def.Perception.HasFacing;
@@ -240,77 +244,14 @@ public sealed class AutoAttackSystem
 
     // ------------------------------------------------------------------ target choice
 
-    private double Metric(Unit u, Unit t, AutoTargetRuleDef r, AutoAttackState? st)
-    {
-        // Lower is better.
-        switch (r.Rule)
-        {
-            case AutoTargetRule.LowestHp:
-                return t.Hp;
-            case AutoTargetRule.LowestHpFraction:
-                return t.HpFraction;
-            case AutoTargetRule.MostDangerous:
-                return -AiSystem.Threat(t);
-            case AutoTargetRule.NearestToProtected:
-            {
-                var tag = _sim.Rules.AutoAttacks.ProtectedTag;
-                var prot = _sim.Units.Where(x => x.Alive && !_sim.IsHostile(u, x) && (x.Tag == tag || x.Def.Tags.Contains(tag))).ToList();
-                return prot.Count == 0 ? 0 : prot.Min(p => HexCoord.Distance(p.Pos, t.Pos));
-            }
-            case AutoTargetRule.Boss:
-            {
-                var tag = _sim.Rules.AutoAttacks.BossTag;
-                return t.Tag == tag || t.Def.Tags.Contains(tag) ? 0 : 1;
-            }
-            case AutoTargetRule.WithTag:
-                return !string.IsNullOrEmpty(r.Tag) && (t.Tag == r.Tag || t.Def.Tags.Contains(r.Tag)) ? 0 : 1;
-            case AutoTargetRule.BlockedByMe:
-                return _sim.Blocking.BlockerOf(t) == u ? 0 : 1;
-            case AutoTargetRule.BlockingMe:
-                return _sim.Blocking.BlockerOf(u) == t ? 0 : 1;
-            case AutoTargetRule.CurrentTarget:
-                return st != null && st.TargetId == t.Id || u.Ai.TargetUnitId == t.Id ? 0 : 1;
-            default:
-                return HexCoord.Distance(u.Pos, t.Pos);
-        }
-    }
-
-    private (Unit, SkillCheck) Choose(Unit u, AutoAttackDef a, List<(Unit Target, SkillCheck Check)> candidates)
+    private (Unit?, SkillCheck) Choose(Unit u, AutoAttackDef a, List<(Unit Target, SkillCheck Check)> candidates)
     {
         var st = States(u).FirstOrDefault(x => x.Index == u.Def.AutoAttacks.IndexOf(a));
-        var rules = a.Rules.Count > 0 ? a.Rules : new List<AutoTargetRuleDef> { new() { Rule = AutoTargetRule.Nearest } };
-        var pool = candidates;
-        if (a.Selection == TargetSelectionMode.Weighted)
-        {
-            // Weighted sum of metrics normalised to [0;1] over the candidates (lower is better).
-            var scores = new Dictionary<int, double>();
-            foreach (var c in pool) scores[c.Target.Id] = 0;
-            foreach (var r in rules)
-            {
-                var vals = pool.Select(c => Metric(u, c.Target, r, st)).ToList();
-                double min = vals.Min(), max = vals.Max(), span = max - min;
-                for (int i = 0; i < pool.Count; i++)
-                    scores[pool[i].Target.Id] += r.Weight * (span < 1e-9 ? 0 : (vals[i] - min) / span);
-            }
-            double best = scores.Values.Min();
-            pool = pool.Where(c => scores[c.Target.Id] <= best + 1e-9).ToList();
-        }
-        else
-        {
-            // Sequential: the first rule that narrows the field; ties go to the next rule.
-            foreach (var r in rules)
-            {
-                if (pool.Count <= 1) break;
-                double best = pool.Min(c => Metric(u, c.Target, r, st));
-                pool = pool.Where(c => Metric(u, c.Target, r, st) <= best + 1e-9).ToList();
-            }
-        }
-        if (pool.Count > 1 && a.RandomTies)
-        {
-            var sorted = pool.OrderBy(c => c.Target.Id).ToList();
-            return sorted[_sim.Rng.NextInt(0, sorted.Count)];
-        }
-        var pick = pool.OrderBy(c => HexCoord.Distance(u.Pos, c.Target.Pos)).ThenBy(c => c.Target.Id).First();
-        return (pick.Target, pick.Check);
+        var pick = _sim.Targets.Choose(u, candidates.Select(c => c.Target).ToList(), a.Rules, a.Selection, a.RandomTies, SkillOf(u, st?.Index ?? 0),
+            st?.TargetId ?? -1, out var why);
+        if (st != null) st.Choice = why;
+        if (pick == null) return (null, default);
+        var chosen = candidates.First(c => c.Target == pick);
+        return (chosen.Target, chosen.Check);
     }
 }

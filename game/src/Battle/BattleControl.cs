@@ -29,6 +29,8 @@ public partial class BattleScreen
         public bool RouteMode;
         public float Yaw;
         public HexDirection Dir;
+        /// <summary>Aiming a skill with the arrow (skill/attack mode): the release confirms the target under the cursor.</summary>
+        public bool Aim;
     }
 
     private FacingArrow _headArrow = null!;
@@ -103,7 +105,7 @@ public partial class BattleScreen
     private void UpdateArrows()
     {
         var u = Selected;
-        bool show = u != null && u.Alive && Sim.CanPlayerCommand(u) && Settings.Gestures && (Mode == InputMode.None || _gesture != null);
+        bool show = u != null && u.Alive && Sim.CanPlayerCommand(u) && Settings.Gestures && (Mode is InputMode.None or InputMode.Skill or InputMode.Attack || _gesture != null);
         _nodes.Clear();
         if (!show)
         {
@@ -128,7 +130,9 @@ public partial class BattleScreen
             _headArrow.Hide();
             return;
         }
-        float yaw = _gesture is { NodeIndex: -1 } g && g.Moved && !g.RouteMode ? g.Yaw : Render.Board.YawOf(headFacing);
+        float yaw = _gesture is { NodeIndex: -1 } g && g.Moved && !g.RouteMode ? g.Yaw
+            : Mode is InputMode.Skill or InputMode.Attack && _hover != null && _hover.Coord != head ? FacingArrow.YawTowards(Render.Board.Center(head), Render.Board.Center(_hover.Coord))
+            : Render.Board.YawOf(headFacing);
         _headArrow.Show(head, Render.Board.Center(head, Render.Board.PickY(headCell)), yaw);
         _headArrow.SizeFactor = (float)Settings.ArrowSize;
         _headArrow.AnimSpeed = (float)Settings.UiAnimSpeed;
@@ -179,7 +183,9 @@ public partial class BattleScreen
     private bool TryStartGesture(Vector2 mouse)
     {
         var u = Selected;
-        if (u == null || !Settings.Gestures || Mode != InputMode.None || !Sim.CanPlayerCommand(u)) return false;
+        if (u == null || !Settings.Gestures || !Sim.CanPlayerCommand(u)) return false;
+        if (Mode is not (InputMode.None or InputMode.Skill or InputMode.Attack)) return false;
+        bool aim = Mode != InputMode.None;
         var cam = Board.Rig.Camera;
         // A press closer to another creature's figure than to the arrow selects that creature.
         float other = float.MaxValue;
@@ -196,9 +202,10 @@ public partial class BattleScreen
         if (_headArrow.Visible && Grab(_headArrow))
         {
             var (pos, facing) = PlanStart();
-            _gesture = new Gesture { NodeIndex = -1, Anchor = pos, AnchorFacing = facing, StartMouse = mouse, Yaw = Render.Board.YawOf(facing), Dir = facing };
+            _gesture = new Gesture { NodeIndex = -1, Anchor = pos, AnchorFacing = facing, StartMouse = mouse, Yaw = Render.Board.YawOf(facing), Dir = facing, Aim = aim };
             return true;
         }
+        if (aim) return false;
         for (int i = 0; i < _nodes.Count && i < _nodeArrows.Count; i++)
         {
             if (!Grab(_nodeArrows[i])) continue;
@@ -234,6 +241,11 @@ public partial class BattleScreen
         var center = Render.Board.Center(g.Anchor, p.Value.Y);
         float hexes = new Vector2(p.Value.X - center.X, p.Value.Z - center.Z).Length() / Mathf.Sqrt(3);
         float threshold = (float)Settings.RouteThreshold;
+        if (g.Aim)
+        {
+            if (hexes > 0.05f) g.Yaw = FacingArrow.YawTowards(center, p.Value);
+            return;
+        }
         if (g.NodeIndex == -1 && !u.Flags.BlocksMovement)
         {
             if (!g.RouteMode && hexes > threshold)
@@ -270,6 +282,12 @@ public partial class BattleScreen
         var u = Selected;
         CancelGesture();
         if (g == null || u == null || !g.Moved) return;
+        if (g.Aim)
+        {
+            // The arrow was pulled to the target: the same as a click on it.
+            if (Mode is InputMode.Skill or InputMode.Attack) ClickSkill();
+            return;
+        }
         if (g.RouteMode)
         {
             CommitRoute(u, g);
@@ -326,15 +344,175 @@ public partial class BattleScreen
         SubmitAppend(PlayerMove(_hover.Coord));
     }
 
-    /// <summary>The player pointed at an enemy hex: an attack order, never a move onto the enemy (§42).</summary>
-    private void OnEnemyPointed(Unit u, Unit enemy)
+    /// <summary>The player pointed at an enemy hex: the skill menu against it — an attack order, never a move onto the enemy (§42).</summary>
+    private void OnEnemyPointed(Unit u, Unit enemy) => OpenSkillMenu(enemy, _mouse);
+
+    // ------------------------------------------------------------------ radial skill menu (§42)
+
+    /// <summary>
+    /// Opens the skill menu (radial or list, per settings) for the selected unit. With a target every skill is
+    /// checked against it (now / after approaching / impossible with the reason); without one a choice starts aiming.
+    /// </summary>
+    public void OpenSkillMenu(Unit? target, Vector2 at)
     {
-        if (u.BasicAttack == null)
+        var u = Selected;
+        if (u == null || !Sim.CanPlayerCommand(u)) return;
+        PlanningPause("меню навыков", s => s.PauseOnSkillMenu);
+        var (start, facing) = PlanStart();
+        var actions = Sim.Planner.Actions(u);
+        RadialItem Item(SkillDef s)
         {
-            _hud.ShowBanner($"{u.Name}: нет обычной атаки — выберите навык", Ui.Bad);
+            var a = actions.FirstOrDefault(x => x.Skill == s);
+            bool enabled = a?.Enabled ?? true;
+            string reason = a?.Reason ?? "";
+            bool approach = false;
+            if (enabled && target != null)
+            {
+                var chk = Sim.Planner.CheckAgainst(u, s, target, start, facing);
+                // AP, resources, cooldown: the order waits by the queue rules (as part 1), so the skill stays available.
+                enabled = chk.Now || chk.AfterApproach;
+                approach = chk.AfterApproach && !chk.Now && chk.Reason.Contains("подойдёт");
+                reason = chk.Reason;
+            }
+            string icon = !string.IsNullOrEmpty(s.Icon) ? s.Icon : s.DisplayName.Length > 0 ? s.DisplayName[..1] : "•";
+            return new RadialItem(s, s.DisplayName, icon, enabled, reason, _hud.SkillTooltip(s, u), approach);
+        }
+        var (defense, first, second) = Sim.Planner.RadialSkills(u, RadialMenu.FirstCapacity);
+        var defend = actions.FirstOrDefault(x => x.Key == "defend");
+        RadialItem centre = defense != null
+            ? Item(defense) with { Approach = false }
+            : new RadialItem(null, "Стойка", "▣", defend?.Enabled ?? true, defend?.Reason ?? "",
+                $"Защитная стойка: уклонение +{Sim.Rules.Ap.DefendEvasionBonus:P0}, блок +{Sim.Rules.Ap.DefendBlockBonus:P0} · {Sim.Rules.Ap.DefendCost:0.#} ОД", false);
+        if (defense != null && target != null) centre = centre with { Enabled = actions.FirstOrDefault(x => x.Skill == defense)?.Enabled ?? true };
+        var ring1 = first.Select(Item).ToList();
+        var ring2 = second.Select(Item).ToList();
+        string title = target != null ? $"{u.Name} → {target.Name}" : $"{u.Name}: навык";
+        void Pick(RadialItem it) => OnSkillPicked(u, it, target);
+        if (Settings.RadialMenu) _hud.Radial.Open(at, title, centre, ring1, ring2, Pick);
+        else _hud.ShowSkillList(at, title, new[] { centre }.Concat(ring1).Concat(ring2).ToList(), Pick);
+        if (target != null && ring1.Concat(ring2).All(i => !i.Enabled))
+            _hud.ShowBanner($"{target.Name}: ни один навык не применить — {ring1.Concat(ring2).FirstOrDefault()?.Reason}. Подойдите, выберите позицию с обзором или отмените (Esc)", Ui.Warn, 5);
+    }
+
+    // ------------------------------------------------------------------ automatic use and aiming from the skill icon (§43)
+
+    private ActionInfo? _skillPress;
+    private Vector2 _skillPressFrom;
+    private bool _skillPressDragged;
+
+    /// <summary>The skill can be used without aiming (its target is chosen by its rules).</summary>
+    public static bool CanAuto(SkillDef s) => s.UseMode is SkillUseMode.Auto or SkillUseMode.Both;
+
+    private static bool NeedsNoTarget(SkillDef s) =>
+        s.Targeting == TargetingMode.Self && s.Stages.All(st => st.Area.Shape is AreaShape.Single or AreaShape.Radius or AreaShape.Ring or AreaShape.Cross or AreaShape.Global);
+
+    /// <summary>An automatic use order: the target is chosen at execution by the skill's rules.</summary>
+    public Command AutoSkillCommand(Unit u, SkillDef s)
+    {
+        var c = u.BasicAttack == s && s.Targeting == TargetingMode.Unit ? new Command { Type = CommandType.Attack } : Command.Skill(s.Id, null);
+        c.SkillId = s.Id;
+        c.AutoTarget = true;
+        c.Approach = true;
+        return c;
+    }
+
+    /// <summary>LMB down on a skill icon: the press is tracked; dragging onto the map turns into aiming.</summary>
+    public void BeginSkillPress(ActionInfo a)
+    {
+        if (Selected == null || a.Skill == null || !a.Enabled) return;
+        _skillPress = a;
+        _skillPressFrom = GetViewport().GetMousePosition();
+        _skillPressDragged = false;
+    }
+
+    /// <summary>A click on a skill icon (no drag): automatic use when the skill allows it, otherwise aiming as before.</summary>
+    public void SkillClick(ActionInfo a)
+    {
+        if (_skillPressDragged) return;
+        _skillPress = null;
+        var u = Selected;
+        if (u == null || a.Skill == null) return;
+        if (!a.Enabled)
+        {
+            Activate(a);
             return;
         }
-        SubmitAppend(Command.Attack(enemy.Id));
+        var s = a.Skill;
+        if (CanAuto(s) && !NeedsNoTarget(s))
+        {
+            ExitMode();
+            SubmitAppend(AutoSkillCommand(u, s));
+            _hud.ShowBanner($"«{s.DisplayName}»: цель выберется автоматически ({s.AutoTarget})", Ui.TextDim, 2.5f);
+            return;
+        }
+        Activate(a);
+    }
+
+    /// <summary>Follows a press started on a skill icon: dragged onto the map — aim; released there — confirm the target.</summary>
+    private void UpdateSkillPress()
+    {
+        if (_skillPress == null) return;
+        var mouse = GetViewport().GetMousePosition();
+        bool down = Input.IsMouseButtonPressed(MouseButton.Left);
+        if (!_skillPressDragged && mouse.DistanceTo(_skillPressFrom) > 12 && !_hud.IsMouseOverUi())
+        {
+            _skillPressDragged = true;
+            EnterSkill(_skillPress.Skill!);
+        }
+        if (_skillPressDragged)
+        {
+            _mouse = mouse;
+            if (!down)
+            {
+                _skillPress = null;
+                _skillPressDragged = false;
+                UpdateHover();
+                if (!_hud.IsMouseOverUi() && Mode is InputMode.Skill or InputMode.Attack) ClickSkill();
+            }
+            return;
+        }
+        if (!down) _skillPress = null;
+    }
+
+    /// <summary>A skill of the menu was chosen: an order against the target, the defence, or aiming.</summary>
+    private void OnSkillPicked(Unit u, RadialItem it, Unit? target)
+    {
+        if (Selected != u) return;
+        if (it.Skill == null)
+        {
+            SubmitAppend(Command.Defend());
+            return;
+        }
+        var s = it.Skill;
+        if (s.Kind == SkillKind.Defense || (target == null && s.Targeting == TargetingMode.Self && s.Stages.All(st => st.Area.Shape is AreaShape.Single or AreaShape.Radius or AreaShape.Ring or AreaShape.Cross or AreaShape.Global)))
+        {
+            SubmitAppend(Command.Skill(s.Id, null));
+            return;
+        }
+        if (target == null)
+        {
+            // From the menu without a target: «automatic» skills pick their target themselves, the others are aimed.
+            if (CanAuto(s)) SubmitAppend(AutoSkillCommand(u, s));
+            else EnterSkill(s);
+            return;
+        }
+        SubmitAppend(CommandAgainst(u, s, target));
+    }
+
+    /// <summary>The order of a skill against a unit, whatever the skill's aiming (unit, cell, direction).</summary>
+    public Command CommandAgainst(Unit u, SkillDef s, Unit target)
+    {
+        var (start, _) = PlanStart();
+        Command c = u.BasicAttack == s && s.Targeting == TargetingMode.Unit
+            ? Command.Attack(target.Id)
+            : s.Targeting switch
+            {
+                TargetingMode.Unit => Command.Skill(s.Id, null, target.Id),
+                TargetingMode.Cell => Command.Skill(s.Id, target.Pos),
+                _ => Command.Skill(s.Id, null, -1, start.DirectionTo(target.Pos) ?? u.Facing),
+            };
+        c.Approach = true;
+        return c;
     }
 
     /// <summary>Adds a command at the end of the plan (the gesture always continues the plan).</summary>

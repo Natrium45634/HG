@@ -76,6 +76,7 @@ public sealed class Simulation
         AutoAttacks = new AutoAttackSystem(this);
         Scenario = new ScenarioSystem(this);
         Planner = new Planner(this);
+        Targets = new TargetSelector(this);
 
         CellEffects.ApplyIntrinsicEffects();
         foreach (var cd in mapDef.Cells)
@@ -119,6 +120,8 @@ public sealed class Simulation
     public AutoAttackSystem AutoAttacks { get; }
     public ScenarioSystem Scenario { get; }
     public Planner Planner { get; }
+    /// <summary>Automatic target choice (docs/DECISIONS_3.md §43).</summary>
+    public TargetSelector Targets { get; }
 
     public CombatLog Log { get; } = new();
     public SimProfiler Profiler { get; } = new();

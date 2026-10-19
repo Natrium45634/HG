@@ -56,6 +56,10 @@ public sealed class Command
     public RouteWeights? RouteWeights { get; set; }
     /// <summary>Attack/skill: approach the target first when it is out of range or sight (if the skill allows, docs/DECISIONS_3.md §42).</summary>
     public bool Approach { get; set; }
+    /// <summary>Skill: the target is chosen at execution by the skill's rules (automatic use, docs/DECISIONS_3.md §43).</summary>
+    public bool AutoTarget { get; set; }
+    /// <summary>Overrides the skill's «target lost» policy for this order.</summary>
+    public TargetLostPolicy? OnTargetLost { get; set; }
 
     public CommandStatus Status { get; internal set; } = CommandStatus.Pending;
     public string StatusText { get; internal set; } = "";
@@ -83,6 +87,11 @@ public sealed class Command
     internal HexCoord? ApproachCell { get; set; }
     internal HexCoord? ApproachFor { get; set; }
     internal int ApproachSearches { get; set; }
+    /// <summary>Last seen position of the target (policy «go to the last known position»).</summary>
+    internal HexCoord? LastKnownTarget { get; set; }
+    internal long LostSince { get; set; } = -1;
+    /// <summary>How the automatic target was chosen (diagnostics).</summary>
+    public string TargetChoice { get; internal set; } = "";
     /// <summary>Facing before the skill (for «keep facing after the attack»).</summary>
     internal HexDirection FacingBefore { get; set; }
 
@@ -108,6 +117,8 @@ public sealed class Command
         Routing = Routing,
         RouteWeights = RouteWeights?.Clone(),
         Approach = Approach,
+        AutoTarget = AutoTarget,
+        OnTargetLost = OnTargetLost,
     };
 
     public static Command Move(HexCoord to) => new() { Type = CommandType.Move, TargetCell = to };
@@ -136,6 +147,7 @@ public sealed class Command
                 ? $"{skillName(SkillId)} → {unitName(TargetUnitId)}"
                 : TargetCell.HasValue
                     ? $"{skillName(SkillId)} → {TargetCell}{(Direction.HasValue ? " " + Direction.Value.RuShortName() : "")}"
+                    : AutoTarget ? $"{skillName(SkillId)} (цель — автоматически)"
                     : $"{skillName(SkillId)}{(Direction.HasValue ? " на " + Direction.Value.RuName() : "")}",
             CommandType.Defend => Duration > 0 ? $"Защитная стойка {Duration:0.#} с" : "Защитная стойка",
             CommandType.Wait => $"Ожидание {Duration:0.#} с",
