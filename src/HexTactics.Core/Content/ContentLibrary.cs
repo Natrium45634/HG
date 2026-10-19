@@ -101,20 +101,23 @@ public sealed class ContentLibrary
     {
         var list = new List<LibraryChange>();
         if (previous == null) return list;
+        Dictionary<(DefCategory, string), List<ReferenceInfo>>? index = null;
+        List<ReferenceInfo> RefsTo(DefCategory c, string id) =>
+            (index ??= ReferenceWalker.BuildIndex(draft)).TryGetValue((c, id), out var l) ? l : new List<ReferenceInfo>();
         foreach (var d in draft.AllDefs())
         {
             var prev = previous.Table(d.Category).Get(d.Id);
             if (prev == null || prev.GetType() != d.GetType()) continue;
             if (Canonical(prev) == Canonical(d)) continue;
             // Only references that follow the latest version are affected; pinned ones ("id@N") stay.
-            var direct = draft.FindReferences(d.Category, d.Id).Where(r => r.Owner != null && r.Id == d.Id).ToList();
+            var direct = RefsTo(d.Category, d.Id).Where(r => r.Owner != null && r.Id == d.Id).ToList();
             var indirect = new List<Def>();
             var seen = new HashSet<Def>(direct.Select(r => r.Owner!));
             var frontier = new Queue<Def>(seen);
             while (frontier.Count > 0 && indirect.Count < 200)
             {
                 var o = frontier.Dequeue();
-                foreach (var r in draft.FindReferences(o.Category, o.Id))
+                foreach (var r in RefsTo(o.Category, o.Id))
                     if (r.Owner != null && seen.Add(r.Owner))
                     {
                         indirect.Add(r.Owner);

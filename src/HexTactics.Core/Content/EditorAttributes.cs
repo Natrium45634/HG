@@ -135,11 +135,18 @@ public interface IInheritable
 public static class EdUtil
 {
     /// <summary>Evaluates [EdShowIf] for a property of the given object (true when no attribute).</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(System.Reflection.PropertyInfo, Type), Attribute?> AttrCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type, string), System.Reflection.PropertyInfo?> PropCache = new();
+
+    /// <summary>A property attribute, cached (reflection lookups dominated the validation of large libraries).</summary>
+    public static T? Attr<T>(System.Reflection.PropertyInfo prop) where T : Attribute =>
+        (T?)AttrCache.GetOrAdd((prop, typeof(T)), k => Attribute.GetCustomAttribute(k.Item1, k.Item2));
+
     public static bool IsShown(object obj, System.Reflection.PropertyInfo prop)
     {
-        var a = (EdShowIfAttribute?)Attribute.GetCustomAttribute(prop, typeof(EdShowIfAttribute));
+        var a = Attr<EdShowIfAttribute>(prop);
         if (a == null) return true;
-        var other = obj.GetType().GetProperty(a.Field);
+        var other = PropCache.GetOrAdd((obj.GetType(), a.Field), k => k.Item1.GetProperty(k.Item2));
         if (other == null) return true;
         var v = other.GetValue(obj);
         foreach (var x in a.Values)

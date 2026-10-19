@@ -229,6 +229,9 @@ public static class ContentChecks
                 issues.Add(Warn(sk, $"Stages[{i}]", "Несовместимые эффекты: толчок и притяжение в одном этапе гасят друг друга"));
             foreach (var st in ops.Where(e => e.Type == EffectType.ApplyStatus).Select(e => e.Status).Intersect(ops.Where(e => e.Type == EffectType.RemoveStatus).Select(e => e.Status)))
                 issues.Add(Warn(sk, $"Stages[{i}]", $"Несовместимые эффекты: состояние «{st}» и накладывается, и снимается в одном этапе"));
+            var area = sk.Stages[i].Area;
+            if (sk.Targeting == TargetingMode.Unit && area.Shape == AreaShape.Mask && area.Cells.Count > 0 && !area.Cells.Any(c => c.Offset == default))
+                issues.Add(Warn(sk, $"Stages[{i}].Area", "Наведение на юнита, а маска области не содержит клетку цели — выбранная цель не будет задета (маска строится от цели)"));
             if (ops.Count(e => e.Type == EffectType.TeleportCaster) > 0 && sk.Targeting == TargetingMode.Self)
                 issues.Add(Warn(sk, $"Stages[{i}]", "Перемещение исполнителя в навыке «на себя» ничего не делает"));
             foreach (var t in ops.Where(e => e.Type == EffectType.ChangeTerrain).Select(e => e.Terrain).Intersect(ops.Where(e => e.Type == EffectType.DestroyObstacle).Select(_ => "")))

@@ -56,6 +56,8 @@ public partial class UiTestRunner : Node
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
+        // The acceptance path of part 2 (TZ «Итоговый критерий»): everything through the game UI.
+        _tests.Add(("admin_full_flow_create_save_export_import_play", AdminFullFlow));
         _ = Run();
     }
 
@@ -728,6 +730,175 @@ public partial class UiTestRunner : Node
             Check(InfoVisible("исполняемый код"), "скрипт должен быть отклонён");
             Check(cm.Draft.All<AssetDef>().Count() == before, "отклонённый файл не создаёт ресурс");
             CloseDialogs();
+        }
+        finally
+        {
+            Dialogs.AutoPath = null;
+        }
+    }
+
+    private async Task ClickHex(BoardViewport vp, HexCoord c)
+    {
+        var cell = vp.Board.Map!.Get(c)!;
+        var local = vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(c, Render.Board.PickY(cell)));
+        await Click(vp.GetGlobalRect().Position + local);
+    }
+
+    private static T Current<T>(DefListPanel p) where T : Def => (T)p.Current!;
+
+    /// <summary>
+    /// The final criterion of part 2: an administrator creates a map, its terrain, an element and a
+    /// damage type, a skill from the catalog, an enemy with an auto-attack and a scenario; saves to the
+    /// library; exports the scenario package; removes the objects; imports the package back; and plays it.
+    /// </summary>
+    private async Task AdminFullFlow()
+    {
+        var cm = Main.Instance.Content;
+        string pkgPath = System.IO.Path.Combine(ProjectSettings.GlobalizePath("user://uitest/packages"), "admin_flow.hexpack");
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(pkgPath)!);
+        Dialogs.AutoPath = _ => pkgPath;
+        try
+        {
+            // 1. Map from the standard template, terrain painted with the brush.
+            await OpenEditor("maps");
+            await ClickButton("Создать");
+            var mapPanel = Find<MapEditorPanel>(GetTree().Root).First();
+            var map = Current<MapDef>(mapPanel);
+            map.Name = "Поле испытаний";
+            await Frames(30);
+            var brush = Find<OptionButton>(mapPanel).First(o => o.ItemCount > 5 && o.GetItemText(0).Contains("["));
+            brush.Select(Enumerable.Range(0, brush.ItemCount).First(i => brush.GetItemText(i).Contains("[lava]")));
+            var vp = Find<BoardViewport>(mapPanel).First();
+            var lavaCell = map.Cells.First(c => c.C.Q + c.C.R / 2 == 5 && c.C.R == 7).C;
+            await ClickHex(vp, lavaCell);
+            Check(map.Cells.First(c => c.C == lavaCell).T == "lava", "кисть должна нарисовать лаву");
+            string mapId = map.Id;
+
+            // 2. Element (inherits fire) and a damage type of it.
+            await OpenEditor("elements");
+            await ClickButton("Создать");
+            var element = Current<ElementDef>(Find<DefListPanel>(GetTree().Root).First());
+            element.Name = "Плазма";
+            element.Parent = "fire";
+            await OpenEditor("damage");
+            await ClickButton("Создать");
+            var dtype = Current<DamageTypeDef>(Find<DefListPanel>(GetTree().Root).First());
+            dtype.Name = "Плазменный ожог";
+            dtype.Kind = DamageCategory.Elemental;
+            dtype.Element = element.Id;
+
+            // 3. A skill: its damage operation comes from the catalog.
+            await OpenEditor("skills");
+            await ClickButton("Создать");
+            var skillPanel = Find<DefListPanel>(GetTree().Root).First();
+            var skill = Current<SkillDef>(skillPanel);
+            skill.Name = "Плазменный заряд";
+            skill.Targeting = TargetingMode.Unit;
+            skill.RangeMax = 3;
+            skill.ApCost = 1;
+            if (skill.Stages.Count == 0) skill.Stages.Add(new SkillStageDef());
+            skill.Stages[0].Area = new AreaDef { Shape = AreaShape.Single };
+            skill.Stages[0].Effects.Clear();
+            var op = (SkillEffectDef)OperationCatalog.Abilities.First(e => e.Name == "Нанести урон").Create();
+            op.DamageType = dtype.Id;
+            op.Amount = 6;
+            skill.Stages[0].Effects.Add(op);
+
+            // 4. An enemy with that skill as an auto-attack.
+            await OpenEditor("enemies");
+            await ClickButton("Создать");
+            var enemy = Current<UnitDef>(Find<DefListPanel>(GetTree().Root).First());
+            enemy.Name = "Плазменный дрон";
+            enemy.BasicAttack = skill.Id;
+            enemy.AiProfile = "aggressive";
+            enemy.Stats[Stats.HpMax] = 60;
+            enemy.Stats[Stats.MoveSpeed] = 2;
+            enemy.AutoAttacks.Add(new AutoAttackDef { Skill = skill.Id, Interval = 1 });
+
+            // 5. A scenario on the new map: units placed by clicks on the board.
+            await OpenEditor("scenarios");
+            await ClickButton("Создать");
+            var sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+            var sc = Current<ScenarioDef>(sp);
+            sc.Name = "Испытание плазмы";
+            sc.Map = mapId;
+            sc.Limits.FogOfWar = false;
+            sp.Select(sc);
+            await Frames(30);
+            var svp = Find<BoardViewport>(sp).First();
+            var unitOpt = Find<OptionButton>(sp).First(o => Enumerable.Range(0, o.ItemCount).Any(i => o.GetItemText(i).StartsWith("Плазменный дрон")));
+            await ClickButton("Поставить");
+            var playerStart = map.Markers.First(m => m.Type == MarkerType.PlayerStart).C;
+            var enemyStart = map.Markers.First(m => m.Type == MarkerType.EnemySpawn).C;
+            unitOpt.Select(Enumerable.Range(0, unitOpt.ItemCount).First(i => unitOpt.GetItemText(i).StartsWith("Рыцарь")));
+            await ClickHex(svp, playerStart);
+            unitOpt.Select(Enumerable.Range(0, unitOpt.ItemCount).First(i => unitOpt.GetItemText(i).StartsWith("Плазменный дрон")));
+            await ClickHex(svp, enemyStart);
+            Check(sc.Units.Count == 2 && sc.Units.Any(u => u.Unit == enemy.Id) && sc.Units.Any(u => u.Unit == "knight"), $"юниты должны расставляться кликом ({sc.Units.Count})");
+
+            // 6. Save to the library (warnings accepted).
+            await ClickButton("Сохранить");
+            var pub = Dialog("Опубликовать изменения");
+            Check(pub != null, "окно публикации должно открыться (без критических ошибок)");
+            if (Find<CheckBox>(pub!).FirstOrDefault(b => b.Text.StartsWith("Принимаю")) is { } accept) accept.ButtonPressed = true;
+            Confirm(pub);
+            await Frames(4);
+            CloseDialogs();
+            Check(cm.Published.Get<ScenarioDef>(sc.Id) != null && cm.Published.Get<UnitDef>(enemy.Id) != null, "сценарий и враг должны быть в библиотеке");
+
+            // 7. Export the scenario package (with every dependency).
+            await OpenEditor("scenarios");
+            sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+            sp.Select(sc.Id);
+            await Frames(4);
+            await ClickButton("Пакет…");
+            Confirm(Dialog("Экспорт пакета"));
+            await Frames(4);
+            CloseDialogs();
+            var pkg = ContentPackage.Read(File.ReadAllBytes(pkgPath));
+            Check(pkg.Ok && new[] { sc.Id, mapId, enemy.Id, skill.Id, dtype.Id, element.Id }.All(id => pkg.Objects.Any(o => o.Id == id)), "в пакете должны быть все созданные объекты");
+
+            // 8. Remove them from the library, then import the package back.
+            var draft = cm.Draft!;
+            draft.Table(DefCategory.Scenario).Remove(sc.Id);
+            draft.Table(DefCategory.Map).Remove(mapId);
+            draft.Table(DefCategory.Unit).Remove(enemy.Id);
+            draft.Table(DefCategory.Skill).Remove(skill.Id);
+            draft.Table(DefCategory.DamageType).Remove(dtype.Id);
+            draft.Table(DefCategory.Element).Remove(element.Id);
+            cm.DraftDirty = true;
+            await ClickButton("Импорт…");
+            var preview = Dialog("Импорт: предпросмотр");
+            Check(preview != null && LabelVisible("Новые объекты"), "предпросмотр импорта");
+            Confirm(preview);
+            await Frames(5);
+            Check(Find<AcceptDialog>(GetTree().Root).Any(d => d.Visible && d.Title == "Импорт: отчёт"), "отчёт об импорте");
+            CloseDialogs();
+            Check(new[] { sc.Id }.All(id => draft.Get<ScenarioDef>(id) != null) && draft.Get<ElementDef>(element.Id)?.Parent == "fire", "объекты должны вернуться");
+            await ClickButton("Сохранить");
+            pub = Dialog("Опубликовать изменения");
+            if (Find<CheckBox>(pub!).FirstOrDefault(b => b.Text.StartsWith("Принимаю")) is { } accept2) accept2.ButtonPressed = true;
+            Confirm(pub);
+            await Frames(4);
+            CloseDialogs();
+
+            // 9. Play: the drone auto-attacks with the new damage type.
+            var db = cm.Published;
+            Main.Instance.ShowBattle(db.Get<ScenarioDef>(sc.Id)!, db, admin: true);
+            await Frames(8);
+            var bs = Battle();
+            var drone = bs.Sim.Units.First(u => u.Def.Id == enemy.Id);
+            var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+            Teleport(bs, drone, knight.Pos + new HexCoord(2, 0));
+            foreach (var u in bs.Sim.Units) u.AiControlled = true;
+            bool Done() => bs.Sim.Log.Entries.Any(e => e.Type == SimEventType.Damage && e.DamageType == dtype.Id)
+                           && bs.Sim.Log.Entries.Any(e => e.SourceUnit == drone.Id && e.Text.Contains("автоатака"));
+            for (int i = 0; i < 400 && !Done(); i++) bs.Sim.Step();
+            Check(bs.Sim.Log.Entries.Any(e => e.Type == SimEventType.Damage && e.DamageType == dtype.Id),
+                $"дрон должен наносить плазменный урон в бою: дрон {drone.Pos} ОД {drone.Ap:0.#}, рыцарь {knight.Pos}, отключено: {string.Join(",", db.DisabledSkills.Keys)}; " +
+                string.Join(" | ", bs.Sim.Log.Entries.Where(e => e.SourceUnit == drone.Id || e.TargetUnit == drone.Id).Select(e => e.Type + ":" + e.Text).TakeLast(8)) +
+                "; ошибки навыка: " + string.Join(" | ", ContentValidator.Validate(db.Clone()).Where(i => i.Source == "Skill:" + skill.Id).Select(i => i.Message)));
+            Check(bs.Sim.Log.Entries.Any(e => e.SourceUnit == drone.Id && e.Text.Contains("автоатака")), "через автоатаку");
         }
         finally
         {

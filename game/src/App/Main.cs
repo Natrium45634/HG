@@ -94,6 +94,29 @@ public partial class Main : Node
         GD.Print($"SELFTEST: контент — {Content.SourceDescription}, ошибок {Content.ErrorCount}");
         foreach (var i in Content.LoadIssues.Where(i => i.Severity == HexTactics.Core.Content.IssueSeverity.Error)) GD.Print("  " + i);
         if (Content.ErrorCount > 0) failures++;
+        // Resources must be inside the build and readable (models are also parsed — the same path as in battle).
+        int files = 0, models = 0;
+        foreach (var a in Content.Published.All<HexTactics.Core.Content.AssetDef>().Where(a => a.HasFile))
+        {
+            files++;
+            var problem = HexTactics.Core.Content.AssetValidator.FileProblem(a, Render.Assets.Read(a.Path));
+            if (problem == null && a.Kind == HexTactics.Core.Content.AssetKind.Model)
+            {
+                var node = Render.Assets.Model(a);
+                if (node == null) problem = Render.Assets.Problems.GetValueOrDefault(a.Id, "модель не загружена");
+                else
+                {
+                    models++;
+                    node.Free();
+                }
+            }
+            if (problem != null)
+            {
+                failures++;
+                GD.PrintErr($"SELFTEST: ресурс «{a.Id}»: {problem}");
+            }
+        }
+        GD.Print($"SELFTEST: ресурсы — файлов {files}, моделей загружено {models}");
         foreach (var sc in Content.Published.All<ScenarioDef>())
         {
             try

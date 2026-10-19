@@ -17,5 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="../../game/content/**/*.json" LinkBase="content" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../game/content/assets/**/*" Exclude="../../game/content/assets/**/*.import" LinkBase="content/assets" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

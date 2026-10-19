@@ -65,7 +65,7 @@ public static class ReferenceWalker
             if (!EdUtil.IsShown(obj, prop)) continue;
             string p = path + "." + prop.Name;
 
-            var refAttr = prop.GetCustomAttribute<EdRefAttribute>();
+            var refAttr = EdUtil.Attr<EdRefAttribute>(prop);
             if (refAttr != null)
             {
                 if (value is string s)
@@ -84,7 +84,7 @@ public static class ReferenceWalker
                 continue;
             }
 
-            var keyRef = prop.GetCustomAttribute<EdKeyRefAttribute>();
+            var keyRef = EdUtil.Attr<EdKeyRefAttribute>(prop);
             if (keyRef != null && value is IDictionary dict)
             {
                 var keys = dict.Keys.Cast<object>().Select(k => k.ToString() ?? "").ToList();
@@ -125,6 +125,24 @@ public static class ReferenceWalker
                 result.Add(new ReferenceInfo(owner, path, cat, value));
         });
         return result;
+    }
+
+    /// <summary>
+    /// Every reference of the content grouped by its target (category, bare id) — one walk instead of one
+    /// per lookup (publication of many changed objects in a large library).
+    /// </summary>
+    public static Dictionary<(DefCategory Category, string Id), List<ReferenceInfo>> BuildIndex(ContentDatabase db)
+    {
+        var index = new Dictionary<(DefCategory, string), List<ReferenceInfo>>();
+        Walk(db, (owner, path, cat, value, _, _) =>
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            var id = ContentRef.IdOf(value);
+            if (owner != null && owner.Category == cat && owner.Id == id && path == owner.Id + ".Id") return;
+            if (!index.TryGetValue((cat, id), out var list)) index[(cat, id)] = list = new List<ReferenceInfo>();
+            list.Add(new ReferenceInfo(owner, path, cat, value));
+        });
+        return index;
     }
 
     public static void ReplaceReferences(ContentDatabase db, DefCategory category, string oldId, string newId)

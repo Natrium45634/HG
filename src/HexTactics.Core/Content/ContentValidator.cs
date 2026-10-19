@@ -130,7 +130,7 @@ public static class ContentValidator
             }
             if (value == null) continue;
             if (!EdUtil.IsShown(obj, prop)) continue;
-            var range = prop.GetCustomAttribute<EdRangeAttribute>();
+            var range = EdUtil.Attr<EdRangeAttribute>(prop);
             string p = path + "." + prop.Name;
             if (range != null)
             {
@@ -178,9 +178,9 @@ public static class ContentValidator
             {
                 continue;
             }
-            if (value == null || value is string && prop.GetCustomAttribute<EdDamageMatchAttribute>() == null) continue;
+            if (value == null || value is string && EdUtil.Attr<EdDamageMatchAttribute>(prop) == null) continue;
             string p = path + "." + prop.Name;
-            if (prop.GetCustomAttribute<EdDamageMatchAttribute>() != null)
+            if (EdUtil.Attr<EdDamageMatchAttribute>(prop) != null)
             {
                 var values = value is string one ? new[] { one } : value is IEnumerable<string> many ? many.ToArray() : Array.Empty<string>();
                 foreach (var m in values)
@@ -252,7 +252,7 @@ public static class ContentValidator
             if (value == null) continue;
             if (!EdUtil.IsShown(obj, prop)) continue;
             string p = path + "." + prop.Name;
-            var f = prop.GetCustomAttribute<EdFormulaAttribute>();
+            var f = EdUtil.Attr<EdFormulaAttribute>(prop);
             if (f != null && value is string s)
             {
                 if (s.Trim().Length > 0 && !SafeExpression.TryParse(s, f.Variables, out _, out var err))
