@@ -275,6 +275,18 @@ public static class ContentChecks
             foreach (var cost in sk.ResourceCosts.Where(c => !has.Contains(c.Resource)))
                 issues.Add(Warn(u, "Skills", $"Отсутствующий ресурс: навык «{sk.DisplayName}» требует «{db.Get<ResourceDef>(cost.Resource)?.DisplayName ?? cost.Resource}», которого у юнита нет — навык не применить"));
         }
+        // Several directions of view: the primary line is mandatory (docs/DECISIONS_3.md §40).
+        var p = u.Perception;
+        if (p.ActiveLines != null)
+        {
+            int primaries = p.Lines.Count(l => l.Primary && !l.Blind);
+            if (primaries == 0)
+                issues.Add(Warn(u, "Perception.Lines", $"Не задана основная линия взгляда — используется «{p.PrimaryLine()?.ToString() ?? "восток"}»; отметьте основную линию"));
+            else if (primaries > 1)
+                issues.Add(Warn(u, "Perception.Lines", "Несколько основных линий взгляда — используется первая"));
+            if (p.Lines.All(l => l.Blind))
+                issues.Add(Warn(u, "Perception.Lines", "Все линии обзора — слепые зоны: юнит видит только вплотную"));
+        }
     }
 
     // ------------------------------------------------------------------ endless reactions

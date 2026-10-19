@@ -26,7 +26,7 @@ public partial class UnitView : Node3D
     private Label3D _name = null!;
     private Label3D _symbol = null!;
     private MeshInstance3D _arrow = null!;
-    private readonly List<(MeshInstance3D Mesh, int Offset)> _extraArrows = new();
+    private readonly List<(MeshInstance3D Mesh, int Offset, bool Fixed)> _extraArrows = new();
     private MeshInstance3D? _omniRing;
     private MeshInstance3D _selectRing = null!;
     private Label3D _stackBadge = null!;
@@ -56,6 +56,8 @@ public partial class UnitView : Node3D
 
     public Unit Unit { get; }
     public bool Selected { get; set; }
+    /// <summary>Preview of a new facing while the player drags the facing arrow (the simulation is not changed).</summary>
+    public float? PreviewYaw { get; set; }
     public bool Hovered { get; set; }
     public bool ShowName { get; set; }
     public bool Ghost { get; private set; }
@@ -225,12 +227,28 @@ public partial class UnitView : Node3D
         // Perception model (docs/DECISIONS_2.md §23): one arrow, several arrows, a ring (omni) or nothing.
         var perception = Unit.Def.Perception;
         if (perception.Model == FacingModel.Multiple)
-            foreach (var off in perception.ExtraFacings.Distinct().Where(o => ((o % 6) + 6) % 6 != 0))
+        {
+            // Extra lines of sight (docs/DECISIONS_3.md §40) or the extra facings of part 2.
+            var extras = new List<(int Off, bool Fixed)>();
+            if (perception.ActiveLines is { } lines)
+            {
+                var primary = perception.PrimaryLine();
+                int p0 = primary?.Offset ?? 0;
+                foreach (var l in lines)
+                    if (!l.Blind && l != primary)
+                        extras.Add(l.Fixed ? (((l.Offset % 6) + 6) % 6, true) : (l.Offset - p0, false));
+            }
+            else
+            {
+                foreach (var off in perception.ExtraFacings.Distinct().Where(o => ((o % 6) + 6) % 6 != 0)) extras.Add((off, false));
+            }
+            foreach (var (off, fix) in extras)
             {
                 var m = Part(this, new PrismMesh { Size = new Vector3(0.28f, 0.26f, 0.05f), LeftToRight = 0.5f },
                     Mats.Emissive(new Color(1f, 0.78f, 0.45f), 0.6f), Vector3.Zero, new Vector3(-90, 0, 0), shadow: false);
-                _extraArrows.Add((m, off));
+                _extraArrows.Add((m, off, fix));
             }
+        }
         if (perception.Model == FacingModel.Omni)
             _omniRing = Part(this, new TorusMesh { InnerRadius = 0.47f, OuterRadius = 0.5f, Rings = 36, RingSegments = 4 },
                 Mats.Emissive(new Color(1f, 0.92f, 0.55f), 0.7f), new Vector3(0, 0.15f, 0), shadow: false);
@@ -454,7 +472,7 @@ public partial class UnitView : Node3D
             _deathTime += delta;
             _bars.Visible = false;
             _arrow.Visible = false;
-            foreach (var (m, _) in _extraArrows) m.Visible = false;
+            foreach (var (m, _, _) in _extraArrows) m.Visible = false;
             if (_omniRing != null) _omniRing.Visible = false;
             SetLayerVisuals(null);
             if (u.DeathCause == DeathCause.Fall || u.DeathCause == DeathCause.Removed)
@@ -517,17 +535,17 @@ public partial class UnitView : Node3D
         Position = Position.DistanceTo(pos) > 3 ? pos : Position.Lerp(pos, Math.Min(1, delta * 25));
         SetLayerVisuals(layer, lift);
 
-        float targetYaw = Board.YawOf(u.Facing);
-        _visualYaw = Mathf.LerpAngle(_visualYaw, targetYaw, Math.Min(1, delta * 14));
+        float targetYaw = PreviewYaw ?? Board.YawOf(u.Facing);
+        _visualYaw = Mathf.LerpAngle(_visualYaw, targetYaw, Math.Min(1, delta * (PreviewYaw.HasValue ? 24 : 14)));
         var role = VisualState.RoleOf(sim, u);
         if (role != Role || !_roleStarted) EnterRole(role);
         _roleTime += delta;
         Procedural(_visualYaw);
         _arrow.Position = new Vector3(-Mathf.Sin(_visualYaw) * 0.52f, 0.145f, -Mathf.Cos(_visualYaw) * 0.52f);
         _arrow.Basis = new Basis(Vector3.Up, _visualYaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
-        foreach (var (m, off) in _extraArrows)
+        foreach (var (m, off, fix) in _extraArrows)
         {
-            float yaw = _visualYaw + Mathf.AngleDifference(Board.YawOf(HexDirection.E), Board.YawOf(HexDirection.E.Rotate(off)));
+            float yaw = fix ? Board.YawOf((HexDirection)off) : _visualYaw + Mathf.AngleDifference(Board.YawOf(HexDirection.E), Board.YawOf(HexDirection.E.Rotate(off)));
             m.Position = new Vector3(-Mathf.Sin(yaw) * 0.5f, 0.145f, -Mathf.Cos(yaw) * 0.5f);
             m.Basis = new Basis(Vector3.Up, yaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
             m.Visible = true;

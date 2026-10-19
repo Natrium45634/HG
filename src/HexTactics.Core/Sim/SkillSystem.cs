@@ -27,7 +27,9 @@ public sealed class SkillCast
     public HexCoord CasterPos { get; set; }
     public long StartTick { get; init; }
     public long ReleaseTick { get; set; }
-    public double PaidAp { get; init; }
+    public double PaidAp { get; set; }
+    /// <summary>AP to pay at the release (skills that pay at the release).</summary>
+    public double DeferredAp { get; set; }
     public Dictionary<string, double> PaidResources { get; } = new();
     /// <summary>Cells shown as the threat/telegraph area (stage 0 at start of preparation).</summary>
     public List<HexCoord> TelegraphCells { get; } = new();
@@ -174,7 +176,8 @@ public sealed class SkillSystem
     public SkillCast Begin(Unit u, SkillDef s, SkillCheck check, int targetUnitId, DamageSource source = DamageSource.Skill, double? apCost = null)
     {
         double ap = apCost ?? s.ApCost;
-        u.Ap = Math.Max(0, u.Ap - ap);
+        bool deferred = s.PayAt == CostMoment.Release;
+        if (!deferred) u.Ap = Math.Max(0, u.Ap - ap);
         var cast = new SkillCast
         {
             Source = source,
@@ -187,14 +190,12 @@ public sealed class SkillSystem
             CasterPos = u.Pos,
             StartTick = _sim.Tick,
             ReleaseTick = _sim.Tick + _sim.TicksFor(s.PrepTime),
-            PaidAp = ap,
+            PaidAp = deferred ? 0 : ap,
+            DeferredAp = deferred ? ap : 0,
         };
-        foreach (var rc in s.ResourceCosts)
-        {
-            if (!u.Resources.TryGetValue(rc.Resource, out var r)) continue;
-            r.Current = Math.Max(0, r.Current - rc.Amount);
-            cast.PaidResources[rc.Resource] = rc.Amount;
-        }
+        // Costs are paid at the start of the preparation, or at the release (docs/DECISIONS_3.md §42).
+        if (!deferred) PayResources(u, s, cast);
+        if (s.CooldownAt == CostMoment.Start && s.Cooldown > 0) u.CooldownUntil[s.Id] = _sim.Tick + _sim.TicksFor(s.Cooldown);
         if (s.Stages.Count > 0)
             foreach (var c in StageCells(cast, s.Stages[0], preview: true))
                 cast.TelegraphCells.Add(c.Cell);
@@ -208,10 +209,39 @@ public sealed class SkillSystem
         return cast;
     }
 
+    private static void PayResources(Unit u, SkillDef s, SkillCast cast)
+    {
+        foreach (var rc in s.ResourceCosts)
+        {
+            if (!u.Resources.TryGetValue(rc.Resource, out var r)) continue;
+            r.Current = Math.Max(0, r.Current - rc.Amount);
+            cast.PaidResources[rc.Resource] = rc.Amount;
+        }
+    }
+
     /// <summary>Releases a prepared cast: stage 0 now (or after its delay), later stages scheduled.</summary>
     public void Release(SkillCast cast)
     {
         var u = cast.Caster;
+        if (cast.DeferredAp > 0 || (cast.Skill.PayAt == CostMoment.Release && cast.PaidResources.Count == 0 && cast.Skill.ResourceCosts.Count > 0))
+        {
+            // Costs at the release: not enough now — the skill does not fire, nothing is spent.
+            string? lack = u.Ap + 1e-9 < cast.DeferredAp ? $"недостаточно ОД ({u.Ap:0.#}/{cast.DeferredAp:0.#})" : null;
+            foreach (var rc in cast.Skill.ResourceCosts)
+                if (lack == null && u.ResourceValue(rc.Resource) + 1e-9 < rc.Amount)
+                    lack = $"недостаточно: {_sim.Content.Get<ResourceDef>(rc.Resource)?.DisplayName ?? rc.Resource}";
+            if (lack != null)
+            {
+                Interrupt(u, InterruptCause.Cancelled, lack);
+                _sim.Emit(SimEventType.CastInterrupted, LogLevel.Normal, $"{u.Name}: «{cast.Skill.DisplayName}» не сработало — {lack}", u.Id);
+                _sim.Commands.OnCastInterrupted(u, lack);
+                return;
+            }
+            u.Ap = Math.Max(0, u.Ap - cast.DeferredAp);
+            cast.PaidAp = cast.DeferredAp;
+            cast.DeferredAp = 0;
+            PayResources(u, cast.Skill, cast);
+        }
         cast.Released = true;
         u.Casting = null;
         var s = cast.Skill;
@@ -227,7 +257,7 @@ public sealed class SkillSystem
         }
         if (s.UsesChosenDirection) cast.Anchor = u.Pos;
         cast.CasterPos = u.Pos;
-        if (s.Cooldown > 0) u.CooldownUntil[s.Id] = _sim.Tick + _sim.TicksFor(s.Cooldown);
+        if (s.Cooldown > 0 && s.CooldownAt == CostMoment.Release) u.CooldownUntil[s.Id] = _sim.Tick + _sim.TicksFor(s.Cooldown);
         _sim.Emit(SimEventType.CastReleased, LogLevel.Detail, $"{u.Name} применяет «{s.DisplayName}»", u.Id, cast.TargetUnitId, cast.Anchor);
         for (int i = 0; i < s.Stages.Count; i++)
         {

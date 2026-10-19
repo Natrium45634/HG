@@ -192,6 +192,7 @@ public sealed class Simulation
             if (s != null) u.Skills.Add(s);
         }
         u.BasicAttack = Content.Skill(def.BasicAttack);
+        u.DefenseSkill = string.IsNullOrEmpty(def.DefenseSkill) ? null : Content.Skill(def.DefenseSkill);
         foreach (var pid in def.Passives)
         {
             var p = Content.Get<PassiveDef>(pid);
@@ -384,6 +385,12 @@ public sealed class Simulation
     public bool ReorderCommand(Unit u, int commandId, int newIndex) => Commands.Reorder(u, commandId, newIndex);
 
     public void ClearQueue(Unit u, string reason = "отменено игроком") => Commands.ClearQueue(u, reason, CommandStatus.Cancelled);
+
+    /// <summary>Facing after arrival at a route node (the facing arrow of a node, docs/DECISIONS_3.md §40).</summary>
+    public bool SetArrivalFacing(Unit u, int commandId, HexDirection? dir) => Commands.SetArrivalFacing(u, commandId, dir);
+
+    /// <summary>Removes the orders not yet started; the one being executed stays (docs/DECISIONS_3.md §39).</summary>
+    public int ClearPending(Unit u, string reason = "отменено игроком") => Commands.ClearPending(u, reason);
 
     // ------------------------------------------------------------------ tick
 

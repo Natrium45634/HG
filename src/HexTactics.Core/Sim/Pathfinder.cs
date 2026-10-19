@@ -30,8 +30,33 @@ public sealed class PathResult
     /// <summary>Closest reachable cell to the goal when the goal is unreachable (suggestion for the player).</summary>
     public HexCoord? Nearest { get; init; }
     public int Expanded { get; init; }
+    /// <summary>Direction changes along the route (counted from the start facing) — only by <see cref="Pathfinder.FindRoute"/>.</summary>
+    public int Turns { get; init; }
 
     public HexCoord? End => Path.Count > 0 ? Path[^1] : null;
+}
+
+/// <summary>Threats a cell is exposed to (docs/DECISIONS_3.md §41): only what the side can see.</summary>
+[Flags]
+public enum ThreatKind
+{
+    None = 0,
+    /// <summary>Inside the detection range/zone of a visible enemy.</summary>
+    Detection = 1,
+    /// <summary>Inside the auto-attack range of a visible enemy.</summary>
+    AutoAttack = 2,
+}
+
+/// <summary>A player route request: mode weights, tie-break order and the threats to weigh.</summary>
+public sealed class RouteSpec
+{
+    public RouteWeights Weights { get; init; } = new();
+    public IReadOnlyList<RouteTieBreak> TieBreak { get; init; } = new[] { RouteTieBreak.Turns, RouteTieBreak.Steps };
+    public IReadOnlyDictionary<HexCoord, ThreatKind>? Threats { get; init; }
+    public bool IgnoreUnits { get; init; }
+    public bool ComputeNearest { get; init; }
+    public int MaxExpanded { get; init; } = 60000;
+    public HashSet<HexCoord>? Avoid { get; init; }
 }
 
 /// <summary>
@@ -187,6 +212,163 @@ public sealed class Pathfinder
             prev = c;
         }
         return new PathResult { Found = true, Path = path, StepCosts = costs, Cost = pure, Expanded = expanded };
+    }
+
+    // ------------------------------------------------------------------ player routes
+
+    private double[] _rg1 = Array.Empty<double>();
+    private int[] _rg2 = Array.Empty<int>();
+    private int[] _rg3 = Array.Empty<int>();
+    private int[] _rFrom = Array.Empty<int>();
+    private int[] _rStamp = Array.Empty<int>();
+    private int[] _rClosed = Array.Empty<int>();
+    private int _rGen;
+    private readonly PriorityQueue<int, (double F, int K2, int K3, long Order)> _rOpen = new(RouteKeyComparer.Instance);
+
+    private sealed class RouteKeyComparer : IComparer<(double F, int K2, int K3, long Order)>
+    {
+        public static readonly RouteKeyComparer Instance = new();
+
+        public int Compare((double F, int K2, int K3, long Order) a, (double F, int K2, int K3, long Order) b)
+        {
+            int c = a.F.CompareTo(b.F);
+            if (c != 0) return c;
+            c = a.K2.CompareTo(b.K2);
+            if (c != 0) return c;
+            c = a.K3.CompareTo(b.K3);
+            return c != 0 ? c : a.Order.CompareTo(b.Order);
+        }
+    }
+
+    private static double Q(double v) => Math.Round(v, 6);
+
+    /// <summary>
+    /// Player route (docs/DECISIONS_3.md §41): A* over states «cell × entry direction» with the weighted
+    /// edge cost of the routing mode, then the tie-breaks (fewer turns, fewer steps — in the configured
+    /// order). The reported cost is the pure movement cost (for AP and time).
+    /// </summary>
+    public PathResult FindRoute(BattleMap map, in MoveContext mc, HexCoord start, HexDirection startFacing, HexCoord goal, RouteSpec spec)
+    {
+        TotalSearches++;
+        var startCell = map.Get(start);
+        var goalCell = map.Get(goal);
+        if (startCell == null) return new PathResult { Found = false, Reason = "юнит вне карты", Failure = FailureReason.Invalid };
+        if (start == goal) return new PathResult { Found = true };
+        var baseOpt = new PathOptions { IgnoreUnits = spec.IgnoreUnits, ComputeNearest = spec.ComputeNearest };
+        if (goalCell == null) return new PathResult { Found = false, Reason = "клетки нет на карте", Failure = FailureReason.NoPath };
+        var gst = MovementRules.Check(mc, null, goalCell, spec.IgnoreUnits, out _);
+        if (gst != StepCheck.Ok && gst != StepCheck.TooHigh && gst != StepCheck.TooLow)
+            return new PathResult
+            {
+                Found = false, Reason = "цель недоступна: " + MovementRules.Describe(gst, goalCell), Failure = FailureReason.NoPath,
+                Nearest = spec.ComputeNearest ? NearestReachable(map, mc, start, goal, baseOpt) : null,
+            };
+
+        int n = map.Count * 7;
+        if (_rg1.Length < n)
+        {
+            _rg1 = new double[n];
+            _rg2 = new int[n];
+            _rg3 = new int[n];
+            _rFrom = new int[n];
+            _rStamp = new int[n];
+            _rClosed = new int[n];
+            _rGen = 0;
+        }
+        if (++_rGen == int.MaxValue)
+        {
+            Array.Clear(_rStamp);
+            Array.Clear(_rClosed);
+            _rGen = 1;
+        }
+        _rOpen.Clear();
+        var w = spec.Weights;
+        bool turnsFirst = spec.TieBreak.Count == 0 || spec.TieBreak[0] == RouteTieBreak.Turns;
+        double hScale = w.Cost * map.MinStepCost + w.Steps;
+        long order = 0;
+        int s0 = startCell.Index * 7 + 6;
+        _rg1[s0] = 0;
+        _rg2[s0] = 0;
+        _rg3[s0] = 0;
+        _rFrom[s0] = -1;
+        _rStamp[s0] = _rGen;
+        _rOpen.Enqueue(s0, (Q(HexCoord.Distance(start, goal) * hScale), 0, 0, order++));
+        int found = -1, expanded = 0;
+        while (_rOpen.Count > 0)
+        {
+            int cur = _rOpen.Dequeue();
+            if (_rClosed[cur] == _rGen) continue;
+            _rClosed[cur] = _rGen;
+            int ci = cur / 7, din = cur % 7;
+            var cell = map.Cells[ci];
+            if (cell.Coord == goal)
+            {
+                found = cur;
+                break;
+            }
+            if (++expanded > spec.MaxExpanded) break;
+            var faceIn = din == 6 ? startFacing : (HexDirection)din;
+            for (int d = 0; d < 6; d++)
+            {
+                var nb = cell.Neighbors[d];
+                if (nb == null) continue;
+                int ns = nb.Index * 7 + d;
+                if (_rClosed[ns] == _rGen) continue;
+                if (MovementRules.Check(mc, cell, nb, spec.IgnoreUnits, out var cost) != StepCheck.Ok) continue;
+                if (spec.Avoid != null && spec.Avoid.Contains(nb.Coord)) continue;
+                int turn = (HexDirection)d != faceIn ? 1 : 0;
+                double hz = nb.IsHazard ? 1 : 0;
+                double th = 0;
+                if (spec.Threats != null && spec.Threats.TryGetValue(nb.Coord, out var tk))
+                    th = ((tk & ThreatKind.Detection) != 0 ? 1 : 0) + ((tk & ThreatKind.AutoAttack) != 0 ? 1 : 0);
+                double g1 = Q(_rg1[cur] + w.Cost * cost + w.Steps + w.Turns * turn + w.Hazard * hz + w.Threat * th);
+                int turns = (turnsFirst ? _rg2[cur] : _rg3[cur]) + turn;
+                int steps = (turnsFirst ? _rg3[cur] : _rg2[cur]) + 1;
+                int k2 = turnsFirst ? turns : steps, k3 = turnsFirst ? steps : turns;
+                if (_rStamp[ns] == _rGen)
+                {
+                    var old = (_rg1[ns], _rg2[ns], _rg3[ns]);
+                    if (old.Item1 < g1 || (old.Item1 == g1 && (old.Item2 < k2 || (old.Item2 == k2 && old.Item3 <= k3)))) continue;
+                }
+                _rStamp[ns] = _rGen;
+                _rg1[ns] = g1;
+                _rg2[ns] = k2;
+                _rg3[ns] = k3;
+                _rFrom[ns] = cur;
+                _rOpen.Enqueue(ns, (Q(g1 + HexCoord.Distance(nb.Coord, goal) * hScale), k2, k3, order++));
+            }
+        }
+        if (found < 0)
+        {
+            return new PathResult
+            {
+                Found = false,
+                Reason = expanded > spec.MaxExpanded ? "поиск пути прерван: слишком большая область" : "нет пути (препятствия, высота или занятые клетки)",
+                Failure = FailureReason.NoPath,
+                Nearest = spec.ComputeNearest ? NearestReachable(map, mc, start, goal, baseOpt) : null,
+                Expanded = expanded,
+            };
+        }
+        var path = new List<HexCoord>();
+        for (int i = found; i != s0 && i >= 0; i = _rFrom[i]) path.Add(map.Cells[i / 7].Coord);
+        path.Reverse();
+        var costs = new List<double>(path.Count);
+        double pure = 0;
+        int totalTurns = 0;
+        var prev = startCell;
+        var f = startFacing;
+        foreach (var c in path)
+        {
+            var cc = map.Get(c)!;
+            double ec = MovementRules.EntryCost(mc, prev, cc);
+            costs.Add(ec);
+            pure += ec;
+            var dir = prev.Coord.DirectionTo(c)!.Value;
+            if (dir != f) totalTurns++;
+            f = dir;
+            prev = cc;
+        }
+        return new PathResult { Found = true, Path = path, StepCosts = costs, Cost = pure, Expanded = expanded, Turns = totalTurns };
     }
 
     private HexCoord? NearestReachable(BattleMap map, in MoveContext mc, HexCoord start, HexCoord goal, PathOptions opt)

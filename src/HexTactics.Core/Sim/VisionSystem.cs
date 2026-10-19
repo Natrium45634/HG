@@ -66,10 +66,13 @@ public sealed class VisionSystem
         // Hidden layers (underground): only viewers with the layer's detection stat, or up close.
         // Detection zone (cone/sector/line in front of the viewer): outside it only adjacent units are seen.
         if (viewer.Def.Perception.Zone != DetectionZoneShape.None && d > 1 && !InZone(viewer, pos)) return false;
+        bool through = false;
+        if (viewer.Def.Perception.ActiveLines != null && d > 1 && !SightLines.Sees(viewer.Def.Perception, viewer.Pos, viewer.Facing, pos, DetectionRange(viewer, target), out through))
+            return false;
         var layer = target.LayerDef;
         if (layer.Hidden && d > layer.RevealRange && (string.IsNullOrEmpty(layer.DetectionStat) || viewer.Stat(layer.DetectionStat) <= 0)) return false;
         if (layer.Hidden) return true; // detected by tremor/sonar: no line of sight needed
-        return _sim.Los.Has(_sim.Map, _sim.Rules, viewer.Pos, pos);
+        return through || _sim.Los.Has(_sim.Map, _sim.Rules, viewer.Pos, pos);
     }
 
     private readonly Dictionary<int, (HexCoord Pos, HexDirection Facing, int Version, HashSet<HexCoord> Cells)> _zones = new();

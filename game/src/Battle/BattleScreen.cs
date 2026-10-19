@@ -47,8 +47,6 @@ public partial class BattleScreen : Node
     private Cell? _hover;
     private Unit? _hoverUnit;
     private Vector2 _mouse;
-    private PathResult? _path;
-    private (HexCoord From, HexCoord To, int Ver, long Tick)? _pathKey;
     private Dictionary<HexCoord, double>? _reach;
     private (HexCoord From, double Ap, int Ver, long Tick)? _reachKey;
     private List<ProjectedCommand> _proj = new();
@@ -60,6 +58,7 @@ public partial class BattleScreen : Node
     private long _lastAreaTick;
 
     public bool Admin => _admin;
+    public BattleHud Hud => _hud;
     public bool DiagnosticsVisible => _diag;
     public ContentDatabase Db => _db;
     public Settings Settings => Main.Instance.Settings;
@@ -92,6 +91,7 @@ public partial class BattleScreen : Node
         AddChild(Board);
         Board.ApplySettings(Settings);
         Board.Bind(Sim.Map, _db);
+        InitControl();
         _labels = new LabelPool { Name = "Labels" };
         Board.AddChild(_labels);
         _hud = new BattleHud(this);
@@ -101,7 +101,7 @@ public partial class BattleScreen : Node
 
         Board.Rig.InsetsProvider = _hud.WorkInsets;
         var first = Sim.Units.FirstOrDefault(u => Sim.CanPlayerCommand(u));
-        if (first != null) Select(first);
+        if (first != null) Select(first, byPlayer: false);
         // The HUD gets its final layout after a couple of frames; fit the camera then.
         _initialCameraFrames = 3;
         _initialCameraUnit = first;
@@ -211,14 +211,28 @@ public partial class BattleScreen : Node
 
     // ------------------------------------------------------------------ selection & modes
 
-    public void Select(Unit? u)
+    public void Select(Unit? u) => Select(u, byPlayer: true);
+
+    /// <summary>
+    /// Selects a unit (null — clears). A repeated selection of the same unit changes nothing and never
+    /// touches the time; a new selection by the player may pause the game (docs/DECISIONS_3.md §39).
+    /// </summary>
+    public void Select(Unit? u, bool byPlayer)
     {
-        if (Selected != null && Board.Views.TryGetValue(Selected.Id, out var old)) old.Selected = false;
+        if (u == Selected && u != null) return;
+        CancelGesture();
+        if (Selected != null && Board.Views.TryGetValue(Selected.Id, out var old))
+        {
+            old.Selected = false;
+            old.PreviewYaw = null;
+        }
         Selected = u;
         _stackOpen = false;
         if (u != null) Board.ViewOf(u).Selected = true;
         ExitMode();
         _hud.OnSelectionChanged();
+        if (u == null) OnPlanningEnded();
+        else if (byPlayer && Sim.CanPlayerCommand(u)) PlanningPause("выбран " + u.Name, s => s.PauseOnSelect);
     }
 
     public void ExitMode()
@@ -237,6 +251,7 @@ public partial class BattleScreen : Node
         Mode = mode;
         ModeSkill = mode == InputMode.Attack ? Selected.BasicAttack : null;
         InsertIndex = insertIndex;
+        if (mode is InputMode.Move or InputMode.Attack) PlanningPause(mode == InputMode.Move ? "выбор точки" : "выбор цели", s => s.PauseOnTargeting);
         _hint = mode switch
         {
             InputMode.Move => "Движение: ЛКМ — точка маршрута (можно несколько), ПКМ/Esc — готово. Shift — " + (Settings.AppendByDefault ? "заменить очередь" : "добавить в очередь"),
@@ -253,6 +268,7 @@ public partial class BattleScreen : Node
         Mode = InputMode.Skill;
         ModeSkill = skill;
         InsertIndex = insertIndex;
+        PlanningPause("выбор цели навыка", s => s.PauseOnTargeting);
         _hint = skill.Targeting switch
         {
             TargetingMode.Unit => $"«{skill.DisplayName}»: ЛКМ по цели",
@@ -346,6 +362,7 @@ public partial class BattleScreen : Node
         }
         _projKey = null;
         if (err != null) _hud.ShowBanner("Команда не принята: " + err, Ui.Bad);
+        else OnOrderConfirmed();
         _hud.OnQueueChanged();
     }
 
@@ -368,6 +385,7 @@ public partial class BattleScreen : Node
 
         UpdateProjection();
         UpdateHover();
+        UpdateArrows();
         DrawOverlay();
         _hud.Refresh();
     }
@@ -689,7 +707,7 @@ public partial class BattleScreen : Node
 
     public Cell? HoverCell => _hover;
     public Unit? HoverUnit => _hoverUnit;
-    public PathResult? HoverPath => _path;
+    public PathResult? HoverPath => _gesturePath;
     public SkillPreview? HoverSkillPreview => _skillPreview;
 
     // ------------------------------------------------------------------ overlay
@@ -715,18 +733,33 @@ public partial class BattleScreen : Node
         {
             DrawTrail(o, u);
             DrawQueue(o, u);
-            switch (Mode)
+            if (_gesture is { RouteMode: true } rg)
             {
-                case InputMode.Move:
-                    DrawMovePreview(o, u);
-                    break;
-                case InputMode.Turn:
-                    DrawTurnPreview(o, u);
-                    break;
-                case InputMode.Attack:
-                case InputMode.Skill:
-                    DrawSkillPreview(o, u);
-                    break;
+                DrawRoutePlanning(o, u, rg.Anchor, rg.AnchorFacing);
+            }
+            else if (_gesture is { Moved: true } tg)
+            {
+                DrawFacingPreview(o, u, tg);
+            }
+            else
+            {
+                switch (Mode)
+                {
+                    case InputMode.Move:
+                    {
+                        var (start, facing) = PlanStart();
+                        DrawRoutePlanning(o, u, start, facing);
+                        break;
+                    }
+                    case InputMode.Turn:
+                        DrawTurnPreview(o, u);
+                        break;
+                    case InputMode.Attack:
+                    case InputMode.Skill:
+                        DimMap(o);
+                        DrawSkillPreview(o, u);
+                        break;
+                }
             }
         }
         if (_hover != null) o.RingHex(_hover.Coord, new Color(1, 1, 1, 0.85f), 0.06f, 0.97f);
@@ -887,65 +920,6 @@ public partial class BattleScreen : Node
         _ = prevEnd;
     }
 
-    private void DrawMovePreview(OverlayLayer o, Unit u)
-    {
-        var (start, _) = PlanStart();
-        double freeAp = Math.Max(0, (_proj.Count > 0 && InsertIndex < 0 ? _proj[^1].RemainingNoRegen : u.FreeAp));
-        if (Settings.ShowMoveRange)
-        {
-            var key = (start, Math.Round(freeAp, 1), Sim.Map.Version, Sim.Tick / 10);
-            if (_reachKey != key)
-            {
-                _reach = Sim.Planner.ReachableWithAp(u, start, freeAp);
-                _reachKey = key;
-            }
-            if (_reach != null)
-                foreach (var c in _reach.Keys)
-                    if (c != start)
-                        o.FillHex(c, new Color(0.45f, 0.75f, 1f, 0.10f), 0.92f, 0.025f);
-        }
-        _path = null;
-        if (_hover == null) return;
-        var to = _hover.Coord;
-        var pk = (start, to, Sim.Map.Version, Sim.Tick / 5);
-        if (_pathKey != pk)
-        {
-            _cachedPath = Sim.Pathfinder.Find(Sim.Map, MoveContext.For(Sim, u), start, to,
-                new PathOptions { HazardPenalty = Sim.Rules.Move.HazardPenalty, IgnoreUnits = start != u.Pos && start != (u.StepTo ?? u.Pos), ComputeNearest = true });
-            _pathKey = pk;
-        }
-        _path = _cachedPath;
-        if (_path == null) return;
-        if (_path.Found)
-        {
-            var last = start;
-            var col = new Color(1f, 0.85f, 0.35f, 0.95f);
-            foreach (var c in _path.Path)
-            {
-                o.Line(last, c, col, 0.09f);
-                last = c;
-            }
-            foreach (var c in _path.Path) o.Dot(c, col, 0.08f);
-            double ap = _path.Cost * Sim.Rules.Ap.MovePerCost;
-            double secs = _path.StepCosts.Sum(c => c / Math.Max(0.01, u.Stat(Stats.MoveSpeed)));
-            bool short_ = ap > freeAp + 1e-9;
-            _labels.Add(LabelPos(to, 0.85f), $"{ap:0.#} ОД · {secs:0.#} с" + (short_ ? " ◷" : ""), short_ ? Ui.Warn : new Color(1f, 0.92f, 0.6f), 30);
-        }
-        else
-        {
-            o.RingHex(to, new Color(1f, 0.25f, 0.2f, 0.95f), 0.1f);
-            o.Strip(LabelPos(to, -0.45f) + new Vector3(-0.35f, 0, -0.35f), LabelPos(to, -0.45f) + new Vector3(0.35f, 0, 0.35f), 0.1f, new Color(1f, 0.25f, 0.2f), true);
-            o.Strip(LabelPos(to, -0.45f) + new Vector3(0.35f, 0, -0.35f), LabelPos(to, -0.45f) + new Vector3(-0.35f, 0, 0.35f), 0.1f, new Color(1f, 0.25f, 0.2f), true);
-            if (_path.Nearest.HasValue)
-            {
-                o.DashedRing(_path.Nearest.Value, new Color(0.4f, 1f, 0.5f, 0.95f));
-                _labels.Add(LabelPos(_path.Nearest.Value, 0.7f), "ближайшая", new Color(0.5f, 1f, 0.6f), 24);
-            }
-        }
-    }
-
-    private PathResult? _cachedPath;
-
     private void DrawTurnPreview(OverlayLayer o, Unit u)
     {
         var (start, facing) = PlanStart();
@@ -1042,12 +1016,27 @@ public partial class BattleScreen : Node
             case InputEventMouseMotion mm:
                 _mouse = mm.Position;
                 _forcedHover = null;
+                if (_gesture != null) UpdateGesture(mm.Position);
+                break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } up:
+                _mouse = up.Position;
+                if (_gesture != null)
+                {
+                    UpdateGesture(up.Position);
+                    UpdateHover();
+                    EndGesture();
+                    GetViewport().SetInputAsHandled();
+                }
                 break;
             case InputEventMouseButton mb when mb.Pressed:
                 _mouse = mb.Position;
                 _forcedHover = null;
                 UpdateHover();
-                if (mb.ButtonIndex == MouseButton.Left) OnLeftClick(mb);
+                if (mb.ButtonIndex == MouseButton.Left)
+                {
+                    UpdateArrows();
+                    if (!TryStartGesture(mb.Position)) OnLeftClick(mb);
+                }
                 else if (mb.ButtonIndex == MouseButton.Right) OnRightClick();
                 GetViewport().SetInputAsHandled();
                 break;
@@ -1097,15 +1086,22 @@ public partial class BattleScreen : Node
                 if (u == null || _hover == null) return;
                 var (start, _) = PlanStart();
                 if (_hover.Coord == start) return;
-                if (_path != null && !_path.Found)
+                if (_hoverUnit != null && _hoverUnit != u && Sim.IsHostile(u, _hoverUnit) && UnitVisible(_hoverUnit))
                 {
-                    if (_path.Nearest.HasValue)
-                        _hud.ShowBanner($"Цель недостижима: {_path.Reason}. Ближайшая доступная клетка отмечена зелёным — выберите её, если подходит.", Ui.Warn);
-                    else
-                        _hud.ShowBanner("Цель недостижима: " + _path.Reason, Ui.Bad);
+                    // An enemy hex is an attack, never a destination (docs/DECISIONS_3.md §42).
+                    OnEnemyPointed(u, _hoverUnit);
                     return;
                 }
-                Submit(Command.Move(_hover.Coord));
+                var mp = _gesturePath;
+                if (mp != null && !mp.Found)
+                {
+                    if (mp.Nearest.HasValue)
+                        _hud.ShowBanner($"Цель недостижима: {mp.Reason}. Ближайшая доступная клетка отмечена зелёным — выберите её, если подходит.", Ui.Warn);
+                    else
+                        _hud.ShowBanner("Цель недостижима: " + mp.Reason, Ui.Bad);
+                    return;
+                }
+                Submit(PlayerMove(_hover.Coord));
                 break;
             }
             case InputMode.Turn:
@@ -1170,6 +1166,12 @@ public partial class BattleScreen : Node
 
     private void OnRightClick()
     {
+        // During a gesture or planning: cancel / one step back (docs/DECISIONS_3.md §39); otherwise the quick order of part 1.
+        if (_gesture != null)
+        {
+            CancelGesture();
+            return;
+        }
         if (Mode != InputMode.None)
         {
             ExitMode();
@@ -1193,7 +1195,7 @@ public partial class BattleScreen : Node
                 _hud.ShowBanner("Цель недостижима: " + p.Reason + (p.Nearest.HasValue ? $" (ближайшая доступная: {p.Nearest})" : ""), Ui.Bad);
                 return;
             }
-            Submit(Command.Move(_hover.Coord));
+            Submit(PlayerMove(_hover.Coord));
         }
     }
 
@@ -1240,8 +1242,12 @@ public partial class BattleScreen : Node
                 Driver.Faster();
                 return true;
             case Key.Escape:
-                if (Mode != InputMode.None) ExitMode();
+                // Cancel the operation → leave the planning mode → clear the selection → game menu (docs/DECISIONS_3.md §39).
+                if (_gesture != null) CancelGesture();
+                else if (_hud.CloseTransient()) { }
+                else if (Mode != InputMode.None) ExitMode();
                 else if (StackOpen) _stackOpen = false;
+                else if (Selected != null) Select(null);
                 else _hud.ToggleMenu();
                 return true;
             case Key.Tab:
@@ -1289,19 +1295,11 @@ public partial class BattleScreen : Node
                 Board.Rig.ResetStandardZoom();
                 return true;
             case Key.Backspace:
-                if (u != null && u.Queue.Count > 0 && Sim.CanPlayerCommand(u))
-                {
-                    var last = u.Queue.Items[^1];
-                    Sim.RemoveCommand(u, last.Id);
-                    _hud.OnQueueChanged();
-                }
+                UndoLastPoint();
                 return true;
             case Key.Delete:
-                if (u != null && Sim.CanPlayerCommand(u))
-                {
-                    Sim.ClearQueue(u);
-                    _hud.OnQueueChanged();
-                }
+                if (k.ShiftPressed) CancelAll();
+                else ClearPendingOrders();
                 return true;
         }
         if (k.Keycode >= Key.Key1 && k.Keycode <= Key.Key9 && u != null)
@@ -1314,9 +1312,53 @@ public partial class BattleScreen : Node
         return false;
     }
 
+    /// <summary>«↶ Точка»: removes the last element of the plan that is not being executed.</summary>
+    public void UndoLastPoint()
+    {
+        var u = Selected;
+        if (u == null || !Sim.CanPlayerCommand(u)) return;
+        var last = u.Queue.Items.LastOrDefault(c => c.Status == CommandStatus.Pending);
+        if (last == null)
+        {
+            if (u.Queue.Count > 0) _hud.ShowBanner("Выполняемый приказ отменяется только явно: «Отменить всё» (Shift+Delete)", Ui.TextDim, 2.5f);
+            return;
+        }
+        Sim.RemoveCommand(u, last.Id);
+        _projKey = null;
+        _hud.OnQueueChanged();
+    }
+
+    /// <summary>«Очистить»: removes the orders that are not being executed yet.</summary>
+    public void ClearPendingOrders()
+    {
+        var u = Selected;
+        if (u == null || !Sim.CanPlayerCommand(u)) return;
+        Sim.ClearPending(u);
+        _projKey = null;
+        _hud.OnQueueChanged();
+    }
+
+    /// <summary>«Отменить всё»: the explicit cancellation, the executing order included.</summary>
+    public void CancelAll()
+    {
+        var u = Selected;
+        if (u == null || !Sim.CanPlayerCommand(u)) return;
+        Sim.ClearQueue(u);
+        _projKey = null;
+        _hud.OnQueueChanged();
+    }
+
+    /// <summary>Resumes the game (speed buttons): the player takes the pause over from the autopause.</summary>
+    public void Resume()
+    {
+        if (Driver.Paused) OnManualPause(false);
+        Driver.Paused = false;
+    }
+
     public void TogglePause()
     {
         Driver.Paused = !Driver.Paused;
+        OnManualPause(Driver.Paused);
         _hud.ShowBanner(Driver.Paused ? "Пауза" : $"Скорость {Driver.Speed:0.##}×", Ui.Text, 0.8f);
     }
 

@@ -145,6 +145,7 @@ public class MovementAndApTests
     public void CancellingCommand_ReleasesReservation_WithoutRefundingStartedSteps()
     {
         var db = TestUtil.Minimal();
+        db.Rules.Turn.ManualCostsAp = true; // a paid turn reserves AP (part 1 rule, optional since part 3)
         var sim = TestUtil.Sim(db, TestUtil.Field());
         var u = sim.Spawn(db.Unit("soldier")!, null, new HexCoord(0, 0), HexDirection.E);
         u.Ap = 10;
@@ -229,6 +230,9 @@ public class MovementAndApTests
     public void Turning_CostsApAndTime_ShortestWay()
     {
         var db = TestUtil.Minimal();
+        // Part 1 cost of a manual turn is an option since part 3 (docs/DECISIONS_3.md §40).
+        db.Rules.Turn.ManualCostsAp = true;
+        db.Rules.Turn.ManualTakesTime = true;
         var sim = TestUtil.Sim(db, TestUtil.Field());
         var u = sim.Spawn(db.Unit("soldier")!, null, new HexCoord(2, 2), HexDirection.E);
         u.Ap = 5;

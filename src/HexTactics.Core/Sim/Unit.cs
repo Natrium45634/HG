@@ -130,6 +130,10 @@ public sealed class StatBlock
 
 public sealed class Unit
 {
+    /// <summary>Why the unit last stopped (failed/skipped order) and when — shown to the player (docs/DECISIONS_3.md §41).</summary>
+    public string StopReason { get; internal set; } = "";
+    public long StopTick { get; internal set; } = -1;
+
     public Unit(int id, UnitDef def, ContentDatabase db)
     {
         Id = id;
@@ -172,6 +176,8 @@ public sealed class Unit
     public List<PassiveDef> Passives { get; } = new();
     public List<SkillDef> Skills { get; } = new();
     public SkillDef? BasicAttack { get; internal set; }
+    /// <summary>Defensive skill of the radial menu's centre (null — the stance of the rules).</summary>
+    public SkillDef? DefenseSkill { get; internal set; }
 
     public CommandQueue Queue { get; } = new();
     public Dictionary<string, long> CooldownUntil { get; } = new(StringComparer.Ordinal);
@@ -270,6 +276,7 @@ public sealed class Unit
     public bool KnowsSkill(string id)
     {
         if (BasicAttack != null && BasicAttack.Id == id) return true;
+        if (DefenseSkill != null && DefenseSkill.Id == id) return true;
         foreach (var s in Skills)
             if (s.Id == id)
                 return true;

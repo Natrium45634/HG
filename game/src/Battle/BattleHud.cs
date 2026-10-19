@@ -57,6 +57,7 @@ public partial class BattleHud : Control
     private Label _queueFooter = null!;
     private string _queueKey = "";
     private CheckButton _appendToggle = null!;
+    private OptionButton _routeMode = null!;
     private ScrollContainer _queueScroll = null!;
 
     private PanelContainer _logPanel = null!;
@@ -251,7 +252,7 @@ public partial class BattleHud : Control
             var b = Ui.Button($"{_bs.Driver.Speeds[i]:0.##}×", () =>
             {
                 _bs.Driver.SetSpeedIndex(idx);
-                _bs.Driver.Paused = false;
+                _bs.Resume();
             }, "Скорость (Z/X)", 52);
             b.ToggleMode = true;
             _speedBtns.Add(b);
@@ -361,18 +362,23 @@ public partial class BattleHud : Control
         _queueFooter = Ui.Label("", 12, Ui.TextDim, wrap: true);
         body.AddChild(_queueFooter);
         var btns = Ui.HBox(4);
-        btns.AddChild(Ui.Button("Удалить последнюю", () =>
-        {
-            var u = _bs.Selected;
-            if (u != null && u.Queue.Count > 0) Sim.RemoveCommand(u, u.Queue.Items[^1].Id);
-            OnQueueChanged();
-        }, "Backspace"));
-        btns.AddChild(Ui.Button("Очистить", () =>
-        {
-            if (_bs.Selected != null) Sim.ClearQueue(_bs.Selected);
-            OnQueueChanged();
-        }, "Delete"));
+        btns.AddChild(Ui.Button("↶ Точка", _bs.UndoLastPoint, "Удалить последний невыполняемый элемент маршрута (Backspace)"));
+        btns.AddChild(Ui.Button("Очистить", _bs.ClearPendingOrders, "Удалить приказы, которые ещё не выполняются; выполняемый остаётся (Delete)"));
+        btns.AddChild(Ui.Button("Отменить всё", _bs.CancelAll, "Отменить и выполняемый приказ (Shift+Delete)"));
         body.AddChild(btns);
+        // Routing mode of new routes (docs/DECISIONS_3.md §41).
+        var route = Ui.HBox(4);
+        route.AddChild(Ui.Label("Маршрут:", 12, Ui.TextDim));
+        _routeMode = new OptionButton { FocusMode = FocusModeEnum.None, TooltipText = "Как строится маршрут новых приказов движения" };
+        foreach (var m in Enum.GetValues<RouteMode>()) _routeMode.AddItem(Names.Of(m), (int)m);
+        _routeMode.Select((int)Main.Instance.Settings.RouteMode);
+        _routeMode.ItemSelected += i =>
+        {
+            Main.Instance.Settings.RouteMode = (RouteMode)_routeMode.GetItemId((int)i);
+            Main.Instance.Settings.Save();
+        };
+        route.AddChild(_routeMode.Expand());
+        body.AddChild(route);
         v.AddChild(body);
         _queuePanel = Track(Ui.PanelBox(v, null, 8));
         _queuePanel.CustomMinimumSize = new Vector2(340, 0);
@@ -513,8 +519,23 @@ public partial class BattleHud : Control
 
     // ------------------------------------------------------------------ public API
 
+    /// <summary>Closes an open popup (action/skill menus); true if something was closed (Esc chain).</summary>
+    public bool CloseTransient()
+    {
+        if (_popup.Visible)
+        {
+            _popup.Hide();
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>The last banner text (tests and diagnostics).</summary>
+    public string LastBanner { get; private set; } = "";
+
     public void ShowBanner(string text, Color color, float seconds = 4f)
     {
+        LastBanner = text;
         _banner.Text = text;
         _banner.AddThemeColorOverride("font_color", color);
         _bannerTime = seconds;
@@ -915,7 +936,9 @@ public partial class BattleHud : Control
         else if (u.Queue.Current is { } c)
             _current.Text = $"{c.Describe(Sim)} — {Names.Of(c.Status)}{(string.IsNullOrEmpty(c.StatusText) ? "" : ": " + c.StatusText)}";
         else
-            _current.Text = u.Alive ? "Ожидает приказов" : "";
+            _current.Text = !u.Alive ? ""
+                : u.StopTick >= 0 && Sim.Tick - u.StopTick < Sim.TicksFor(6) && u.StopReason != "" ? "Остановлен: " + u.StopReason
+                : "Ожидает приказов";
         _aiInfo.Visible = u.AiControlled && (_bs.DiagnosticsVisible || _bs.Admin);
         _aiInfo.Text = $"ИИ ({u.AiProfile?.DisplayName}): {u.Ai.Explanation}";
         if (_showStats) RefreshStats();

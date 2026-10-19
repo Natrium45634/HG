@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using HexTactics.Core.Hex;
 using System.Text.Json.Serialization;
 
 namespace HexTactics.Core.Content;
@@ -29,6 +30,10 @@ public sealed class PerceptionDef
      EdShowIf(nameof(Model), FacingModel.Multiple)]
     public List<int> ExtraFacings { get; set; } = new() { 3 };
 
+    [Ed("Линии обзора", "Для «несколько направлений»: основная линия (обязательна), доп. линии с шириной и дальностью, слепые зоны. Пусто — «доп. направления»"),
+     EdShowIf(nameof(Model), FacingModel.Multiple)]
+    public List<SightLineDef> Lines { get; set; } = new();
+
     [Ed("Свои шансы без секторов", "Для «круговое»/«без направления»: заменить правило «без секторов» из правил боя"),
      EdShowIf(nameof(Model), FacingModel.Omni, FacingModel.None)]
     public bool OwnNoSectorRule { get; set; }
@@ -42,6 +47,60 @@ public sealed class PerceptionDef
     [Ed("Угол сектора, °"), EdRange(60, 360), EdShowIf(nameof(Zone), DetectionZoneShape.Sector)] public double ZoneAngle { get; set; } = 120;
 
     [JsonIgnore] public bool HasFacing => Model is FacingModel.Single or FacingModel.Multiple;
+
+    /// <summary>Sight lines in use: Multiple with lines; null — classic facing (+ extra facings).</summary>
+    [JsonIgnore] public List<SightLineDef>? ActiveLines => Model == FacingModel.Multiple && Lines.Count > 0 ? Lines : null;
+
+    /// <summary>The primary line (marked, or the first non-blind one).</summary>
+    public SightLineDef? PrimaryLine()
+    {
+        foreach (var l in Lines)
+            if (l.Primary && !l.Blind)
+                return l;
+        foreach (var l in Lines)
+            if (!l.Blind)
+                return l;
+        return null;
+    }
+
+    /// <summary>Directions the creature faces (for attack sectors): the facing and the extra lines/facings.</summary>
+    public IEnumerable<Hex.HexDirection> FacingsOf(Hex.HexDirection facing)
+    {
+        if (Model != FacingModel.Multiple)
+        {
+            yield return facing;
+            yield break;
+        }
+        var lines = ActiveLines;
+        if (lines == null)
+        {
+            yield return facing;
+            foreach (var off in ExtraFacings) yield return facing.Rotate(off);
+            yield break;
+        }
+        int primary = PrimaryLine()?.Offset ?? 0;
+        foreach (var l in lines)
+            if (!l.Blind)
+                yield return l.DirectionFor(facing, primary);
+    }
+}
+
+/// <summary>A line (sector) of sight of a creature with several directions of view (docs/DECISIONS_3.md §40).</summary>
+public sealed class SightLineDef
+{
+    [Ed("Основная", "Основная линия взгляда: по ней задаётся направление юнита (стрелка)")] public bool Primary { get; set; }
+    [Ed("Направление", "Шаги по 60° от основной линии (0 — она сама); для фиксированной — абсолютное направление: 0 — восток, 1 — северо-восток…"), EdRange(0, 5)]
+    public int Offset { get; set; }
+    [Ed("Ширина сектора, °", "60 — один клин гекса, 360 — круговой обзор"), EdRange(1, 360)] public double Width { get; set; } = 60;
+    [Ed("Дальность", "0 — общая дальность обнаружения"), EdRange(0, 50)] public int Range { get; set; }
+    [Ed("Слепая зона", "В этом секторе юнит не видит (кроме вплотную)")] public bool Blind { get; set; }
+    [Ed("Фиксированная", "Не вращается вместе с основной линией")] public bool Fixed { get; set; }
+    [Ed("Видит сквозь препятствия")] public bool ThroughObstacles { get; set; }
+
+    public Hex.HexDirection DirectionFor(Hex.HexDirection facing, int primaryOffset) =>
+        Fixed ? (Hex.HexDirection)(((Offset % 6) + 6) % 6) : facing.Rotate(Offset - primaryOffset);
+
+    public override string ToString() => (Primary ? "основная " : Blind ? "слепая " : "") + $"{Offset}·60° {Width:0}°" + (Range > 0 ? $" ≤{Range}" : "");
 }
 
 public enum Disclosure

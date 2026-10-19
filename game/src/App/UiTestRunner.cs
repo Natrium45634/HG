@@ -36,6 +36,10 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_waypoint_action", BattleWaypointAction));
         _tests.Add(("battle_skill_via_hotkey", BattleSkillViaHotkey));
         _tests.Add(("battle_ui_blocks_world_clicks", BattleUiBlocksWorld));
+        // Part 3 (docs/DECISIONS_3.md): control of a single unit.
+        _tests.Add(("battle_arrow_turn_and_route_gesture", BattleArrowGesture));
+        _tests.Add(("battle_planning_autopause_and_cancel", BattlePlanningPauseAndCancel));
+        _tests.Add(("battle_alternative_control_without_gestures", BattleAlternativeControl));
         _tests.Add(("editor_skill_mask_click", EditorSkillMaskClick));
         _tests.Add(("editor_map_paint", EditorMapPaint));
         _tests.Add(("editor_create_delete", EditorCreateDelete));
@@ -188,7 +192,6 @@ public partial class UiTestRunner : Node
         await Frames(10);
         await Click(HexScreen(bs, knight.Pos));
         Check(bs.Selected == knight, "клик по юниту не выбрал его");
-        await Key(Godot.Key.Escape); // close the action menu if open
         await Key(Godot.Key.M);
         Check(bs.Mode == InputMode.Move, "M не включил режим движения");
         var target = knight.Pos + new HexCoord(2, 0);
@@ -255,6 +258,209 @@ public partial class UiTestRunner : Node
         Mouse(pos, MouseButton.Left);
         await Frames(3);
         Check(mage.Queue.Count == 0, "клик по панели интерфейса прошёл в карту");
+    }
+
+    // ------------------------------------------------------------------ part 3: control (docs/DECISIONS_3.md §39–§41)
+
+    /// <summary>LMB drag through several mouse moves (press, motions, release), optionally with RMB before the release.</summary>
+    private async Task Drag(Vector2 from, Vector2 to, int steps = 8, bool rightBeforeRelease = false)
+    {
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = from, GlobalPosition = from });
+        await Frames(2);
+        Input.ParseInputEvent(new InputEventMouseButton { Position = from, GlobalPosition = from, ButtonIndex = MouseButton.Left, Pressed = true });
+        await Frames(2);
+        for (int i = 1; i <= steps; i++)
+        {
+            var p = from.Lerp(to, (float)i / steps);
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = p, GlobalPosition = p, ButtonMask = MouseButtonMask.Left });
+            await Frames(1);
+        }
+        if (rightBeforeRelease)
+        {
+            Input.ParseInputEvent(new InputEventMouseButton { Position = to, GlobalPosition = to, ButtonIndex = MouseButton.Right, Pressed = true });
+            Input.ParseInputEvent(new InputEventMouseButton { Position = to, GlobalPosition = to, ButtonIndex = MouseButton.Right, Pressed = false });
+            await Frames(2);
+        }
+        Input.ParseInputEvent(new InputEventMouseButton { Position = to, GlobalPosition = to, ButtonIndex = MouseButton.Left, Pressed = false });
+        await Frames(3);
+    }
+
+    private static Vector2 ArrowScreen(BattleScreen bs, Render.FacingArrow a) => bs.Board.Rig.Camera.UnprojectPosition(a.GrabPoint());
+
+    private async Task BattleArrowGesture()
+    {
+        var bs = await OpenBattle("sandbox");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        var mage = bs.Sim.Units.First(u => u.Def.Id == "mage");
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(knight));
+        await Frames(10);
+        // Selecting by click while the game runs pauses it (planning autopause).
+        bs.Select(null);
+        bs.Resume();
+        await Click(HexScreen(bs, mage.Pos));
+        Check(bs.Selected == mage, "клик не выбрал мага");
+        Check(bs.Driver.Paused && bs.AutoPaused, "выбор юнита не поставил игру на паузу");
+        await Click(HexScreen(bs, knight.Pos));
+        Check(bs.Selected == knight, "клик не выбрал рыцаря");
+        long tick = bs.Sim.Tick;
+        await Click(HexScreen(bs, knight.Pos)); // repeated click: nothing changes, time does not run
+        await Frames(5);
+        Check(bs.Selected == knight && bs.Driver.Paused && bs.Sim.Tick == tick, "повторный клик по выделенному юниту что-то изменил");
+        Check(bs.HeadArrow.Visible, "стрелка взгляда не показана");
+
+        // Short gesture: turning (a free, instant turn order by default).
+        var start = ArrowScreen(bs, bs.HeadArrow);
+        var west = HexScreen(bs, knight.Pos + HexDirection.W.Offset());
+        var unitScreen = HexScreen(bs, knight.Pos);
+        var turnTo = unitScreen + (west - unitScreen) * 0.6f;
+        await Drag(start, turnTo);
+        Check(knight.Queue.Count == 1 && knight.Queue.Items[0].Type == CommandType.Turn && knight.Queue.Items[0].Direction == HexDirection.W,
+            "короткий жест не создал приказ поворота на запад: " + string.Join(", ", knight.Queue.Items.Select(c => c.Describe(bs.Sim))));
+        bs.Sim.Step();
+        Check(knight.Facing == HexDirection.W, "юнит не повернулся");
+
+        // Long gesture: a route to a hex three steps away.
+        var target = knight.Pos + new HexCoord(3, 0);
+        await Drag(ArrowScreen(bs, bs.HeadArrow), HexScreen(bs, target), 12);
+        Check(knight.Queue.Count == 1 && knight.Queue.Items[0].Type == CommandType.Move && knight.Queue.Items[0].TargetCell == target,
+            "длинный жест не построил маршрут: " + string.Join(", ", knight.Queue.Items.Select(c => c.Describe(bs.Sim))) + $" · сообщение: {bs.Hud.LastBanner} · курсор над {bs.HoverCell?.Coord}, цель {target}");
+        Check(knight.Queue.Items[0].Routing == RouteMode.MinCost, "приказ движения без режима маршрута игрока");
+        await Frames(3);
+        Check(bs.HeadArrow.Cell == target, "стрелка не появилась в конечной точке маршрута");
+
+        // At the end point: a short gesture sets the facing after arrival.
+        var endScreen = HexScreen(bs, target);
+        var sw = HexScreen(bs, target + HexDirection.SW.Offset());
+        await Drag(ArrowScreen(bs, bs.HeadArrow), endScreen + (sw - endScreen) * 0.6f);
+        Check(knight.Queue.Items[0].ArrivalFacing == HexDirection.SW, "направление после прибытия не задано");
+
+        // Another long gesture continues the route (several points).
+        var second = target + new HexCoord(0, 2);
+        await Drag(ArrowScreen(bs, bs.HeadArrow), HexScreen(bs, second), 12);
+        Check(knight.Queue.Count == 2 && knight.Queue.Items[1].TargetCell == second, "вторая точка маршрута не добавлена");
+
+        // RMB during the gesture cancels it.
+        await Drag(ArrowScreen(bs, bs.HeadArrow), HexScreen(bs, second + new HexCoord(2, 0)), 10, rightBeforeRelease: true);
+        Check(knight.Queue.Count == 2 && !bs.GestureActive, "ПКМ не отменил жест");
+
+        // The route is executed in game time; the unit ends facing the chosen direction at the node.
+        bs.Resume();
+        for (int i = 0; i < 400 && knight.Queue.Count > 1; i++) bs.Sim.Step();
+        Check(knight.Pos == target && knight.Facing == HexDirection.SW || knight.Queue.Count <= 1, "узел маршрута не выполнен");
+    }
+
+    private async Task BattlePlanningPauseAndCancel()
+    {
+        var bs = await OpenBattle("sandbox");
+        var s = Main.Instance.Settings;
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        var mage = bs.Sim.Units.First(u => u.Def.Id == "mage");
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(knight));
+        await Frames(8);
+        try
+        {
+            // No pause on selection when it is switched off.
+            s.PauseOnSelect = false;
+            bs.Resume();
+            await Click(HexScreen(bs, mage.Pos));
+            Check(bs.Selected == mage && !bs.Driver.Paused, "выбор поставил паузу при выключенной настройке");
+            // Targeting pauses; an order keeps the pause by default.
+            await Key(Godot.Key.M);
+            Check(bs.Driver.Paused && bs.AutoPaused, "режим движения не поставил паузу");
+            await Click(HexScreen(bs, mage.Pos + new HexCoord(2, 0)));
+            Check(mage.Queue.Count == 1 && bs.Driver.Paused, "после приказа пауза должна сохраниться");
+            await Key(Godot.Key.Escape);
+            // «Remove the pause after the order».
+            s.KeepPauseAfterOrder = false;
+            await Key(Godot.Key.M);
+            Check(bs.Driver.Paused, "режим движения не поставил паузу");
+            await Click(HexScreen(bs, mage.Pos + new HexCoord(2, 1)));
+            Check(mage.Queue.Count == 2 && !bs.Driver.Paused, "автопауза не снята после приказа");
+            await Key(Godot.Key.Escape);
+            // «Only at the start of planning»: after the player resumes, the same planning does not pause again.
+            s.KeepPauseAfterOrder = true;
+            s.PauseOnlyAtPlanningStart = true;
+            bs.TogglePause();
+            bs.TogglePause();
+            Check(!bs.Driver.Paused, "пауза не снята");
+            await Key(Godot.Key.M);
+            Check(!bs.Driver.Paused, "повторная автопауза в том же планировании");
+            await Key(Godot.Key.Escape);
+
+            // Cancel: Backspace removes the last pending point, Delete — the pending orders, the executing one stays.
+            bs.Driver.Paused = true;
+            bs.Sim.ClearQueue(mage);
+            bs.Sim.Enqueue(mage, Command.Move(mage.Pos + new HexCoord(2, 0)));
+            bs.Sim.Enqueue(mage, Command.Move(mage.Pos + new HexCoord(2, 2)));
+            await Key(Godot.Key.Backspace);
+            Check(mage.Queue.Count == 1, "Backspace не удалил последнюю точку");
+            bs.Sim.ClearQueue(mage);
+            bs.Sim.Enqueue(mage, Command.Move(mage.Pos + new HexCoord(3, 0)));
+            bs.Sim.Enqueue(mage, Command.Move(mage.Pos + new HexCoord(3, 2)));
+            bs.Sim.Step();
+            Check(mage.Queue.Items[0].Status == CommandStatus.Active, "первый приказ не начался");
+            await Key(Godot.Key.Delete);
+            Check(mage.Queue.Count == 1 && mage.Queue.Items[0].Status == CommandStatus.Active, "Delete удалил выполняемый приказ или не удалил ожидающие");
+            await Key(Godot.Key.Delete, shift: true);
+            Check(mage.Queue.Count == 0, "Shift+Delete не отменил всё");
+
+            // Esc chain: leave the mode → clear the selection → game menu.
+            await Key(Godot.Key.M);
+            Check(bs.Mode == InputMode.Move, "M не включил движение");
+            await Key(Godot.Key.Escape);
+            Check(bs.Mode == InputMode.None && bs.Selected == mage, "первый Esc должен выйти из режима");
+            await Key(Godot.Key.Escape);
+            Check(bs.Selected == null, "второй Esc должен снять выделение");
+        }
+        finally
+        {
+            s.PauseOnSelect = true;
+            s.KeepPauseAfterOrder = true;
+            s.PauseOnlyAtPlanningStart = false;
+        }
+    }
+
+    private async Task BattleAlternativeControl()
+    {
+        var bs = await OpenBattle("sandbox");
+        var s = Main.Instance.Settings;
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        try
+        {
+            s.Gestures = false;
+            bs.Select(knight);
+            bs.Board.Rig.FocusOn(bs.Board.UnitPos(knight));
+            await Frames(8);
+            Check(!bs.HeadArrow.Visible, "без жестов стрелка не должна захватываться");
+            // Select → «Движение» → hex.
+            await ClickButton("Движение");
+            Check(bs.Mode == InputMode.Move, "кнопка «Движение» не включила режим");
+            var to = knight.Pos + new HexCoord(2, 0);
+            await Click(HexScreen(bs, to));
+            Check(knight.Queue.Count == 1 && knight.Queue.Items[0].TargetCell == to, "клик по гексу не создал движение");
+            // A wall cannot be chosen as the end point.
+            var wall = bs.Sim.Map.Cells.FirstOrDefault(c => !c.Terrain.IsPassableFor("walk") && c.Terrain.Kind != TerrainKind.Pit);
+            if (wall != null)
+            {
+                bs.Board.Rig.FocusOn(Render.Board.Center(wall.Coord));
+                await Frames(6);
+                await Click(HexScreen(bs, wall.Coord));
+                Check(knight.Queue.Count == 1, "непроходимый гекс выбран как конечная точка");
+            }
+            await Key(Godot.Key.Escape);
+            // Select → «Атака» → enemy (the enemy hex is an attack, not a move).
+            var enemy = bs.Sim.Units.First(u => u.Alive && bs.Sim.IsHostile(knight, u));
+            bs.Board.Rig.FocusOn(bs.Board.UnitPos(enemy));
+            await Frames(6);
+            await Key(Godot.Key.M);
+            await Click(HexScreen(bs, enemy.Pos));
+            Check(knight.Queue.Items.Last().Type == CommandType.Attack, "указание врага в режиме движения не стало атакой");
+            Check(knight.Queue.Items.All(c => c.TargetCell != enemy.Pos || c.Type != CommandType.Move), "юнит пытается занять гекс врага");
+        }
+        finally
+        {
+            s.Gestures = true;
+        }
     }
 
     // ------------------------------------------------------------------ editor tests

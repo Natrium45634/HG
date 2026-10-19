@@ -219,7 +219,7 @@ public sealed class KnowledgeSystem
         {
             FacingModel.None => "нет направления (секторы не действуют)",
             FacingModel.Omni => "круговое восприятие (секторы не действуют)",
-            FacingModel.Multiple => $"{facingDir.RuName()} + доп. направления: {string.Join(", ", p.ExtraFacings.Select(o => facingDir.Rotate(o).RuShortName()))}",
+            FacingModel.Multiple => $"{facingDir.RuName()} + доп. направления: {string.Join(", ", p.FacingsOf(facingDir).Skip(1).Select(d => d.RuShortName()))}",
             _ => facingDir.RuName(),
         };
         if (p.Zone != DetectionZoneShape.None) facing += $"; зона обнаружения — {p.Zone} {p.ZoneSize}";

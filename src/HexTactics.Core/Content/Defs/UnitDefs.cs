@@ -164,6 +164,8 @@ public sealed class UnitDef : Def
 
     [Ed("Обычная атака", Group = "Навыки"), EdRef(DefCategory.Skill)] public string BasicAttack { get; set; } = "";
     [Ed("Навыки", Group = "Навыки"), EdRef(DefCategory.Skill)] public List<string> Skills { get; set; } = new();
+    [Ed("Защитный навык", "Центр радиального меню; пусто — защитная стойка из правил", Group = "Навыки"), EdRef(DefCategory.Skill)]
+    public string DefenseSkill { get; set; } = "";
     [Ed("Пассивные способности", Group = "Навыки"), EdRef(DefCategory.Passive)] public List<string> Passives { get; set; } = new();
     [Ed("Стартовые состояния", Group = "Навыки")] public List<StartingStatusDef> StartingStatuses { get; set; } = new();
     [Ed("Автоатаки", "Атакуют сами через общую систему боя: навык, дальность, цели, интервал, правила выбора", Group = "Навыки")]

@@ -11,6 +11,37 @@ public enum SkillKind
     Support,
     Movement,
     Utility,
+    /// <summary>Defensive skill: block, dodge, parry, stance, shield… (centre of the radial menu, docs/DECISIONS_3.md §45).</summary>
+    Defense,
+}
+
+/// <summary>How a skill can be used (docs/DECISIONS_3.md §43).</summary>
+public enum SkillUseMode
+{
+    [Ed("Прицельный")] Aimed,
+    [Ed("Автоматический")] Auto,
+    [Ed("Прицельный и автоматический")] Both,
+}
+
+/// <summary>Ring of the radial menu (docs/DECISIONS_3.md §42).</summary>
+public enum MenuRing
+{
+    [Ed("Авто (по силе)")] Auto,
+    [Ed("Первое кольцо")] First,
+    [Ed("Второе кольцо")] Second,
+}
+
+public enum FacingAfterUse
+{
+    [Ed("К цели")] TowardTarget,
+    [Ed("Прежнее направление")] Keep,
+    [Ed("Заданное направление")] Set,
+}
+
+public enum CostMoment
+{
+    [Ed("При запуске")] Start,
+    [Ed("При срабатывании")] Release,
 }
 
 /// <summary>
@@ -87,6 +118,24 @@ public sealed class SkillDef : Def
     public bool Telegraph { get; set; } = true;
 
     [Ed("Прерывание", Group = "Прерывание")] public InterruptDef Interrupt { get; set; } = new();
+
+    // Use (docs/DECISIONS_3.md §42, §43).
+    [Ed("Режим применения", "Прицельный — игрок указывает цель; автоматический — цель выбирается правилами в момент применения", Group = "Применение")]
+    public SkillUseMode UseMode { get; set; } = SkillUseMode.Aimed;
+    [Ed("Приоритет в меню", "0 — по силе навыка (от слабого к сильному); иначе — порядок вручную", Group = "Применение"), EdRange(0, 1000)]
+    public int MenuPriority { get; set; }
+    [Ed("Кольцо радиального меню", Group = "Применение")] public MenuRing Ring { get; set; } = MenuRing.Auto;
+    [Ed("Подходить перед атакой", "Цель вне дальности или видимости: ближний бой — к свободному соседнему гексу, дальний — к позиции в дальности с линией видимости", Group = "Применение")]
+    public bool Approach { get; set; } = true;
+    [Ed("Движение перед применением", "Можно ли перемещаться, чтобы применить навык (выкл. — только с места)", Group = "Применение")]
+    public bool AllowMoveBeforeUse { get; set; } = true;
+    [Ed("Продолжать маршрут после атаки", "Выкл. — оставшиеся точки маршрута снимаются", Group = "Применение")]
+    public bool ContinueRoute { get; set; } = true;
+    [Ed("Взгляд после атаки", Group = "Применение")] public FacingAfterUse FacingAfter { get; set; } = FacingAfterUse.TowardTarget;
+    [Ed("Направление после атаки", Group = "Применение"), EdShowIf(nameof(FacingAfter), FacingAfterUse.Set)]
+    public HexDirection FacingAfterDirection { get; set; } = HexDirection.E;
+    [Ed("Списывать ресурсы", "При запуске подготовки или в момент срабатывания", Group = "Применение")] public CostMoment PayAt { get; set; } = CostMoment.Start;
+    [Ed("Начинать перезарядку", Group = "Применение")] public CostMoment CooldownAt { get; set; } = CostMoment.Release;
 
     [Ed("Может критовать", Group = "Урон")] public bool CanCrit { get; set; } = true;
     [Ed("Бонус шанса крита"), EdRange(-1, 1)] public double CritChanceBonus { get; set; }

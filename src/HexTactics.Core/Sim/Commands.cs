@@ -42,6 +42,21 @@ public sealed class Command
     /// <summary>Optional per-command failure policy (overrides the rules for every reason).</summary>
     public FailurePolicyDef? PolicyOverride { get; set; }
 
+    // Route node (docs/DECISIONS_3.md §41): a Move command is a node of the player's route.
+    /// <summary>Facing taken after arriving (by the manual turn rules).</summary>
+    public HexDirection? ArrivalFacing { get; set; }
+    /// <summary>Waiting after arriving, seconds.</summary>
+    public double WaitAfter { get; set; }
+    /// <summary>Continue only when this condition holds (owner = the unit); bounded by the queue's maximal wait.</summary>
+    public ConditionDef? Until { get; set; }
+    /// <summary>Not mandatory: reaching a neighbouring hex is enough, and an unreachable node is skipped.</summary>
+    public bool Optional { get; set; }
+    /// <summary>Player routing (null — the fast cell search of the AI).</summary>
+    public RouteMode? Routing { get; set; }
+    public RouteWeights? RouteWeights { get; set; }
+    /// <summary>Attack/skill: approach the target first when it is out of range or sight (if the skill allows, docs/DECISIONS_3.md §42).</summary>
+    public bool Approach { get; set; }
+
     public CommandStatus Status { get; internal set; } = CommandStatus.Pending;
     public string StatusText { get; internal set; } = "";
     /// <summary>Estimated AP reserved for this command (set at enqueue, updated during execution).</summary>
@@ -62,6 +77,14 @@ public sealed class Command
     internal int Phase { get; set; }
     internal long PhaseUntil { get; set; }
     internal long StartedTick { get; set; } = -1;
+    /// <summary>Route node: 0 — moving, 1 — arrival facing, 2 — waiting, 3 — condition.</summary>
+    internal int NodePhase { get; set; }
+    /// <summary>Approach before an attack: the chosen position and the target position it was chosen for.</summary>
+    internal HexCoord? ApproachCell { get; set; }
+    internal HexCoord? ApproachFor { get; set; }
+    internal int ApproachSearches { get; set; }
+    /// <summary>Facing before the skill (for «keep facing after the attack»).</summary>
+    internal HexDirection FacingBefore { get; set; }
 
     public bool IsFinished => Status is CommandStatus.Done or CommandStatus.Skipped or CommandStatus.Failed or CommandStatus.Cancelled;
 
@@ -78,6 +101,13 @@ public sealed class Command
         SkillId = SkillId,
         Duration = Duration,
         PolicyOverride = PolicyOverride?.Clone(),
+        ArrivalFacing = ArrivalFacing,
+        WaitAfter = WaitAfter,
+        Until = Until,
+        Optional = Optional,
+        Routing = Routing,
+        RouteWeights = RouteWeights?.Clone(),
+        Approach = Approach,
     };
 
     public static Command Move(HexCoord to) => new() { Type = CommandType.Move, TargetCell = to };
@@ -98,7 +128,8 @@ public sealed class Command
         string skillName(string id) => sim?.Content.Skill(id)?.DisplayName ?? id;
         return Type switch
         {
-            CommandType.Move => $"Движение к {TargetCell}",
+            CommandType.Move => $"Движение к {TargetCell}" + (ArrivalFacing.HasValue ? $", взгляд {ArrivalFacing.Value.RuShortName()}" : "")
+                                + (WaitAfter > 0 ? $", ждать {WaitAfter:0.#} с" : "") + (Optional ? " (необязательная)" : ""),
             CommandType.Turn => $"Поворот: {Direction?.RuName()}",
             CommandType.Attack => $"Атака: {unitName(TargetUnitId)}",
             CommandType.Skill => TargetUnitId >= 0

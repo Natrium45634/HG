@@ -148,6 +148,37 @@ public sealed class CommandSystem
             _sim.Emit(SimEventType.QueueCancelled, LogLevel.Detail, $"{u.Name}: очередь очищена ({n}) — {reason}", u.Id);
     }
 
+    /// <summary>Sets the facing after arrival of a route node (Move) that has not turned yet. False — not possible.</summary>
+    public bool SetArrivalFacing(Unit u, int commandId, HexDirection? dir)
+    {
+        var c = u.Queue.Find(commandId);
+        if (c == null || c.Type != CommandType.Move || c.IsFinished || c.NodePhase > 1) return false;
+        c.ArrivalFacing = dir;
+        RecomputeEstimates(u);
+        return true;
+    }
+
+    /// <summary>Removes pending (not started) commands; the active one is kept.</summary>
+    public int ClearPending(Unit u, string reason)
+    {
+        int n = 0;
+        for (int i = u.Queue.Count - 1; i >= 0; i--)
+        {
+            var c = u.Queue.Items[i];
+            if (c.Status != CommandStatus.Pending) continue;
+            c.Status = CommandStatus.Cancelled;
+            c.StatusText = reason;
+            u.Queue.RemoveAt(i);
+            n++;
+        }
+        if (n > 0)
+        {
+            RecomputeEstimates(u);
+            _sim.Emit(SimEventType.QueueCancelled, LogLevel.Detail, $"{u.Name}: ожидающие приказы удалены ({n}) — {reason}", u.Id);
+        }
+        return n;
+    }
+
     private void CleanupActive(Unit u, Command c, bool refundCast)
     {
         switch (c.Type)
@@ -210,6 +241,7 @@ public sealed class CommandSystem
                 {
                     pos = c.TargetCell.Value;
                 }
+                if (c.Type == CommandType.Move && c.ArrivalFacing.HasValue) facing = c.ArrivalFacing.Value;
                 if (c.Type == CommandType.Turn && c.Direction.HasValue) facing = c.Direction.Value;
             }
         }
@@ -349,6 +381,19 @@ public sealed class CommandSystem
     /// <summary>Applies the failure policy. Returns true if the command left the queue.</summary>
     private bool HandleFailure(Unit u, Command cmd, FailureReason reason, string message)
     {
+        // A non-mandatory route node: close enough counts as reached, unreachable is skipped (docs/DECISIONS_3.md §41).
+        if (cmd.Type == CommandType.Move && cmd.Optional && reason is FailureReason.NoPath or FailureReason.PathBlocked && cmd.TargetCell.HasValue)
+        {
+            if (HexCoord.Distance(u.Pos, cmd.TargetCell.Value) <= 1)
+            {
+                cmd.NodePhase = Math.Max(cmd.NodePhase, 1);
+                cmd.Path = null;
+                ClearWait(cmd);
+                _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: необязательная точка {cmd.TargetCell} занята — достаточно рядом", u.Id);
+                return false;
+            }
+            return Resolve(u, cmd, FailureAction.Skip, "необязательная точка пропущена: " + message, reason);
+        }
         var policy = cmd.PolicyOverride ?? Rules.Queue.For(reason);
         double maxWait = Math.Min(policy.WaitSeconds, Rules.Queue.MaxWaitSeconds);
         // Hard cap on the total waiting time of one command, whatever the reasons were.
@@ -375,7 +420,7 @@ public sealed class CommandSystem
                     if (cmd.RepathAttempts < policy.MaxAttempts)
                     {
                         cmd.RepathAttempts++;
-                        var path = _sim.Pathfinder.Find(_sim, u, u.Pos, cmd.TargetCell!.Value, new PathOptions { HazardPenalty = HazardPenaltyFor(u) });
+                        var path = _sim.Planner.Route(u, cmd, u.Pos, u.Facing, cmd.TargetCell!.Value);
                         if (path.Found)
                         {
                             cmd.Path = path.Path;
@@ -398,6 +443,8 @@ public sealed class CommandSystem
     private bool Resolve(Unit u, Command cmd, FailureAction action, string message, FailureReason reason)
     {
         bool player = _sim.IsPlayerFaction(u.FactionId) || _sim.Options.AdminMode;
+        u.StopReason = message;
+        u.StopTick = _sim.Tick;
         if (action == FailureAction.CancelQueue)
         {
             CleanupActive(u, cmd, refundCast: true);
@@ -428,17 +475,18 @@ public sealed class CommandSystem
         return true;
     }
 
-    private double HazardPenaltyFor(Unit u)
-    {
-        if (u.AiControlled && u.AiProfile != null) return u.AiProfile.HazardAvoidance;
-        return Rules.Move.HazardPenalty;
-    }
-
     // ------------------------------------------------------------------ command executors
 
     private Result ExecMove(Unit u, Command cmd)
     {
         var target = cmd.TargetCell!.Value;
+        if (u.Pos == target || cmd.NodePhase > 0) return Arrive(u, cmd);
+        return StepTowards(u, cmd, target);
+    }
+
+    /// <summary>One step of gradual movement towards a cell (route, approach before an attack). Done — already there.</summary>
+    private Result StepTowards(Unit u, Command cmd, HexCoord target)
+    {
         if (u.Pos == target) return Result.Done;
         if (u.Flags.BlocksActions) return Fail(FailureReason.Disabled, "юнит оглушён");
         if (u.Flags.BlocksMovement) return Fail(FailureReason.Disabled, "юнит обездвижен");
@@ -448,7 +496,7 @@ public sealed class CommandSystem
         // the link disappears as soon as the blocker is gone, pushed away, stunned or out of slots.
         if (_sim.Blocking.BlockerOf(u) is { } blocker)
         {
-            if (u.Def.Blockable.WhenBlocked != BlockedBehavior.FindDetour || !TryDetour(u, cmd, blocker))
+            if (u.Def.Blockable.WhenBlocked != BlockedBehavior.FindDetour || !TryDetour(u, cmd, blocker, target))
             {
                 cmd.Status = CommandStatus.Waiting;
                 cmd.StatusText = $"заблокирован: {blocker.Name}";
@@ -459,7 +507,22 @@ public sealed class CommandSystem
 
         if (cmd.Path == null || cmd.Path.Count == 0 || HexCoord.Distance(cmd.Path[0], u.Pos) != 1)
         {
-            var path = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { HazardPenalty = HazardPenaltyFor(u) });
+            var path = _sim.Planner.Route(u, cmd, u.Pos, u.Facing, target);
+            if (!path.Found && cmd.Optional)
+            {
+                // A non-mandatory node: a neighbouring hex is enough (docs/DECISIONS_3.md §41).
+                var near = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { GoalTolerance = 1 });
+                if (near.Found)
+                {
+                    if (near.Path.Count == 0)
+                    {
+                        cmd.NodePhase = 1;
+                        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: необязательная точка {target} недоступна — достаточно рядом", u.Id);
+                        return Arrive(u, cmd);
+                    }
+                    path = near;
+                }
+            }
             if (!path.Found)
             {
                 if (path.Failure == FailureReason.PathBlocked) return Fail(FailureReason.PathBlocked, path.Reason);
@@ -510,13 +573,13 @@ public sealed class CommandSystem
     }
 
     /// <summary>Path around the blocker's zone; on success the enemy is not re-blocked by it for a moment.</summary>
-    private bool TryDetour(Unit u, Command cmd, Unit blocker)
+    private bool TryDetour(Unit u, Command cmd, Unit blocker, HexCoord target)
     {
         var avoid = new HashSet<HexCoord>();
         foreach (var c in _sim.Map.InRadius(blocker.Pos, 1))
             if (c.Coord != u.Pos)
                 avoid.Add(c.Coord);
-        var path = _sim.Pathfinder.Find(_sim, u, u.Pos, cmd.TargetCell!.Value, new PathOptions { Avoid = avoid, HazardPenalty = HazardPenaltyFor(u) });
+        var path = _sim.Planner.Route(u, cmd, u.Pos, u.Facing, target, avoid: avoid);
         if (!path.Found) return false;
         cmd.Path = path.Path;
         RecomputeEstimates(u);
@@ -525,9 +588,14 @@ public sealed class CommandSystem
         return true;
     }
 
-    private Result ExecTurn(Unit u, Command cmd)
+    private Result ExecTurn(Unit u, Command cmd) => ManualTurn(u, cmd.Direction!.Value, cmd);
+
+    /// <summary>
+    /// A player/AI-ordered turn (command «Поворот», arrival facing of a route node): free and instant by
+    /// default; the rules may make it cost AP and/or take time per 60° step (docs/DECISIONS_3.md §40).
+    /// </summary>
+    private Result ManualTurn(Unit u, HexDirection target, Command cmd)
     {
-        var target = cmd.Direction!.Value;
         if (u.Facing == target) return Result.Done;
         if (!u.Def.Perception.HasFacing)
         {
@@ -537,20 +605,76 @@ public sealed class CommandSystem
         }
         if (u.Flags.BlocksActions) return Fail(FailureReason.Disabled, "юнит оглушён");
         if (u.Flags.BlocksTurning) return Fail(FailureReason.Disabled, "юнит не может поворачиваться");
-        if (!TurnOneStep(u, target, cmd)) return Fail(FailureReason.NotEnoughAp, $"нужно {Rules.Turn.ApPerStep:0.##} ОД на поворот");
+        bool payAp = Rules.Turn.ManualCostsAp, takeTime = Rules.Turn.ManualTakesTime;
+        if (!takeTime)
+        {
+            double ap = payAp ? HexDirectionExt.StepsBetween(u.Facing, target) * Rules.Turn.ApPerStep : 0;
+            if (u.Ap + 1e-9 < ap) return Fail(FailureReason.NotEnoughAp, $"нужно {ap:0.##} ОД на поворот");
+            u.Ap -= ap;
+            cmd.SpentAp += ap;
+            var old = u.Facing;
+            u.Facing = target;
+            _sim.Vision.MarkDirty();
+            _sim.Emit(SimEventType.Turned, LogLevel.Diagnostic, $"{u.Name}: поворот {old.RuShortName()} → {target.RuShortName()}" + (ap > 0 ? $" (−{ap:0.##} ОД)" : ""), u.Id);
+            ClearWait(cmd);
+            return Result.Done;
+        }
+        if (!TurnOneStep(u, target, cmd, payAp)) return Fail(FailureReason.NotEnoughAp, $"нужно {Rules.Turn.ApPerStep:0.##} ОД на поворот");
         ClearWait(cmd);
         return u.Facing == target && u.BusyUntil <= _sim.Tick ? Result.Done : Result.Continue;
+    }
+
+    /// <summary>
+    /// Route node after arrival (docs/DECISIONS_3.md §41): facing after arrival, waiting, then the
+    /// condition to continue (bounded by the queue's maximal wait).
+    /// </summary>
+    private Result Arrive(Unit u, Command cmd)
+    {
+        if (cmd.NodePhase == 0) cmd.NodePhase = 1;
+        if (cmd.NodePhase == 1)
+        {
+            if (cmd.ArrivalFacing is { } f && u.Facing != f)
+            {
+                var r = ManualTurn(u, f, cmd);
+                if (r != Result.Done) return r;
+            }
+            cmd.NodePhase = 2;
+            cmd.PhaseUntil = _sim.Tick + _sim.TicksFor(cmd.WaitAfter);
+        }
+        if (cmd.NodePhase == 2)
+        {
+            if (_sim.Tick < cmd.PhaseUntil)
+            {
+                cmd.StatusText = $"ожидание в точке ({(cmd.PhaseUntil - _sim.Tick) * _sim.Dt:0.#} с)";
+                return Result.Continue;
+            }
+            cmd.NodePhase = 3;
+            cmd.PhaseUntil = _sim.Tick + _sim.TicksFor(Rules.Queue.MaxWaitSeconds);
+        }
+        if (cmd.Until != null && !_sim.Scenario.Evaluate(cmd.Until, u))
+        {
+            if (_sim.Tick >= cmd.PhaseUntil)
+            {
+                // The command leaves the queue here; Continue only stops processing this unit for the tick.
+                Resolve(u, cmd, FailureAction.Skip, $"условие «{cmd.Until.Describe()}» не выполнено за {Rules.Queue.MaxWaitSeconds:0} с", FailureReason.Invalid);
+                return Result.Continue;
+            }
+            cmd.Status = CommandStatus.Waiting;
+            cmd.StatusText = "ждёт условия: " + cmd.Until.Describe();
+            return Result.Continue;
+        }
+        return Result.Done;
     }
 
     /// <summary>One turning step by the common turn rules (used by auto-attacks to face their target).</summary>
     internal bool TurnStep(Unit u, HexDirection target) => TurnOneStep(u, target, null);
 
     /// <summary>Turns one 60° step towards the target direction (AP + time). False if not enough AP.</summary>
-    private bool TurnOneStep(Unit u, HexDirection target, Command? cmd)
+    private bool TurnOneStep(Unit u, HexDirection target, Command? cmd, bool payAp = true)
     {
         int signed = HexDirectionExt.SignedSteps(u.Facing, target);
         if (signed == 0) return true;
-        double ap = Rules.Turn.ApPerStep;
+        double ap = payAp ? Rules.Turn.ApPerStep : 0;
         if (u.Ap + 1e-9 < ap) return false;
         u.Ap -= ap;
         if (cmd != null) cmd.SpentAp += ap;
@@ -558,7 +682,7 @@ public sealed class CommandSystem
         u.Facing = u.Facing.Rotate(Math.Sign(signed));
         u.BusyUntil = _sim.Tick + _sim.TicksFor(Rules.Turn.SecondsPerStep);
         _sim.Vision.MarkDirty();
-        _sim.Emit(SimEventType.Turned, LogLevel.Diagnostic, $"{u.Name}: поворот {old.RuShortName()} → {u.Facing.RuShortName()} (−{ap:0.##} ОД)", u.Id);
+        _sim.Emit(SimEventType.Turned, LogLevel.Diagnostic, $"{u.Name}: поворот {old.RuShortName()} → {u.Facing.RuShortName()}" + (ap > 0 ? $" (−{ap:0.##} ОД)" : ""), u.Id);
         return true;
     }
 
@@ -569,8 +693,11 @@ public sealed class CommandSystem
 
         if (cmd.Phase == 0)
         {
+            if (cmd.StartedTick == _sim.Tick && cmd.ApproachSearches == 0) cmd.FacingBefore = u.Facing;
             var check = _sim.Skills.Validate(u, skill, cmd.TargetCell, cmd.TargetUnitId, cmd.Direction, u.Pos, u.Facing);
+            if (!check.Ok && ApproachStep(u, cmd, skill, check) is { } approach) return approach;
             if (!check.Ok) return Fail(check.Reason == FailureReason.None ? FailureReason.Invalid : check.Reason, check.Message);
+            cmd.ApproachCell = null;
 
             bool wantFace = skill.FaceTarget && Rules.Turn.AutoFaceTarget && !(skill.Targeting == TargetingMode.Self && !cmd.Direction.HasValue);
             if (wantFace && check.Orientation != u.Facing && !u.Flags.BlocksTurning)
@@ -605,12 +732,74 @@ public sealed class CommandSystem
                 }
             }
             _sim.Skills.Release(cast);
+            // Costs paid at the release were missing: the skill did not fire and the command is already resolved.
+            if (cast.Interrupted) return Result.Continue;
             cmd.Phase = 2;
             u.BusyUntil = _sim.Tick + _sim.TicksFor(skill.RecoveryTime);
+            AfterUse(u, cmd, skill);
             return u.BusyUntil > _sim.Tick ? Result.Continue : Result.Done;
         }
 
         return Result.Done;
+    }
+
+    /// <summary>Facing after the attack and «continue the route» (docs/DECISIONS_3.md §42).</summary>
+    private void AfterUse(Unit u, Command cmd, SkillDef skill)
+    {
+        if (!u.Alive) return;
+        if (skill.FacingAfter == FacingAfterUse.Keep && u.Facing != cmd.FacingBefore && u.Def.Perception.HasFacing && !u.Flags.BlocksTurning)
+        {
+            u.Facing = cmd.FacingBefore;
+            _sim.Vision.MarkDirty();
+        }
+        else if (skill.FacingAfter == FacingAfterUse.Set && !u.Flags.BlocksTurning)
+        {
+            u.Facing = skill.FacingAfterDirection;
+            _sim.Vision.MarkDirty();
+        }
+        if (!skill.ContinueRoute) ClearPending(u, $"«{skill.DisplayName}» завершает маршрут");
+    }
+
+    /// <summary>
+    /// Approach before an attack (docs/DECISIONS_3.md §42): the target is out of range or sight → walk to the
+    /// cheapest position from which the skill can be used (melee — a free neighbouring hex, ranged — in range
+    /// with line of sight). Null — no approach (not asked/allowed, or another problem).
+    /// </summary>
+    private Result? ApproachStep(Unit u, Command cmd, SkillDef skill, SkillCheck check)
+    {
+        if (!cmd.Approach || !skill.Approach || !skill.AllowMoveBeforeUse) return null;
+        if (check.Reason is not (FailureReason.OutOfRange or FailureReason.NoLineOfSight)) return null;
+        if (u.Flags.BlocksMovement || u.Flags.BlocksActions || u.Stat(Stats.MoveSpeed) <= 0) return null;
+        var target = _sim.GetUnit(cmd.TargetUnitId);
+        HexCoord? targetPos = skill.Targeting == TargetingMode.Unit ? target?.Pos : cmd.TargetCell;
+        if (targetPos == null) return null;
+        // Search again only when the target moved or the chosen position turned out wrong; a failed search waits for the target to move.
+        bool searched = cmd.ApproachFor == targetPos;
+        bool arrivedInvalid = cmd.ApproachCell != null && u.Pos == cmd.ApproachCell;
+        if (searched && cmd.ApproachCell == null) return Fail(check.Reason, check.Message + " — нет позиции для атаки");
+        if (!searched || arrivedInvalid)
+        {
+            if (++cmd.ApproachSearches > 50) return Fail(FailureReason.OutOfRange, "не удаётся подойти к цели");
+            var pos = _sim.Planner.AttackPosition(u, skill, cmd.TargetCell, cmd.TargetUnitId, u.Pos, out var why);
+            if (pos == null || pos == u.Pos)
+            {
+                cmd.ApproachFor = targetPos;
+                cmd.ApproachCell = null;
+                return Fail(check.Reason, check.Message + (why != "" ? " — " + why : ""));
+            }
+            cmd.ApproachCell = pos;
+            cmd.ApproachFor = targetPos;
+            cmd.Path = null;
+            _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: подходит к позиции {pos} для «{skill.DisplayName}»", u.Id, cmd.TargetUnitId, pos);
+        }
+        var r = StepTowards(u, cmd, cmd.ApproachCell!.Value);
+        if (r == Result.Done)
+        {
+            cmd.ApproachCell = null;
+            return Result.Continue;
+        }
+        if (r == Result.Continue) cmd.StatusText = "подходит к цели";
+        return r;
     }
 
     private Result ExecDefend(Unit u, Command cmd)

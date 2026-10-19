@@ -68,7 +68,7 @@ public partial class MainMenu : Control
         _play = Ui.Button("▶ Играть", Play).MinSize(380, 48);
         _play.Disabled = true;
         right.AddChild(_play);
-        right.AddChild(Ui.Label("Пробел — пауза · ЛКМ по юниту — меню действий · ПКМ — быстрое движение/атака", 12, Ui.TextDim, wrap: true).MinSize(380));
+        right.AddChild(Ui.Label("Пробел — пауза · ЛКМ по юниту — выбор и стрелка взгляда: короткий жест — поворот, длинный — маршрут · ПКМ — быстрый приказ, во время жеста — отмена · Esc — шаг назад", 12, Ui.TextDim, wrap: true).MinSize(380));
         root.AddChild(Ui.PanelBox(right, null, 22).MinSize(430, 0));
 
         // Drafts marked «неполный» are kept in the library but are not played.

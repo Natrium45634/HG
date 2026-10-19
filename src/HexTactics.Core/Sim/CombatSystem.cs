@@ -92,10 +92,10 @@ public sealed class CombatSystem
                 return AttackSector.None;
             case FacingModel.Multiple:
             {
-                var best = SectorOf(target.Pos, target.Facing, attackerPos);
-                foreach (var off in p.ExtraFacings)
+                var best = AttackSector.Rear;
+                foreach (var f in p.FacingsOf(target.Facing))
                 {
-                    var s = SectorOf(target.Pos, target.Facing.Rotate(off), attackerPos);
+                    var s = SectorOf(target.Pos, f, attackerPos);
                     if (s < best) best = s;
                 }
                 return best;

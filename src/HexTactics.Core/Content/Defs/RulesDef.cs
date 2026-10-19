@@ -56,6 +56,16 @@ public sealed class TurnRules
     [Ed("Поворачиваться по ходу движения")] public bool AutoFaceOnMove { get; set; } = true;
     [Ed("Поворот по ходу стоит ОД")] public bool AutoFaceCostsAp { get; set; }
     [Ed("Поворачиваться к цели перед атакой")] public bool AutoFaceTarget { get; set; } = true;
+    [Ed("Ручной поворот стоит ОД", "Команда «Поворот» (стрелка взгляда): по умолчанию бесплатна (docs/DECISIONS_3.md §40)")]
+    public bool ManualCostsAp { get; set; }
+    [Ed("Ручной поворот занимает время", "Иначе — мгновенно")] public bool ManualTakesTime { get; set; }
+}
+
+/// <summary>Order of tie-breaks between routes of equal cost (docs/DECISIONS_3.md §41).</summary>
+public enum RouteTieBreak
+{
+    [Ed("Меньше поворотов")] Turns,
+    [Ed("Меньше шагов")] Steps,
 }
 
 public sealed class MoveRules
@@ -63,6 +73,8 @@ public sealed class MoveRules
     [Ed("Категории движения")] public List<string> MovementCategories { get; set; } = new() { "walk", "fly", "swim" };
     [Ed("Союзники блокируют путь")] public bool AlliesBlockPath { get; set; } = true;
     [Ed("Штраф опасных клеток", "Добавка к стоимости опасной клетки при поиске пути игрока (обход при почти равной цене)"), EdRange(0, 100)] public double HazardPenalty { get; set; } = 0.01;
+    [Ed("Разрыв ничьих маршрута", "При равной стоимости маршрута игрока: по порядку критериев")]
+    public List<RouteTieBreak> TieBreak { get; set; } = new() { RouteTieBreak.Turns, RouteTieBreak.Steps };
 }
 
 public sealed class HeightRules
