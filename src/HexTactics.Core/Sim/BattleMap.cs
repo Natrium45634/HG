@@ -71,6 +71,8 @@ public sealed class Cell
     public List<Unit> Occupants { get; } = new();
     /// <summary>Units currently stepping into this cell (several when the cell may be shared).</summary>
     public List<Unit> Reservations { get; } = new();
+    /// <summary>A group order reserved this hex as the end point of this unit (docs/DECISIONS_3.md §44); -1 — free.</summary>
+    public int DestinationOf { get; set; } = -1;
     public Unit? ReservedBy => Reservations.Count > 0 ? Reservations[0] : null;
 
     /// <summary>Neighbor cells by direction index (null when missing).</summary>

@@ -111,6 +111,7 @@ public static class ContentValidator
         DefCategory.RulesPreset => "пресет правил",
         DefCategory.Asset => "ресурс",
         DefCategory.Vfx => "визуальный эффект",
+        DefCategory.Formation => "формация",
         _ => c.ToString(),
     };
 

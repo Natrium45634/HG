@@ -105,7 +105,7 @@ public partial class BattleScreen
     private void UpdateArrows()
     {
         var u = Selected;
-        bool show = u != null && u.Alive && Sim.CanPlayerCommand(u) && Settings.Gestures && (Mode is InputMode.None or InputMode.Skill or InputMode.Attack || _gesture != null);
+        bool show = u != null && u.Alive && Sim.CanPlayerCommand(u) && Settings.Gestures && !GroupActive && (Mode is InputMode.None or InputMode.Skill or InputMode.Attack || _gesture != null);
         _nodes.Clear();
         if (!show)
         {
@@ -399,6 +399,23 @@ public partial class BattleScreen
     private ActionInfo? _skillPress;
     private Vector2 _skillPressFrom;
     private bool _skillPressDragged;
+    private bool _skillPressReleased;
+    /// <summary>Mouse position from every input event (the GUI keeps the motion while a button is held).</summary>
+    private Vector2 _rawMouse;
+
+    public override void _Input(InputEvent e)
+    {
+        switch (e)
+        {
+            case InputEventMouseMotion mm:
+                _rawMouse = mm.Position;
+                break;
+            case InputEventMouseButton { ButtonIndex: MouseButton.Left } mb:
+                _rawMouse = mb.Position;
+                if (!mb.Pressed && _skillPress != null) _skillPressReleased = true;
+                break;
+        }
+    }
 
     /// <summary>The skill can be used without aiming (its target is chosen by its rules).</summary>
     public static bool CanAuto(SkillDef s) => s.UseMode is SkillUseMode.Auto or SkillUseMode.Both;
@@ -421,8 +438,9 @@ public partial class BattleScreen
     {
         if (Selected == null || a.Skill == null || !a.Enabled) return;
         _skillPress = a;
-        _skillPressFrom = GetViewport().GetMousePosition();
+        _skillPressFrom = _rawMouse;
         _skillPressDragged = false;
+        _skillPressReleased = false;
     }
 
     /// <summary>A click on a skill icon (no drag): automatic use when the skill allows it, otherwise aiming as before.</summary>
@@ -452,9 +470,9 @@ public partial class BattleScreen
     private void UpdateSkillPress()
     {
         if (_skillPress == null) return;
-        var mouse = GetViewport().GetMousePosition();
-        bool down = Input.IsMouseButtonPressed(MouseButton.Left);
-        if (!_skillPressDragged && mouse.DistanceTo(_skillPressFrom) > 12 && !_hud.IsMouseOverUi())
+        var mouse = _rawMouse;
+        bool down = !_skillPressReleased;
+        if (!_skillPressDragged && mouse.DistanceTo(_skillPressFrom) > 12 && !_hud.IsOverUi(mouse))
         {
             _skillPressDragged = true;
             EnterSkill(_skillPress.Skill!);
@@ -466,8 +484,9 @@ public partial class BattleScreen
             {
                 _skillPress = null;
                 _skillPressDragged = false;
+                _forcedHover = null;
                 UpdateHover();
-                if (!_hud.IsMouseOverUi() && Mode is InputMode.Skill or InputMode.Attack) ClickSkill();
+                if (!_hud.IsOverUi(mouse) && Mode is InputMode.Skill or InputMode.Attack) ClickSkill();
             }
             return;
         }

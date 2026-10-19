@@ -107,6 +107,11 @@ public partial class BattleHud : Control
         BuildMenu();
         BuildDiag();
         BuildPopup();
+        _groupPanel = Track(new GroupPanel(_bs));
+        AddChild(_groupPanel);
+        _boxRect = new Panel { MouseFilter = MouseFilterEnum.Ignore, Visible = false, Name = "SelectionBox" };
+        _boxRect.AddThemeStyleboxOverride("panel", Ui.Box(new Color(0.5f, 1f, 0.7f, 0.12f), new Color(0.5f, 1f, 0.7f, 0.9f), 2, 2, 0));
+        AddChild(_boxRect);
         AddChild(Radial);
         _skillList = new PopupMenu { Name = "SkillList" };
         _skillList.IdPressed += id =>
@@ -238,14 +243,20 @@ public partial class BattleHud : Control
         return c;
     }
 
-    public bool IsMouseOverUi()
+    public bool IsMouseOverUi() => IsOverUi(GetViewport().GetMousePosition());
+
+    /// <summary>Is a screen point over a HUD panel or an open menu.</summary>
+    public bool IsOverUi(Vector2 m)
     {
-        var m = GetViewport().GetMousePosition();
         foreach (var p in _panels)
             if (p.Visible && p.IsVisibleInTree() && p.GetGlobalRect().HasPoint(m))
                 return true;
         return _popup.Visible || Radial.Visible || _skillList.Visible;
     }
+
+    private GroupPanel _groupPanel = null!;
+    private Panel _boxRect = null!;
+    public GroupPanel GroupPanel => _groupPanel;
 
     /// <summary>The radial skill menu (docs/DECISIONS_3.md §42).</summary>
     public RadialMenu Radial { get; } = new() { Name = "RadialMenu" };
@@ -757,6 +768,20 @@ public partial class BattleHud : Control
         _actionPanel.Size = new Vector2(Math.Min(avail, 1030), 0);
         _actionPanel.Position = new Vector2(left + Math.Max(0, (avail - _actionPanel.Size.X) / 2), vp.Y - _actionPanel.Size.Y - 10);
         _queuePanel.Position = new Vector2(vp.X - _queuePanel.Size.X - 10, 64);
+        _groupPanel.Visible = _bs.GroupActive;
+        if (_groupPanel.Visible)
+        {
+            _groupPanel.Size = new Vector2(Math.Min(avail, 1030), 0);
+            _groupPanel.Position = new Vector2(left + Math.Max(0, (avail - _groupPanel.Size.X) / 2), vp.Y - _groupPanel.Size.Y - 10);
+            _groupPanel.Refresh();
+        }
+        var box = _bs.BoxRect;
+        _boxRect.Visible = box.HasValue;
+        if (box is { } br)
+        {
+            _boxRect.Position = br.Position;
+            _boxRect.Size = br.Size;
+        }
         _objPanel.Position = new Vector2(vp.X - _objPanel.Size.X - 10, _queuePanel.Visible ? _queuePanel.GetRect().End.Y + 8 : 64);
         _banner.Position = new Vector2(vp.X * 0.2f, 64);
         _banner.Size = new Vector2(vp.X * 0.6f, 40);
@@ -1105,7 +1130,7 @@ public partial class BattleHud : Control
         var u = _bs.Selected;
         _modeHint.Text = _bs.Mode == InputMode.None ? (u != null && Sim.CanPlayerCommand(u) ? "Выберите действие или ПКМ по клетке/врагу" : "") : _bs.Hint;
         _modeHint.Visible = _modeHint.Text != "";
-        _actionPanel.Visible = u != null && Sim.CanPlayerCommand(u);
+        _actionPanel.Visible = u != null && Sim.CanPlayerCommand(u) && !_bs.GroupActive;
         if (u == null || !_actionPanel.Visible) return;
         if (!slow && _actionsKey != "") return;
         var actions = Sim.Planner.Actions(u);
@@ -1223,6 +1248,8 @@ public partial class BattleHud : Control
             if (c.Status != CommandStatus.Pending) info += " · " + Names.Of(c.Status);
             if (!p.Estimate.Feasible && !string.IsNullOrEmpty(p.Estimate.Problem)) info += " · ⚠ " + p.Estimate.Problem;
             if (!string.IsNullOrEmpty(c.StatusText) && c.Status == CommandStatus.Waiting) info += " · " + c.StatusText;
+            // Diagnostics: how the automatic target was chosen (docs/DECISIONS_3.md §49).
+            if (!string.IsNullOrEmpty(c.TargetChoice) && (_bs.DiagnosticsVisible || _bs.Admin)) info += " · выбор цели: " + c.TargetChoice;
             var text = Ui.VBox(0, Ui.Label($"{i + 1}. {c.Describe(Sim)}", 13, col), Ui.Label(info, 11, Ui.TextDim, wrap: true).MinSize(200));
             var row = Ui.HBox(3);
             row.AddChild(text.Expand());

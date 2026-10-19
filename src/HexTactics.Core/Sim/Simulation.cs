@@ -77,6 +77,8 @@ public sealed class Simulation
         Scenario = new ScenarioSystem(this);
         Planner = new Planner(this);
         Targets = new TargetSelector(this);
+        Groups = new GroupPlanner(this);
+        GroupOrders = new GroupOrders(this);
 
         CellEffects.ApplyIntrinsicEffects();
         foreach (var cd in mapDef.Cells)
@@ -122,6 +124,12 @@ public sealed class Simulation
     public Planner Planner { get; }
     /// <summary>Automatic target choice (docs/DECISIONS_3.md §43).</summary>
     public TargetSelector Targets { get; }
+    /// <summary>Group positions and formations (docs/DECISIONS_3.md §44).</summary>
+    public GroupPlanner Groups { get; }
+    public GroupOrders GroupOrders { get; }
+
+    /// <summary>Gives a group order: each unit gets its own commands (docs/DECISIONS_3.md §44).</summary>
+    public GroupOrderResult IssueGroupOrder(IReadOnlyList<Unit> units, GroupOrder order) => GroupOrders.Issue(units, order);
 
     public CombatLog Log { get; } = new();
     public SimProfiler Profiler { get; } = new();

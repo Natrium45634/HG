@@ -378,6 +378,19 @@
       "max": 1000,
       "format": "Number",
       "showInPanel": false
+    },
+    {
+      "id": "magic_power",
+      "name": "Магическая сила",
+      "description": "Сила заклинаний: выбор целей, модификаторы пассивок и талантов",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": 0,
+      "max": 1000,
+      "format": "Number",
+      "showInPanel": true
     }
   ]
 }

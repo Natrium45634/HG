@@ -174,6 +174,8 @@ public sealed class UnitDef : Def
     public List<AutoAttackDef> AutoAttacks { get; set; } = new();
 
     [Ed("Профиль ИИ", Group = "Поведение"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "aggressive";
+    [Ed("Роль в группе", "Формации и групповая атака: ближний бой, дальний бой, маг, поддержка, танк; авто — по обычной атаке", Group = "Поведение")]
+    public UnitRole Role { get; set; } = UnitRole.Auto;
 
     [Ed("Восприятие", "Модель взгляда и зона обнаружения", Group = "Восприятие")] public PerceptionDef Perception { get; set; } = new();
     [Ed("Раскрытие информации", "Что игрок видит в панели этого существа", Group = "Восприятие")] public InfoOverrideDef Info { get; set; } = new();

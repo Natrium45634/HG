@@ -247,7 +247,8 @@ public sealed class AutoAttackSystem
     private (Unit?, SkillCheck) Choose(Unit u, AutoAttackDef a, List<(Unit Target, SkillCheck Check)> candidates)
     {
         var st = States(u).FirstOrDefault(x => x.Index == u.Def.AutoAttacks.IndexOf(a));
-        var pick = _sim.Targets.Choose(u, candidates.Select(c => c.Target).ToList(), a.Rules, a.Selection, a.RandomTies, SkillOf(u, st?.Index ?? 0),
+        var rules = u.AutoAttackPriority is { } prio ? new[] { new AutoTargetRuleDef { Rule = prio } }.Concat(a.Rules).ToList() : a.Rules;
+        var pick = _sim.Targets.Choose(u, candidates.Select(c => c.Target).ToList(), rules, a.Selection, a.RandomTies, SkillOf(u, st?.Index ?? 0),
             st?.TargetId ?? -1, out var why);
         if (st != null) st.Choice = why;
         if (pick == null) return (null, default);

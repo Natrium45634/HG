@@ -144,6 +144,9 @@ public readonly struct MoveContext
 /// <summary>Who may share a cell (docs/DECISIONS_2.md §22, §26). Collisions are counted per layer.</summary>
 public static class Occupancy
 {
+    /// <summary>The mover and the other unit do not collide (different layers — a flyer over a walker).</summary>
+    public static bool CanShare(in MoveContext c, Unit o) => !LayerResolver.Collides(c.Layer, o.Layer, c.Db);
+
     /// <summary>Other alive units in the cell (occupants and units stepping in) that collide with the mover's layer.</summary>
     public static int Colliding(in MoveContext c, Cell cell, List<Unit>? into = null)
     {

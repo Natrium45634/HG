@@ -103,6 +103,7 @@ public sealed class ContentDatabase
         (DefCategory.Skill, typeof(SkillDef), "skills.json"),
         (DefCategory.Passive, typeof(PassiveDef), "passives.json"),
         (DefCategory.AiProfile, typeof(AiProfileDef), "ai_profiles.json"),
+        (DefCategory.Formation, typeof(FormationDef), "formations.json"),
         (DefCategory.Unit, typeof(UnitDef), "units.json"),
         (DefCategory.RulesPreset, typeof(RulesPresetDef), "rules_presets.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),

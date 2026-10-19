@@ -13,6 +13,8 @@ public enum CommandType
     Skill,
     Defend,
     Wait,
+    /// <summary>Follow a unit (group order «follow»): stays next to it until another order.</summary>
+    Follow,
 }
 
 public enum CommandStatus
@@ -58,6 +60,8 @@ public sealed class Command
     public bool Approach { get; set; }
     /// <summary>Skill: the target is chosen at execution by the skill's rules (automatic use, docs/DECISIONS_3.md §43).</summary>
     public bool AutoTarget { get; set; }
+    /// <summary>The end hex of this move is reserved by a group order (released when the order ends).</summary>
+    public bool ReservesDestination { get; set; }
     /// <summary>Overrides the skill's «target lost» policy for this order.</summary>
     public TargetLostPolicy? OnTargetLost { get; set; }
 
@@ -128,6 +132,7 @@ public sealed class Command
         new() { Type = CommandType.Skill, SkillId = skill, TargetCell = cell, TargetUnitId = unitId, Direction = dir };
     public static Command Defend(double seconds = 0) => new() { Type = CommandType.Defend, Duration = seconds };
     public static Command Wait(double seconds) => new() { Type = CommandType.Wait, Duration = seconds };
+    public static Command Follow(int unitId) => new() { Type = CommandType.Follow, TargetUnitId = unitId };
 
     public string Describe(Simulation? sim = null)
     {
@@ -151,6 +156,7 @@ public sealed class Command
                     : $"{skillName(SkillId)}{(Direction.HasValue ? " на " + Direction.Value.RuName() : "")}",
             CommandType.Defend => Duration > 0 ? $"Защитная стойка {Duration:0.#} с" : "Защитная стойка",
             CommandType.Wait => $"Ожидание {Duration:0.#} с",
+            CommandType.Follow => $"Следовать за: {unitName(TargetUnitId)}",
             _ => Type.ToString(),
         };
     }

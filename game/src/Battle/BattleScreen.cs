@@ -225,8 +225,9 @@ public partial class BattleScreen : Node
     /// </summary>
     public void Select(Unit? u, bool byPlayer)
     {
-        if (u == Selected && u != null) return;
+        if (u == Selected && u != null && !GroupActive) return;
         CancelGesture();
+        ClearGroup();
         if (Selected != null && Board.Views.TryGetValue(Selected.Id, out var old))
         {
             old.Selected = false;
@@ -538,7 +539,7 @@ public partial class BattleScreen : Node
 
     private void UpdateHover()
     {
-        bool overUi = _hud.IsMouseOverUi();
+        bool overUi = _skillPressDragged ? _hud.IsOverUi(_mouse) : _hud.IsMouseOverUi();
         _hover = overUi ? null : Board.PickCell(_mouse);
         if (_forcedHover != null) _hover = _forcedHover;
         _hoverUnit = null;
@@ -736,6 +737,7 @@ public partial class BattleScreen : Node
         if (_diag) DrawAiDebug(o);
 
         var u = Selected;
+        if (GroupActive) DrawGroupPreview(o);
         if (u != null && u.Alive)
         {
             DrawTrail(o, u);
@@ -1049,6 +1051,7 @@ public partial class BattleScreen : Node
                 _mouse = mm.Position;
                 _forcedHover = null;
                 if (_gesture != null) UpdateGesture(mm.Position);
+                if (_boxFrom != null) UpdateBox(mm.Position);
                 break;
             case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } up:
                 _mouse = up.Position;
@@ -1059,6 +1062,17 @@ public partial class BattleScreen : Node
                     EndGesture();
                     GetViewport().SetInputAsHandled();
                 }
+                else if (_boxFrom != null)
+                {
+                    // No drag: it was a plain click on the ground.
+                    if (!EndBox(up.Position) && _boxClick != null)
+                    {
+                        UpdateHover();
+                        OnLeftClick(_boxClick);
+                    }
+                    _boxClick = null;
+                    GetViewport().SetInputAsHandled();
+                }
                 break;
             case InputEventMouseButton mb when mb.Pressed:
                 _mouse = mb.Position;
@@ -1067,7 +1081,16 @@ public partial class BattleScreen : Node
                 if (mb.ButtonIndex == MouseButton.Left)
                 {
                     UpdateArrows();
-                    if (!TryStartGesture(mb.Position)) OnLeftClick(mb);
+                    if (GroupMode != null) GroupClick();
+                    else if (mb.ShiftPressed && Mode == InputMode.None && _hoverUnit != null && Sim.CanPlayerCommand(_hoverUnit)) ToggleInGroup(_hoverUnit);
+                    else if (TryStartGesture(mb.Position)) { }
+                    else if (Mode == InputMode.None && _hoverUnit == null)
+                    {
+                        // The ground: a selection box if the mouse is dragged, otherwise a click on release.
+                        BeginBox(mb.Position);
+                        _boxClick = mb;
+                    }
+                    else OnLeftClick(mb);
                 }
                 else if (mb.ButtonIndex == MouseButton.Right) OnRightClick();
                 GetViewport().SetInputAsHandled();
@@ -1207,9 +1230,21 @@ public partial class BattleScreen : Node
             CancelGesture();
             return;
         }
+        if (GroupMode != null)
+        {
+            CancelGroupMode();
+            return;
+        }
         if (Mode != InputMode.None)
         {
             ExitMode();
+            return;
+        }
+        if (GroupActive && _hover != null)
+        {
+            // Quick group orders: RMB on an enemy — attack, on a hex — move with automatic positions.
+            var enemy = _hoverUnit != null && Sim.IsHostile(_group[0], _hoverUnit) && UnitVisible(_hoverUnit) ? _hoverUnit : null;
+            IssueGroup(enemy != null ? GroupCommand.Attack : GroupCommand.Move, _hover.Coord, enemy, null);
             return;
         }
         var u = Selected;
@@ -1233,6 +1268,8 @@ public partial class BattleScreen : Node
             Submit(PlayerMove(_hover.Coord));
         }
     }
+
+    private InputEventMouseButton? _boxClick;
 
     private int _initialCameraFrames;
     private Unit? _initialCameraUnit;
@@ -1280,6 +1317,8 @@ public partial class BattleScreen : Node
                 // Cancel the operation → leave the planning mode → clear the selection → game menu (docs/DECISIONS_3.md §39).
                 if (_gesture != null) CancelGesture();
                 else if (_hud.CloseTransient()) { }
+                else if (GroupMode != null) CancelGroupMode();
+                else if (GroupActive) ClearGroup();
                 else if (Mode != InputMode.None) ExitMode();
                 else if (StackOpen) _stackOpen = false;
                 else if (Selected != null) Select(null);
@@ -1339,6 +1378,14 @@ public partial class BattleScreen : Node
                 if (k.ShiftPressed) CancelAll();
                 else ClearPendingOrders();
                 return true;
+        }
+        if (k.Keycode >= Key.Key1 && k.Keycode <= Key.Key9 && (k.CtrlPressed || k.AltPressed))
+        {
+            // Saved groups: Ctrl+digit — save, Alt+digit — select (digits alone stay skill hotkeys).
+            int slot = (int)(k.Keycode - Key.Key1) + 1;
+            if (k.CtrlPressed) SaveGroup(slot);
+            else RecallGroup(slot);
+            return true;
         }
         if (k.Keycode >= Key.Key1 && k.Keycode <= Key.Key9 && u != null)
         {

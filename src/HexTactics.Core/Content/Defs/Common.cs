@@ -28,6 +28,7 @@ public enum DefCategory
     RulesPreset,
     Asset,
     Vfx,
+    Formation,
 }
 
 /// <summary>Base class of every content definition.</summary>

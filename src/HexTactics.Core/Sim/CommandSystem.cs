@@ -104,6 +104,9 @@ public sealed class CommandSystem
             case CommandType.Defend:
                 if (Rules.Ap.DefendCost > u.ApMax + 1e-9) return "стойка дороже максимума ОД";
                 return null;
+            case CommandType.Follow:
+                if (_sim.GetUnit(c.TargetUnitId) is not { Alive: true } leader || leader == u) return "не указан, за кем следовать";
+                return null;
         }
         return "неизвестная команда";
     }
@@ -113,6 +116,7 @@ public sealed class CommandSystem
         var c = u.Queue.Find(commandId);
         if (c == null) return false;
         if (c.Status != CommandStatus.Pending) CleanupActive(u, c, refundCast: true);
+        ReleaseDestination(u, c);
         c.Status = CommandStatus.Cancelled;
         c.StatusText = "удалено";
         u.Queue.Remove(c);
@@ -142,6 +146,7 @@ public sealed class CommandSystem
         int n = u.Queue.Count;
         foreach (var c in u.Queue.Items)
         {
+            ReleaseDestination(u, c);
             c.Status = status;
             c.StatusText = reason;
         }
@@ -168,6 +173,7 @@ public sealed class CommandSystem
         {
             var c = u.Queue.Items[i];
             if (c.Status != CommandStatus.Pending) continue;
+            ReleaseDestination(u, c);
             c.Status = CommandStatus.Cancelled;
             c.StatusText = reason;
             u.Queue.RemoveAt(i);
@@ -284,6 +290,7 @@ public sealed class CommandSystem
 
     public void Update()
     {
+        BreakWaitCycles();
         var units = _sim.Units;
         for (int i = 0; i < units.Count; i++)
         {
@@ -347,6 +354,7 @@ public sealed class CommandSystem
             CommandType.Skill => ExecSkill(u, cmd),
             CommandType.Defend => ExecDefend(u, cmd),
             CommandType.Wait => ExecWait(u, cmd),
+            CommandType.Follow => ExecFollow(u, cmd),
             _ => Result.Done,
         };
         if (r == Result.Continue) return false;
@@ -369,8 +377,17 @@ public sealed class CommandSystem
         }
     }
 
+    /// <summary>The end hex reserved by a group order is free again.</summary>
+    private void ReleaseDestination(Unit u, Command c)
+    {
+        if (!c.ReservesDestination || c.TargetCell is not { } t) return;
+        var cell = _sim.Map.Get(t);
+        if (cell != null && cell.DestinationOf == u.Id) cell.DestinationOf = -1;
+    }
+
     private void Complete(Unit u, Command cmd)
     {
+        ReleaseDestination(u, cmd);
         cmd.Status = CommandStatus.Done;
         cmd.StatusText = "выполнено";
         u.Queue.Remove(cmd);
@@ -423,6 +440,7 @@ public sealed class CommandSystem
                     {
                         cmd.RepathAttempts++;
                         var path = _sim.Planner.Route(u, cmd, u.Pos, u.Facing, cmd.TargetCell!.Value);
+                        if (!path.Found && ThroughMovingAllies(u, cmd.TargetCell!.Value) is { } through) path = through;
                         if (path.Found)
                         {
                             cmd.Path = path.Path;
@@ -444,6 +462,7 @@ public sealed class CommandSystem
 
     private bool Resolve(Unit u, Command cmd, FailureAction action, string message, FailureReason reason)
     {
+        ReleaseDestination(u, cmd);
         bool player = _sim.IsPlayerFaction(u.FactionId) || _sim.Options.AdminMode;
         u.StopReason = message;
         u.StopTick = _sim.Tick;
@@ -530,8 +549,10 @@ public sealed class CommandSystem
                 if (path.Failure == FailureReason.PathBlocked) return Fail(FailureReason.PathBlocked, path.Reason);
                 // Distinguish "blocked by units" (wait/repath) from "no route at all".
                 var ignoring = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { IgnoreUnits = true });
-                if (ignoring.Found) return Fail(FailureReason.PathBlocked, "путь перекрыт юнитами");
-                return Fail(FailureReason.NoPath, path.Reason);
+                if (!ignoring.Found) return Fail(FailureReason.NoPath, path.Reason);
+                // Blocked only by allies who are moving themselves: go — they will step aside or swap (docs/DECISIONS_3.md §44).
+                path = ThroughMovingAllies(u, target) ?? path;
+                if (!path.Found) return Fail(FailureReason.PathBlocked, "путь перекрыт юнитами");
             }
             cmd.Path = path.Path;
             RecomputeEstimates(u);
@@ -541,11 +562,16 @@ public sealed class CommandSystem
         var from = _sim.Map.Get(u.Pos);
         var to = _sim.Map.Get(next);
         var check = MovementRules.Check(MoveContext.For(_sim, u), from, to, false, out var cost);
+        if (check == StepCheck.Occupied && Rules.Move.AllowSwap && TrySwap(u, cmd, to!))
+            return Result.Continue;
         if (check != StepCheck.Ok)
         {
-            cmd.Path = null;
+            // Occupied by someone: the path (the intention) stays — a head-on ally can swap with us; otherwise recompute.
+            if (check == StepCheck.Occupied) u.WaitingFor = to!.Occupants.FirstOrDefault(o => o.Alive && o != u)?.Id ?? -1;
+            else cmd.Path = null;
             return Fail(FailureReason.PathBlocked, MovementRules.Describe(check, to));
         }
+        u.WaitingFor = -1;
 
         var dir = u.Pos.DirectionTo(next)!.Value;
         double ap = cost * Rules.Ap.MovePerCost;
@@ -572,6 +598,92 @@ public sealed class CommandSystem
         cmd.Path.RemoveAt(0);
         RecomputeEstimates(u);
         return Result.Continue;
+    }
+
+    /// <summary>A path that only passes allies who are moving themselves (they will step aside or swap); null if none.</summary>
+    private PathResult? ThroughMovingAllies(Unit u, HexCoord target)
+    {
+        var ignoring = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { IgnoreUnits = true });
+        if (!ignoring.Found) return null;
+        foreach (var c in ignoring.Path)
+            foreach (var o in _sim.Map.Get(c)!.Occupants)
+                if (o.Alive && o != u && (_sim.IsHostile(u, o) || !IsMoving(o)))
+                    return null;
+        return ignoring;
+    }
+
+    private static bool IsMoving(Unit o) => o.StepTo.HasValue || o.Queue.Current is { Type: CommandType.Move, IsFinished: false } || o.Queue.Current is { Type: CommandType.Follow };
+
+    /// <summary>
+    /// Head-on movement of two allies (docs/DECISIONS_3.md §44): each wants the other's hex — they swap in one
+    /// step (both pay their step), instead of waiting for each other forever.
+    /// </summary>
+    private bool TrySwap(Unit u, Command cmd, Cell to)
+    {
+        var other = to.Occupants.FirstOrDefault(o => o.Alive && o != u);
+        if (other == null || _sim.IsHostile(u, other) || other.StepTo.HasValue || other.BusyUntil > _sim.Tick || other.Casting != null) return false;
+        var oc = other.Queue.Current;
+        if (oc == null || oc.Type != CommandType.Move || oc.Path == null || oc.Path.Count == 0 || oc.Path[0] != u.Pos) return false;
+        var mine = _sim.Map.Get(u.Pos)!;
+        if (MovementRules.Check(MoveContext.For(_sim, u), mine, to, true, out var c1) != StepCheck.Ok) return false;
+        if (MovementRules.Check(MoveContext.For(_sim, other), to, mine, true, out var c2) != StepCheck.Ok) return false;
+        double a1 = c1 * Rules.Ap.MovePerCost, a2 = c2 * Rules.Ap.MovePerCost;
+        if (u.Ap + 1e-9 < a1 || other.Ap + 1e-9 < a2) return false;
+        u.Ap -= a1;
+        cmd.SpentAp += a1;
+        other.Ap -= a2;
+        oc.SpentAp += a2;
+        var up = u.Pos;
+        var op = other.Pos;
+        mine.Occupants.Remove(u);
+        to.Occupants.Remove(other);
+        _sim.Relocate(u, op, null, "обмен местами");
+        _sim.Relocate(other, up, null, "обмен местами");
+        u.Facing = up.DirectionTo(op) ?? u.Facing;
+        other.Facing = op.DirectionTo(up) ?? other.Facing;
+        u.BusyUntil = _sim.Tick + Math.Max(1, _sim.TicksFor(c1 / Math.Max(0.01, u.Stat(Stats.MoveSpeed))));
+        other.BusyUntil = _sim.Tick + Math.Max(1, _sim.TicksFor(c2 / Math.Max(0.01, other.Stat(Stats.MoveSpeed))));
+        cmd.Path!.RemoveAt(0);
+        oc.Path.RemoveAt(0);
+        u.WaitingFor = other.WaitingFor = -1;
+        ClearWait(cmd);
+        ClearWait(oc);
+        _sim.CellEffects.OnUnitEntered(u, to);
+        _sim.CellEffects.OnUnitEntered(other, mine);
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name} и {other.Name} меняются местами", u.Id, other.Id, op);
+        return true;
+    }
+
+    /// <summary>
+    /// Waiting cycles (A waits for B, B for C, C for A) are broken every tick: the unit with the largest id in a
+    /// cycle drops its path and looks for a way around the hex it waits for (docs/DECISIONS_3.md §44).
+    /// </summary>
+    private void BreakWaitCycles()
+    {
+        foreach (var u in _sim.Units)
+        {
+            if (!u.Alive || u.WaitingFor < 0) continue;
+            var cycle = new List<Unit> { u };
+            var cur = _sim.GetUnit(u.WaitingFor);
+            while (cur != null && cur.Alive && cur.WaitingFor >= 0 && !cycle.Contains(cur) && cycle.Count < 64)
+            {
+                cycle.Add(cur);
+                cur = _sim.GetUnit(cur.WaitingFor);
+            }
+            if (cur == null || cur != u || cycle.Count < 2) continue;
+            var yield = cycle.OrderByDescending(x => x.Id).First();
+            var c = yield.Queue.Current;
+            var blocked = _sim.GetUnit(yield.WaitingFor)?.Pos;
+            yield.WaitingFor = -1;
+            if (c == null || c.Type != CommandType.Move || blocked == null || c.TargetCell is not { } goal) continue;
+            var detour = _sim.Planner.Route(yield, c, yield.Pos, yield.Facing, goal, avoid: new HashSet<HexCoord> { blocked.Value });
+            if (detour.Found)
+            {
+                c.Path = detour.Path;
+                ClearWait(c);
+            }
+            _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Затор: {yield.Name} уступает дорогу" + (detour.Found ? " и обходит" : ""), yield.Id);
+        }
     }
 
     /// <summary>Path around the blocker's zone; on success the enemy is not re-blocked by it for a moment.</summary>
@@ -920,6 +1032,46 @@ public sealed class CommandSystem
         _sim.Statuses.RecalculateModifiers(u);
         _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name} выходит из стойки", u.Id);
         return Result.Done;
+    }
+
+    /// <summary>Follow a unit: keep within two hexes of it (a free neighbouring hex as the goal) until another order.</summary>
+    private Result ExecFollow(Unit u, Command cmd)
+    {
+        var leader = _sim.GetUnit(cmd.TargetUnitId);
+        if (leader == null || !leader.Alive) return Fail(FailureReason.TargetLost, "ведущий погиб");
+        if (u.Queue.Count > 1) return Result.Done; // a new order supersedes following
+        if (HexCoord.Distance(u.Pos, leader.Pos) <= 2 && !u.StepTo.HasValue)
+        {
+            cmd.StatusText = $"рядом с {leader.Name}";
+            return Result.Continue;
+        }
+        if (cmd.ApproachFor != leader.Pos || cmd.ApproachCell == null)
+        {
+            HexCoord? best = null;
+            int bestD = int.MaxValue;
+            foreach (var c in HexCoord.Ring(leader.Pos, 1))
+            {
+                var cell = _sim.Map.Get(c);
+                if (cell == null || MovementRules.Check(MoveContext.For(_sim, u), null, cell, false, out _) != StepCheck.Ok) continue;
+                int d = HexCoord.Distance(u.Pos, c);
+                if (d < bestD)
+                {
+                    bestD = d;
+                    best = c;
+                }
+            }
+            if (best == null)
+            {
+                cmd.StatusText = "ждёт места рядом с ведущим";
+                return Result.Continue;
+            }
+            cmd.ApproachCell = best;
+            cmd.ApproachFor = leader.Pos;
+            cmd.Path = null;
+        }
+        var r = StepTowards(u, cmd, cmd.ApproachCell!.Value);
+        if (r == Result.Done) cmd.ApproachCell = null;
+        return r == Result.Fail ? r : Result.Continue;
     }
 
     private Result ExecWait(Unit u, Command cmd)

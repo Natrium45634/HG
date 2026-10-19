@@ -22,9 +22,17 @@
       "secondsPerStep": 0.1,
       "autoFaceOnMove": true,
       "autoFaceCostsAp": false,
-      "autoFaceTarget": true
+      "autoFaceTarget": true,
+      "manualCostsAp": false,
+      "manualTakesTime": false
     },
-    "move": { "movementCategories": ["walk", "fly", "swim"], "alliesBlockPath": true, "hazardPenalty": 0.01 },
+    "move": {
+      "movementCategories": ["walk", "fly", "swim"],
+      "alliesBlockPath": true,
+      "hazardPenalty": 0.01,
+      "allowSwap": true,
+      "tieBreak": ["Turns", "Steps"]
+    },
     "layers": {
       "default": "ground",
       "meleeTargets": ["ground"],
@@ -226,7 +234,14 @@
       "overhealShieldDuration": 8,
       "adminBreakdown": true
     },
-    "autoAttacks": { "enabled": true, "playerUnits": true, "aiUnits": true, "protectedTag": "protected", "bossTag": "boss" },
+    "autoAttacks": {
+      "enabled": true,
+      "playerUnits": true,
+      "aiUnits": true,
+      "protectedTag": "protected",
+      "bossTag": "boss",
+      "eliteTag": "elite"
+    },
     "spawnWarnings": {
       "enabled": true,
       "minSeconds": 3,

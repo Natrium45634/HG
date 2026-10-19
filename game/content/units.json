@@ -50,6 +50,7 @@
       "resources": [],
       "basicAttack": "strike",
       "skills": ["shield_bash", "cleave", "war_cry", "demolish"],
+      "defenseSkill": "",
       "passives": ["counter", "vigilant"],
       "startingStatuses": [],
       "autoAttacks": [
@@ -66,9 +67,33 @@
           "interval": 1.8,
           "selection": "Sequential",
           "rules": [
-            { "rule": "BlockedByMe", "tag": "", "weight": 1 },
-            { "rule": "CurrentTarget", "tag": "", "weight": 1 },
-            { "rule": "Nearest", "tag": "", "weight": 1 }
+            {
+              "rule": "BlockedByMe",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": true
+            },
+            {
+              "rule": "CurrentTarget",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": true
+            },
+            {
+              "rule": "Nearest",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            }
           ],
           "randomTies": false,
           "whileMoving": false,
@@ -79,9 +104,11 @@
         }
       ],
       "aiProfile": "aggressive",
+      "role": "Tank",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -175,7 +202,8 @@
       "immunities": [],
       "resources": [{ "resource": "ammo", "max": 20, "start": 20, "regen": 0 }],
       "basicAttack": "shot",
-      "skills": ["net", "smoke_bomb", "sneak", "set_trap"],
+      "skills": ["aimed_shot", "net", "smoke_bomb", "sneak", "set_trap"],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [
@@ -192,8 +220,24 @@
           "interval": 1.6,
           "selection": "Sequential",
           "rules": [
-            { "rule": "LowestHpFraction", "tag": "", "weight": 1 },
-            { "rule": "Nearest", "tag": "", "weight": 1 }
+            {
+              "rule": "LowestHpFraction",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            },
+            {
+              "rule": "Nearest",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            }
           ],
           "randomTies": false,
           "whileMoving": false,
@@ -204,9 +248,11 @@
         }
       ],
       "aiProfile": "aggressive",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -271,7 +317,14 @@
         "crowdAccuracyPenalty": 0.05,
         "layout": "Cluster"
       },
-      "stats": { "hp_max": 70, "move_speed": 1.4, "ap_max": 12, "ap_regen": 1, "detection_range": 7 },
+      "stats": {
+        "hp_max": 70,
+        "move_speed": 1.4,
+        "ap_max": 12,
+        "ap_regen": 1,
+        "detection_range": 7,
+        "magic_power": 12
+      },
       "defense": {
         "modifiers": [],
         "immune": [],
@@ -287,13 +340,16 @@
       "resources": [{ "resource": "mana", "max": 70, "start": 70, "regen": 1.5 }],
       "basicAttack": "strike",
       "skills": ["fireball", "frost_cone", "chain_lightning", "meteor", "water_wave", "spark"],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
+      "role": "Caster",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -374,13 +430,16 @@
       "resources": [{ "resource": "mana", "max": 80, "start": 80, "regen": 2 }],
       "basicAttack": "strike",
       "skills": ["heal", "consecrate", "blinding_flash", "barrier", "grav_lift", "aegis"],
+      "defenseSkill": "",
       "passives": ["second_wind"],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
+      "role": "Support",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -472,13 +531,16 @@
       "resources": [{ "resource": "mana", "max": 30, "start": 30, "regen": 0.5 }],
       "basicAttack": "strike",
       "skills": ["charge", "torch", "poison_cloud", "sneak"],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -559,13 +621,16 @@
       "resources": [],
       "basicAttack": "strike",
       "skills": [],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -646,6 +711,7 @@
       "resources": [{ "resource": "ammo", "max": 15, "start": 15, "regen": 0 }],
       "basicAttack": "shot",
       "skills": [],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [
@@ -661,7 +727,26 @@
           "apCost": -1,
           "interval": 2,
           "selection": "Sequential",
-          "rules": [{ "rule": "Boss", "tag": "", "weight": 1 }, { "rule": "LowestHp", "tag": "", "weight": 1 }],
+          "rules": [
+            {
+              "rule": "Boss",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": true
+            },
+            {
+              "rule": "LowestHp",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            }
+          ],
           "randomTies": false,
           "whileMoving": false,
           "whenBlocking": true,
@@ -671,9 +756,11 @@
         }
       ],
       "aiProfile": "ranged",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -772,13 +859,16 @@
       "resources": [],
       "basicAttack": "strike",
       "skills": ["quake", "cleave"],
+      "defenseSkill": "",
       "passives": ["thick_hide"],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -859,13 +949,16 @@
       "resources": [{ "resource": "mana", "max": 70, "start": 70, "regen": 1.5 }],
       "basicAttack": "strike",
       "skills": ["heal", "poison_cloud", "spark", "curse_ground", "dominate"],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "support",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -946,13 +1039,16 @@
       "resources": [],
       "basicAttack": "bite",
       "skills": [],
+      "defenseSkill": "",
       "passives": ["pack_howl"],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "pursuer",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -1046,6 +1142,7 @@
       "resources": [],
       "basicAttack": "strike",
       "skills": ["shield_bash"],
+      "defenseSkill": "",
       "passives": ["thorns"],
       "startingStatuses": [],
       "autoAttacks": [
@@ -1061,7 +1158,26 @@
           "apCost": -1,
           "interval": 2,
           "selection": "Sequential",
-          "rules": [{ "rule": "BlockingMe", "tag": "", "weight": 1 }, { "rule": "Nearest", "tag": "", "weight": 1 }],
+          "rules": [
+            {
+              "rule": "BlockingMe",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": true
+            },
+            {
+              "rule": "Nearest",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            }
+          ],
           "randomTies": false,
           "whileMoving": false,
           "whenBlocking": true,
@@ -1071,9 +1187,11 @@
         }
       ],
       "aiProfile": "hold",
+      "role": "Auto",
       "perception": {
         "model": "Multiple",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -1154,13 +1272,16 @@
       "resources": [],
       "basicAttack": "",
       "skills": [],
+      "defenseSkill": "",
       "passives": ["regrowth"],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "skittish",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -1259,13 +1380,16 @@
       "resources": [],
       "basicAttack": "zap",
       "skills": [],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "hunter",
+      "role": "Auto",
       "perception": {
         "model": "None",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -1346,13 +1470,16 @@
       "resources": [],
       "basicAttack": "bite",
       "skills": [],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "hunter",
+      "role": "Auto",
       "perception": {
         "model": "Omni",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -1442,6 +1569,7 @@
       "resources": [],
       "basicAttack": "strike",
       "skills": ["quake", "cleave"],
+      "defenseSkill": "",
       "passives": ["thick_hide"],
       "startingStatuses": [],
       "autoAttacks": [
@@ -1457,7 +1585,26 @@
           "apCost": -1,
           "interval": 2.5,
           "selection": "Sequential",
-          "rules": [{ "rule": "BlockingMe", "tag": "", "weight": 1 }, { "rule": "Nearest", "tag": "", "weight": 1 }],
+          "rules": [
+            {
+              "rule": "BlockingMe",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": true
+            },
+            {
+              "rule": "Nearest",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            }
+          ],
           "randomTies": false,
           "whileMoving": false,
           "whenBlocking": true,
@@ -1467,9 +1614,11 @@
         }
       ],
       "aiProfile": "aggressive",
+      "role": "Auto",
       "perception": {
         "model": "Single",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,
@@ -1751,13 +1900,16 @@
       "resources": [],
       "basicAttack": "",
       "skills": [],
+      "defenseSkill": "",
       "passives": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "hold",
+      "role": "Auto",
       "perception": {
         "model": "None",
         "extraFacings": [3],
+        "lines": [],
         "ownNoSectorRule": false,
         "noticeChance": 1,
         "surpriseChance": 0,

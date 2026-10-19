@@ -73,6 +73,8 @@ public sealed class MoveRules
     [Ed("Категории движения")] public List<string> MovementCategories { get; set; } = new() { "walk", "fly", "swim" };
     [Ed("Союзники блокируют путь")] public bool AlliesBlockPath { get; set; } = true;
     [Ed("Штраф опасных клеток", "Добавка к стоимости опасной клетки при поиске пути игрока (обход при почти равной цене)"), EdRange(0, 100)] public double HazardPenalty { get; set; } = 0.01;
+    [Ed("Обмен местами", "Два союзника, идущие навстречу друг другу, меняются гексами за один шаг (docs/DECISIONS_3.md §44)")]
+    public bool AllowSwap { get; set; } = true;
     [Ed("Разрыв ничьих маршрута", "При равной стоимости маршрута игрока: по порядку критериев")]
     public List<RouteTieBreak> TieBreak { get; set; } = new() { RouteTieBreak.Turns, RouteTieBreak.Steps };
 }

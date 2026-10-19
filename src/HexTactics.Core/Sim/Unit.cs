@@ -132,6 +132,10 @@ public sealed class Unit
 {
     /// <summary>Why the unit last stopped (failed/skipped order) and when — shown to the player (docs/DECISIONS_3.md §41).</summary>
     public string StopReason { get; internal set; } = "";
+    /// <summary>The ally this unit is waiting for to free a hex (-1 — none); used to break waiting cycles.</summary>
+    public int WaitingFor { get; internal set; } = -1;
+    /// <summary>Auto-attack priority set by a group order (applied before the auto-attack's own rules).</summary>
+    public AutoTargetRule? AutoAttackPriority { get; set; }
     public long StopTick { get; internal set; } = -1;
 
     public Unit(int id, UnitDef def, ContentDatabase db)

@@ -1,0 +1,138 @@
+{
+  "formatVersion": 4,
+  "kind": "formations",
+  "items": [
+    {
+      "id": "free",
+      "name": "Свободное построение",
+      "description": "Ближайшие свободные гексы вокруг точки; ближний бой — впереди, стрелки и поддержка — сзади.",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Free",
+      "slots": [],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": false
+    },
+    {
+      "id": "compact",
+      "name": "Компактная группа",
+      "description": "Точка и кольцо вокруг неё: все рядом друг с другом.",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Slots",
+      "slots": [
+        { "offset": [0, 0], "role": "Auto" },
+        { "offset": [1, 0], "role": "Auto" },
+        { "offset": [0, -1], "role": "Auto" },
+        { "offset": [0, 1], "role": "Auto" },
+        { "offset": [-1, 0], "role": "Auto" },
+        { "offset": [1, -1], "role": "Auto" },
+        { "offset": [-1, 1], "role": "Auto" },
+        { "offset": [2, -1], "role": "Auto" },
+        { "offset": [-2, 1], "role": "Auto" },
+        { "offset": [1, 1], "role": "Auto" },
+        { "offset": [-1, -1], "role": "Auto" },
+        { "offset": [2, 0], "role": "Auto" }
+      ],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": false
+    },
+    {
+      "id": "line",
+      "name": "Линия",
+      "description": "Шеренга поперёк направления движения.",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Slots",
+      "slots": [
+        { "offset": [0, 0], "role": "Auto" },
+        { "offset": [0, -1], "role": "Auto" },
+        { "offset": [0, 1], "role": "Auto" },
+        { "offset": [1, -2], "role": "Auto" },
+        { "offset": [-1, 2], "role": "Auto" },
+        { "offset": [1, -3], "role": "Auto" },
+        { "offset": [-1, 3], "role": "Auto" },
+        { "offset": [2, -4], "role": "Auto" },
+        { "offset": [-2, 4], "role": "Auto" }
+      ],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": false
+    },
+    {
+      "id": "arc",
+      "name": "Дуга",
+      "description": "Центр впереди, края отогнуты назад: охват по фронту.",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Slots",
+      "slots": [
+        { "offset": [0, 0], "role": "Melee" },
+        { "offset": [0, -1], "role": "Melee" },
+        { "offset": [-1, 1], "role": "Melee" },
+        { "offset": [-1, -1], "role": "Auto" },
+        { "offset": [-2, 2], "role": "Auto" },
+        { "offset": [-2, 0], "role": "Auto" },
+        { "offset": [-3, 3], "role": "Auto" },
+        { "offset": [-3, 1], "role": "Auto" }
+      ],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": false
+    },
+    {
+      "id": "column",
+      "name": "Колонна",
+      "description": "Друг за другом вдоль движения (узкие проходы).",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Slots",
+      "slots": [
+        { "offset": [0, 0], "role": "Melee" },
+        { "offset": [-1, 0], "role": "Auto" },
+        { "offset": [-2, 0], "role": "Auto" },
+        { "offset": [-3, 0], "role": "Auto" },
+        { "offset": [-4, 0], "role": "Auto" },
+        { "offset": [-5, 0], "role": "Auto" },
+        { "offset": [-6, 0], "role": "Auto" },
+        { "offset": [-7, 0], "role": "Auto" }
+      ],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": false
+    },
+    {
+      "id": "surround",
+      "name": "Окружение цели",
+      "description": "Кольцо вокруг цели; каждый смотрит на неё.",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Surround",
+      "slots": [],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": false
+    },
+    {
+      "id": "perimeter",
+      "name": "Оборонительный периметр",
+      "description": "Кольцо вокруг точки, взгляд наружу.",
+      "tags": [],
+      "group": "Встроенные",
+      "version": 1,
+      "kind": "Perimeter",
+      "slots": [],
+      "radius": 1,
+      "rotateWithDirection": true,
+      "faceOutward": true
+    }
+  ]
+}

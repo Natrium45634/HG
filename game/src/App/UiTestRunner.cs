@@ -41,6 +41,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_planning_autopause_and_cancel", BattlePlanningPauseAndCancel));
         _tests.Add(("battle_alternative_control_without_gestures", BattleAlternativeControl));
         _tests.Add(("battle_enemy_hex_radial_menu_and_aim", BattleRadialMenuAndAim));
+        _tests.Add(("battle_auto_skill_and_aim_from_icon", BattleAutoSkillAndIconAim));
+        _tests.Add(("battle_group_box_select_and_orders", BattleGroupOrders));
         _tests.Add(("editor_skill_mask_click", EditorSkillMaskClick));
         _tests.Add(("editor_map_paint", EditorMapPaint));
         _tests.Add(("editor_create_delete", EditorCreateDelete));
@@ -536,6 +538,121 @@ public partial class UiTestRunner : Node
         Check(bs.ModeSkill?.Id == "chain_lightning", "клавиша 3 не выбрала цепную молнию");
         await Click(HexScreen(bs, knight.Pos));
         Check(mage.Queue.Count == 1, "навык по союзнику принят, хотя допустимы только враги");
+    }
+
+    private async Task BattleAutoSkillAndIconAim()
+    {
+        var bs = await OpenBattle("arena_duel");
+        var scout = bs.Sim.Units.First(u => u.Def.Id == "archer");
+        // The test needs the enemies in sight and in reach: bring them closer (setup only).
+        var enemies = bs.Sim.Units.Where(u => u.Alive && bs.Sim.IsHostile(scout, u)).ToList();
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            var free = bs.Sim.Map.Cells.Where(c => c.Occupants.Count == 0 && c.Terrain.IsPassableFor("walk") && c.Terrain.Kind != TerrainKind.Pit
+                    && HexCoord.Distance(c.Coord, scout.Pos) is >= 3 and <= 5)
+                .OrderBy(c => c.Coord.Q).ThenBy(c => c.Coord.R).Skip(i * 2).FirstOrDefault();
+            if (free != null) Teleport(bs, enemies[i], free.Coord);
+        }
+        // Auto-attacks of this battle only (the rules object is shared with the published content).
+        foreach (var u in bs.Sim.Units) bs.Sim.AutoAttacks.DisabledUnits.Add(u.Id);
+        bs.Select(scout);
+        bs.Board.Rig.FocusOn((bs.Board.UnitPos(scout) + bs.Board.UnitPos(enemies[0])) / 2);
+        await Frames(10);
+        Button IconOf(string text) => Find<Button>(GetTree().Root).First(b => b.IsVisibleInTree() && b.Text.Contains(text));
+
+        // A click on the icon: automatic use, the target is chosen by the skill's rules at execution.
+        await Click(IconOf("Точный выстрел").GetGlobalRect().GetCenter());
+        Check(scout.Queue.Count == 1 && scout.Queue.Items[0].AutoTarget, "клик по иконке не создал автоматическое применение: " + bs.Hud.LastBanner
+            + " · кнопки: " + string.Join(" | ", Find<Button>(GetTree().Root).Where(b => b.IsVisibleInTree() && b.Text.Contains("Точный")).Select(b => b.GetPath() + " dis=" + b.Disabled + " rect=" + b.GetGlobalRect()))
+            + " · очередь: " + string.Join(", ", scout.Queue.Items.Select(c => c.Describe(bs.Sim))) + " · выбран: " + bs.Selected?.Name);
+        var proj = bs.Sim.Planner.ProjectQueue(scout);
+        Check(proj[0].Estimate.Problem.Contains("цель сейчас"), "оценка не показала, какую цель выберут правила");
+        bs.Resume();
+        for (int i = 0; i < 600 && scout.Queue.Count > 0; i++) bs.Sim.Step();
+        bs.Driver.Paused = true;
+        var cmd = bs.Sim.Log.Entries.Any(e => e.Text.Contains("Точный выстрел") && e.Text.Contains("цель"));
+        Check(cmd, "в журнале нет выбора цели автоматическим навыком");
+        Check(enemies.Any(e => e.Hp < e.HpMax), "автоматический выстрел никого не задел");
+
+        // A drag from the icon onto an enemy: aimed at that very enemy.
+        await Frames(4);
+        var target = enemies.OrderByDescending(e => e.Hp).First(e => e.Alive);
+        bs.Board.Rig.FocusOn((bs.Board.UnitPos(scout) + bs.Board.UnitPos(target)) / 2);
+        await Frames(8);
+        foreach (var c in scout.Queue.Items.ToList()) bs.Sim.RemoveCommand(scout, c.Id);
+        await Drag(IconOf("Точный выстрел").GetGlobalRect().GetCenter(), HexScreen(bs, target.Pos), 14);
+        Check(scout.Queue.Count == 1 && !scout.Queue.Items[0].AutoTarget && scout.Queue.Items[0].TargetUnitId == target.Id,
+            "протягивание от иконки к врагу не нацелило навык на него: " + string.Join(", ", scout.Queue.Items.Select(c => c.Describe(bs.Sim))) + " · " + bs.Hud.LastBanner
+            + $" · режим {bs.Mode} {bs.ModeSkill?.Id} · курсор над {bs.HoverCell?.Coord}, цель {target.Pos}, мышь {GetViewport().GetMousePosition()}");
+
+        // The hotkey of a «both» skill: the first press aims, the second uses it automatically.
+        foreach (var c in scout.Queue.Items.ToList()) bs.Sim.RemoveCommand(scout, c.Id);
+        await Key(Godot.Key.Key1);
+        Check(bs.Mode == InputMode.Skill && bs.ModeSkill?.Id == "aimed_shot", "первое нажатие должно включить прицел");
+        await Key(Godot.Key.Key1);
+        Check(scout.Queue.Count == 1 && scout.Queue.Items[0].AutoTarget, "второе нажатие должно применить навык автоматически");
+    }
+
+    private async Task BattleGroupOrders()
+    {
+        var bs = await OpenBattle("sandbox");
+        var heroes = bs.Sim.Units.Where(u => u.Alive && bs.Sim.CanPlayerCommand(u)).ToList();
+        Check(heroes.Count >= 3, "в песочнице должно быть не меньше трёх героев");
+        bs.Select(null);
+        bs.Board.Rig.FocusOn(heroes.Select(h => bs.Board.UnitPos(h)).Aggregate((a, b) => a + b) / heroes.Count);
+        await Frames(10);
+        // Box selection around all heroes.
+        var pts = heroes.Select(h => bs.Board.Rig.Camera.UnprojectPosition(bs.Board.UnitPos(h) + new Vector3(0, 0.3f, 0))).ToList();
+        var from = new Vector2(pts.Min(p => p.X) - 40, pts.Min(p => p.Y) - 40);
+        var to = new Vector2(pts.Max(p => p.X) + 40, pts.Max(p => p.Y) + 40);
+        await Drag(from, to, 8);
+        Check(bs.GroupActive && bs.Group.Count == heroes.Count, $"рамка выделила {bs.Group.Count} из {heroes.Count}");
+        Check(bs.Hud.GroupPanel.Visible, "панель групповых команд не показана");
+
+        // «Move to a point»: one hex for the order, distinct hexes for the units.
+        await ClickButton("Двигаться к точке");
+        Check(bs.GroupMode == GroupCommand.Move, "команда не ждёт точку");
+        var point = heroes[0].Pos + new HexCoord(5, 0);
+        await Click(HexScreen(bs, point));
+        var r = bs.LastGroupResult;
+        Check(r != null && r.Ordered.Count == heroes.Count, "приказ не отдан всем: " + r?.Message);
+        var ends = heroes.Select(h => h.Queue.Items.Last(c => c.Type == CommandType.Move).TargetCell!.Value).ToList();
+        Check(ends.Distinct().Count() == ends.Count, "конечные гексы совпадают: " + string.Join(", ", ends));
+        Check(ends.Contains(point), "на сам гекс приказа никто не назначен");
+
+        // Saved groups: Ctrl+1, clear, Alt+1.
+        Input.ParseInputEvent(new InputEventKey { Keycode = Godot.Key.Key1, PhysicalKeycode = Godot.Key.Key1, Pressed = true, CtrlPressed = true });
+        Input.ParseInputEvent(new InputEventKey { Keycode = Godot.Key.Key1, PhysicalKeycode = Godot.Key.Key1, Pressed = false, CtrlPressed = true });
+        await Frames(3);
+        await Key(Godot.Key.Escape);
+        Check(!bs.GroupActive, "Esc не снял групповое выделение");
+        Input.ParseInputEvent(new InputEventKey { Keycode = Godot.Key.Key1, PhysicalKeycode = Godot.Key.Key1, Pressed = true, AltPressed = true });
+        Input.ParseInputEvent(new InputEventKey { Keycode = Godot.Key.Key1, PhysicalKeycode = Godot.Key.Key1, Pressed = false, AltPressed = true });
+        await Frames(3);
+        Check(bs.GroupActive && bs.Group.Count == heroes.Count, "Alt+1 не вернул группу");
+
+        // RMB on an enemy: a group attack; support stays out of melee; nobody targets the enemy hex as a destination.
+        var enemy = bs.Sim.Units.First(u => u.Alive && bs.Sim.IsHostile(heroes[0], u));
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(enemy));
+        await Frames(6);
+        await Click(HexScreen(bs, enemy.Pos), MouseButton.Right);
+        var ra = bs.LastGroupResult;
+        Check(ra != null && ra.Ordered.Count > 0, "групповая атака не отдана");
+        Check(heroes.All(h => h.Queue.Items.All(c => c.Type != CommandType.Move || c.TargetCell != enemy.Pos)), "кто-то идёт на гекс врага");
+        var support = heroes.Where(h => bs.Sim.Groups.RoleOf(h) == UnitRole.Support).ToList();
+        Check(support.All(sp => ra!.Skipped.Any(s => s.Unit == sp.Id)), "поддержка не должна идти в ближний бой");
+
+        // Shift+click removes a unit from the group.
+        var last = heroes[^1];
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(last));
+        await Frames(6);
+        var pos = HexScreen(bs, last.Pos);
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = pos, GlobalPosition = pos });
+        await Frames(2);
+        Input.ParseInputEvent(new InputEventMouseButton { Position = pos, GlobalPosition = pos, ButtonIndex = MouseButton.Left, Pressed = true, ShiftPressed = true });
+        Input.ParseInputEvent(new InputEventMouseButton { Position = pos, GlobalPosition = pos, ButtonIndex = MouseButton.Left, Pressed = false, ShiftPressed = true });
+        await Frames(3);
+        Check(!bs.Group.Contains(last) && bs.Group.Count == heroes.Count - 1 || heroes.Count == 2, "Shift+клик не убрал юнита из группы");
     }
 
     // ------------------------------------------------------------------ editor tests
