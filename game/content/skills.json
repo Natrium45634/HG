@@ -60,6 +60,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -234,6 +235,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -408,6 +410,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -622,6 +625,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -796,6 +800,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -1050,6 +1055,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -1304,6 +1310,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -1581,6 +1588,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -1795,6 +1803,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -1969,6 +1978,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -2143,6 +2153,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -2358,6 +2369,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -2532,6 +2544,7 @@
       "stopOnCasterDeath": false,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -2869,6 +2882,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -3134,6 +3148,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -3428,6 +3443,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -3606,6 +3622,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -3780,6 +3797,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -3994,6 +4012,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -4168,6 +4187,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -4342,6 +4362,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -4516,6 +4537,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -4690,6 +4712,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -4864,6 +4887,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -5038,6 +5062,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -5252,6 +5277,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -5426,6 +5452,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -5640,6 +5667,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -5814,6 +5842,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -5988,6 +6017,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -6162,6 +6192,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -6368,6 +6399,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -6542,6 +6574,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": true,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -6922,6 +6955,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": true,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -7345,6 +7379,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": true,
         "kind": "Stance",
@@ -7478,6 +7513,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": true,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -7652,6 +7688,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -7826,6 +7863,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": true,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -8042,6 +8080,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": true,
         "kind": "Dodge",
@@ -8175,6 +8214,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -8489,6 +8529,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": true,
         "kind": "Absorb",
@@ -8622,6 +8663,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": false,
         "kind": "Stance",
@@ -8879,6 +8921,7 @@
       "stopOnCasterDeath": true,
       "stopOnControl": false,
       "holdDuringSeries": false,
+      "grantsPassives": [],
       "defense": {
         "enabled": true,
         "kind": "Reflect",
@@ -8953,6 +8996,181 @@
       "impactVfx": "",
       "sound": "",
       "isHarmful": false
+    },
+    {
+      "id": "thorn_lash",
+      "name": "Терновая плеть",
+      "description": "Магия природы: лоза хлещет врага (тег «nature_magic» — талант эльфа усиливает урон на 25 %).",
+      "tags": ["nature_magic"],
+      "group": "",
+      "version": 1,
+      "kind": "Spell",
+      "apCost": 2.5,
+      "resourceCosts": [{ "resource": "mana", "amount": 6 }],
+      "targeting": "Unit",
+      "rangeMin": 2,
+      "rangeMax": 4,
+      "ranged": true,
+      "requiresLoS": true,
+      "validTargets": { "enemies": true, "allies": false, "neutrals": true, "self": false },
+      "allowEmptyCell": true,
+      "hitMode": "Roll",
+      "targetLayers": [],
+      "casterLayers": [],
+      "prepTime": 0.5,
+      "recoveryTime": 0.3,
+      "cooldown": 3,
+      "faceTarget": true,
+      "telegraph": true,
+      "interrupt": {
+        "byDamage": true,
+        "chanceOnDamage": 0.3,
+        "byControl": true,
+        "byForcedMove": true,
+        "refund": 0.5,
+        "cooldownOnInterrupt": false
+      },
+      "useMode": "Aimed",
+      "autoTarget": { "rules": [], "mode": "Sequential", "randomTies": false },
+      "onTargetLost": "Cancel",
+      "menuPriority": 0,
+      "ring": "Auto",
+      "approach": true,
+      "allowMoveBeforeUse": true,
+      "continueRoute": true,
+      "facingAfter": "TowardTarget",
+      "facingAfterDirection": "E",
+      "payAt": "Start",
+      "cooldownAt": "Release",
+      "canCrit": true,
+      "critChanceBonus": 0,
+      "critNoExtraDamage": false,
+      "critEffects": [],
+      "piercesShields": false,
+      "piercesDefense": false,
+      "seriesCrit": "PerHit",
+      "stopOnTargetDeath": true,
+      "retargetOnDeath": "Never",
+      "onResourceOut": "CancelRemaining",
+      "stopOnCasterDeath": true,
+      "stopOnControl": false,
+      "holdDuringSeries": false,
+      "grantsPassives": [],
+      "defense": {
+        "enabled": false,
+        "kind": "Stance",
+        "duration": 0,
+        "upkeep": [],
+        "damageReduction": 30,
+        "damageTypes": [],
+        "sectors": ["Front", "NearFlank"],
+        "attackerLayers": [],
+        "dodgeChance": 0,
+        "parryChance": 0,
+        "counterOnParry": false,
+        "reflectPercent": 0,
+        "evasionBonus": 0,
+        "blockBonus": 0,
+        "maxBlocks": 0,
+        "pierce": "Ignore",
+        "brokenByStun": true,
+        "allowMove": false,
+        "animStart": "Block",
+        "animHold": "Block",
+        "animEnd": "Idle"
+      },
+      "stages": [
+        {
+          "name": "",
+          "delay": 0,
+          "area": {
+            "shape": "Single",
+            "size": 1,
+            "innerRadius": 1,
+            "angle": 120,
+            "chainJumps": 3,
+            "chainRange": 2,
+            "includeCenter": false,
+            "cells": []
+          },
+          "effects": [
+            {
+              "type": "Damage",
+              "filter": { "enemies": true, "allies": false, "neutrals": true, "self": false },
+              "chance": 1,
+              "requiresHit": true,
+              "damageType": "earth",
+              "amount": 12,
+              "scalingStat": "",
+              "scalingFactor": 0,
+              "formula": "",
+              "healMode": "Flat",
+              "shield": {
+                "name": "Щит",
+                "protects": [],
+                "priority": 0,
+                "regenPerSecond": 0,
+                "regenDelay": 2,
+                "stacking": "Refresh",
+                "ignoresPeriodic": false,
+                "color": "#8fd8ff"
+              },
+              "shieldName": "",
+              "status": "",
+              "duration": 0,
+              "stat": "",
+              "statAdd": 0,
+              "statMul": 0,
+              "route": "",
+              "aiProfile": "",
+              "text": "",
+              "distance": 1,
+              "facing": "TowardSource",
+              "setDirection": "E",
+              "resource": "",
+              "terrain": "",
+              "cellEffect": "",
+              "level": 1,
+              "obstacleDamage": 1000,
+              "summonUnit": ""
+            }
+          ],
+          "maxTargets": 0,
+          "blockedByObstacles": true,
+          "pierce": true,
+          "attackKind": "Inherit",
+          "damageMultiplier": 1,
+          "flatBonus": 0,
+          "damageType": "",
+          "hitMode": "Inherit",
+          "accuracyBonus": 0,
+          "crit": "Inherit",
+          "critChanceBonus": 0,
+          "critMultiplier": 0,
+          "statusChanceMultiplier": 1,
+          "costs": [],
+          "tag": "",
+          "retarget": "Inherit",
+          "onConditionFail": "SkipStage",
+          "repeat": 1,
+          "repeatInterval": 0.3,
+          "final": false,
+          "move": "None",
+          "moveDistance": 3,
+          "moveApPerHex": 0,
+          "animation": "Attack",
+          "animationClip": "",
+          "sound": "",
+          "vfx": ""
+        }
+      ],
+      "color": "#e0a040",
+      "vfx": "Projectile",
+      "icon": "❦",
+      "castVfx": "",
+      "impactVfx": "",
+      "sound": "",
+      "isHarmful": true
     }
   ]
 }

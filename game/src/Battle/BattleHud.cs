@@ -1009,6 +1009,14 @@ public partial class BattleHud : Control
             _statuses.AddChild(Ui.Label($"▣ «{stance.Skill.DisplayName}»: {stance.Def.Describe()} — {left}{blocks}" +
                                         (stance.Avoided + stance.Reduced > 0 ? $" · отражено {stance.Avoided}, ослаблено {stance.Reduced}" : ""), 12, Ui.Accent, wrap: true));
         }
+        var passives = u.PassiveInstances.Where(PassiveSystem.ActsOnOwner).Select(pi => string.IsNullOrEmpty(pi.Def.Icon) ? pi.Def.DisplayName : $"{pi.Def.Icon} {pi.Def.DisplayName}").Distinct().ToList();
+        if (passives.Count > 0)
+        {
+            var pl = Ui.Label("Пассивы: " + string.Join(", ", passives), 12, Ui.TextDim, wrap: true);
+            pl.MouseFilter = MouseFilterEnum.Stop;
+            pl.TooltipText = string.Join("\n", PassiveLines(u, full: true).Select(x => x.Text));
+            _statuses.AddChild(pl);
+        }
         var series = Sim.Skills.PendingStages.FirstOrDefault(p => p.Cast.Caster == u && !p.Cast.Series.Stopped)?.Cast;
         if (series != null && series.Series.TotalHits > 1)
             _statuses.AddChild(Ui.Label($"⚔ «{series.Skill.DisplayName}»: удар {series.Series.HitsDone} из {series.Series.TotalHits}", 12, Ui.Accent));
@@ -1131,11 +1139,59 @@ public partial class BattleHud : Control
             double b = u.Stats.Base(sd.Id);
             string mod = Math.Abs(v - b) > 1e-6 ? $"  ({(v > b ? "+" : "")}{(sd.Format == StatFormat.Percent ? $"{v - b:P0}" : $"{v - b:0.##}")})" : "";
             var row = Ui.HBox(4, Ui.Label(sd.DisplayName, 12, Ui.TextDim).Expand(), Ui.Label(val + mod, 12, Math.Abs(v - b) > 1e-6 ? (v > b ? Ui.Good : Ui.Bad) : Ui.Text));
+            // The share of every source (docs/DECISIONS_3.md §46): hover the row.
+            var br = u.Stats.Explain(sd.Id);
+            if (br.Items.Count > 0)
+            {
+                row.MouseFilter = MouseFilterEnum.Stop;
+                row.TooltipText = BreakdownText(sd, br);
+            }
             _statsBox.AddChild(row);
         }
         foreach (var line in Sim.Damage.DefenseSummary(u)) _statsBox.AddChild(Ui.Label(line, 12, Ui.Text, wrap: true));
-        if (u.Passives.Count > 0) _statsBox.AddChild(Ui.Label("Пассивные: " + string.Join(", ", u.Passives.Select(p => p.DisplayName)), 12, Ui.TextDim, wrap: true));
+        foreach (var (text, color) in PassiveLines(u, full: true)) _statsBox.AddChild(Ui.Label(text, 12, color, wrap: true));
         if (u.Def.Immunities.Count > 0) _statsBox.AddChild(Ui.Label("Иммунитеты: " + string.Join(", ", u.Def.Immunities), 12, Ui.TextDim, wrap: true));
+    }
+
+    /// <summary>Base, every contribution (acting or not, with the reason) and the result of a stat.</summary>
+    private static string BreakdownText(StatDef sd, StatBreakdown b)
+    {
+        string F(double v) => sd.Format == StatFormat.Percent ? $"{v:P0}" : $"{v:0.##}";
+        var lines = new List<string> { $"{sd.DisplayName}: база {F(b.Base)} · порядок: {Names.Of(b.Order)}" };
+        foreach (var (c, applied, note) in b.Items)
+        {
+            string val = c.Mode switch
+            {
+                ModifierMode.Multiplier => $"×{c.Value:0.##}",
+                ModifierMode.FlatBefore or ModifierMode.FlatAfter => (c.Value >= 0 ? "+" : "") + F(c.Value),
+                _ => $"{c.Value:+0.#;-0.#} %",
+            };
+            lines.Add($"{(applied ? "•" : "✕")} {val} — {c.Source} ({Names.Of(c.Mode)}{(note != "" ? ", " + note : "")})");
+        }
+        lines.Add($"Итог: {F(b.Final)}");
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// Passives and talents of the unit with their sources; exact values when the passive shows them; the ones
+    /// not acting now in grey with the reason.
+    /// </summary>
+    private IEnumerable<(string Text, Color Color)> PassiveLines(Unit u, bool full)
+    {
+        foreach (var pi in u.PassiveInstances.Where(x => x.AuraOwner >= 0 || !(x.Def.AuraRadius > 0 && x.Def.AuraPassives.Count == 0 && !x.Def.AuraIncludesSelf) || full))
+        {
+            var p = pi.Def;
+            string icon = string.IsNullOrEmpty(p.Icon) ? (p.Kind == PassiveKind.Talent ? "★" : "◈") : p.Icon;
+            string kind = p.Kind == PassiveKind.Talent ? "талант" : "пассив";
+            string head = $"{icon} {p.DisplayName}{(pi.Stacks > 1 ? $" ×{pi.Stacks}" : "")} — {kind}, {pi.Source}";
+            if (pi.AllSources.Count > 1) head += $" (+ ещё {pi.AllSources.Count - 1})";
+            bool acts = PassiveSystem.ActsOnOwner(pi);
+            string body = p.ShowExactValues ? string.Join("; ", PassiveText.Lines(p, Sim.Content)) : p.Description;
+            if (p.AuraRadius > 0 && pi.AuraOwner < 0) body = $"аура {p.AuraRadius} гекс. на {Names.Of(p.AuraAffects).ToLowerInvariant()}: " + body;
+            if (!full) body = "";
+            string state = acts ? "" : $" · не действует: {(pi.Inactive != "" ? pi.Inactive : "только для других (аура)")}";
+            yield return (head + (body != "" ? "\n   " + body : "") + state, acts ? Ui.Text : Ui.TextDim);
+        }
     }
 
     private void RefreshActions(bool slow)

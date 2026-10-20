@@ -1,0 +1,100 @@
+{
+  "formatVersion": 4,
+  "kind": "scenario",
+  "scenario": {
+    "id": "slime_bog",
+    "name": "Слизистое болото",
+    "description": "Пассивы и таланты: эльфийка (талант «Родство с природной магией»), маг (водная волна почти не ранит слизней), рыцарь (аура стража), сценарный туман у врагов.",
+    "tags": [],
+    "group": "",
+    "version": 1,
+    "map": "arena",
+    "seed": 7,
+    "rulesPreset": "",
+    "intro": "Слизни почти не чувствуют водной магии — бейте их природной магией эльфийки и сталью рыцаря.",
+    "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
+    "units": [
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [-6, 3],
+        "facing": "E",
+        "tag": "hero",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "mage", "faction": "", "c": [-6, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "elf_ranger",
+        "faction": "",
+        "c": [-5, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      { "unit": "slime", "faction": "", "c": [5, -3], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "slime", "faction": "", "c": [6, -4], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "slime", "faction": "", "c": [5, -2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [6, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "hunter",
+        "name": ""
+      }
+    ],
+    "waves": [],
+    "victory": [
+      {
+        "type": "AllEnemiesDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "resource": "",
+        "value": 0,
+        "compare": "AtLeast",
+        "status": "",
+        "synergy": "",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "fraction": 0.5
+      }
+    ],
+    "defeat": [
+      {
+        "type": "AllPlayerUnitsDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "resource": "",
+        "value": 0,
+        "compare": "AtLeast",
+        "status": "",
+        "synergy": "",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "fraction": 0.5
+      }
+    ],
+    "objectives": [],
+    "objectiveLogic": "AllRequired",
+    "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "AfterScouting" },
+    "triggers": [],
+    "passives": [{ "passive": "bog_mist", "faction": "enemy", "tag": "" }],
+    "passiveOverrides": [],
+    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+  }
+}

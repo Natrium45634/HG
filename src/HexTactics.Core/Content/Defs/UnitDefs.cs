@@ -31,11 +31,21 @@ public static class Stats
     public const string CritBonus = "crit_bonus";
     /// <summary>Magical power (part 3: target choice, modifiers).</summary>
     public const string MagicPower = "magic_power";
+    // Part 3 (docs/DECISIONS_3.md §46): parameters passives and talents may change.
+    /// <summary>Bonus to the maximum range of skills aimed at a unit or a cell (hexes).</summary>
+    public const string AttackRange = "attack_range";
+    /// <summary>Skill preparation is faster: time ÷ (1 + value).</summary>
+    public const string CastSpeed = "cast_speed";
+    /// <summary>Chance 0..1 to resist control statuses (stun, root, silence, fear, mind control).</summary>
+    public const string ControlResist = "control_resist";
+    /// <summary>Shields placed on the unit are stronger: × (1 + value).</summary>
+    public const string ShieldPower = "shield_power";
 
     public static readonly string[] All =
     {
         HpMax, MoveSpeed, ApMax, ApRegen, DetectionRange, Accuracy, Evasion, BlockChance, BlockReduction,
         Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit, HealReceived, CritResist, CritBonus, MagicPower,
+        AttackRange, CastSpeed, ControlResist, ShieldPower,
     };
 }
 
@@ -54,6 +64,9 @@ public sealed class StatDef : Def
     [Ed("Максимум")] public double Max { get; set; } = 1000;
     [Ed("Формат")] public StatFormat Format { get; set; } = StatFormat.Number;
     [Ed("Показывать в панели")] public bool ShowInPanel { get; set; } = true;
+    [Ed("Порядок расчёта", "Как складываются модификаторы этой характеристики (у брони, сопротивлений и силы атаки может быть разным)")]
+    public StatCalcOrder CalcOrder { get; set; } = StatCalcOrder.Standard;
+    [Ed("Округление")] public StatRounding Rounding { get; set; } = StatRounding.None;
 }
 
 public sealed class ResourceDef : Def
@@ -171,6 +184,8 @@ public sealed class UnitDef : Def
     [Ed("Защитный навык", "Центр радиального меню; пусто — защитная стойка из правил", Group = "Навыки"), EdRef(DefCategory.Skill)]
     public string DefenseSkill { get; set; } = "";
     [Ed("Пассивные способности", Group = "Навыки"), EdRef(DefCategory.Passive)] public List<string> Passives { get; set; } = new();
+    [Ed("Происхождения", "Раса, вид, класс, роль: их пассивы и таланты наследуются (docs/DECISIONS_3.md §46)", Group = "Навыки"), EdRef(DefCategory.Origin)]
+    public List<string> Origins { get; set; } = new();
     [Ed("Стартовые состояния", Group = "Навыки")] public List<StartingStatusDef> StartingStatuses { get; set; } = new();
     [Ed("Автоатаки", "Атакуют сами через общую систему боя: навык, дальность, цели, интервал, правила выбора", Group = "Навыки")]
     public List<AutoAttackDef> AutoAttacks { get; set; } = new();
@@ -202,6 +217,17 @@ public enum PassiveTrigger
     OnLowHp,
     Periodic,
     OnEnemySpotted,
+    // Part 3 (docs/DECISIONS_3.md §46).
+    /// <summary>The unit dealt a critical hit.</summary>
+    OnCrit,
+    /// <summary>The unit finished a step.</summary>
+    OnMoved,
+    /// <summary>The unit used (released) a skill.</summary>
+    OnSkillUsed,
+    /// <summary>The unit lost the set amount of health (since the last trigger).</summary>
+    OnHpLost,
+    /// <summary>An enemy entered the set radius around the unit.</summary>
+    OnEnemyEnteredArea,
 }
 
 public enum PassiveAction
@@ -216,6 +242,32 @@ public enum PassiveAction
 public sealed class PassiveDef : Def
 {
     [JsonIgnore] public override DefCategory Category => DefCategory.Passive;
+
+    // Part 3 (docs/DECISIONS_3.md §46): kind, source, conditions, modifiers, aura, stacking, triggers.
+    [Ed("Вид", "Пассивное умение или талант (раса, происхождение, роль, уникальная особенность)", Group = "Основное")] public PassiveKind Kind { get; set; } = PassiveKind.Passive;
+    [Ed("Источник", "Откуда получен (подпись и группировка)", Group = "Основное")] public PassiveSource Source { get; set; } = PassiveSource.Unit;
+    [Ed("Значок", "1–2 символа в панели юнита", Group = "Основное")] public string Icon { get; set; } = "";
+    [Ed("Показывать точные значения", "Выкл. — игрок видит только название и описание", Group = "Основное")] public bool ShowExactValues { get; set; } = true;
+    [Ed("Условия действия", "Дерево И/ИЛИ/НЕ; пусто — всегда", Group = "Условия")] public UnitConditionDef? When { get; set; }
+    [Ed("Частота проверки, с", "Как часто пересчитываются условия и ауры"), EdRange(0.05, 60)] public double CheckInterval { get; set; } = 0.25;
+    [Ed("Модификаторы", "Что меняется и как суммируется", Group = "Эффект")] public List<ModifierDef> Modifiers { get; set; } = new();
+    [Ed("Порядок применения", "Меньше — раньше (для одинаковых режимов суммирования не важен)", Group = "Эффект"), EdRange(-1000, 1000)] public int Order { get; set; }
+    [Ed("Стекуемость", Group = "Эффект")] public PassiveStacking Stacking { get; set; } = PassiveStacking.Unique;
+    [Ed("Макс. стаков"), EdRange(1, 100), EdShowIf(nameof(Stacking), PassiveStacking.Stack)] public int MaxStacks { get; set; } = 3;
+    [Ed("Радиус ауры", "0 — не аура; иначе действует на юнитов вокруг владельца", Group = "Аура"), EdRange(0, 20)] public int AuraRadius { get; set; }
+    [Ed("Аура действует на", Group = "Аура")] public AuraAffects AuraAffects { get; set; } = AuraAffects.Allies;
+    [Ed("Аура и на владельца", Group = "Аура")] public bool AuraIncludesSelf { get; set; }
+    [Ed("Пассивы ауры", "Что получают юниты в ауре; пусто — модификаторы этого пассива", Group = "Аура"), EdRef(DefCategory.Passive)]
+    public List<string> AuraPassives { get; set; } = new();
+    [Ed("Действует после срабатывания, с", "Для срабатывающих: модификаторы действуют N с после события", Group = "Срабатывание"), EdRange(0, 3600)]
+    public double ActiveSeconds { get; set; }
+    [Ed("Событие деактивации", "Досрочно снимает действие после срабатывания", Group = "Срабатывание")] public PassiveTrigger? DeactivateOn { get; set; }
+    [Ed("Макс. срабатываний за бой", "0 — без ограничения", Group = "Срабатывание"), EdRange(0, 10000)] public int MaxTriggers { get; set; }
+    [Ed("Цепная реакция", "Эффект пассива может снова запустить этот же пассив (с пределом глубины)", Group = "Срабатывание")] public bool ChainReaction { get; set; }
+    [Ed("Глубина цепи"), EdRange(1, 10), EdShowIf(nameof(ChainReaction), true)] public int MaxChainDepth { get; set; } = 2;
+    [Ed("Потеря здоровья", "Для «потерял N здоровья»"), EdRange(1, 100000), EdShowIf(nameof(Trigger), PassiveTrigger.OnHpLost)] public double HpLoss { get; set; } = 30;
+    [Ed("Радиус события", "Для «противник вошёл в область»"), EdRange(1, 20), EdShowIf(nameof(Trigger), PassiveTrigger.OnEnemyEnteredArea)] public int TriggerRadius { get; set; } = 2;
+    [Ed("Тег навыка события", "Для «применил навык»: только навыки с тегом; пусто — любые"), EdShowIf(nameof(Trigger), PassiveTrigger.OnSkillUsed)] public string TriggerSkillTag { get; set; } = "";
 
     [Ed("Срабатывание")] public PassiveTrigger Trigger { get; set; } = PassiveTrigger.Always;
     [Ed("Модификаторы характеристик", "Действуют постоянно")] public List<StatModDef> StatMods { get; set; } = new();

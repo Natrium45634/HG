@@ -29,6 +29,8 @@ public enum DefCategory
     Asset,
     Vfx,
     Formation,
+    /// <summary>Races, species, classes, roles: sets of passives and talents (docs/DECISIONS_3.md §46).</summary>
+    Origin,
 }
 
 /// <summary>Base class of every content definition.</summary>

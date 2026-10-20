@@ -176,6 +176,9 @@ public sealed class SkillDef : Def
     [Ed("Бесплатно при условии", "Если условие выполнено при запуске — стоимость запуска не списывается", Group = "Стоимость")]
     public UnitConditionDef? FreeIf { get; set; }
 
+    [Ed("Даёт пассивы", "Пока юнит знает навык (источник «навык»)", Group = "Основное"), EdRef(DefCategory.Passive)]
+    public List<string> GrantsPassives { get; set; } = new();
+
     [Ed("Защита", "Параметры защитного навыка: снижение, уклонение, парирование, блоки, секторы, поддержание", Group = "Защита")]
     public DefenseStanceDef Defense { get; set; } = new();
 

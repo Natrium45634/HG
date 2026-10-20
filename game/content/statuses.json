@@ -52,6 +52,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -125,6 +126,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -202,6 +204,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -311,6 +314,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -384,6 +388,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -457,6 +462,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -563,6 +569,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -669,6 +676,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -734,6 +742,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -799,6 +808,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -864,6 +874,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -929,6 +940,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -961,6 +973,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -993,6 +1006,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1058,6 +1072,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1123,6 +1138,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1192,6 +1208,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1257,6 +1274,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1322,6 +1340,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1392,6 +1411,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1457,6 +1477,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1522,6 +1543,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1587,6 +1609,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -1693,6 +1716,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1725,6 +1749,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [
@@ -1872,6 +1897,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -1937,6 +1963,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -2002,6 +2029,7 @@
             "reflections": [],
             "critImmune": true
           },
+          "passives": [],
           "offense": {
             "bonuses": [{ "match": "*", "percent": 30 }],
             "conversions": []
@@ -2080,6 +2108,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -2155,6 +2184,7 @@
             ],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -2220,6 +2250,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],
@@ -2285,6 +2316,7 @@
             "reflections": [],
             "critImmune": false
           },
+          "passives": [],
           "offense": { "bonuses": [], "conversions": [] },
           "tickInterval": 1,
           "onTick": [],

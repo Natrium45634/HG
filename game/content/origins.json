@@ -1,0 +1,45 @@
+{
+  "formatVersion": 4,
+  "kind": "origins",
+  "items": [
+    {
+      "id": "elf",
+      "name": "Эльф",
+      "description": "Раса: родство с природной магией и лесная засада.",
+      "tags": [],
+      "group": "Расы",
+      "version": 1,
+      "kind": "Race",
+      "passives": ["nature_affinity", "forest_ambush"],
+      "autoTags": ["elf"],
+      "icon": "❦",
+      "color": "#7fc070"
+    },
+    {
+      "id": "slime_kind",
+      "name": "Слизь",
+      "description": "Вид существа: водная аморфность, ядовитое тело.",
+      "tags": [],
+      "group": "Виды существ",
+      "version": 1,
+      "kind": "Species",
+      "passives": ["water_amorphous", "toxic_body"],
+      "autoTags": ["slime"],
+      "icon": "≋",
+      "color": "#60b0a0"
+    },
+    {
+      "id": "dragonkin",
+      "name": "Драконид",
+      "description": "Вид существа: драконья чешуя (сопротивление огню).",
+      "tags": [],
+      "group": "Виды существ",
+      "version": 1,
+      "kind": "Species",
+      "passives": ["dragon_scales"],
+      "autoTags": ["dragon"],
+      "icon": "◆",
+      "color": "#d08040"
+    }
+  ]
+}

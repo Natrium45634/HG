@@ -104,6 +104,7 @@ public sealed class ContentDatabase
         (DefCategory.Passive, typeof(PassiveDef), "passives.json"),
         (DefCategory.AiProfile, typeof(AiProfileDef), "ai_profiles.json"),
         (DefCategory.Formation, typeof(FormationDef), "formations.json"),
+        (DefCategory.Origin, typeof(OriginDef), "origins.json"),
         (DefCategory.Unit, typeof(UnitDef), "units.json"),
         (DefCategory.RulesPreset, typeof(RulesPresetDef), "rules_presets.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),

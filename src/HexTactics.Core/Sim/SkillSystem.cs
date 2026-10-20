@@ -152,7 +152,7 @@ public sealed class SkillSystem
             // Launch costs (none if «free if» holds) and the costs of the first hit: without them the skill does not start.
             bool free = IsFree(u, s, targetUnitId, targetCell ?? fromPos);
             var first = s.Stages.Count > 0 ? s.Stages[0].Costs.Where(c => c.When == StageCostWhen.PerHit).ToList() : new List<StageCostDef>();
-            double ap = (free ? 0 : s.ApCost) + first.Where(c => string.IsNullOrEmpty(c.Resource)).Sum(c => c.Amount);
+            double ap = (free ? 0 : ApCostOf(u, s)) + first.Where(c => string.IsNullOrEmpty(c.Resource)).Sum(c => c.Amount);
             if (u.Ap + 1e-9 < ap) return new SkillCheck(FailureReason.NotEnoughAp, $"недостаточно ОД ({u.Ap:0.#}/{ap:0.#})", fromPos, facing);
             var need = new Dictionary<string, double>();
             if (!free)
@@ -169,9 +169,9 @@ public sealed class SkillSystem
                     return new SkillCheck(FailureReason.NotEnoughResource, $"недостаточно: {r.Def.DisplayName} ({r.Current:0.#}/{amount:0.#})", fromPos, facing);
             }
         }
-        else if (s.ApCost > u.ApMax + 1e-9)
+        else if (ApCostOf(u, s) > u.ApMax + 1e-9)
         {
-            return none with { Message = $"стоимость {s.ApCost:0.#} ОД больше максимума {u.ApMax:0.#}" };
+            return none with { Message = $"стоимость {ApCostOf(u, s):0.#} ОД больше максимума {u.ApMax:0.#}" };
         }
 
         switch (s.Targeting)
@@ -202,6 +202,15 @@ public sealed class SkillSystem
         return none;
     }
 
+    /// <summary>AP cost of the skill for the unit after the passives' cost modifiers (docs/DECISIONS_3.md §46).</summary>
+    public double ApCostOf(Unit u, SkillDef s) => _sim.Passives.ApCost(u, s, s.ApCost);
+
+    /// <summary>Maximum range of the skill for the unit: + «дальность атаки».</summary>
+    public int RangeMaxOf(Unit u, SkillDef s) => Math.Max(s.RangeMin, s.RangeMax + (int)Math.Round(u.Stat(Stats.AttackRange)));
+
+    /// <summary>Preparation time for the unit: ÷ (1 + «скорость применения»).</summary>
+    public double PrepTimeOf(Unit u, SkillDef s) => s.PrepTime / Math.Max(0.1, 1 + u.Stat(Stats.CastSpeed));
+
     /// <summary>The skill's «free if» condition holds for this use.</summary>
     public bool IsFree(Unit u, SkillDef s, int targetUnitId, HexCoord anchor) =>
         s.FreeIf != null && _sim.Conditions.Evaluate(s.FreeIf, new ConditionContext(u, _sim.GetUnit(targetUnitId), anchor, null));
@@ -209,7 +218,7 @@ public sealed class SkillSystem
     private SkillCheck CheckRangeAndLos(Unit u, SkillDef s, HexCoord from, HexCoord to, HexDirection facing)
     {
         int dist = HexCoord.Distance(from, to);
-        int max = s.RangeMax + RangeBonus(s, from, to);
+        int max = RangeMaxOf(u, s) + RangeBonus(s, from, to);
         var orient = from.DirectionTo(to) ?? facing;
         if (dist < s.RangeMin) return new SkillCheck(FailureReason.OutOfRange, $"цель слишком близко (мин. {s.RangeMin})", to, orient);
         if (dist > max) return new SkillCheck(FailureReason.OutOfRange, $"цель вне дальности ({dist} > {max})", to, orient);
@@ -227,7 +236,7 @@ public sealed class SkillSystem
     public SkillCast Begin(Unit u, SkillDef s, SkillCheck check, int targetUnitId, DamageSource source = DamageSource.Skill, double? apCost = null)
     {
         bool free = IsFree(u, s, targetUnitId, check.Anchor);
-        double ap = free ? 0 : apCost ?? s.ApCost;
+        double ap = free ? 0 : apCost ?? ApCostOf(u, s);
         bool deferred = s.PayAt == CostMoment.Release;
         if (!deferred) u.Ap = Math.Max(0, u.Ap - ap);
         var cast = new SkillCast
@@ -241,7 +250,7 @@ public sealed class SkillSystem
             TargetUnitId = targetUnitId,
             CasterPos = u.Pos,
             StartTick = _sim.Tick,
-            ReleaseTick = _sim.Tick + _sim.TicksFor(s.PrepTime),
+            ReleaseTick = _sim.Tick + _sim.TicksFor(PrepTimeOf(u, s)),
             PaidAp = deferred ? 0 : ap,
             DeferredAp = deferred ? ap : 0,
             Free = free,
@@ -317,15 +326,19 @@ public sealed class SkillSystem
         _sim.Emit(SimEventType.CastReleased, LogLevel.Detail, $"{u.Name} применяет «{s.DisplayName}»", u.Id, cast.TargetUnitId, cast.Anchor);
         // Series: every stage (hit) N times, at its delay plus the repeat interval (docs/DECISIONS_3.md §45).
         var series = cast.Series;
-        series.TotalHits = s.Stages.Where(st => st.HasDamage).Sum(st => Math.Max(1, st.Repeat));
+        // «Количество ударов» of passives: extra repetitions of the last damage stage (docs/DECISIONS_3.md §46).
+        int lastHit = s.Stages.FindLastIndex(st => st.HasDamage);
+        int extra = lastHit >= 0 ? Math.Max(0, _sim.Passives.ExtraHits(u, s)) : 0;
+        series.TotalHits = s.Stages.Where(st => st.HasDamage).Sum(st => Math.Max(1, st.Repeat)) + extra;
         series.LastTick = _sim.Tick;
         var now = new List<(int Stage, int Repeat)>();
         for (int i = 0; i < s.Stages.Count; i++)
         {
             var st = s.Stages[i];
-            for (int r = 0; r < Math.Max(1, Math.Min(st.Repeat, MaxRepeat)); r++)
+            int reps = Math.Max(1, Math.Min(st.Repeat + (i == lastHit ? extra : 0), MaxRepeat));
+            for (int r = 0; r < reps; r++)
             {
-                double delay = st.Delay + r * st.RepeatInterval;
+                double delay = st.Delay + r * (st.Repeat > 1 || st.RepeatInterval > 0 ? st.RepeatInterval : 0.3);
                 long tick = _sim.Tick + _sim.TicksFor(delay);
                 if (delay <= 0 || tick <= _sim.Tick) now.Add((i, r));
                 else _pending.Add(new PendingStage { Cast = cast, StageIndex = i, Repeat = r, Tick = tick });
@@ -333,6 +346,7 @@ public sealed class SkillSystem
             }
         }
         foreach (var (i, r) in now) ResolveStage(cast, i, r);
+        _sim.Reactions.Enqueue(PassiveTrigger.OnSkillUsed, u, _sim.GetUnit(cast.TargetUnitId), s.Id);
         if (s.Defense.Enabled && u.Alive && !series.Stopped) _sim.Defense.Activate(u, s, 0, ActiveCommandId(u));
     }
 
@@ -645,7 +659,8 @@ public sealed class SkillSystem
             double amount = _sim.Combat.EffectAmount(e, caster, t.Unit, 1.0, dist);
             if (e.Type == EffectType.Damage)
             {
-                amount = Math.Max(0, amount * stage.DamageMultiplier + stage.FlatBonus);
+                double power = 1 + _sim.Passives.HitPowerPercent(caster, skill, stage.Tag) / 100.0;
+                amount = Math.Max(0, amount * stage.DamageMultiplier * Math.Max(0, power) + stage.FlatBonus);
                 var r = _sim.Damage.Apply(new DamageRequest
                 {
                     Attacker = caster, Target = t.Unit, Amount = amount, DamageType = string.IsNullOrEmpty(stage.DamageType) ? e.DamageType : stage.DamageType,

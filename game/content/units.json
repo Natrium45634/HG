@@ -51,7 +51,8 @@
       "basicAttack": "strike",
       "skills": ["reckless_assault", "triple_strike", "shield_bash", "cleave", "war_cry", "demolish"],
       "defenseSkill": "shield_wall",
-      "passives": ["counter", "vigilant"],
+      "passives": ["counter", "vigilant", "guardian_aura", "bloodlust", "finisher_master"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [
         {
@@ -204,7 +205,8 @@
       "basicAttack": "shot",
       "skills": ["aimed_shot", "arrow_volley", "piercing_shot", "net", "smoke_bomb", "sneak", "set_trap"],
       "defenseSkill": "",
-      "passives": [],
+      "passives": ["beast_slayer"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [
         {
@@ -341,7 +343,8 @@
       "basicAttack": "strike",
       "skills": ["fireball", "frost_cone", "chain_lightning", "meteor", "water_wave", "spark", "inferno"],
       "defenseSkill": "mana_ward",
-      "passives": [],
+      "passives": ["last_ward"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
@@ -432,6 +435,7 @@
       "skills": ["heal", "healing_ward", "consecrate", "blinding_flash", "barrier", "grav_lift", "aegis"],
       "defenseSkill": "mirror_stance",
       "passives": ["second_wind"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
@@ -532,7 +536,8 @@
       "basicAttack": "strike",
       "skills": ["dash_strike", "charge", "torch", "poison_cloud", "sneak"],
       "defenseSkill": "evade",
-      "passives": [],
+      "passives": ["battle_focus"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
@@ -623,6 +628,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": [],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
@@ -713,6 +719,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": [],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [
         {
@@ -861,6 +868,7 @@
       "skills": ["quake", "cleave"],
       "defenseSkill": "",
       "passives": ["thick_hide"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "aggressive",
@@ -951,6 +959,7 @@
       "skills": ["heal", "poison_cloud", "spark", "curse_ground", "dominate"],
       "defenseSkill": "",
       "passives": [],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "support",
@@ -1041,6 +1050,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": ["pack_howl"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "pursuer",
@@ -1144,6 +1154,7 @@
       "skills": ["shield_bash"],
       "defenseSkill": "",
       "passives": ["thorns"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [
         {
@@ -1274,6 +1285,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": ["regrowth"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "skittish",
@@ -1382,6 +1394,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": [],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "hunter",
@@ -1472,6 +1485,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": [],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "hunter",
@@ -1571,6 +1585,7 @@
       "skills": ["quake", "cleave"],
       "defenseSkill": "",
       "passives": ["thick_hide"],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [
         {
@@ -1902,6 +1917,7 @@
       "skills": [],
       "defenseSkill": "",
       "passives": [],
+      "origins": [],
       "startingStatuses": [],
       "autoAttacks": [],
       "aiProfile": "hold",
@@ -1952,6 +1968,239 @@
         "deathVfx": "crystal_shatter",
         "attackSound": "",
         "hitSound": "zap",
+        "deathSound": ""
+      }
+    },
+    {
+      "id": "elf_ranger",
+      "name": "Эльфийка-следопыт",
+      "description": "Происхождение «Эльф»: таланты расы наследуются; в сценарии их можно отключить или заменить.",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "player",
+      "creatureCategory": "humanoid",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 80,
+        "move_speed": 1.6,
+        "ap_max": 10,
+        "ap_regen": 1.1,
+        "detection_range": 9,
+        "accuracy": 0.05,
+        "evasion": 0.15
+      },
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [
+        { "resource": "ammo", "max": 20, "start": 20, "regen": 0 },
+        { "resource": "mana", "max": 40, "start": 40, "regen": 1 }
+      ],
+      "basicAttack": "shot",
+      "skills": ["thorn_lash", "aimed_shot", "sneak"],
+      "defenseSkill": "",
+      "passives": [],
+      "origins": ["elf"],
+      "startingStatuses": [],
+      "autoAttacks": [
+        {
+          "enabled": true,
+          "skill": "",
+          "range": 0,
+          "areaSize": 0,
+          "targets": { "enemies": true, "allies": false, "neutrals": false, "self": false },
+          "targetLayers": [],
+          "requireDetection": true,
+          "requireLoS": true,
+          "apCost": -1,
+          "interval": 1.6,
+          "selection": "Sequential",
+          "rules": [
+            {
+              "rule": "LowestHpFraction",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            },
+            {
+              "rule": "Nearest",
+              "tag": "",
+              "status": "",
+              "radius": 1,
+              "strict": false,
+              "weight": 1,
+              "isBoolean": false
+            }
+          ],
+          "randomTies": false,
+          "whileMoving": false,
+          "whenBlocking": true,
+          "whenBlocked": true,
+          "stopWhen": [{ "when": "PlayerCommand", "hpFraction": 0.25, "status": "" }],
+          "onShortage": "Skip"
+        }
+      ],
+      "aiProfile": "aggressive",
+      "role": "Auto",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Archer",
+        "color": "",
+        "scale": 1,
+        "symbol": "Л",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": ""
+      }
+    },
+    {
+      "id": "slime",
+      "name": "Слизь",
+      "description": "Вид «Слизь»: получает на 75 % меньше урона от магии воды; невосприимчива к отравлению.",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "slime",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": true,
+        "maxPerHex": 3,
+        "shareWith": ["goblin", "goblin_archer"],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": { "hp_max": 70, "move_speed": 1.2, "ap_max": 8, "ap_regen": 1, "detection_range": 7, "evasion": 0.15 },
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "strike",
+      "skills": [],
+      "defenseSkill": "",
+      "passives": [],
+      "origins": ["slime_kind"],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "aggressive",
+      "role": "Auto",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Pawn",
+        "color": "",
+        "scale": 1,
+        "symbol": "г",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
         "deathSound": ""
       }
     }

@@ -286,7 +286,7 @@ public sealed class Planner
                     var face = at.Value.DirectionTo(TargetPosOf(u, s, c, at.Value)) ?? facing;
                     return new CommandEstimate
                     {
-                        Ap = walk.Cost * Rules.Ap.MovePerCost + s.ApCost,
+                        Ap = walk.Cost * Rules.Ap.MovePerCost + _sim.Skills.ApCostOf(u, s),
                         Seconds = walk.StepCosts.Sum(x => Math.Max(_sim.Dt, x / speed)) + s.PrepTime + s.RecoveryTime + (s.HoldDuringSeries ? SkillText.Duration(s) : 0),
                         EndPos = at.Value,
                         EndFacing = s.FaceTarget ? face : facing,
@@ -296,7 +296,7 @@ public sealed class Planner
                 }
                 return new CommandEstimate
                 {
-                    Ap = s.ApCost + steps * Rules.Turn.ApPerStep,
+                    Ap = _sim.Skills.ApCostOf(u, s) + steps * Rules.Turn.ApPerStep,
                     Seconds = s.PrepTime + s.RecoveryTime + (s.HoldDuringSeries ? SkillText.Duration(s) : 0) + steps * Rules.Turn.SecondsPerStep,
                     EndPos = pos,
                     EndFacing = end,
@@ -307,7 +307,7 @@ public sealed class Planner
             case CommandType.Defend:
                 return new CommandEstimate
                 {
-                    Ap = u.DefenseSkill?.ApCost ?? Rules.Ap.DefendCost,
+                    Ap = u.DefenseSkill != null ? _sim.Skills.ApCostOf(u, u.DefenseSkill) : Rules.Ap.DefendCost,
                     Seconds = c.Duration > 0 ? c.Duration : u.DefenseSkill?.Defense.Duration ?? 0,
                     EndPos = pos, EndFacing = facing,
                 };
@@ -576,7 +576,7 @@ public sealed class Planner
             // The unit's defensive skill: its own costs and cooldown (docs/DECISIONS_3.md §45).
             long cd = u.CooldownRemaining(ds.Id, _sim.Tick);
             string why = block != "" ? block : cd > 0 ? $"перезарядка {cd * _sim.Dt:0.#} с" : "";
-            list.Add(new ActionInfo("defend", ds.DisplayName, why == "", why, ApWarn(ds.ApCost), Skill: ds));
+            list.Add(new ActionInfo("defend", ds.DisplayName, why == "", why, ApWarn(_sim.Skills.ApCostOf(u, ds)), Skill: ds));
         }
         else
             list.Add(new ActionInfo("defend", "Стойка", block == "", block, ApWarn(Rules.Ap.DefendCost)));
@@ -592,7 +592,8 @@ public sealed class Planner
         if (_sim.Content.DisabledSkills.TryGetValue(s.Id, out var why)) return new ActionInfo(key, label, false, "ошибка данных: " + why, Skill: s);
         if (u.Flags.BlocksSkills && u.BasicAttack != s) return new ActionInfo(key, label, false, "немота", Skill: s);
         if (u.Flags.BlocksAttacks && s.IsHarmful) return new ActionInfo(key, label, false, "атаки запрещены состоянием", Skill: s);
-        if (s.ApCost > u.ApMax + 1e-9) return new ActionInfo(key, label, false, $"стоимость {s.ApCost:0.#} ОД больше максимума", Skill: s);
+        double cost = _sim.Skills.ApCostOf(u, s);
+        if (cost > u.ApMax + 1e-9) return new ActionInfo(key, label, false, $"стоимость {cost:0.#} ОД больше максимума", Skill: s);
         var warn = new List<string>();
         foreach (var rc in s.ResourceCosts)
         {
@@ -606,7 +607,7 @@ public sealed class Planner
         }
         long cd = u.CooldownRemaining(s.Id, _sim.Tick);
         if (cd > 0) warn.Add($"перезарядка {cd * _sim.Dt:0.#} с");
-        var apw = apWarn(s.ApCost);
+        var apw = apWarn(cost);
         if (apw != "") warn.Add(apw);
         return new ActionInfo(key, label, true, "", string.Join("; ", warn), s);
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HexTactics.Core.Content;
 using HexTactics.Core.Hex;
 
@@ -8,6 +9,10 @@ namespace HexTactics.Core.Sim;
 public sealed class ResourceState
 {
     public ResourceDef Def { get; init; } = null!;
+    /// <summary>Maximum and regeneration of the unit definition; passives change Max/Regen from them.</summary>
+    public double BaseMax { get; set; }
+    public double BaseRegen { get; set; }
+    internal bool BaseCaptured { get; set; }
     public double Max { get; set; }
     public double Current { get; set; }
     public double Regen { get; set; }
@@ -60,15 +65,16 @@ public sealed class StatusInstance
 }
 
 /// <summary>
-/// Stat block: base values from the unit definition (or stat defaults) and modifiers from
-/// statuses, passives and stance. final = clamp((base + ΣAdd) × (1 + ΣMul), min, max).
+/// Stat block: base values from the unit definition (or stat defaults) and modifiers from statuses, passives,
+/// stance… summed by the single order of docs/DECISIONS_3.md §46 (<see cref="ModifierMath"/>) and the stat's
+/// «порядок расчёта». Old modifiers (add + fraction) are «прибавка до процентов» and «проценты»:
+/// final = clamp((base + ΣAdd) × (1 + ΣMul), min, max) as before.
 /// </summary>
 public sealed class StatBlock
 {
     private readonly ContentDatabase _db;
     private readonly Dictionary<string, double> _base = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, double> _add = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, double> _mul = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<Contribution>> _mods = new(StringComparer.Ordinal);
     private readonly Dictionary<string, double> _cache = new(StringComparer.Ordinal);
 
     public StatBlock(ContentDatabase db, UnitDef def)
@@ -94,39 +100,67 @@ public sealed class StatBlock
     public double Get(string id)
     {
         if (_cache.TryGetValue(id, out var c)) return c;
-        double b = Base(id);
-        double add = _add.TryGetValue(id, out var a) ? a : 0.0;
-        double mul = _mul.TryGetValue(id, out var m) ? m : 0.0;
-        double v = (b + add) * (1.0 + mul);
-        var sd = _db.Stat(id);
-        if (sd != null) v = Math.Clamp(v, sd.Min, Math.Max(sd.Min, sd.Max));
+        double v = Compute(id, out _);
         _cache[id] = v;
+        return v;
+    }
+
+    private double Compute(string id, out Combined combined)
+    {
+        double b = Base(id);
+        var sd = _db.Stat(id);
+        var list = _mods.TryGetValue(id, out var l) ? l : null;
+        combined = ModifierMath.Combine(list ?? (IEnumerable<Contribution>)Array.Empty<Contribution>());
+        if (list == null) return sd != null ? Math.Clamp(b, sd.Min, Math.Max(sd.Min, sd.Max)) : b;
+        var order = sd?.CalcOrder ?? StatCalcOrder.Standard;
+        var percents = order == StatCalcOrder.Diminishing ? list.Where(x => x.Mode == ModifierMode.Percent).Select(x => x.Value).ToList() : null;
+        double v = ModifierMath.Apply(b, combined, order, percents);
+        if (sd != null)
+        {
+            v = ModifierMath.Round(v, sd.Rounding);
+            v = Math.Clamp(v, sd.Min, Math.Max(sd.Min, sd.Max));
+        }
         return v;
     }
 
     public void ClearModifiers()
     {
-        _add.Clear();
-        _mul.Clear();
+        _mods.Clear();
         _cache.Clear();
     }
 
-    public void AddModifier(StatModDef m, double scale = 1.0)
+    public void Add(string stat, Contribution c)
+    {
+        if (string.IsNullOrEmpty(stat)) return;
+        if (!_mods.TryGetValue(stat, out var l)) _mods[stat] = l = new List<Contribution>();
+        l.Add(c);
+        _cache.Clear();
+    }
+
+    public void AddModifier(StatModDef m, double scale = 1.0, string source = "")
     {
         if (string.IsNullOrEmpty(m.Stat)) return;
-        _add[m.Stat] = (_add.TryGetValue(m.Stat, out var a) ? a : 0.0) + m.Add * scale;
-        _mul[m.Stat] = (_mul.TryGetValue(m.Stat, out var x) ? x : 0.0) + m.Mul * scale;
-        _cache.Clear();
+        if (m.Add != 0) Add(m.Stat, new Contribution(ModifierMode.FlatBefore, m.Add * scale, 0, "", source));
+        if (m.Mul != 0) Add(m.Stat, new Contribution(ModifierMode.Percent, m.Mul * 100 * scale, 0, "", source));
     }
 
-    public void AddFlat(string stat, double add)
+    public void AddFlat(string stat, double add, string source = "")
     {
-        _add[stat] = (_add.TryGetValue(stat, out var a) ? a : 0.0) + add;
-        _cache.Clear();
+        if (add != 0) Add(stat, new Contribution(ModifierMode.FlatBefore, add, 0, "", source));
     }
 
-    public IEnumerable<string> ModifiedStats => _add.Keys;
+    public IEnumerable<string> ModifiedStats => _mods.Keys;
+
+    /// <summary>Final value and the share of every source (unit panel, editor): what acted and what did not.</summary>
+    public StatBreakdown Explain(string id)
+    {
+        double v = Compute(id, out var c);
+        return new StatBreakdown(id, Base(id), v, _db.Stat(id)?.CalcOrder ?? StatCalcOrder.Standard, c.Items);
+    }
 }
+
+/// <summary>Result of <see cref="StatBlock.Explain"/>.</summary>
+public sealed record StatBreakdown(string Stat, double Base, double Final, StatCalcOrder Order, List<(Contribution C, bool Applied, string Note)> Items);
 
 public sealed class Unit
 {
@@ -178,6 +212,14 @@ public sealed class Unit
     public List<(StatModDef Mod, long UntilTick)> StatChanges { get; } = new();
     public ControlFlagsDef Flags { get; } = new();
     public List<PassiveDef> Passives { get; } = new();
+    /// <summary>All passives with their sources and whether they act now (docs/DECISIONS_3.md §46).</summary>
+    public List<PassiveInstance> PassiveInstances { get; internal set; } = new();
+    /// <summary>Triggered passives acting for their time after the event: passive → until tick.</summary>
+    public Dictionary<string, long> TimedPassives { get; } = new(StringComparer.Ordinal);
+    /// <summary>Times each triggered passive fired in this battle.</summary>
+    public Dictionary<string, int> PassiveFired { get; } = new(StringComparer.Ordinal);
+    /// <summary>Health lost since each «потерял N здоровья» passive last fired.</summary>
+    public Dictionary<string, double> HpLostSince { get; } = new(StringComparer.Ordinal);
     public List<SkillDef> Skills { get; } = new();
     public SkillDef? BasicAttack { get; internal set; }
     /// <summary>Defensive skill of the radial menu's centre (null — the stance of the rules).</summary>

@@ -13,7 +13,9 @@
       "min": 1,
       "max": 100000,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "move_speed",
@@ -26,7 +28,9 @@
       "min": 0,
       "max": 20,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "ap_max",
@@ -39,7 +43,9 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "ap_regen",
@@ -52,7 +58,9 @@
       "min": 0,
       "max": 100,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "detection_range",
@@ -65,7 +73,9 @@
       "min": 0,
       "max": 50,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "accuracy",
@@ -78,7 +88,9 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "evasion",
@@ -91,7 +103,9 @@
       "min": 0,
       "max": 0.95,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "block_chance",
@@ -104,7 +118,9 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "block_reduction",
@@ -117,7 +133,9 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "armor",
@@ -130,7 +148,9 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "PercentOfBase",
+      "rounding": "Round"
     },
     {
       "id": "crit_chance",
@@ -143,7 +163,9 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "crit_mult",
@@ -156,7 +178,9 @@
       "min": 1,
       "max": 10,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "perception",
@@ -169,7 +193,9 @@
       "min": -1,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "stealth",
@@ -182,7 +208,9 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "interrupt_resist",
@@ -195,7 +223,9 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "power",
@@ -208,7 +238,9 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "heal_power",
@@ -221,7 +253,9 @@
       "min": -1,
       "max": 10,
       "format": "Percent",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "resist_physical",
@@ -234,7 +268,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "resist_fire",
@@ -247,7 +283,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "resist_ice",
@@ -260,7 +298,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "resist_electric",
@@ -273,7 +313,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "resist_poison",
@@ -286,7 +328,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "resist_magic",
@@ -299,7 +343,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Diminishing",
+      "rounding": "None"
     },
     {
       "id": "resist_true",
@@ -312,7 +358,9 @@
       "min": -5,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "tremor_sense",
@@ -325,7 +373,9 @@
       "min": 0,
       "max": 10,
       "format": "Number",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "block_limit",
@@ -338,7 +388,9 @@
       "min": 0,
       "max": 20,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "heal_received",
@@ -351,7 +403,9 @@
       "min": -1,
       "max": 5,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "crit_resist",
@@ -364,7 +418,9 @@
       "min": 0,
       "max": 1,
       "format": "Percent",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "crit_bonus",
@@ -377,7 +433,9 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": false
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     },
     {
       "id": "magic_power",
@@ -390,7 +448,69 @@
       "min": 0,
       "max": 1000,
       "format": "Number",
-      "showInPanel": true
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
+    },
+    {
+      "id": "attack_range",
+      "name": "Дальность атаки",
+      "description": "Прибавка к максимальной дальности навыков по юниту или клетке (гексы)",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": -10,
+      "max": 10,
+      "format": "Number",
+      "showInPanel": true,
+      "calcOrder": "FlatOnly",
+      "rounding": "Round"
+    },
+    {
+      "id": "cast_speed",
+      "name": "Скорость применения",
+      "description": "Подготовка навыков ÷ (1 + значение)",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": -0.9,
+      "max": 5,
+      "format": "Percent",
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
+    },
+    {
+      "id": "control_resist",
+      "name": "Устойчивость к контролю",
+      "description": "Шанс сопротивиться оглушению, обездвиживанию, немоте, страху и контролю разума; бонусы — с убывающей отдачей",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "format": "Percent",
+      "showInPanel": true,
+      "calcOrder": "Diminishing",
+      "rounding": "None"
+    },
+    {
+      "id": "shield_power",
+      "name": "Сила щитов",
+      "description": "Щиты на юните × (1 + значение)",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "default": 0,
+      "min": -1,
+      "max": 10,
+      "format": "Percent",
+      "showInPanel": true,
+      "calcOrder": "Standard",
+      "rounding": "None"
     }
   ]
 }

@@ -776,6 +776,12 @@ public partial class PropertyGrid : VBoxContainer
             BossPhaseDef bp => $"{bp.Name}: {bp.When.Describe()}",
             SectorRule sr => $"{Names.Of(sr.Sector)}: неожиданность {sr.SurpriseChance:P0}, заметить {sr.NoticeChance:P0}",
             ScenarioSideDef sd => $"{sd.Faction}: {Names.Of(sd.Controller)}",
+            // Part 3: modifiers, conditions, series costs, scenario passives — readable lines.
+            ModifierDef md => md.Describe(),
+            UnitConditionDef uc => uc.Describe(),
+            StageCostDef sc => SkillText.Cost(sc),
+            ScenarioPassiveDef sp => sp.ToString(),
+            PassiveOverrideDef po => po.ToString(),
             _ => item.GetType().GetProperty("Name")?.GetValue(item) as string ?? "",
         };
         return $"{index + 1}. {(string.IsNullOrEmpty(s) ? item.GetType().Name : s)}";

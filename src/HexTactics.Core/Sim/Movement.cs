@@ -128,7 +128,10 @@ public readonly struct MoveContext
     public StackingMode Stacking { get; }
 
     public static MoveContext For(Simulation sim, Unit u) =>
-        new(sim.Rules, sim.Content, u.Def.MoveCategory, u.LayerDef, u, u.Def, u.FactionId, sim.Stacking);
+        new(sim.Rules, sim.Content, u.Def.MoveCategory, u.LayerDef, u, u.Def, u.FactionId, sim.Stacking) { Sim = sim };
+
+    /// <summary>The simulation (passives of the mover); null for map analysis and tools.</summary>
+    public Simulation? Sim { get; init; }
 
     public static MoveContext For(Simulation sim, UnitDef def, string? faction)
     {
@@ -273,6 +276,8 @@ public static class MovementRules
                 else if (dh < 0) cost += -dh * c.Rules.Height.DescendCostPerLevel;
             }
         }
+        // Passives «стоимость движения по гексам» of the mover (docs/DECISIONS_3.md §46).
+        if (c.Self is { PassiveInstances.Count: > 0 } self && c.Sim != null) cost *= c.Sim.Passives.TerrainFactor(self, to);
         if (c.Def != null && c.Def.Stacking.CanShare && c.Def.Stacking.CrowdMoveCost > 0 && (to.Occupants.Count > 0 || to.Reservations.Count > 0))
         {
             int crowd = Occupancy.Colliding(c, to);

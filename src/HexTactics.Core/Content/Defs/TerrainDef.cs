@@ -137,6 +137,9 @@ public sealed class TerrainDef : Def
     [Ed("Вид местности", "Пол, препятствие, жидкость, яма… — для библиотеки, шаблонов и кистей", Group = "Основное")]
     public TerrainKind Kind { get; set; } = TerrainKind.Floor;
 
+    [Ed("Пассивы стоящих", "Действуют, пока юнит стоит на гексе (источник «тип гекса»)", Group = "Основное"), EdRef(DefCategory.Passive)]
+    public List<string> Passives { get; set; } = new();
+
     [JsonIgnore] public bool IsObstacle => Kind == TerrainKind.Obstacle;
 
     [Ed("Цвет", Group = "Вид"), EdColor]

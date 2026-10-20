@@ -167,6 +167,7 @@ public sealed class StatusLevelDef
     [Ed("Модификаторы характеристик")] public List<StatModDef> StatMods { get; set; } = new();
     [Ed("Флаги контроля")] public ControlFlagsDef Flags { get; set; } = new();
     [Ed("Защита от урона", "Сопротивления, щиты-поглощение, отражение на время уровня")] public DefenseDef Defense { get; set; } = new();
+    [Ed("Пассивы на время уровня", "Источник «состояние» (docs/DECISIONS_3.md §46)"), EdRef(DefCategory.Passive)] public List<string> Passives { get; set; } = new();
     [Ed("Атака", "Бонусы урона на время уровня")] public OffenseDef Offense { get; set; } = new();
     [Ed("Интервал тика, с"), EdRange(0.05, 3600)] public double TickInterval { get; set; } = 1;
     [Ed("Эффекты тика", "Урон, лечение и т. п. по владельцу")] public List<SkillEffectDef> OnTick { get; set; } = new();

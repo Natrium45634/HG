@@ -10,6 +10,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#4e5a52",
       "visual": "TechFloor",
       "look": {
@@ -62,6 +63,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#5b5751",
       "visual": "TechFloor",
       "look": {
@@ -114,6 +116,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#646b73",
       "visual": "TechFloor",
       "look": {
@@ -166,6 +169,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#6f6a5c",
       "visual": "TechFloor",
       "look": {
@@ -218,6 +222,7 @@
       "group": "",
       "version": 1,
       "kind": "Elevation",
+      "passives": [],
       "color": "#8a939d",
       "visual": "Platform",
       "look": {
@@ -270,6 +275,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#454b52",
       "visual": "TechFloor",
       "look": {
@@ -322,6 +328,7 @@
       "group": "",
       "version": 1,
       "kind": "Liquid",
+      "passives": [],
       "color": "#2e78bd",
       "visual": "Water",
       "look": {
@@ -374,6 +381,7 @@
       "group": "",
       "version": 1,
       "kind": "Liquid",
+      "passives": [],
       "color": "#1c4f8f",
       "visual": "Water",
       "look": {
@@ -426,6 +434,7 @@
       "group": "",
       "version": 1,
       "kind": "Pit",
+      "passives": [],
       "color": "#0b0d10",
       "visual": "Pit",
       "look": {
@@ -478,6 +487,7 @@
       "group": "",
       "version": 1,
       "kind": "Hazard",
+      "passives": [],
       "color": "#58722a",
       "visual": "Hazard",
       "look": {
@@ -530,6 +540,7 @@
       "group": "",
       "version": 1,
       "kind": "Obstacle",
+      "passives": [],
       "color": "#3a414a",
       "visual": "Wall",
       "look": {
@@ -582,6 +593,7 @@
       "group": "",
       "version": 1,
       "kind": "Obstacle",
+      "passives": [],
       "color": "#787e86",
       "visual": "Rock",
       "look": {
@@ -634,6 +646,7 @@
       "group": "",
       "version": 1,
       "kind": "Obstacle",
+      "passives": [],
       "color": "#c27a2e",
       "visual": "Crate",
       "look": {
@@ -686,6 +699,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#56606b",
       "visual": "Railing",
       "look": {
@@ -738,6 +752,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#4a5561",
       "visual": "Pillars",
       "look": {
@@ -790,6 +805,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#53575d",
       "visual": "Rubble",
       "look": {
@@ -842,6 +858,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#403e3c",
       "visual": "TechFloor",
       "look": {
@@ -894,6 +911,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#bde4f3",
       "visual": "Ice",
       "look": {
@@ -946,6 +964,7 @@
       "group": "",
       "version": 1,
       "kind": "Special",
+      "passives": [],
       "color": "#2a3440",
       "visual": "Terminal",
       "look": {
@@ -998,6 +1017,7 @@
       "group": "",
       "version": 1,
       "kind": "Floor",
+      "passives": [],
       "color": "#555c65",
       "visual": "TechFloor",
       "look": {
@@ -1050,6 +1070,7 @@
       "group": "",
       "version": 1,
       "kind": "Elevation",
+      "passives": [],
       "color": "#8f99a4",
       "visual": "Platform",
       "look": {
@@ -1102,6 +1123,7 @@
       "group": "",
       "version": 1,
       "kind": "Pit",
+      "passives": [],
       "color": "#050608",
       "visual": "Chasm",
       "look": {
@@ -1154,6 +1176,7 @@
       "group": "",
       "version": 1,
       "kind": "Hazard",
+      "passives": [],
       "color": "#e84a10",
       "visual": "Lava",
       "look": {
@@ -1206,6 +1229,7 @@
       "group": "",
       "version": 1,
       "kind": "Hazard",
+      "passives": [],
       "color": "#5fb316",
       "visual": "Acid",
       "look": {
@@ -1258,6 +1282,7 @@
       "group": "",
       "version": 1,
       "kind": "Obstacle",
+      "passives": [],
       "color": "#3fb7ff",
       "visual": "Barrier",
       "look": {
@@ -1310,6 +1335,7 @@
       "group": "",
       "version": 1,
       "kind": "Hazard",
+      "passives": [],
       "color": "#686e76",
       "visual": "Trap",
       "look": {

@@ -177,7 +177,7 @@ public sealed class AutoAttackSystem
         st.Skill = skill.DisplayName;
 
         // 2. AP and resources: only free AP (the queue's reserve is kept), unless allowed by the setting.
-        double cost = a.ApCost >= 0 ? a.ApCost : skill.ApCost;
+        double cost = a.ApCost >= 0 ? a.ApCost : _sim.Skills.ApCostOf(u, skill);
         double available = a.OnShortage == ResourceShortage.UseReserved ? u.Ap : u.FreeAp;
         bool resourcesOk = skill.ResourceCosts.All(rc => u.ResourceValue(rc.Resource) + 1e-9 >= rc.Amount);
         if (available + 1e-9 < cost || !resourcesOk)
@@ -248,6 +248,9 @@ public sealed class AutoAttackSystem
     {
         var st = States(u).FirstOrDefault(x => x.Index == u.Def.AutoAttacks.IndexOf(a));
         var rules = u.AutoAttackPriority is { } prio ? new[] { new AutoTargetRuleDef { Rule = prio } }.Concat(a.Rules).ToList() : a.Rules;
+        // Passives «выбор целей» come first (docs/DECISIONS_3.md §46).
+        var passive = _sim.Passives.TargetRules(u);
+        if (passive.Count > 0) rules = passive.Concat(rules).ToList();
         var pick = _sim.Targets.Choose(u, candidates.Select(c => c.Target).ToList(), rules, a.Selection, a.RandomTies, SkillOf(u, st?.Index ?? 0),
             st?.TargetId ?? -1, out var why);
         if (st != null) st.Choice = why;

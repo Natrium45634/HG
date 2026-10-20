@@ -448,6 +448,8 @@ public sealed class ScenarioDef : Def
     [Ed("Логика целей", "Как обязательные цели дают победу", Group = "Цели")] public ObjectiveLogic ObjectiveLogic { get; set; } = ObjectiveLogic.AllRequired;
     [Ed("Маркеры появления", Group = "Волны")] public ScenarioWarningsDef SpawnWarnings { get; set; } = new();
     [Ed("Триггеры", Group = "Триггеры")] public List<TriggerDef> Triggers { get; set; } = new();
+    [Ed("Пассивы сценария", "Выдаются юнитам стороны или с тегом", Group = "Пассивы")] public List<ScenarioPassiveDef> Passives { get; set; } = new();
+    [Ed("Отключить или заменить пассивы", "Например, талант расы в этом сценарии", Group = "Пассивы")] public List<PassiveOverrideDef> PassiveOverrides { get; set; } = new();
     [Ed("Переопределение правил", "Ограничения сценария", Group = "Ограничения")] public ScenarioLimitsDef Limits { get; set; } = new();
 }
 

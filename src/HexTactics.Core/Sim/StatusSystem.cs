@@ -18,8 +18,16 @@ public sealed class StatusSystem
         _sim = sim;
     }
 
-    public double ResistanceTo(Unit u, StatusDef def) =>
-        Math.Clamp(u.Def.StatusResistances.TryGetValue(def.Id, out var r) ? r : 0.0, 0.0, 1.0);
+    public double ResistanceTo(Unit u, StatusDef def)
+    {
+        double r = u.Def.StatusResistances.TryGetValue(def.Id, out var x) ? x : 0.0;
+        // «Устойчивость к контролю» (docs/DECISIONS_3.md §46): stun, root, silence, fear, mind control.
+        if (IsControl(def)) r += u.Stat(Content.Stats.ControlResist);
+        return Math.Clamp(r, 0.0, 1.0);
+    }
+
+    private static bool IsControl(StatusDef def) =>
+        def.Levels.Any(l => l.Flags.BlocksActions || l.Flags.BlocksMovement || l.Flags.BlocksSkills || l.Flags.Fear || l.Flags.MindControl);
 
     public bool IsImmune(Unit u, StatusDef def, out string reason)
     {
@@ -29,7 +37,7 @@ public sealed class StatusSystem
             reason = $"иммунитет ({u.Def.CreatureCategory})";
             return true;
         }
-        if (u.IsImmuneTo(def.Id, def.Tags))
+        if (u.IsImmuneTo(def.Id, def.Tags) || _sim.Passives.ImmuneToStatus(u, def))
         {
             reason = "иммунитет";
             return true;
@@ -439,41 +447,76 @@ public sealed class StatusSystem
     /// <summary>Rebuilds stat modifiers and control flags from passives, statuses and stance.</summary>
     public void RecalculateModifiers(Unit u)
     {
+        // Passives of every source and their conditions first (conditions read the current values).
+        _sim.Passives.Refresh(u);
         u.Stats.ClearModifiers();
         u.Flags.Clear();
         u.Defenses.Clear();
         u.Offenses.Clear();
         if (!u.Def.Defense.IsEmpty) u.Defenses.Add(u.Def.Defense);
         if (!u.Def.Offense.IsEmpty) u.Offenses.Add(u.Def.Offense);
-        foreach (var p in u.Passives)
+        foreach (var pi in u.PassiveInstances.OrderBy(x => x.Def.Order))
         {
-            // Defense/offense of passives act permanently (like their stat modifiers).
+            var p = pi.Def;
+            if (!PassiveSystem.ActsOnOwner(pi)) continue;
+            // Defense/offense of passives act while the passive acts.
             if (!p.Defense.IsEmpty) u.Defenses.Add(p.Defense);
             if (!p.Offense.IsEmpty) u.Offenses.Add(p.Offense);
-            if (p.Trigger == PassiveTrigger.Always)
-                foreach (var m in p.StatMods)
-                    u.Stats.AddModifier(m);
+            if (!PassiveSystem.ModifiersAct(pi)) continue;
+            string src = $"{p.DisplayName} ({pi.Source})";
+            foreach (var m in p.StatMods) u.Stats.AddModifier(m, pi.Stacks, src);
+            var extra = new DefenseDef();
+            foreach (var m in p.Modifiers)
+            {
+                switch (m.Target)
+                {
+                    case ModifierTarget.Stat:
+                        u.Stats.Add(m.Stat, new Contribution(m.Mode, m.Mode == ModifierMode.Multiplier ? m.Value : m.Value * pi.Stacks, m.Priority, m.Category, src, pi.Stacks));
+                        break;
+                    case ModifierTarget.Reflection:
+                        extra.Reflections.Add(new ReflectionDef { Match = string.IsNullOrEmpty(m.Match) ? "*" : m.Match, Percent = m.Value * pi.Stacks });
+                        break;
+                    case ModifierTarget.Absorption:
+                        extra.Absorptions.Add(new AbsorptionDef { Match = string.IsNullOrEmpty(m.Match) ? "*" : m.Match, Percent = m.Value * pi.Stacks });
+                        break;
+                }
+            }
+            if (!extra.IsEmpty) u.Defenses.Add(extra);
         }
         foreach (var s in u.Statuses)
         {
             var level = s.Level;
             if (level == null) continue;
-            foreach (var m in level.StatMods) u.Stats.AddModifier(m);
+            foreach (var m in level.StatMods) u.Stats.AddModifier(m, 1.0, $"состояние «{s.Def.DisplayName}»");
             u.Flags.OrWith(level.Flags);
             if (!level.Defense.IsEmpty) u.Defenses.Add(level.Defense);
             if (!level.Offense.IsEmpty) u.Offenses.Add(level.Offense);
         }
-        foreach (var (mod, _) in u.StatChanges) u.Stats.AddModifier(mod);
+        foreach (var (mod, _) in u.StatChanges) u.Stats.AddModifier(mod, 1.0, "изменение характеристики");
         if (u.Stance != null)
         {
             // A defensive skill's stance: its own bonuses instead of the rules' (docs/DECISIONS_3.md §45).
-            if (u.Stance.Def.EvasionBonus != 0) u.Stats.AddFlat(Content.Stats.Evasion, u.Stance.Def.EvasionBonus);
-            if (u.Stance.Def.BlockBonus != 0) u.Stats.AddFlat(Content.Stats.BlockChance, u.Stance.Def.BlockBonus);
+            string src = $"защита «{u.Stance.Skill.DisplayName}»";
+            if (u.Stance.Def.EvasionBonus != 0) u.Stats.AddFlat(Content.Stats.Evasion, u.Stance.Def.EvasionBonus, src);
+            if (u.Stance.Def.BlockBonus != 0) u.Stats.AddFlat(Content.Stats.BlockChance, u.Stance.Def.BlockBonus, src);
         }
         else if (u.Defending)
         {
-            u.Stats.AddFlat(Content.Stats.Evasion, _sim.Rules.Ap.DefendEvasionBonus);
-            u.Stats.AddFlat(Content.Stats.BlockChance, _sim.Rules.Ap.DefendBlockBonus);
+            u.Stats.AddFlat(Content.Stats.Evasion, _sim.Rules.Ap.DefendEvasionBonus, "защитная стойка");
+            u.Stats.AddFlat(Content.Stats.BlockChance, _sim.Rules.Ap.DefendBlockBonus, "защитная стойка");
+        }
+        // Maximum and regeneration of resources by the passives' modifiers.
+        foreach (var r in u.Resources.Values)
+        {
+            if (!r.BaseCaptured)
+            {
+                r.BaseMax = r.Max;
+                r.BaseRegen = r.Regen;
+                r.BaseCaptured = true;
+            }
+            r.Max = Math.Max(0, ModifierMath.Apply(r.BaseMax, _sim.Passives.ResourceCombined(u, ModifierTarget.ResourceMax, r.Def.Id), StatCalcOrder.Standard));
+            r.Regen = ModifierMath.Apply(r.BaseRegen, _sim.Passives.ResourceCombined(u, ModifierTarget.ResourceRegen, r.Def.Id), StatCalcOrder.Standard);
+            if (r.Current > r.Max) r.Current = r.Max;
         }
         if (u.Hp > u.HpMax) u.Hp = u.HpMax;
         if (u.Ap > u.ApMax) u.Ap = u.ApMax;

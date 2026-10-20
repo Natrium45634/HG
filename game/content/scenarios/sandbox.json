@@ -81,6 +81,8 @@
     "objectiveLogic": "AllRequired",
     "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "AfterScouting" },
     "triggers": [],
+    "passives": [],
+    "passiveOverrides": [],
     "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
   }
 }

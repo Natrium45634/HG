@@ -362,6 +362,8 @@
         "once": true
       }
     ],
+    "passives": [],
+    "passiveOverrides": [],
     "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
   }
 }

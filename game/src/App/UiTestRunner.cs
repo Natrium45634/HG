@@ -45,6 +45,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_group_box_select_and_orders", BattleGroupOrders));
         _tests.Add(("battle_defense_skill_and_series", BattleDefenseSkillAndSeries));
         _tests.Add(("editor_skill_series_test_run", EditorSkillSeriesTestRun));
+        _tests.Add(("battle_passives_and_talents_panel", BattlePassivesPanel));
+        _tests.Add(("editor_talents_origins_used_by", EditorTalentsOrigins));
         _tests.Add(("editor_skill_mask_click", EditorSkillMaskClick));
         _tests.Add(("editor_map_paint", EditorMapPaint));
         _tests.Add(("editor_create_delete", EditorCreateDelete));
@@ -704,6 +706,70 @@ public partial class UiTestRunner : Node
         Check(hits.Count == 3 || !orc.Alive && hits.Count >= 1, "в журнале нет трёх ударов: " + string.Join(" | ", hits));
         Check(hits.Count == 0 || hits[0].Contains("70 %"), "первый удар должен быть 70 %: " + hits.FirstOrDefault());
         Check(sawProgress, "панель юнита не показывала ход серии");
+    }
+
+    /// <summary>
+    /// Part 3, stage 6: the unit panel lists passives and talents with their source and unambiguous texts; the
+    /// stat rows explain every source; a talent changes the damage through the common formula.
+    /// </summary>
+    private async Task BattlePassivesPanel()
+    {
+        var bs = await OpenBattle("slime_bog");
+        var slime = bs.Sim.Units.First(u => u.Def.Id == "slime");
+        var elf = bs.Sim.Units.First(u => u.Def.Id == "elf_ranger");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        // Own unit: talents with their source and unambiguous texts.
+        bs.Select(elf);
+        await Frames(4);
+        bs.Hud.ToggleInfo();
+        await Frames(20);
+        var labels = Find<Label>(bs.Hud).Where(l => l.IsVisibleInTree()).Select(l => l.Text).ToList();
+        Check(labels.Any(t => t.Contains("Родство с природной магией") && t.Contains("талант") && t.Contains("раса «Эльф»")), "панель не показывает талант и его источник: " +
+            string.Join(" | ", labels.Where(t => t.Length > 0).Take(40)));
+        Check(labels.Any(t => t.Contains("на 25 % больше урона") && t.Contains("nature_magic")), "нет однозначного текста таланта");
+        bs.Hud.ToggleInfo();
+        // An enemy: its passives are part of what the player learns (part 2) — once scanned the panel shows −75 % to water.
+        bs.Sim.Knowledge.Reveal(slime);
+        bs.Select(slime, byPlayer: false);
+        await Frames(20);
+        labels = Find<Label>(bs.Hud).Where(l => l.IsVisibleInTree()).Select(l => l.Text).ToList();
+        Check(labels.Any(t => t.Contains("Водный") && t.Contains("-75 %")), "раскрытая панель врага не показывает сопротивление −75 %: " +
+            string.Join(" | ", labels.Where(t => t.Contains("опротивл")).Take(5)));
+        Check(slime.PassiveInstances.Any(x => x.Def.Id == "bog_mist" && x.SourceKind == PassiveSource.Scenario), "нет сценарного пассива");
+        // The elf's talent through the damage pipeline: nature magic +25 %, the other attacks unchanged.
+        Check(elf.PassiveInstances.Any(x => x.Def.Id == "nature_affinity" && x.Source.Contains("Эльф")), "талант расы не получен от происхождения");
+        double r1 = bs.Sim.Passives.OutgoingPercent(elf, slime, "earth", bs.Db.Skill("thorn_lash"), "");
+        double r2 = bs.Sim.Passives.OutgoingPercent(elf, slime, "piercing", bs.Db.Skill("aimed_shot"), "");
+        Check(Math.Abs(r1 - 25) < 1e-6 && Math.Abs(r2) < 1e-6, $"талант действует неверно: природа {r1}, выстрел {r2}");
+        // The knight's aura: allies around get armor, the stat row explains where it comes from.
+        for (int i = 0; i < 20; i++) bs.Sim.Step();
+        var mage = bs.Sim.Units.First(u => u.Def.Id == "mage");
+        bool near = HexCoord.Distance(mage.Pos, knight.Pos) <= 2;
+        var br = mage.Stats.Explain(Stats.Armor);
+        Check(!near || br.Items.Any(i => i.C.Source.Contains("Аура стража")), "в разборе брони нет ауры стража");
+        bs.Select(mage);
+        bs.Hud.ToggleInfo();
+        await Frames(20);
+        var rows = Find<HBoxContainer>(bs.Hud).Where(h => h.IsVisibleInTree() && !string.IsNullOrEmpty(h.TooltipText)).ToList();
+        Check(!near || rows.Any(h => h.TooltipText.Contains("Аура стража") && h.TooltipText.Contains("Итог")), "строка характеристики не объясняет источники");
+        bs.Hud.ToggleInfo();
+    }
+
+    /// <summary>The editor: talents in their own list, the player's text, and every object that uses the talent.</summary>
+    private async Task EditorTalentsOrigins()
+    {
+        await OpenEditor("talents");
+        var panel = Find<PassivePanel>(GetTree().Root).First();
+        panel.Select("nature_affinity");
+        await Frames(6);
+        var preview = Find<Label>(panel).FirstOrDefault(l => l.Name == "PassivePreview");
+        Check(preview != null && preview.Text.Contains("на 25 % больше урона") && preview.Text.Contains("nature_magic"), "нет текста таланта: " + preview?.Text);
+        var used = Find<Button>(panel).Where(b => b.Name.ToString().StartsWith("UsedBy_")).ToList();
+        Check(used.Any(b => b.Name == "UsedBy_elf") && used.Any(b => b.Name == "UsedBy_elf_ranger"), "«Где используется» не показывает происхождение и юнитов: " + string.Join(", ", used.Select(b => b.Name)));
+        // A jump to the origin.
+        await Click(used.First(b => b.Name == "UsedBy_elf").GetGlobalRect().GetCenter());
+        await Frames(8);
+        Check(Find<OriginPanel>(GetTree().Root).Any(), "переход к происхождению не открыл раздел «Происхождения»");
     }
 
     /// <summary>The skill editor's «Серия» tab: the hits in order, and a run on the test map with every hit.</summary>

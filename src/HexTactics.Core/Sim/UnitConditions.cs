@@ -83,7 +83,7 @@ public sealed class UnitConditions
                 {
                     if (t == cell.Terrain.Id) return true;
                     if (t.StartsWith("kind:", StringComparison.Ordinal) && string.Equals(t[5..], cell.Terrain.Kind.ToString(), StringComparison.OrdinalIgnoreCase)) return true;
-                    if (t.StartsWith("tag:", StringComparison.Ordinal) && cell.Tags.Contains(t[4..])) return true;
+                    if (t.StartsWith("tag:", StringComparison.Ordinal) && (cell.Terrain.Tags.Contains(t[4..]) || cell.Tags.Contains(t[4..]))) return true;
                     if (cell.Effects.Any(e => e.Def.Id == t)) return true;
                 }
                 return false;

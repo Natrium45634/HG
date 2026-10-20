@@ -61,6 +61,7 @@ public static class ContentValidator
         foreach (var c in db.All<CellEffectDef>()) CheckCellEffect(c, issues);
         foreach (var s in db.All<SynergyDef>()) CheckSynergy(db, s, issues);
         foreach (var s in db.All<SkillDef>()) CheckSkill(db, s, issues);
+        foreach (var p in db.All<PassiveDef>()) CheckPassive(db, p, issues);
         foreach (var m in db.All<MapDef>()) CheckMap(db, m, issues);
         foreach (var s in db.All<ScenarioDef>()) CheckScenario(db, s, issues);
 
@@ -87,6 +88,7 @@ public static class ContentValidator
 
     private static ContentIssue Err(Def d, string path, string msg) => new(IssueSeverity.Error, Src(d), path, msg);
     private static ContentIssue Warn(Def d, string path, string msg) => new(IssueSeverity.Warning, Src(d), path, msg);
+    private static ContentIssue Info(Def d, string path, string msg) => new(IssueSeverity.Info, Src(d), path, msg);
 
     public static string CatName(DefCategory c) => c switch
     {
@@ -112,6 +114,7 @@ public static class ContentValidator
         DefCategory.Asset => "ресурс",
         DefCategory.Vfx => "визуальный эффект",
         DefCategory.Formation => "формация",
+        DefCategory.Origin => "происхождение",
         _ => c.ToString(),
     };
 
@@ -462,6 +465,57 @@ public static class ContentValidator
         else if (s.Kind == SkillKind.Defense && s.Stages.All(st => st.Effects.All(e => e.Type is not (EffectType.Shield or EffectType.ApplyStatus or EffectType.ModifyStat))))
         {
             issues.Add(Warn(s, "Defense", "Защитный навык без защиты (раздел «Защита» выключен) и без щита/состояния на себя"));
+        }
+    }
+
+    /// <summary>Passives and talents: modifiers, conditions, triggers, auras (docs/DECISIONS_3.md §46).</summary>
+    private static void CheckPassive(ContentDatabase db, PassiveDef p, List<ContentIssue> issues)
+    {
+        if (p.When != null) CheckCondition(p, "When", p.When, issues);
+        bool triggered = p.Trigger != PassiveTrigger.Always;
+        if (triggered && p.ActiveSeconds <= 0 && (p.Modifiers.Count > 0 || p.StatMods.Count > 0))
+            issues.Add(Warn(p, "ActiveSeconds", "Срабатывающий пассив с модификаторами без «действует после срабатывания» — модификаторы не действуют никогда"));
+        if (!triggered && p.Action != PassiveAction.None)
+            issues.Add(Warn(p, "Action", "Действие задано, но пассив «всегда» — действие не выполняется (нужно событие)"));
+        if (p.Modifiers.Count == 0 && p.StatMods.Count == 0 && p.Defense.IsEmpty && p.Offense.IsEmpty && p.Action == PassiveAction.None && p.AuraPassives.Count == 0)
+            issues.Add(Warn(p, "Modifiers", "Пассив ничего не делает"));
+        if (p.AuraRadius > 6) issues.Add(Warn(p, "AuraRadius", $"Аура радиусом {p.AuraRadius}: много юнитов — пересчёт дороже"));
+        if (p.AuraPassives.Contains(p.Id)) issues.Add(Err(p, "AuraPassives", "Аура не может раздавать саму себя"));
+        if (p.ChainReaction && p.MaxChainDepth > db.Rules.Limits.MaxReactionDepth)
+            issues.Add(Warn(p, "MaxChainDepth", $"Глубина цепи больше общего предела реакций ({db.Rules.Limits.MaxReactionDepth}) — сработает общий предел"));
+        if (triggered && p.Action != PassiveAction.None && p.Cooldown <= 0 && p.MaxTriggers == 0 && p.Chance >= 1 && p.Trigger is PassiveTrigger.OnDamaged or PassiveTrigger.OnHitEnemy or PassiveTrigger.OnMoved)
+            issues.Add(Info(p, "Cooldown", "Частое событие без перезарядки и лимита — пассив сработает на каждый удар/шаг"));
+        for (int i = 0; i < p.Modifiers.Count; i++)
+        {
+            var m = p.Modifiers[i];
+            var path = $"Modifiers[{i}]";
+            switch (m.Target)
+            {
+                case ModifierTarget.Stat when string.IsNullOrEmpty(m.Stat) || db.Stat(m.Stat) == null:
+                    issues.Add(Err(p, path, $"Неизвестная характеристика «{m.Stat}»"));
+                    break;
+                case ModifierTarget.ResourceMax or ModifierTarget.ResourceRegen when db.Get<ResourceDef>(m.Resource) == null:
+                    issues.Add(Err(p, path, $"Неизвестный ресурс «{m.Resource}»"));
+                    break;
+                case ModifierTarget.Immunity when string.IsNullOrEmpty(m.Status) && string.IsNullOrEmpty(m.Match):
+                    issues.Add(Err(p, path, "Иммунитет: не выбрано ни состояние, ни тип урона"));
+                    break;
+                case ModifierTarget.TerrainCost when string.IsNullOrEmpty(m.Terrain):
+                    issues.Add(Err(p, path, "Не выбрана поверхность"));
+                    break;
+                case ModifierTarget.TargetChoice when m.Rule is AutoTargetRule.WithTag or AutoTargetRule.WithStatus && string.IsNullOrEmpty(m.RuleTag):
+                    issues.Add(Err(p, path, "Правилу выбора цели нужен тег или состояние"));
+                    break;
+                case ModifierTarget.HitCount when m.Value < 0 || m.Value > 20:
+                    issues.Add(Warn(p, path, "Количество дополнительных ударов вне 0…20"));
+                    break;
+            }
+            if (m.Mode == ModifierMode.Multiplier && m.Value <= 0) issues.Add(Err(p, path, "Множитель должен быть больше 0"));
+            if (m.Mode == ModifierMode.Exclusive && string.IsNullOrEmpty(m.Category)) issues.Add(Warn(p, path, "Взаимоисключающий модификатор без категории"));
+            if (m.IsPercentLike && m.Target is ModifierTarget.IncomingDamage && m.Value < -100)
+                issues.Add(Info(p, path, "Входящий урон ниже −100 % — урон 0 (не лечит)"));
+            if (m.IsPercentLike && m.Target is ModifierTarget.Stat && Math.Abs(m.Value) > 500)
+                issues.Add(Warn(p, path, $"Изменение характеристики на {m.Value:0} % — проверьте баланс"));
         }
     }
 

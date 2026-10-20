@@ -298,6 +298,7 @@ public sealed class CombatSystem
         if (!hit) _sim.Emit(SimEventType.Miss, LogLevel.Normal, $"{who}: промах ({pHit:P0}{(noticed ? ", уклонение" : "")})", attacker.Id, target.Id);
         if (blocked) _sim.Emit(SimEventType.Block, LogLevel.Normal, $"{target.Name} блокирует удар", attacker.Id, target.Id);
         if (crit) _sim.Emit(SimEventType.Crit, LogLevel.Normal, $"{who}: критический удар!", attacker.Id, target.Id);
+        if (crit) _sim.Reactions.Enqueue(PassiveTrigger.OnCrit, attacker, target);
         if (noticed) _sim.Reactions.Enqueue(PassiveTrigger.OnAttackNoticed, target, attacker);
         if (hit) _sim.Reactions.Enqueue(PassiveTrigger.OnHitEnemy, attacker, target);
         return roll;
@@ -353,7 +354,7 @@ public sealed class CombatSystem
 
     private void CheckLowHpPassives(Unit u, Unit? source)
     {
-        foreach (var p in u.Passives)
+        foreach (var p in u.Passives.ToArray())
         {
             if (p.Trigger != PassiveTrigger.OnLowHp) continue;
             if (u.HpFraction < p.HpThreshold && !u.LowHpTriggered)

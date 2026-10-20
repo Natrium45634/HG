@@ -90,7 +90,7 @@ public sealed class CommandSystem
                 if (_sim.Content.DisabledSkills.TryGetValue(s.Id, out var why)) return "навык отключён: " + why;
                 if (s.Targeting == TargetingMode.Unit && _sim.GetUnit(c.TargetUnitId) == null && !c.AutoTarget) return "не указана цель";
                 if (s.Targeting == TargetingMode.Cell && (!c.TargetCell.HasValue || !_sim.Map.Contains(c.TargetCell.Value)) && !c.AutoTarget) return "не указана клетка";
-                if (s.ApCost > u.ApMax + 1e-9) return $"стоимость {s.ApCost:0.#} ОД больше максимума {u.ApMax:0.#}";
+                if (_sim.Skills.ApCostOf(u, s) > u.ApMax + 1e-9) return $"стоимость {_sim.Skills.ApCostOf(u, s):0.#} ОД больше максимума {u.ApMax:0.#}";
                 foreach (var rc in s.ResourceCosts)
                 {
                     if (!u.Resources.TryGetValue(rc.Resource, out var r)) return $"нет ресурса «{rc.Resource}»";
@@ -104,7 +104,7 @@ public sealed class CommandSystem
                 return null;
             case CommandType.Defend:
                 if (u.DefenseSkill is { } ds)
-                    return ds.ApCost > u.ApMax + 1e-9 ? $"«{ds.DisplayName}» дороже максимума ОД" : null;
+                    return _sim.Skills.ApCostOf(u, ds) > u.ApMax + 1e-9 ? $"«{ds.DisplayName}» дороже максимума ОД" : null;
                 if (Rules.Ap.DefendCost > u.ApMax + 1e-9) return "стойка дороже максимума ОД";
                 return null;
             case CommandType.Follow:
@@ -827,14 +827,15 @@ public sealed class CommandSystem
             if (wantFace && check.Orientation != u.Facing && !u.Flags.BlocksTurning)
             {
                 // Make sure the turn does not eat the AP the skill itself needs.
-                if (u.Ap + 1e-9 < skill.ApCost + Rules.Turn.ApPerStep)
-                    return Fail(FailureReason.NotEnoughAp, $"нужно {skill.ApCost + Rules.Turn.ApPerStep:0.##} ОД (поворот + навык)");
+                double need = _sim.Skills.ApCostOf(u, skill) + Rules.Turn.ApPerStep;
+                if (u.Ap + 1e-9 < need)
+                    return Fail(FailureReason.NotEnoughAp, $"нужно {need:0.##} ОД (поворот + навык)");
                 TurnOneStep(u, check.Orientation, cmd);
                 return Result.Continue;
             }
             ClearWait(cmd);
             _sim.Skills.Begin(u, skill, check, cmd.TargetUnitId);
-            cmd.SpentAp += skill.ApCost;
+            cmd.SpentAp += _sim.Skills.ApCostOf(u, skill);
             cmd.Phase = 1;
         }
 
@@ -850,7 +851,7 @@ public sealed class CommandSystem
                 if (!recheck.Ok)
                 {
                     _sim.Skills.Interrupt(u, InterruptCause.Cancelled, recheck.Message);
-                    cmd.SpentAp = Math.Max(0, cmd.SpentAp - skill.ApCost);
+                    cmd.SpentAp = Math.Max(0, cmd.SpentAp - _sim.Skills.ApCostOf(u, skill));
                     cmd.Phase = 0;
                     // The target was lost during the preparation: the policy may pick another one (nothing was spent).
                     var policy = LostPolicy(cmd, skill);
@@ -943,7 +944,9 @@ public sealed class CommandSystem
         var pool = now.Count > 0 ? now : cmd.Approach && skill.Approach && skill.AllowMoveBeforeUse ? later : now;
         if (pool.Count == 0) return false;
         var sel = skill.AutoTarget;
-        var pick = _sim.Targets.Choose(u, pool, sel.Rules, sel.Mode, sel.RandomTies, skill, old, out var why);
+        // Passives «выбор целей» come first (docs/DECISIONS_3.md §46).
+        var rules = _sim.Passives.TargetRules(u).Concat(sel.Rules).ToList();
+        var pick = _sim.Targets.Choose(u, pool, rules, sel.Mode, sel.RandomTies, skill, old, out var why);
         if (pick == null) return false;
         cmd.TargetUnitId = pick.Id;
         cmd.TargetCell = pick.Pos;
@@ -1058,7 +1061,7 @@ public sealed class CommandSystem
             if (!check.Ok) return Fail(check.Reason == FailureReason.None ? FailureReason.Invalid : check.Reason, check.Message);
             ClearWait(cmd);
             _sim.Skills.Begin(u, s, check, -1);
-            cmd.SpentAp += s.ApCost;
+            cmd.SpentAp += _sim.Skills.ApCostOf(u, s);
             cmd.Phase = 10;
         }
         if (cmd.Phase == 10)

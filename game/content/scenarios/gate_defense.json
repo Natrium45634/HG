@@ -547,6 +547,8 @@
     "objectiveLogic": "AllRequired",
     "spawnWarnings": { "enabled": true, "overrideFog": true, "fog": "Show" },
     "triggers": [],
+    "passives": [],
+    "passiveOverrides": [],
     "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
   }
 }

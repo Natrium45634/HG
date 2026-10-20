@@ -336,6 +336,20 @@ public class CombatTests
         sim.Reactions.Process();
         double total = (a.HpMax - a.Hp) + (b.HpMax - b.Hp);
         Assert.True(total <= db.Rules.Limits.MaxReactionDepth + 2, $"total {total}");
-        Assert.True(sim.Reactions.DroppedByDepth > 0);
+        // Part 3 (docs/DECISIONS_3.md §46): the damage of b's mirror does not start a's mirror again — recursion
+        // stops before the general depth limit.
+        Assert.True(sim.Reactions.DroppedByRecursion > 0);
+        Assert.True(total <= 3, $"total {total}");
+
+        // An explicit chain reaction runs further, still bounded by its depth.
+        db.Get<PassiveDef>("mirror")!.ChainReaction = true;
+        db.Get<PassiveDef>("mirror")!.MaxChainDepth = 3;
+        var sim2 = TestUtil.Sim(db, TestUtil.Field());
+        var a2 = sim2.Spawn(db.Unit("soldier")!, null, new HexCoord(2, 2), HexDirection.E);
+        var b2 = sim2.Spawn(db.Unit("dummy")!, null, new HexCoord(3, 2), HexDirection.W);
+        sim2.Combat.DealDamage(a2, b2, 1, "fire", null, "тест");
+        sim2.Reactions.Process();
+        double total2 = (a2.HpMax - a2.Hp) + (b2.HpMax - b2.Hp);
+        Assert.True(total2 > total && total2 <= 1 + 2 * 3, $"total {total2}");
     }
 }

@@ -79,6 +79,7 @@ public sealed class Simulation
         Targets = new TargetSelector(this);
         Defense = new DefenseSystem(this);
         Conditions = new UnitConditions(this);
+        Passives = new PassiveSystem(this);
         Groups = new GroupPlanner(this);
         GroupOrders = new GroupOrders(this);
 
@@ -130,6 +131,8 @@ public sealed class Simulation
     public DefenseSystem Defense { get; }
     /// <summary>Conditions of skill stages and passives (AND/OR/NOT trees).</summary>
     public UnitConditions Conditions { get; }
+    /// <summary>Passives and talents of all sources, their conditions and modifiers (docs/DECISIONS_3.md §46).</summary>
+    public PassiveSystem Passives { get; }
     /// <summary>Group positions and formations (docs/DECISIONS_3.md §44).</summary>
     public GroupPlanner Groups { get; }
     public GroupOrders GroupOrders { get; }
@@ -219,7 +222,7 @@ public sealed class Simulation
         {
             var rd = Content.Get<ResourceDef>(r.Resource);
             if (rd == null) continue;
-            u.Resources[rd.Id] = new ResourceState { Def = rd, Max = r.Max, Current = Math.Min(r.Start, r.Max), Regen = r.Regen };
+            u.Resources[rd.Id] = new ResourceState { Def = rd, Max = r.Max, Current = Math.Min(r.Start, r.Max), Regen = r.Regen, BaseMax = r.Max, BaseRegen = r.Regen, BaseCaptured = true };
         }
         u.AiControlled = Options.AiFactions.Contains(u.FactionId) && !Options.PlayerFactions.Contains(u.FactionId);
         var profileId = string.IsNullOrEmpty(aiProfile) ? def.AiProfile : aiProfile;
@@ -283,6 +286,7 @@ public sealed class Simulation
     internal bool Relocate(Unit u, HexCoord to, Unit? source = null, string cause = "")
     {
         var from = Map.Get(u.Pos);
+        var fromPos = u.Pos;
         from?.Occupants.Remove(u);
         if (from != null && from.Coord != to) CellEffects.OnUnitExited(u, from);
         bool moved = u.Pos != to;
@@ -294,6 +298,7 @@ public sealed class Simulation
             cell.Reservations.Remove(u);
         }
         if (moved) Statuses.OnMoved(u);
+        if (moved) Passives.OnMoved(u, fromPos);
         Vision.MarkDirty();
         Map.Touch(false);
         if (cell == null) return true;
@@ -431,6 +436,7 @@ public sealed class Simulation
         p.End("Автоатаки", t);
         t = p.Begin();
         UpdateUnits();
+        Passives.Update();
         p.End("Юниты/состояния", t);
         t = p.Begin();
         Blocking.Update();

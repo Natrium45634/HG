@@ -130,9 +130,10 @@ public sealed class DamagePipeline
     // ------------------------------------------------------------------ modifiers
 
     /// <summary>Sum of resistance/vulnerability modifiers (percent) of the target for a damage type.</summary>
-    public double ModifierPercent(Unit target, string damageType)
+    public double ModifierPercent(Unit target, string damageType, Unit? attacker = null)
     {
-        double v = 0;
+        // Passives and talents: their modifiers of this damage type, summed by their modes (docs/DECISIONS_3.md §46).
+        double v = _sim.Passives.IncomingPercent(target, damageType, attacker);
         foreach (var d in target.Defenses)
             foreach (var m in d.Modifiers)
                 if (Taxonomy.Matches(m.Match, damageType))
@@ -145,6 +146,7 @@ public sealed class DamagePipeline
     public bool IsImmune(Unit target, string damageType)
     {
         if (target.IsImmuneTo(damageType, Array.Empty<string>())) return true;
+        if (_sim.Passives.ImmuneToDamage(target, damageType)) return true;
         foreach (var d in target.Defenses)
             foreach (var m in d.Immune)
                 if (Taxonomy.Matches(m, damageType))
@@ -152,9 +154,9 @@ public sealed class DamagePipeline
         return false;
     }
 
-    private double OffenseBonus(Unit attacker, string damageType)
+    private double OffenseBonus(Unit attacker, string damageType, DamageRequest q)
     {
-        double v = 0;
+        double v = _sim.Passives.OutgoingPercent(attacker, q.Target, damageType, q.Skill, q.HitTag);
         foreach (var o in attacker.Offenses)
             foreach (var m in o.Bonuses)
                 if (Taxonomy.Matches(m.Match, damageType))
@@ -278,7 +280,7 @@ public sealed class DamagePipeline
         {
             Convert(parts, attacker.Offenses.SelectMany(o => o.Conversions), Taxonomy);
             double before = parts.Sum(p => p.Amount);
-            foreach (var p in parts) p.Amount *= Math.Max(0, 1 + OffenseBonus(attacker, p.Type) / 100.0);
+            foreach (var p in parts) p.Amount *= Math.Max(0, 1 + OffenseBonus(attacker, p.Type, q) / 100.0);
             if (q.Roll?.Surprise == true)
                 foreach (var p in parts)
                     p.Amount *= Rules.Detection.SurpriseDamageMul;
@@ -314,6 +316,7 @@ public sealed class DamagePipeline
         {
             double pc = CritChance(attacker, target, q.Skill, AttackSector.None, false);
             crit = pc > 0 && _sim.Rng.Chance(pc);
+            if (crit) _sim.Reactions.Enqueue(PassiveTrigger.OnCrit, attacker, target);
         }
         if (crit && target.Defenses.Any(d => d.CritImmune)) crit = false;
         r.Crit = crit;
@@ -341,7 +344,7 @@ public sealed class DamagePipeline
                 p.Amount = 0;
                 continue;
             }
-            double v = ModifierPercent(target, p.Type) + interactionPercent;
+            double v = ModifierPercent(target, p.Type, attacker) + interactionPercent;
             v = Math.Clamp(v, dmf.MinTotalPercent, dmf.MaxTotalPercent);
             p.Percent = v;
             p.Amount *= Math.Max(0, 1 + v / 100.0);
@@ -413,6 +416,7 @@ public sealed class DamagePipeline
         r.Overkill = remaining - r.HealthLost;
         target.Hp -= remaining;
         target.LastDamagedTick = _sim.Tick;
+        if (r.HealthLost > 0) _sim.Passives.OnHealthLost(target, r.HealthLost, attacker);
         r.Step("потеря здоровья", remaining, r.Overkill > 0 ? $"избыток {r.Overkill:0}" : "");
         r.Parts.AddRange(parts);
 
@@ -650,6 +654,7 @@ public sealed class DamagePipeline
     public ShieldInstance? AddShield(Unit target, ShieldSpecDef spec, double amount, double duration, int source)
     {
         if (!target.Alive || amount <= 0) return null;
+        amount *= Math.Max(0, 1 + target.Stat(Stats.ShieldPower));
         long expires = duration > 0 ? _sim.Tick + _sim.TicksFor(duration) : -1;
         var existing = target.Shields.FirstOrDefault(s => s.Spec.Name == spec.Name);
         if (existing != null && spec.Stacking != ShieldStacking.Separate)
