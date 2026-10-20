@@ -29,13 +29,15 @@ public sealed class AssetFileInfo
 /// </summary>
 public static class AssetValidator
 {
-    public const long MaxSize = 64L * 1024 * 1024;
+    /// <summary>Hard cap of any file; the configured limits per kind are in the rules (<see cref="AssetLimitsDef"/>).</summary>
+    public const long MaxSize = 128L * 1024 * 1024;
 
     private static readonly Dictionary<string, AssetKind> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        [".glb"] = AssetKind.Model, [".gltf"] = AssetKind.Model,
+        [".glb"] = AssetKind.Model, [".gltf"] = AssetKind.Model, [".fbx"] = AssetKind.Model, [".obj"] = AssetKind.Model,
         [".png"] = AssetKind.Texture, [".jpg"] = AssetKind.Texture, [".jpeg"] = AssetKind.Texture, [".webp"] = AssetKind.Texture,
-        [".ogg"] = AssetKind.Sound, [".wav"] = AssetKind.Sound,
+        [".tga"] = AssetKind.Texture, [".hdr"] = AssetKind.Texture, [".exr"] = AssetKind.Texture,
+        [".ogg"] = AssetKind.Sound, [".wav"] = AssetKind.Sound, [".mp3"] = AssetKind.Sound,
     };
 
     private static readonly HashSet<string> Forbidden = new(StringComparer.OrdinalIgnoreCase)
@@ -93,12 +95,37 @@ public static class AssetValidator
             ".webp" => Ascii(bytes, 0, "RIFF") && Ascii(bytes, 8, "WEBP") ? null : "Повреждён: нет сигнатуры WebP",
             ".ogg" => Ascii(bytes, 0, "OggS") ? null : "Повреждён: нет сигнатуры OGG",
             ".wav" => Ascii(bytes, 0, "RIFF") && Ascii(bytes, 8, "WAVE") ? null : "Повреждён: нет сигнатуры WAV",
+            ".tga" => TgaOk(bytes) ? null : "Повреждён: заголовок TGA некорректен",
+            ".hdr" => Ascii(bytes, 0, "#?RADIANCE") || Ascii(bytes, 0, "#?RGBE") ? null : "Повреждён: нет сигнатуры Radiance HDR",
+            ".exr" => Starts(bytes, 0x76, 0x2F, 0x31, 0x01) ? null : "Повреждён: нет сигнатуры OpenEXR",
+            ".mp3" => Ascii(bytes, 0, "ID3") || bytes.Length > 1 && bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0 ? null : "Повреждён: нет сигнатуры MP3",
+            ".fbx" => Ascii(bytes, 0, "Kaydara FBX Binary") || FbxAscii(bytes) ? null : "Повреждён: нет сигнатуры FBX",
+            ".obj" => ObjOk(bytes),
             ".glb" => CheckGlb(bytes, info),
             ".gltf" => CheckGltfJson(Encoding.UTF8.GetString(bytes), info),
             _ => "Неизвестный формат",
         };
         if (info.Ok) info.Kind = kind;
         return info;
+    }
+
+    private static bool TgaOk(byte[] b) =>
+        b.Length > 18 && b[1] <= 1 && b[2] is 1 or 2 or 3 or 9 or 10 or 11 && BitConverter.ToUInt16(b, 12) > 0 && BitConverter.ToUInt16(b, 14) > 0 && b[16] is 8 or 15 or 16 or 24 or 32;
+
+    private static bool FbxAscii(byte[] b)
+    {
+        var head = Encoding.ASCII.GetString(b, 0, Math.Min(b.Length, 4096));
+        return head.StartsWith("; FBX", StringComparison.Ordinal) || head.Contains("FBXHeaderExtension", StringComparison.Ordinal);
+    }
+
+    /// <summary>OBJ: text, vertex lines; nothing that looks binary.</summary>
+    private static string? ObjOk(byte[] b)
+    {
+        int n = Math.Min(b.Length, 65536);
+        for (int i = 0; i < n; i++)
+            if (b[i] == 0) return "Повреждён: OBJ должен быть текстовым файлом";
+        var text = Encoding.UTF8.GetString(b);
+        return text.Split('\n').Any(l => l.TrimStart().StartsWith("v ", StringComparison.Ordinal)) ? null : "В OBJ нет вершин";
     }
 
     private static bool Starts(byte[] b, params byte[] sig) => b.Length >= sig.Length && sig.Select((x, i) => b[i] == x).All(x => x);
@@ -166,7 +193,8 @@ public static class AssetValidator
     /// a different file with the same name gets a checksum prefix), checksum, size, model clips and
     /// a default role mapping by conventional clip names. Returns null and an error when the file is rejected.
     /// </summary>
-    public static AssetDef? Import(ContentDatabase db, string fileName, byte[] bytes, Func<string, byte[]?> existing, out string? error, AssetKind? asKind = null)
+    public static AssetDef? Import(ContentDatabase db, string fileName, byte[] bytes, Func<string, byte[]?> existing, out string? error, AssetKind? asKind = null,
+        TexturePurpose? purpose = null)
     {
         var info = Check(bytes, fileName);
         error = info.Error;
@@ -182,7 +210,24 @@ public static class AssetValidator
         {
             Id = ContentIO.UniqueId(db, DefCategory.Asset, baseName), Name = System.IO.Path.GetFileNameWithoutExtension(fileName), Kind = kind,
             Path = path, Sha256 = info.Sha256, Size = info.Size, Group = KindDir(kind),
+            SourceFile = System.IO.Path.GetFileName(fileName), ImportedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm 'UTC'", System.Globalization.CultureInfo.InvariantCulture),
+            Purpose = purpose ?? (kind == AssetKind.Icon ? TexturePurpose.SkillIcon : TexturePurpose.Other),
         };
+        // What the file contains (docs/DECISIONS_3.md §47).
+        var an = AssetAnalyzer.Analyze(bytes, fileName, db.Rules.Assets, def.Purpose);
+        def.Width = an.Width;
+        def.Height = an.Height;
+        def.HasAlpha = an.HasAlpha;
+        def.Triangles = an.Triangles;
+        def.Bones = an.Bones;
+        def.Duration = an.Duration;
+        def.Analysis = an.Summary();
+        if (an.Animations.Count > 0)
+        {
+            info.Clips.Clear();
+            info.Clips.AddRange(an.Animations.Select(x => x.Name));
+            def.ClipLengths.AddRange(an.Animations.Select(x => Math.Round(x.Seconds, 3)));
+        }
         def.Clips.AddRange(info.Clips);
         foreach (var role in Enum.GetValues<AnimRole>())
         {
@@ -203,6 +248,12 @@ public static class AssetValidator
         [AnimRole.Control] = new[] { "stun", "control", "dizzy", "контроль" },
         [AnimRole.Death] = new[] { "death", "die", "смерть" },
         [AnimRole.Spawn] = new[] { "spawn", "appear", "появление" },
+        [AnimRole.Turn] = new[] { "turn", "rotate", "поворот" },
+        [AnimRole.Dodge] = new[] { "dodge", "evade", "roll", "уклонение" },
+        [AnimRole.Fly] = new[] { "fly", "hover", "полёт" },
+        [AnimRole.Burrow] = new[] { "burrow", "dig", "underground", "подкоп" },
+        [AnimRole.Interact] = new[] { "interact", "use", "взаимодействие" },
+        [AnimRole.Victory] = new[] { "victory", "emote", "cheer", "победа" },
     };
 
     /// <summary>A clip for a role by conventional names (idle, walk, attack, cast, hit, block, stun, death, spawn…).</summary>

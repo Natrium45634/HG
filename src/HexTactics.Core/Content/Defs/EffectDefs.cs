@@ -78,6 +78,8 @@ public sealed class CellEffectDef : Def
     [Ed("Цвет", Group = "Вид"), EdColor] public string Color { get; set; } = "#e07030";
     [Ed("Стиль", Group = "Вид")] public CellEffectVisual Visual { get; set; } = CellEffectVisual.Glow;
     [Ed("Эффект появления", Group = "Вид"), EdRef(DefCategory.Vfx)] public string AppearVfx { get; set; } = "";
+    [Ed("Постоянный эффект", "Пока эффект лежит на гексе (огонь, лёд, ядовитая лужа); замена вида не меняет урон", Group = "Вид"), EdRef(DefCategory.Vfx)]
+    public string LoopVfx { get; set; } = "";
     [Ed("Значок", "1–2 символа", Group = "Вид")] public string Icon { get; set; } = "";
     [Ed("Приоритет обработки", "Меньше — раньше", Group = "Прочее")] public int Priority { get; set; }
 }
@@ -235,4 +237,5 @@ public sealed class StatusDef : Def
     [Ed("Значок", "1–2 символа", Group = "Вид")] public string Icon { get; set; } = "";
     [Ed("Показывать шкалу", Group = "Вид")] public bool ShowBar { get; set; } = true;
     [Ed("Эффект наложения", Group = "Вид"), EdRef(DefCategory.Vfx)] public string Vfx { get; set; } = "";
+    [Ed("Иконка-изображение", "Ресурс «Иконка» (назначение «иконка состояния»)", Group = "Вид"), EdRef(DefCategory.Asset)] public string IconAsset { get; set; } = "";
 }

@@ -132,6 +132,12 @@ public sealed class UnitVisualDef
     [Ed("Звук атаки"), EdRef(DefCategory.Asset)] public string AttackSound { get; set; } = "";
     [Ed("Звук получения урона"), EdRef(DefCategory.Asset)] public string HitSound { get; set; } = "";
     [Ed("Звук гибели"), EdRef(DefCategory.Asset)] public string DeathSound { get; set; } = "";
+    // Part 3 (docs/DECISIONS_3.md §47): the look only — size, collisions and rules stay in the unit's data.
+    [Ed("Цветовые варианты", "Оттенки модели; выбор по номеру юнита — не влияет на правила"), EdColor] public List<string> ColorVariants { get; set; } = new();
+    [Ed("Упрощённая модель", "При «упрощённых эффектах»"), EdRef(DefCategory.Asset)] public string SimplifiedModel { get; set; } = "";
+    [Ed("Резервная модель", "Если основная не загрузилась; затем — фишка"), EdRef(DefCategory.Asset)] public string FallbackModel { get; set; } = "";
+    [Ed("Эффект выделения"), EdRef(DefCategory.Vfx)] public string SelectionVfx { get; set; } = "";
+    [Ed("Эффект получения урона"), EdRef(DefCategory.Vfx)] public string HitVfx { get; set; } = "";
 }
 
 public sealed class UnitResourceDef

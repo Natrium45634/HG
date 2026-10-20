@@ -375,7 +375,7 @@ public partial class BattleScreen
                 reason = chk.Reason;
             }
             string icon = !string.IsNullOrEmpty(s.Icon) ? s.Icon : s.DisplayName.Length > 0 ? s.DisplayName[..1] : "•";
-            return new RadialItem(s, s.DisplayName, icon, enabled, reason, _hud.SkillTooltip(s, u), approach);
+            return new RadialItem(s, s.DisplayName, icon, enabled, reason, _hud.SkillTooltip(s, u), approach, Render.Assets.Texture(Sim.Content.Get<AssetDef>(s.IconAsset)));
         }
         var (defense, first, second) = Sim.Planner.RadialSkills(u, RadialMenu.FirstCapacity);
         var defend = actions.FirstOrDefault(x => x.Key == "defend");

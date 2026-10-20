@@ -166,12 +166,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "У",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -341,12 +357,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 16,
+            "spin": 0,
+            "trail": "#e8dcc0",
+            "launchVfx": "",
+            "hitVfx": "spark_burst",
+            "missVfx": "dust_puff",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Projectile",
       "icon": "В",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -556,12 +588,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "К",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -731,12 +779,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Р",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -986,12 +1050,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Щ",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -1241,12 +1321,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Arc",
+            "speed": 9,
+            "spin": 1.5,
+            "trail": "#ff8030",
+            "launchVfx": "",
+            "hitVfx": "fire_burst",
+            "missVfx": "",
+            "cellVfx": "fire_burst",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#ff7a2a",
       "vfx": "Projectile",
       "icon": "Ш",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "fire_burst",
       "sound": "",
@@ -1496,12 +1592,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#8fd8ff",
       "vfx": "Burst",
       "icon": "Л",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -1734,12 +1846,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Instant",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "shock_ring",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#ffe04a",
       "vfx": "Beam",
       "icon": "М",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "spark_burst",
       "sound": "zap",
@@ -1909,12 +2037,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#8acc3a",
       "vfx": "Burst",
       "icon": "Я",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -2084,12 +2228,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#60e080",
       "vfx": "Glow",
       "icon": "+",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "heal_glow",
       "sound": "",
@@ -2259,12 +2419,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Д",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -2475,12 +2651,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "»",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -2650,7 +2842,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Удар",
@@ -2813,12 +3020,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#ff5a1a",
       "vfx": "Slash",
       "icon": "☄",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -3079,12 +3302,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "С",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -3374,12 +3613,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#5aa0e0",
       "vfx": "Slash",
       "icon": "~",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -3553,12 +3808,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Б",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -3728,12 +3999,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "Т",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -3943,12 +4230,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "!",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -4118,12 +4421,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e050e0",
       "vfx": "Slash",
       "icon": "П",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -4293,12 +4612,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "*",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -4468,12 +4803,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "#",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -4643,12 +4994,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "О",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -4818,12 +5185,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "П",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -4993,12 +5376,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "В",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -5208,12 +5607,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 14,
+            "spin": 0,
+            "trail": "#ffe070",
+            "launchVfx": "",
+            "hitVfx": "spark_burst",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#ffe04a",
       "vfx": "Slash",
       "icon": "Э",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -5383,12 +5798,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "О",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -5598,12 +6029,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "П",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -5773,12 +6220,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "К",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -5948,12 +6411,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Instant",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "spark_burst",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#9fe8ff",
       "vfx": "Beam",
       "icon": "Ϟ",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "spark_burst",
       "sound": "",
@@ -6123,12 +6602,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#a98bff",
       "vfx": "Glow",
       "icon": "⇡",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -6298,12 +6793,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#8fd8ff",
       "vfx": "Glow",
       "icon": "Щ",
+      "iconAsset": "crystal_icon",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -6505,12 +7016,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 16,
+            "spin": 0,
+            "trail": "#e8dcc0",
+            "launchVfx": "",
+            "hitVfx": "spark_burst",
+            "missVfx": "dust_puff",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Projectile",
       "icon": "◎",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -6680,7 +7207,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Второй удар",
@@ -6763,7 +7305,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Третий удар",
@@ -6886,12 +7443,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "⚔3",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -7061,7 +7634,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Удар 2",
@@ -7144,7 +7732,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Удар 3",
@@ -7227,7 +7830,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Удар 4",
@@ -7310,12 +7928,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "⚔4",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -7444,12 +8078,28 @@
           "animation": "Block",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "▣",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -7619,12 +8269,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Arc",
+            "speed": 12,
+            "spin": 0,
+            "trail": "#e8dcc0",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "dust_puff",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Projectile",
       "icon": "➶5",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -7794,12 +8460,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": true,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 22,
+            "spin": 0,
+            "trail": "#cfe8ff",
+            "launchVfx": "",
+            "hitVfx": "spark_burst",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "AtTarget",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Projectile",
       "icon": "➵",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -7969,7 +8651,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Отскок",
@@ -8011,12 +8708,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "↠",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -8145,12 +8858,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "↯",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -8320,7 +9049,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Горение",
@@ -8460,12 +9204,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#ff7a2a",
       "vfx": "Projectile",
       "icon": "✺",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "fire_burst",
       "sound": "",
@@ -8594,12 +9354,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "◈",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -8769,7 +9545,22 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         },
         {
           "name": "Щит",
@@ -8852,12 +9643,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#60e080",
       "vfx": "Glow",
       "icon": "✚◇",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "heal_glow",
       "sound": "",
@@ -8986,12 +9793,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Slash",
       "icon": "◐",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",
@@ -9161,12 +9984,28 @@
           "animation": "Attack",
           "animationClip": "",
           "sound": "",
-          "vfx": ""
+          "vfx": "",
+          "projectile": {
+            "enabled": false,
+            "model": "",
+            "trajectory": "Straight",
+            "speed": 12,
+            "spin": 0,
+            "trail": "",
+            "launchVfx": "",
+            "hitVfx": "",
+            "missVfx": "",
+            "cellVfx": "",
+            "sound": "",
+            "vanish": "OnHit",
+            "overObstacles": true
+          }
         }
       ],
       "color": "#e0a040",
       "vfx": "Projectile",
       "icon": "❦",
+      "iconAsset": "",
       "castVfx": "",
       "impactVfx": "",
       "sound": "",

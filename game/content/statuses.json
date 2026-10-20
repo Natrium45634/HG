@@ -259,7 +259,8 @@
       "color": "#7ad04a",
       "icon": "Я",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "burning",
@@ -517,7 +518,8 @@
       "color": "#ff7a2a",
       "icon": "Г",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "bleeding",
@@ -624,7 +626,8 @@
       "color": "#c03030",
       "icon": "К",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "stunned",
@@ -690,7 +693,8 @@
       "color": "#f0e060",
       "icon": "О",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "blinded",
@@ -756,7 +760,8 @@
       "color": "#e0e0e0",
       "icon": "С",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "rooted",
@@ -822,7 +827,8 @@
       "color": "#a07850",
       "icon": "Ц",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "slowed",
@@ -888,7 +894,8 @@
       "color": "#80a0c0",
       "icon": "З",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "chilled",
@@ -1020,7 +1027,8 @@
       "color": "#8fd8ff",
       "icon": "Х",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "fear",
@@ -1086,7 +1094,8 @@
       "color": "#9a60c0",
       "icon": "!",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "silenced",
@@ -1152,7 +1161,8 @@
       "color": "#6070a0",
       "icon": "Н",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "vulnerable",
@@ -1222,7 +1232,8 @@
       "color": "#d06080",
       "icon": "У",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "shielded",
@@ -1288,7 +1299,8 @@
       "color": "#60b0ff",
       "icon": "З",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "invisible",
@@ -1354,7 +1366,8 @@
       "color": "#b0b0d0",
       "icon": "Н",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "resistant",
@@ -1425,7 +1438,8 @@
       "color": "#c0c060",
       "icon": "С",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "mind_control",
@@ -1491,7 +1505,8 @@
       "color": "#e050e0",
       "icon": "К",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "shocked",
@@ -1557,7 +1572,8 @@
       "color": "#ffe04a",
       "icon": "Ш",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "regeneration",
@@ -1664,7 +1680,8 @@
       "color": "#60e080",
       "icon": "Р",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "heat",
@@ -1845,7 +1862,8 @@
       "color": "#ff7a2a",
       "icon": "♨",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "levitation",
@@ -1911,7 +1929,8 @@
       "color": "#a98bff",
       "icon": "⇡",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "wet",
@@ -1977,7 +1996,8 @@
       "color": "#4aa8ff",
       "icon": "М",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "titan_fury",
@@ -2046,7 +2066,8 @@
       "color": "#ff5a3c",
       "icon": "Я",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "absorb_ward",
@@ -2122,7 +2143,8 @@
       "color": "#80c040",
       "icon": "",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "mirror_ward",
@@ -2198,7 +2220,8 @@
       "color": "#80c040",
       "icon": "",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "grounding",
@@ -2264,7 +2287,8 @@
       "color": "#80c040",
       "icon": "",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     },
     {
       "id": "entrenched",
@@ -2330,7 +2354,8 @@
       "color": "#80c040",
       "icon": "",
       "showBar": true,
-      "vfx": ""
+      "vfx": "",
+      "iconAsset": ""
     }
   ]
 }

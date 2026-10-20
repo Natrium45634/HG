@@ -120,6 +120,7 @@ public partial class BoardView : Node3D
     {
         _map = map;
         _db = db;
+        Effects.Db = db;
         Overlay.Bind(map);
         RebuildTerrain();
         FrameCamera();
@@ -172,6 +173,8 @@ public partial class BoardView : Node3D
     /// <summary>Call every frame: rebuilds terrain when the map changed (destruction, freezing...).</summary>
     public void SyncMap(Func<Cell, bool> effectVisible)
     {
+        // Models loaded in the background, one per frame (docs/DECISIONS_3.md §47).
+        Assets.ProcessPending();
         if (_map == null) return;
         if (_map.TerrainVersion != _terrainVersion) RebuildTerrain();
         Effects.Sync(_map, effectVisible);
@@ -204,10 +207,21 @@ public partial class BoardView : Node3D
         return v;
     }
 
+    /// <summary>
+    /// The game speed for the look (docs/DECISIONS_3.md §47): model clips and procedural animation follow it — a pause
+    /// freezes them, acceleration speeds them up, so the hit marker meets the battle's moment at every speed.
+    /// </summary>
+    public float TimeScale { get; set; } = 1;
+
     public void SyncUnits(Simulation sim, double alpha, Func<Unit, bool> visible, Func<Unit, bool> ghost, float delta)
     {
         LayoutStacks(sim, visible);
-        foreach (var u in sim.Units) ViewOf(u).Sync(sim, sim.Map, alpha, visible(u), ghost(u), delta);
+        foreach (var u in sim.Units)
+        {
+            var v = ViewOf(u);
+            v.TimeScale = TimeScale;
+            v.Sync(sim, sim.Map, alpha, visible(u), ghost(u), delta);
+        }
         // Units removed from the simulation entirely.
         foreach (var id in new List<int>(_views.Keys))
         {

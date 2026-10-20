@@ -52,6 +52,13 @@ public partial class BattleScreen : Node
     private List<ProjectedCommand> _proj = new();
     private (int Unit, string Key, long Tick)? _projKey;
     private readonly Dictionary<int, List<HexCoord>> _trails = new();
+    // Presentation of a series (docs/DECISIONS_3.md §47): resolved stages since the unit's last release, and hit
+    // numbers held back until the stage's projectile arrives (the log is never delayed).
+    private readonly Dictionary<int, int> _stagesShown = new();
+    private readonly List<(double At, SimEvent Event)> _lagged = new();
+    private double _clock;
+    /// <summary>Hit presentations waiting for their projectile (UI tests).</summary>
+    public int LaggedHits => _lagged.Count;
     private SkillPreview? _skillPreview;
     private string _hint = "";
     private bool _diag;
@@ -380,11 +387,25 @@ public partial class BattleScreen : Node
         float dt = (float)delta;
         if (_initialCameraFrames > 0 && --_initialCameraFrames == 0) InitialCamera(_initialCameraUnit);
         Driver.Advance(delta);
-        foreach (var e in Sim.DrainEvents()) OnSimEvent(e);
+        _clock += delta;
+        var batch = Sim.DrainEvents();
+        var lag = ProjectileLag(batch);
+        for (int i = 0; i < batch.Count; i++)
+        {
+            if (lag.TryGetValue(i, out double d)) OnSimEvent(batch[i], d);
+            else OnSimEvent(batch[i]);
+        }
+        for (int i = 0; i < _lagged.Count; i++)
+            if (_lagged[i].At <= _clock)
+            {
+                PresentEvent(_lagged[i].Event);
+                _lagged.RemoveAt(i--);
+            }
 
         bool fog = Sim.FogOfWar && !_admin;
         Board.SyncMap(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));
         UpdateBlockCaptions();
+        Board.TimeScale = (float)Driver.Speed;
         Board.SyncUnits(Sim, Driver.Alpha, UnitVisible, _ => false, dt);
         foreach (var v in Board.Views.Values) v.ShowName = _diag && v.Unit.AiControlled;
         Board.SyncFog(Sim, fog);
@@ -405,12 +426,66 @@ public partial class BattleScreen : Node
         return Sim.Vision.IsVisibleToPlayer(u);
     }
 
-    private void OnSimEvent(SimEvent e)
+    private void OnSimEvent(SimEvent e, double lag = 0)
     {
         bool visible = e.PlayerVisible || _admin;
         _hud.AppendLog(e, visible);
-        if (visible) PlayEventVisuals(e);
-        if (!visible || !Settings.FloatingNumbers) return;
+        if (!visible) return;
+        if (lag > 0) _lagged.Add((_clock + lag, e));
+        else PresentEvent(e);
+    }
+
+    /// <summary>
+    /// The hits of a stage with a flying projectile (docs/DECISIONS_3.md §47): their numbers, flashes and hit effects
+    /// wait for the projectile to arrive — index in the batch → delay, s. Only the look waits; the battle has already
+    /// counted the damage.
+    /// </summary>
+    private Dictionary<int, double> ProjectileLag(List<SimEvent> batch)
+    {
+        var lag = new Dictionary<int, double>();
+        for (int j = 0; j < batch.Count; j++)
+        {
+            var e = batch[j];
+            if (e.Type != SimEventType.StageResolved || StageOf(e) is not { } st || !st.Projectile.Enabled) continue;
+            var src = Sim.GetUnit(e.SourceUnit);
+            if (src == null) continue;
+            var (from, to, _) = StageEnds(e, src);
+            double flight = Render.Vfx.FlightTime(st.Projectile, from, to, Driver.Speed);
+            if (flight <= 0) continue;
+            for (int i = j - 1; i >= 0; i--)
+            {
+                var h = batch[i];
+                if (h.Type is SimEventType.StageResolved or SimEventType.CastReleased && h.SourceUnit == e.SourceUnit) break;
+                if (h.SourceUnit == e.SourceUnit && h.Type is SimEventType.Damage or SimEventType.Miss or SimEventType.Block or SimEventType.Crit
+                        or SimEventType.Surprise or SimEventType.Heal or SimEventType.StatusApplied)
+                    lag[i] = flight;
+            }
+        }
+        return lag;
+    }
+
+    private SkillStageDef? StageOf(SimEvent e)
+    {
+        var skill = Sim.Content.Skill(e.DamageType);
+        int idx = e.Value >= 0 ? (int)Math.Round(e.Value) : -(int)Math.Round(e.Value) - 1;
+        return skill != null && idx >= 0 && idx < skill.Stages.Count ? skill.Stages[idx] : null;
+    }
+
+    /// <summary>Where a stage's look starts (the caster's projectile point) and ends (the target or the anchor cell).</summary>
+    private (Vector3 From, Vector3 To, Vector3 Cell) StageEnds(SimEvent e, Unit src)
+    {
+        var from = Board.ViewOf(src).AttachmentPos(AttachmentPoint.Projectile);
+        var target = Sim.GetUnit(e.TargetUnit);
+        var anchor = e.Cell ?? src.Pos;
+        var cell = Render.Board.Center(anchor, Render.Board.TopY(Sim.Map.Get(anchor)) + 0.05f);
+        var to = target != null ? Board.UnitPos(target) + new Vector3(0, 0.45f, 0) : cell + new Vector3(0, 0.2f, 0);
+        return (from, to, cell);
+    }
+
+    private void PresentEvent(SimEvent e)
+    {
+        PlayEventVisuals(e);
+        if (!Settings.FloatingNumbers) return;
         var target = Sim.GetUnit(e.TargetUnit);
         Vector3? pos = target != null ? Board.UnitPos(target) : e.Cell.HasValue ? Render.Board.Center(e.Cell.Value, Render.Board.TopY(Sim.Map.Get(e.Cell.Value))) : null;
         if (pos == null) return;
@@ -484,11 +559,29 @@ public partial class BattleScreen : Node
             case SimEventType.CastStarted when src?.Casting != null:
                 Fx(src.Casting.Skill.CastVfx, Board.UnitPos(src));
                 break;
-            case SimEventType.CastReleased when src?.Casting != null:
-            {
-                var skill = src.Casting.Skill;
-                Fx(skill.ImpactVfx, CellPos(src.Casting.Anchor));
+            case SimEventType.CastReleased when src != null && db.Skill(e.DamageType) is { } skill:
+                // The cast is already released here: the skill comes with the event, the point is the event's cell.
+                _stagesShown[src.Id] = 0;
+                Fx(skill.ImpactVfx, e.Cell.HasValue ? CellPos(e.Cell.Value) : Board.UnitPos(src));
                 Snd(string.IsNullOrEmpty(skill.Sound) ? src.Def.Visual.AttackSound : skill.Sound, Board.UnitPos(src));
+                break;
+            case SimEventType.StageResolved when src != null && StageOf(e) is { } st:
+            {
+                // Later hits of a series replay the strike clip from its «проверка попадания» marker.
+                int shown = _stagesShown.GetValueOrDefault(src.Id);
+                _stagesShown[src.Id] = shown + 1;
+                var view = Board.ViewOf(src);
+                if (shown > 0) view.ReplayStrike(st.Animation);
+                bool hit = e.Value >= 0;
+                var (from, to, cell) = StageEnds(e, src);
+                if (!hit && target != null) to += (to - from).Normalized() * 0.6f + new Vector3(0, 0.25f, 0);
+                Snd(st.Sound, Board.UnitPos(src));
+                if (st.Projectile.Enabled)
+                {
+                    var color = Ui.Parse(db.Skill(e.DamageType)?.Color ?? "", Ui.Accent);
+                    Render.Vfx.Projectile(Board, st.Projectile, from, to, cell, color, db, hit, st.Vfx, Driver.Speed);
+                }
+                else if (hit) Fx(st.Vfx, to);
                 break;
             }
             case SimEventType.Damage when e.Value > 0 && target != null:

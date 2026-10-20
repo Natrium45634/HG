@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
 using HexTactics.Core.Sim;
+using HexTactics.Game.App;
 using HexTactics.Game.UI;
 
 namespace HexTactics.Game.Editor;
@@ -17,6 +18,7 @@ public partial class SkillEditorPanel
     private VBoxContainer _seriesTab = null!;
     private readonly SkillTestOptions _testOptions = new();
     private SkillTestResult? _lastRun;
+    private string _timingNote = "";
 
     private void RefreshSeriesTab()
     {
@@ -58,6 +60,33 @@ public partial class SkillEditorPanel
         bar.AddChild(Ui.Button("Шаблон «Три удара»", ThreeHitsTemplate, "Три удара по 70 %, 85 % и 120 % с эффектами урона первого этапа"));
         bar.AddChild(Ui.Button("Шаблон «Серия N»", RepeatTemplate, "Один этап, повторённый 5 раз через 0,25 с (серия стрел)"));
         _seriesTab.AddChild(bar);
+
+        // Timing from the clip's hit markers (docs/DECISIONS_3.md §47).
+        var models = AnimationTiming.Candidates(Ctx.Db, s);
+        if (models.Count > 0)
+        {
+            var timing = Ui.HBox(6);
+            var pickModel = new OptionButton { Name = "TimingModel", FocusMode = FocusModeEnum.None, TooltipText = "Модель, чьи маркеры «проверка попадания» станут задержками ударов" };
+            foreach (var m in models) pickModel.AddItem(m.DisplayName);
+            var take = Ui.Button("Взять тайминг из анимации", () =>
+            {
+                var model = models[Math.Max(0, pickModel.Selected)];
+                string done = AnimationTiming.Apply(s, model);
+                if (done == "")
+                {
+                    Dialogs.Info(this, "Тайминг из анимации", $"В клипе удара модели «{model.DisplayName}» нет маркеров «проверка попадания» или «выпуск снаряда» — добавьте их в ресурсе модели (Анимации → Маркеры).");
+                    return;
+                }
+                _timingNote = done;
+                OnEdited(s);
+                RefreshAll();
+            }, "Задержки ударов = моменты маркеров клипа (первый маркер — момент срабатывания)");
+            take.Name = "TakeAnimationTiming";
+            timing.AddChild(take);
+            timing.AddChild(pickModel.Expand());
+            _seriesTab.AddChild(timing);
+            if (_timingNote != "") _seriesTab.AddChild(Ui.Label(_timingNote, 12, Ui.Good, wrap: true).Also(l => l.Name = "TimingNote"));
+        }
 
         foreach (var i in Ctx.IssuesOf(s).Where(i => i.Path.StartsWith("Stages", StringComparison.Ordinal) || i.Path is "OnResourceOut" or "FreeIf" or "RetargetOnDeath" || i.Path.StartsWith("Defense", StringComparison.Ordinal)))
             _seriesTab.AddChild(Ui.Label($"{(i.Severity == IssueSeverity.Error ? "✗" : "⚠")} {i.Message}", 13, i.Severity == IssueSeverity.Error ? Ui.Bad : Ui.Warn, wrap: true));

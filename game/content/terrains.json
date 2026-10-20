@@ -29,7 +29,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -82,7 +87,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -135,7 +145,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -188,7 +203,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -241,7 +261,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -294,7 +319,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -347,7 +377,12 @@
         "depth": 0.25,
         "animation": "Shimmer",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -400,7 +435,12 @@
         "depth": 0.7,
         "animation": "Shimmer",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -453,7 +493,12 @@
         "depth": 2.5,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -506,7 +551,12 @@
         "depth": 0,
         "animation": "Pulse",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -559,7 +609,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -612,7 +667,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -665,7 +725,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": "supply_crate"
+        "propModel": "supply_crate",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -718,7 +783,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -771,7 +841,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -824,7 +899,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -877,7 +957,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -930,7 +1015,12 @@
         "depth": 0,
         "animation": "Shimmer",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -983,7 +1073,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1036,7 +1131,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1089,7 +1189,16 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "tech_panel",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [
+          { "topTexture": "", "topMaterial": "tech_panel", "tint": "", "weight": 3 },
+          { "topTexture": "", "topMaterial": "tech_panel", "tint": "#a8ecff", "weight": 1 },
+          { "topTexture": "", "topMaterial": "tech_panel", "tint": "#8c96a6", "weight": 1 }
+        ],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1142,7 +1251,12 @@
         "depth": 14,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1195,7 +1309,12 @@
         "depth": 0.35,
         "animation": "Flow",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "lava_embers",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1248,7 +1367,12 @@
         "depth": 0.3,
         "animation": "Pulse",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1301,7 +1425,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,
@@ -1354,7 +1483,12 @@
         "depth": 0,
         "animation": "None",
         "topMaterial": "",
-        "propModel": ""
+        "propModel": "",
+        "topTexture": "",
+        "sideMaterial": "",
+        "variants": [],
+        "persistentVfx": "",
+        "simpleWithoutTextures": true
       },
       "pit": {
         "enterable": true,

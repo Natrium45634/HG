@@ -188,6 +188,7 @@ public sealed class SkillDef : Def
     [Ed("Цвет", Group = "Вид"), EdColor] public string Color { get; set; } = "#e0a040";
     [Ed("Визуальный эффект", Group = "Вид")] public SkillVfx Vfx { get; set; } = SkillVfx.Slash;
     [Ed("Значок", "1–2 символа на кнопке", Group = "Вид")] public string Icon { get; set; } = "";
+    [Ed("Иконка-изображение", "Ресурс «Иконка» (назначение «иконка навыка»); пусто — значок", Group = "Вид"), EdRef(DefCategory.Asset)] public string IconAsset { get; set; } = "";
     [Ed("Эффект подготовки", "Ресурс «Визуальный эффект» у исполнителя", Group = "Вид"), EdRef(DefCategory.Vfx)] public string CastVfx { get; set; } = "";
     [Ed("Эффект срабатывания", "В точке навыка", Group = "Вид"), EdRef(DefCategory.Vfx)] public string ImpactVfx { get; set; } = "";
     [Ed("Звук", Group = "Вид"), EdRef(DefCategory.Asset)] public string Sound { get; set; } = "";
@@ -256,6 +257,7 @@ public sealed class SkillStageDef
     [Ed("Клип", "Необязательно: имя клипа вместо роли", Group = "Вид")] public string AnimationClip { get; set; } = "";
     [Ed("Звук", Group = "Вид"), EdRef(DefCategory.Asset)] public string Sound { get; set; } = "";
     [Ed("Визуальный эффект", Group = "Вид"), EdRef(DefCategory.Vfx)] public string Vfx { get; set; } = "";
+    [Ed("Снаряд", "Модель, траектория, скорость, след, эффекты; только вид — урон считает этап", Group = "Вид")] public ProjectileDef Projectile { get; set; } = new();
 
     [JsonIgnore] public bool HasDamage => Effects.Exists(e => e.Type == EffectType.Damage);
 }

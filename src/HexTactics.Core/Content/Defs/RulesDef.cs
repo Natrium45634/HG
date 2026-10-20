@@ -22,6 +22,8 @@ public sealed class RulesDef
     [Ed("Маркеры появления врагов")] public SpawnWarningRules SpawnWarnings { get; set; } = new();
     [Ed("Эффекты окружения", "Визуальные эффекты и звуки событий: появление эффектов, ловушки, разрушение, смена местности, падение")]
     public EnvironmentVisualsDef Visuals { get; set; } = new();
+    [Ed("Ресурсы: лимиты", "Размеры и форматы импортируемых текстур, моделей, анимаций и звуков (docs/DECISIONS_3.md §47)")]
+    public AssetLimitsDef Assets { get; set; } = new();
     [Ed("Видимость")] public VisionRules Vision { get; set; } = new();
     [Ed("Очередь команд")] public QueueRules Queue { get; set; } = new();
     [Ed("Ограничения")] public LimitRules Limits { get; set; } = new();

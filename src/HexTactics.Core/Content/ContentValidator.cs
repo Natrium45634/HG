@@ -62,6 +62,11 @@ public static class ContentValidator
         foreach (var s in db.All<SynergyDef>()) CheckSynergy(db, s, issues);
         foreach (var s in db.All<SkillDef>()) CheckSkill(db, s, issues);
         foreach (var p in db.All<PassiveDef>()) CheckPassive(db, p, issues);
+        foreach (var a in db.All<AssetDef>()) CheckAsset(db, a, issues);
+        foreach (var v in db.All<VfxDef>()) CheckVfx(db, v, issues);
+        double totalMb = db.All<AssetDef>().Sum(a => a.Size) / 1048576.0;
+        if (totalMb > db.Rules.Assets.WarnTotalMb)
+            issues.Add(new ContentIssue(IssueSeverity.Warning, "Ресурсы", "Size", $"Ресурсы пакета занимают {totalMb:0} МБ — больше {db.Rules.Assets.WarnTotalMb:0} МБ"));
         foreach (var m in db.All<MapDef>()) CheckMap(db, m, issues);
         foreach (var s in db.All<ScenarioDef>()) CheckScenario(db, s, issues);
 
@@ -466,6 +471,79 @@ public static class ContentValidator
         {
             issues.Add(Warn(s, "Defense", "Защитный навык без защиты (раздел «Защита» выключен) и без щита/состояния на себя"));
         }
+    }
+
+    /// <summary>Resources against the configured limits and their own settings (docs/DECISIONS_3.md §47).</summary>
+    private static void CheckAsset(ContentDatabase db, AssetDef a, List<ContentIssue> issues)
+    {
+        var lim = db.Rules.Assets;
+        if (a.Kind is AssetKind.Texture or AssetKind.Sprite or AssetKind.Icon && a.Width > 0)
+        {
+            var t = lim.For(a.Purpose);
+            int side = Math.Max(a.Width, a.Height);
+            if (side > t.Max) issues.Add(Err(a, "Purpose", $"{a.Width}×{a.Height} больше максимума {t.Max} для назначения «{a.Purpose}»"));
+            else if (side > t.RecommendedMax * 2) issues.Add(Warn(a, "Purpose", $"{a.Width}×{a.Height} чрезмерно для «{a.Purpose}» (рекомендуется до {t.RecommendedMax})"));
+            if (t.NeedsAlpha && !a.HasAlpha) issues.Add(Warn(a, "HasAlpha", "Назначению нужна прозрачность, а у изображения нет альфа-канала"));
+        }
+        if (a.Kind == AssetKind.Model)
+        {
+            if (a.Triangles > lim.WarnTriangles) issues.Add(Warn(a, "Triangles", $"Треугольников {a.Triangles:N0} — больше {lim.WarnTriangles:N0}"));
+            if (a.Bones > lim.WarnBones) issues.Add(Warn(a, "Bones", $"Костей {a.Bones} — больше {lim.WarnBones}"));
+            var mapped = new HashSet<string>(a.Animations.SelectMany(m => m.Variants.Append(m.Clip)));
+            var extra = a.Clips.Where(c => !mapped.Contains(c)).ToList();
+            if (extra.Count > 0) issues.Add(Info(a, "Animations", "Анимации без роли (не используются): " + string.Join(", ", extra)));
+            for (int i = 0; i < a.Animations.Count; i++)
+            {
+                var m = a.Animations[i];
+                foreach (var clip in m.Variants.Append(m.Clip))
+                    if (!string.IsNullOrEmpty(clip) && a.Clips.Count > 0 && !a.Clips.Contains(clip))
+                        issues.Add(Warn(a, $"Animations[{i}]", $"Клипа «{clip}» нет в файле модели"));
+                int ci = a.Clips.IndexOf(m.Clip);
+                double len = ci >= 0 && ci < a.ClipLengths.Count ? a.ClipLengths[ci] : 0;
+                foreach (var mk in m.Markers)
+                    if (len > 0 && mk.Time > len + 1e-6)
+                        issues.Add(Warn(a, $"Animations[{i}].Markers", $"Маркер «{mk.Kind}» ({mk.Time:0.##} с) позже конца клипа ({len:0.##} с)"));
+                if (len > lim.WarnAnimationSeconds) issues.Add(Warn(a, $"Animations[{i}]", $"Клип «{m.Clip}» {len:0.#} с — больше {lim.WarnAnimationSeconds:0} с"));
+            }
+            if (a.Fallback == a.Id || a.Simplified == a.Id) issues.Add(Err(a, "Fallback", "Модель не может быть резервной или упрощённой для самой себя"));
+        }
+        if (a.Kind == AssetKind.Sound && a.Duration > lim.WarnSoundSeconds)
+            issues.Add(Warn(a, "Duration", $"Звук {a.Duration:0.#} с — для эффектов желательно до {lim.WarnSoundSeconds:0} с"));
+        if (a.Kind == AssetKind.Material)
+        {
+            foreach (var (field, id) in new[] { ("NormalMap", a.NormalMap), ("RoughnessMap", a.RoughnessMap), ("MetallicMap", a.MetallicMap), ("EmissionMap", a.EmissionMap), ("DetailMask", a.DetailMask), ("DetailTexture", a.DetailTexture) })
+                if (!string.IsNullOrEmpty(id) && db.Get<AssetDef>(id) is { } t && t.Kind is not (AssetKind.Texture or AssetKind.Icon or AssetKind.Sprite))
+                    issues.Add(Err(a, field, $"«{t.DisplayName}» — не текстура"));
+            if (!string.IsNullOrEmpty(a.DetailMask) && string.IsNullOrEmpty(a.DetailTexture))
+                issues.Add(Warn(a, "DetailTexture", "Маска деталей без текстуры деталей ничего не покажет"));
+        }
+        if (a.Variants.Contains(a.Id)) issues.Add(Err(a, "Variants", "Звук не может быть своим вариантом"));
+    }
+
+    private static void CheckVfx(ContentDatabase db, VfxDef v, List<ContentIssue> issues)
+    {
+        if (v.Type == VfxType.Composite)
+        {
+            // Layers must not lead back to the effect itself.
+            var seen = new HashSet<string>();
+            var stack = new Stack<string>(v.Layers);
+            while (stack.Count > 0)
+            {
+                var id = stack.Pop();
+                if (id == v.Id)
+                {
+                    issues.Add(Err(v, "Layers", "Слои эффекта ссылаются на него самого (цикл)"));
+                    break;
+                }
+                if (!seen.Add(id)) continue;
+                foreach (var l in db.Get<VfxDef>(id)?.Layers ?? new List<string>()) stack.Push(l);
+            }
+            if (v.Layers.Count == 0) issues.Add(Warn(v, "Layers", "Комбинация без слоёв"));
+        }
+        if (v.Type is VfxType.Texture or VfxType.AnimatedTexture or VfxType.Decal && string.IsNullOrEmpty(v.Texture))
+            issues.Add(Warn(v, "Texture", "Не выбрана текстура — будет показан цветной круг"));
+        if (v.Type == VfxType.Model && string.IsNullOrEmpty(v.Model)) issues.Add(Warn(v, "Model", "Не выбрана модель — будет показана вспышка частиц"));
+        if (v.Simplified == v.Id) issues.Add(Err(v, "Simplified", "Эффект не может быть своим упрощённым вариантом"));
     }
 
     /// <summary>Passives and talents: modifiers, conditions, triggers, auras (docs/DECISIONS_3.md §46).</summary>

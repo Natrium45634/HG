@@ -64,6 +64,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_catalog_and_publish_gate", EditorCatalogAndGate));
         _tests.Add(("battle_models_animations_fallback", BattleModelsAndFallback));
         _tests.Add(("editor_asset_import", EditorAssetImport));
+        _tests.Add(("editor_import_window_assign_requirements", EditorImportWindow));
+        _tests.Add(("battle_projectiles_loop_vfx_icons", BattleProjectilesAndLoops));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -784,6 +786,14 @@ public partial class UiTestRunner : Node
         await Frames(4);
         Check(Find<Button>(panel).Any(b => b.Name == "SeriesStage_2" && b.Text.Contains("Удар 3") && b.Text.Contains("120 %")), "на вкладке «Серия» нет третьего удара 120 %");
         var run = Find<Button>(panel).First(b => b.Name == "SeriesTestRun");
+        // The tab scrolls: bring the button into view before clicking it like a player would.
+        for (Node? n = run.GetParent(); n != null; n = n.GetParent())
+            if (n is ScrollContainer sc)
+            {
+                sc.EnsureControlVisible(run);
+                break;
+            }
+        await Frames(3);
         await Click(run.GetGlobalRect().GetCenter());
         await Frames(4);
         Check(Find<Label>(panel).Any(l => l.Text.StartsWith("Удар 3 →")), "прогон не показал третий удар");
@@ -1250,6 +1260,11 @@ public partial class UiTestRunner : Node
         {
             await OpenEditor("assets");
             await ClickButton("Импорт файла…");
+            // The same bytes as the shipped pylon: reuse is offered; here a separate resource is wanted.
+            var reuse = Find<CheckBox>(ImportDialog()!).First(c => c.Name == "ImportReuse");
+            Check(reuse.Visible && reuse.ButtonPressed && reuse.Text.Contains("crystal_pylon"), "совпадающий файл должен предлагаться: " + reuse.Text);
+            reuse.ButtonPressed = false;
+            await ConfirmImport();
             Check(Find<AcceptDialog>(GetTree().Root).Any(d => d.Visible && d.Title == "Ресурс импортирован"),
                 "модель должна импортироваться: " + string.Join(" | ", Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).Select(d => d.Title + ": " + d.DialogText)));
             var def = cm.Draft!.Get<AssetDef>("scout_drone");
@@ -1262,7 +1277,9 @@ public partial class UiTestRunner : Node
             next = script;
             int before = cm.Draft!.All<AssetDef>().Count();
             await ClickButton("Импорт файла…");
-            Check(InfoVisible("исполняемый код"), "скрипт должен быть отклонён");
+            Check(ImportText().Contains("исполняемый код"), "скрипт должен быть отклонён: " + ImportText());
+            await ConfirmImport();
+            Check(Dialog(AssetImportDialog.Title) != null, "окно импорта отклонённого файла не должно закрываться по «Создать ресурс»");
             Check(cm.Draft.All<AssetDef>().Count() == before, "отклонённый файл не создаёт ресурс");
             CloseDialogs();
         }
@@ -1270,6 +1287,236 @@ public partial class UiTestRunner : Node
         {
             Dialogs.AutoPath = null;
         }
+    }
+
+    // ------------------------------------------------------------------ part 3, stage 7
+
+    private ConfirmationDialog? ImportDialog() => Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Name == "AssetImportDialog");
+
+    private string ImportText()
+    {
+        var d = ImportDialog() ?? Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(x => x.Visible && x.Name == "AssetCheckDialog");
+        return d == null ? "(окна импорта нет)" : string.Join("\n", Find<Label>(d).Where(l => l.IsVisibleInTree()).Select(l => l.Text));
+    }
+
+    private async Task ConfirmImport()
+    {
+        var d = ImportDialog();
+        Check(d != null, "окно импорта не открылось");
+        d!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        await Frames(4);
+    }
+
+    private static void SelectOption(OptionButton o, Func<string, bool> match)
+    {
+        for (int i = 0; i < o.ItemCount; i++)
+            if (match(o.GetItemText(i)))
+            {
+                o.Select(i);
+                o.EmitSignal(OptionButton.SignalName.ItemSelected, i);
+                return;
+            }
+        throw new Exception("нет пункта в списке: " + string.Join(" | ", Enumerable.Range(0, o.ItemCount).Select(o.GetItemText)));
+    }
+
+    /// <summary>
+    /// Part 3, stage 7 (docs/DECISIONS_3.md §47): the import window analyses generated PNG/TGA/OBJ/WAV files against the
+    /// limits, reduces a too-large image, assigns the resource to a skill, a terrain and a unit sound; a script is
+    /// refused; the requirements page exports TXT and HTML; «Проверить файл» only analyses.
+    /// </summary>
+    private async Task EditorImportWindow()
+    {
+        var cm = Main.Instance.Content;
+        string dir = ProjectSettings.GlobalizePath("user://uitest/import3");
+        Directory.CreateDirectory(dir);
+        var big = Image.CreateEmpty(2048, 2048, false, Image.Format.Rgba8);
+        big.Fill(new Color(0.2f, 0.6f, 1f, 0.8f));
+        string png = System.IO.Path.Combine(dir, "Big Icon.png");
+        big.SavePng(png);
+        // TGA 4×4, 32 bit, by hand (the engine reads TGA but does not write it).
+        var tga = new byte[18 + 4 * 4 * 4];
+        tga[2] = 2; tga[12] = 4; tga[14] = 4; tga[16] = 32; tga[17] = 8;
+        for (int i = 18; i < tga.Length; i++) tga[i] = (byte)(i % 4 == 3 ? 255 : 90 + i % 60);
+        string tgaPath = System.IO.Path.Combine(dir, "hex_tile.tga");
+        File.WriteAllBytes(tgaPath, tga);
+        string obj = System.IO.Path.Combine(dir, "pillar.obj");
+        File.WriteAllText(obj, "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nv 0 0 1\nv 1 0 1\nv 1 1 1\nv 0 1 1\n" +
+                               "f 1 2 3 4\nf 5 6 7 8\nf 1 2 6 5\nf 2 3 7 6\nf 3 4 8 7\nf 4 1 5 8\n");
+        string wav = System.IO.Path.Combine(dir, "clang.wav");
+        File.WriteAllBytes(wav, Render.Assets.Read("assets/sounds/chime.wav")!);
+        string next = png;
+        Dialogs.AutoPath = _ => next;
+        try
+        {
+            await OpenEditor("assets");
+            var db = cm.Draft!;
+            // 1. A 2048 image as a skill icon: larger than the maximum → reduce → assign to «Щит веры».
+            await ClickButton("Импорт файла…");
+            var dlg = ImportDialog();
+            Check(dlg != null, "окно импорта не открылось");
+            Check(ImportText().Contains("2048×2048") && ImportText().Contains("альфа-канал: есть"), "окно должно показать размеры и альфа-канал: " + ImportText());
+            var assign = Find<OptionButton>(dlg!).First(o => o.Name == "ImportAssign");
+            SelectOption(assign, t => t.StartsWith("Навык «Щит веры» — иконка"));
+            await Frames(2);
+            var purpose = Find<OptionButton>(dlg!).First(o => o.Name == "ImportPurpose");
+            Check(purpose.GetSelectedId() == (int)TexturePurpose.SkillIcon, "назначение должно стать «иконка навыка» по выбранному объекту");
+            Check(ImportText().Contains("больше максимума 1024×1024"), "иконка 2048 больше максимума: " + ImportText());
+            var resize = Find<CheckBox>(dlg!).First(c => c.Name == "ImportResize");
+            Check(resize.Visible, "должно предлагаться уменьшение");
+            resize.ButtonPressed = true;
+            await Frames(2);
+            Check(ImportText().Contains("1024×1024") && ImportText().Contains("Уменьшено"), "после уменьшения — 1024×1024: " + ImportText());
+            Check(Find<TextureRect>(dlg!).Any(t => t.Name == "ImportPreviewImage" && t.Texture != null), "должен быть предпросмотр изображения");
+            await ConfirmImport();
+            var icon = db.Get<AssetDef>(db.Skill("aegis")!.IconAsset);
+            Check(icon != null && icon.Width == 1024 && icon.Path.EndsWith(".png") && icon.Purpose == TexturePurpose.SkillIcon, "иконка навыка не назначена: " + db.Skill("aegis")!.IconAsset);
+            Check(Render.Assets.Texture(icon) is { } t1 && t1.GetWidth() == 1024, "уменьшенная иконка должна загружаться");
+            CloseDialogs();
+            await Frames(2);
+
+            // 2. A TGA as a hex top texture.
+            next = tgaPath;
+            await ClickButton("Импорт файла…");
+            Check(ImportText().Contains("4×4") && ImportText().Contains("TGA"), "TGA: " + ImportText());
+            SelectOption(Find<OptionButton>(ImportDialog()!).First(o => o.Name == "ImportAssign"), t => t.StartsWith("Местность «Платформа» — текстура верха") || t.StartsWith("Местность «Пол» — текстура верха"));
+            await Frames(2);
+            Check(Find<OptionButton>(ImportDialog()!).First(o => o.Name == "ImportPurpose").GetSelectedId() == (int)TexturePurpose.HexSurface, "назначение — поверхность гекса");
+            Check(ImportText().Contains("меньше рекомендуемого"), "маленькая текстура — совет: " + ImportText());
+            await ConfirmImport();
+            var terrain = db.All<TerrainDef>().First(x => x.Id is "platform" or "floor" && x.Look.TopTexture != "");
+            Check(Render.Assets.Texture(db.Get<AssetDef>(terrain.Look.TopTexture)) != null, "TGA должна загружаться как текстура верха");
+            CloseDialogs();
+            await Frames(2);
+
+            // 3. OBJ — static geometry; the engine counts the triangles in the preview.
+            next = obj;
+            await ClickButton("Импорт файла…");
+            Check(ImportText().Contains("треугольников 12"), "OBJ: 6 четырёхугольников = 12 треугольников: " + ImportText());
+            Check(Find<Label>(ImportDialog()!).Any(l => l.Name == "ImportEngineStats" && l.Text.Contains("треугольников 12")), "движок должен прочитать модель: " + ImportText());
+            await ConfirmImport();
+            var pillar = db.All<AssetDef>().First(a => a.SourceFile == "pillar.obj");
+            Check(Render.Assets.Model(pillar) != null, "OBJ должна загружаться");
+            CloseDialogs();
+            await Frames(2);
+
+            // 4. A sound for the knight's hits.
+            next = wav;
+            await ClickButton("Импорт файла…");
+            Check(ImportText().Contains("Звук:") && ImportText().Contains("Гц"), "WAV: " + ImportText());
+            SelectOption(Find<OptionButton>(ImportDialog()!).First(o => o.Name == "ImportAssign"), t => t.StartsWith("Юнит «Рыцарь» — звук получения урона"));
+            // The bytes are the shipped chime: the existing resource is offered and taken (no duplicate file).
+            Check(Find<CheckBox>(ImportDialog()!).Any(c => c.Name == "ImportReuse" && c.Visible && c.ButtonPressed), "совпадающий звук должен предлагаться");
+            await ConfirmImport();
+            Check(db.Unit("knight")!.Visual.HitSound == "chime", "звук рыцаря не назначен: " + db.Unit("knight")!.Visual.HitSound);
+            CloseDialogs();
+            await Frames(2);
+
+            // 4b. glTF with its own texture next to it: the reference is found and the file goes into the pack.
+            Directory.CreateDirectory(System.IO.Path.Combine(dir, "tex"));
+            big.Resize(64, 64);
+            big.SavePng(System.IO.Path.Combine(dir, "tex", "skin.png"));
+            string gltf = System.IO.Path.Combine(dir, "statue.gltf");
+            File.WriteAllText(gltf, "{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{\"nodes\":[0]}],\"nodes\":[{\"name\":\"root\"}],\"images\":[{\"uri\":\"tex/skin.png\"}]}");
+            next = gltf;
+            await ClickButton("Импорт файла…");
+            Check(!ImportText().Contains("tex/skin.png") || !ImportText().Contains("✗"), "внешний файл рядом с моделью должен находиться: " + ImportText());
+            await ConfirmImport();
+            var statue = db.All<AssetDef>().FirstOrDefault(a => a.SourceFile == "statue.gltf");
+            Check(statue != null, "glTF не импортирован: " + ImportText());
+            Check(File.Exists(System.IO.Path.Combine(cm.UserRoot, System.IO.Path.GetDirectoryName(statue!.Path)!, "tex", "skin.png")), "текстура модели должна быть скопирована в пакет");
+            CloseDialogs();
+            await Frames(2);
+            File.WriteAllText(gltf, "{\"asset\":{\"version\":\"2.0\"},\"images\":[{\"uri\":\"tex/lost.png\"}]}");
+            await ClickButton("Импорт файла…");
+            Check(ImportText().Contains("lost.png"), "отсутствующий файл модели должен быть назван: " + ImportText());
+            CloseDialogs();
+            await Frames(2);
+
+            // 5. «Проверить файл» — only the analysis.
+            int count = db.All<AssetDef>().Count();
+            next = png;
+            await ClickButton("Проверить файл…");
+            Check(ImportText().Contains("2048×2048"), "проверка файла должна показать анализ: " + ImportText());
+            CloseDialogs();
+            await Frames(2);
+            Check(db.All<AssetDef>().Count() == count, "проверка не создаёт ресурс");
+
+            // 6. The requirements page: exports and the summary.
+            await OpenEditor("requirements");
+            Check(Find<Label>(GetTree().Root).Any(l => l.Name == "AssetSummary" && l.Text.Contains("Ресурсов:")), "сводка ресурсов");
+            string txt = System.IO.Path.Combine(dir, "req.txt"), html = System.IO.Path.Combine(dir, "req.html");
+            next = txt;
+            await ClickButton("Экспорт TXT…");
+            CloseDialogs();
+            next = html;
+            await ClickButton("Экспорт HTML…");
+            CloseDialogs();
+            Check(File.Exists(txt) && File.ReadAllText(txt).Contains("ТРЕБОВАНИЯ К РЕСУРСАМ") && File.ReadAllText(txt).Contains("Иконка навыка | 128–256 | 1024×1024"), "TXT требований");
+            Check(File.Exists(html) && File.ReadAllText(html).Contains("<table>") && File.ReadAllText(html).Contains("Маркеры анимации"), "HTML требований");
+        }
+        finally
+        {
+            Dialogs.AutoPath = null;
+            CloseDialogs();
+        }
+    }
+
+    /// <summary>
+    /// Part 3, stage 7: a fireball flies to its target as an arc projectile (the hit numbers wait for it), the fire on a
+    /// hex runs its cyclic effect without duplicates, the radial menu shows a skill's image icon.
+    /// </summary>
+    private async Task BattleProjectilesAndLoops()
+    {
+        Render.Assets.Reset();
+        var bs = await OpenBattle("sandbox");
+        var mage = bs.Sim.Units.First(u => u.Def.Id == "mage");
+        var foe = bs.Sim.Units.Where(u => u.Alive && bs.Sim.IsHostile(mage, u)).OrderBy(u => u.Pos.DistanceTo(mage.Pos)).First();
+        bs.Sim.Knowledge.Reveal(foe);
+        var err = bs.Sim.Enqueue(mage, bs.CommandAgainst(mage, bs.Db.Skill("fireball")!, foe));
+        Check(err == null, "приказ «Огненный шар» не принят: " + err);
+        bool flew = false, lagged = false;
+        for (int i = 0; i < 600 && !flew; i++)
+        {
+            bs.Sim.Step();
+            if (bs.Sim.Log.Entries.Any(e => e.Type == SimEventType.StageResolved && e.DamageType == "fireball"))
+            {
+                await Frames(1);
+                lagged = bs.LaggedHits > 0 || lagged;
+                flew = Find<Node3D>(bs.Board).Any(n => n.Name.ToString().StartsWith("Projectile"));
+            }
+        }
+        Check(flew, "снаряд огненного шара не появился");
+        Check(lagged, "числа урона должны ждать прилёта снаряда");
+        await Frames(40);
+        Check(!Find<Node3D>(bs.Board).Any(n => n.Name.ToString() == "Projectile"), "снаряд должен исчезнуть после попадания");
+        Check(bs.LaggedHits == 0, "отложенные попадания должны быть показаны");
+
+        // The fire on a hex: its cyclic effect, not duplicated by a second ignition.
+        var cell = bs.Sim.Map.Get(mage.Pos)!;
+        var fire = bs.Db.CellEffect("fire")!;
+        foreach (var c in new[] { mage.Pos }.Concat(mage.Pos.Neighbors()).Select(bs.Sim.Map.Get).Where(c => c != null))
+            if (bs.Sim.CellEffects.Add(c!, fire, 1, 5, -1, 0, 0) != null)
+            {
+                cell = c!;
+                break;
+            }
+        await Frames(4);
+        int loops = Find<Node3D>(bs.Board.Effects).Count(n => n.HasMeta("vfx") && (string)n.GetMeta("vfx") == "fire_loop");
+        Check(loops == 1, $"циклический эффект огня должен быть один (найдено {loops})");
+
+        // The radial menu: «Щит веры» with its image icon (if the unit knows it).
+        var holder = bs.Sim.Units.FirstOrDefault(u => u.Alive && u.Def.Skills.Contains("aegis") && bs.Sim.IsPlayerFaction(u.FactionId));
+        if (holder != null)
+        {
+            bs.Select(holder);
+            await Frames(3);
+            bs.OpenSkillMenu(null, new Vector2(800, 450));
+            await Frames(3);
+            var b = bs.Hud.Radial.Buttons.FirstOrDefault(x => x.Name == "Radial_aegis");
+            Check(b != null && b.Icon != null, "у «Щита веры» в радиальном меню должна быть иконка-изображение");
+            bs.Hud.Radial.Close();
+        }
+        Render.Assets.Reset();
     }
 
     private async Task ClickHex(BoardViewport vp, HexCoord c)

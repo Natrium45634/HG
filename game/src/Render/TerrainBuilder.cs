@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
 using HexTactics.Core.Geometry;
@@ -146,12 +147,72 @@ public partial class TerrainNode : Node3D
         return true;
     }
 
+    /// <summary>
+    /// Imported look of a cell (docs/DECISIONS_3.md §47): a variant chosen by the coordinates (deterministic, rules
+    /// unchanged), the top texture or material, the side material and the terrain's cyclic effect.
+    /// </summary>
     private void AddTopMaterial(Cell cell, ContentDatabase? db)
     {
-        var id = cell.Terrain.Look.TopMaterial;
-        if (db == null || string.IsNullOrEmpty(id)) return;
-        var mat = Assets.Material(db.Get<AssetDef>(id), db);
+        if (db == null) return;
+        var look = cell.Terrain.Look;
+        bool simplified = App.Main.Instance.Settings.SimplifiedEffects && look.SimpleWithoutTextures;
+        string topMat = look.TopMaterial, topTex = look.TopTexture, tint = "";
+        if (look.Variants.Count > 0)
+        {
+            double total = look.Variants.Sum(v => Math.Max(0, v.Weight));
+            double roll = Hash01(cell.Coord, 31) * total;
+            foreach (var v in look.Variants)
+            {
+                roll -= Math.Max(0, v.Weight);
+                if (roll > 0) continue;
+                if (!string.IsNullOrEmpty(v.TopMaterial)) topMat = v.TopMaterial;
+                if (!string.IsNullOrEmpty(v.TopTexture)) topTex = v.TopTexture;
+                tint = v.Tint;
+                break;
+            }
+        }
+        if (!simplified && !string.IsNullOrEmpty(look.SideMaterial) && Assets.Material(db.Get<AssetDef>(look.SideMaterial), db) is { } side)
+        {
+            float top = Board.TopY(cell) - 0.02f, bottom = BaseY;
+            if (top - bottom > 0.02f)
+                AddChild(new MeshInstance3D
+                {
+                    Name = "SideMat_" + cell.Coord,
+                    Mesh = new CylinderMesh { TopRadius = Board.HexSize * 1.004f, BottomRadius = Board.HexSize * 1.004f, Height = top - bottom, RadialSegments = 6, Rings = 1, CapTop = false, CapBottom = false },
+                    MaterialOverride = side, Position = Board.Center(cell.Coord, (top + bottom) / 2), RotationDegrees = new Vector3(0, 30, 0),
+                });
+        }
+        if (!string.IsNullOrEmpty(look.PersistentVfx) && db.Get<VfxDef>(look.PersistentVfx) is { } vfx)
+            Callable.From(() =>
+            {
+                if (IsInsideTree()) Vfx.Start(this, vfx, Board.Center(cell.Coord, Board.TopY(cell) + 0.02f), db, persistent: true);
+            }).CallDeferred();
+        if (simplified) return;
+        StandardMaterial3D? mat = null;
+        float rotation = 30;
+        if (!string.IsNullOrEmpty(topMat)) mat = Assets.Material(db.Get<AssetDef>(topMat), db);
+        else if (db.Get<AssetDef>(topTex) is { } texAsset && Assets.Texture(texAsset) is { } tex)
+        {
+            mat = new StandardMaterial3D
+            {
+                AlbedoTexture = tex, Roughness = 0.85f,
+                Uv1Scale = new Vector3((float)texAsset.UvScale, (float)texAsset.UvScale, 1), Uv1Offset = new Vector3((float)texAsset.UvOffsetU, (float)texAsset.UvOffsetV, 0),
+                TextureFilter = texAsset.Filter switch
+                {
+                    TextureFilter.Nearest => BaseMaterial3D.TextureFilterEnum.Nearest,
+                    TextureFilter.Linear => BaseMaterial3D.TextureFilterEnum.Linear,
+                    _ => BaseMaterial3D.TextureFilterEnum.LinearWithMipmaps,
+                },
+                TextureRepeat = texAsset.Repeat,
+            };
+            rotation += (float)texAsset.UvRotation;
+        }
         if (mat == null) return;
+        if (!string.IsNullOrEmpty(tint))
+        {
+            mat = (StandardMaterial3D)mat.Duplicate();
+            mat.AlbedoColor *= Ui.Parse(tint, Colors.White);
+        }
         // A thin hexagonal plate over the top face (pointy-top hexes: the prism's corners at 30°).
         var plate = new MeshInstance3D
         {
@@ -159,7 +220,7 @@ public partial class TerrainNode : Node3D
             Mesh = new CylinderMesh { TopRadius = Board.HexSize * 0.9f, BottomRadius = Board.HexSize * 0.9f, Height = 0.012f, RadialSegments = 6, Rings = 1 },
             MaterialOverride = mat,
             Position = Board.Center(cell.Coord, Board.TopY(cell) + 0.008f),
-            RotationDegrees = new Vector3(0, 30, 0),
+            RotationDegrees = new Vector3(0, rotation, 0),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         AddChild(plate);

@@ -323,7 +323,7 @@ public sealed class SkillSystem
         cast.CasterPos = u.Pos;
         if (s.Cooldown > 0 && s.CooldownAt == CostMoment.Release) u.CooldownUntil[s.Id] = _sim.Tick + _sim.TicksFor(s.Cooldown);
         u.LastSkillUse[s.Id] = _sim.Tick;
-        _sim.Emit(SimEventType.CastReleased, LogLevel.Detail, $"{u.Name} применяет «{s.DisplayName}»", u.Id, cast.TargetUnitId, cast.Anchor);
+        _sim.Emit(SimEventType.CastReleased, LogLevel.Detail, $"{u.Name} применяет «{s.DisplayName}»", u.Id, cast.TargetUnitId, cast.Anchor, damageType: s.Id);
         // Series: every stage (hit) N times, at its delay plus the repeat interval (docs/DECISIONS_3.md §45).
         var series = cast.Series;
         // «Количество ударов» of passives: extra repetitions of the last damage stage (docs/DECISIONS_3.md §46).
@@ -762,6 +762,9 @@ public sealed class SkillSystem
             if (killed) PayStage(cast, stage, StageCostWhen.RefundOnKill, label);
             if (!landed) PayStage(cast, stage, StageCostWhen.RefundOnMiss, label);
         }
+
+        _sim.Emit(SimEventType.StageResolved, LogLevel.Diagnostic, $"«{cause}» · {label}", caster.Id, target?.Id ?? -1, cast.Anchor,
+            landed || rolled.Count == 0 ? stageIndex : -(stageIndex + 1), skill.Id);
 
         // 13. Reactions are processed by the reaction queue (depth-limited).
         _sim.Reactions.Process();

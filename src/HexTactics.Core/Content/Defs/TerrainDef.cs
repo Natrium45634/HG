@@ -85,6 +85,12 @@ public sealed class TerrainLookDef
     [Ed("Анимация")] public TerrainAnimation Animation { get; set; } = TerrainAnimation.None;
     [Ed("Материал верхней грани", "Ресурс «Материал»; пусто — по настройкам выше"), EdRef(DefCategory.Asset)] public string TopMaterial { get; set; } = "";
     [Ed("Модель объекта на клетке", "Например, ящик или колонна; при ошибке файла — базовая геометрия"), EdRef(DefCategory.Asset)] public string PropModel { get; set; } = "";
+    // Part 3 (docs/DECISIONS_3.md §47).
+    [Ed("Текстура верхней стороны", "Ресурс «Текстура» (назначение «поверхность гекса»)"), EdRef(DefCategory.Asset)] public string TopTexture { get; set; } = "";
+    [Ed("Материал боковых граней", "Ресурс «Материал»; пусто — цвет граней"), EdRef(DefCategory.Asset)] public string SideMaterial { get; set; } = "";
+    [Ed("Варианты вида", "Выбор по координатам клетки — одинаково при каждом запуске, правила не меняются")] public List<TerrainVariantDef> Variants { get; set; } = new();
+    [Ed("Постоянный эффект", "Визуальный эффект на каждой клетке этой местности (циклический)"), EdRef(DefCategory.Vfx)] public string PersistentVfx { get; set; } = "";
+    [Ed("Упрощённо: без текстур", "При «упрощённых эффектах» — только цвета")] public bool SimpleWithoutTextures { get; set; } = true;
 }
 
 public enum FallConsequence

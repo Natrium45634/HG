@@ -975,10 +975,22 @@ public partial class BattleHud : Control
         foreach (var s in u.Statuses)
         {
             var col = Ui.Parse(s.Def.Color, Ui.Text);
-            string icon = string.IsNullOrEmpty(s.Def.Icon) ? "" : $"[{s.Def.Icon}] ";
+            // An image icon (resource «иконка состояния») replaces the text sign.
+            var image = Render.Assets.Texture(Sim.Content.Get<AssetDef>(s.Def.IconAsset));
+            string icon = image != null || string.IsNullOrEmpty(s.Def.Icon) ? "" : $"[{s.Def.Icon}] ";
+            void Row(Label l)
+            {
+                if (image == null)
+                {
+                    _statuses.AddChild(l);
+                    return;
+                }
+                var tr = new TextureRect { Texture = image, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(18, 18), Name = "StatusIcon_" + s.Def.Id };
+                _statuses.AddChild(Ui.HBox(4, tr, l));
+            }
             if (s.Def.Kind == StatusKind.Accumulating)
             {
-                _statuses.AddChild(Ui.Label($"{icon}{s.LevelName}" + (s.LastGain > 0 || s.Points > 0 ? $" — {s.Points:0}/{s.Def.MaxPoints:0}" : ""), 13, col));
+                Row(Ui.Label($"{icon}{s.LevelName}" + (s.LastGain > 0 || s.Points > 0 ? $" — {s.Points:0}/{s.Def.MaxPoints:0}" : ""), 13, col));
                 if (s.Def.ShowBar)
                 {
                     var b = new Bar { FillColor = col, ShowThresholds = true, Thresholds = s.Def.Levels.Select(l => l.Threshold).ToArray() }.MinSize(300, 10);
@@ -990,7 +1002,7 @@ public partial class BattleHud : Control
             {
                 string time = s.RemainingTicks > 0 ? $" — {s.RemainingTicks * Sim.Dt:0.#} с" : "";
                 string stacks = s.Stacks > 1 ? $" ×{s.Stacks}" : "";
-                _statuses.AddChild(Ui.Label($"{icon}{s.LevelName}{stacks}{time}", 13, col));
+                Row(Ui.Label($"{icon}{s.LevelName}{stacks}{time}", 13, col));
             }
         }
         var flags = new List<string>();
@@ -1213,7 +1225,8 @@ public partial class BattleHud : Control
             if (a.Key == "queue" || a.Key == "info") continue;
             string hot = a.Key switch { "move" => "M", "turn" => "T", "attack" => "F", "defend" => "B", "wait" => "H", _ => "" };
             if (a.Key.StartsWith("skill:")) hot = (++skillN).ToString();
-            string icon = a.Skill != null && !string.IsNullOrEmpty(a.Skill.Icon) ? a.Skill.Icon + " " : a.Key switch { "move" => "➜ ", "turn" => "↻ ", "defend" => "▣ ", "wait" => "‖ ", _ => "" };
+            var image = a.Skill == null ? null : Render.Assets.Texture(Sim.Content.Get<AssetDef>(a.Skill.IconAsset));
+            string icon = image != null ? "" : a.Skill != null && !string.IsNullOrEmpty(a.Skill.Icon) ? a.Skill.Icon + " " : a.Key switch { "move" => "➜ ", "turn" => "↻ ", "defend" => "▣ ", "wait" => "‖ ", _ => "" };
             string cost = a.Skill != null ? $"\n{a.Skill.ApCost:0.#} ОД" : a.Key == "defend" ? $"\n{Sim.Rules.Ap.DefendCost:0.#} ОД" : "\n";
             long cd = a.Skill != null ? u.CooldownRemaining(a.Skill.Id, Sim.Tick) : 0;
             if (cd > 0) cost = $"\n◷ {cd * Sim.Dt:0.#} с";
@@ -1226,6 +1239,13 @@ public partial class BattleHud : Control
                 TooltipText = $"[{hot}] {a.Label}" + (a.Skill != null ? "\n" + SkillTooltip(a.Skill, u) : "") + (a.Enabled ? (a.Warning != "" ? "\n⚠ " + a.Warning : "") : "\nНедоступно: " + a.Reason),
             };
             b.AddThemeFontSizeOverride("font_size", 12);
+            if (image != null)
+            {
+                b.Icon = image;
+                b.ExpandIcon = true;
+                b.IconAlignment = HorizontalAlignment.Left;
+                b.AddThemeConstantOverride("icon_max_width", 28);
+            }
             bool active = (_bs.Mode == InputMode.Move && a.Key == "move") || (_bs.Mode == InputMode.Turn && a.Key == "turn") ||
                           (_bs.Mode == InputMode.Attack && a.Key == "attack") || (_bs.Mode == InputMode.Skill && a.Skill == _bs.ModeSkill && a.Key != "attack");
             if (active) b.AddThemeStyleboxOverride("normal", Ui.Box(new Color(0.34f, 0.30f, 0.20f), Ui.Accent, 5, 2, 8));

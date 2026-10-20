@@ -54,6 +54,7 @@ public partial class EditorScreen : Control
         ("scenarios", "Сценарии", DefCategory.Scenario),
         ("assets", "Ресурсы", DefCategory.Asset),
         ("vfx", "Визуальные эффекты", DefCategory.Vfx),
+        ("requirements", "Требования к ресурсам", null),
         ("rules", "Правила боя", null),
         ("presets", "Пресеты правил", DefCategory.RulesPreset),
         ("catalog", "Каталог операций", null),
@@ -197,6 +198,7 @@ public partial class EditorScreen : Control
             "rules" => new RulesPanel(_ctx),
             "assets" => new AssetPanel(_ctx),
             "vfx" => new VfxPanel(_ctx),
+            "requirements" => new RequirementsPanel(_ctx),
             "presets" => new DefListPanel(_ctx, DefCategory.RulesPreset, "Пресеты правил (выбираются в сценарии)", null, () => new RulesPresetDef
             {
                 Name = "Новый пресет",

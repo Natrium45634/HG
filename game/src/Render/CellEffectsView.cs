@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
 using HexTactics.Core.Sim;
@@ -18,6 +19,9 @@ public partial class CellEffectsView : Node3D
     private float _t;
     private readonly Random _rng = new(1);
 
+    /// <summary>Content for the effects' own looks (cyclic visual effects of docs/DECISIONS_3.md §47).</summary>
+    public ContentDatabase? Db { get; set; }
+
     public void Sync(BattleMap map, Func<Cell, bool> visible)
     {
         if (map.VisualVersion == _version) return;
@@ -32,6 +36,7 @@ public partial class CellEffectsView : Node3D
                 if (_nodes.ContainsKey(e.Serial)) continue;
                 var n = Make(e.Def, cell);
                 AddChild(n);
+                AttachLoop(n, e.Def, cell);
                 _nodes[e.Serial] = (n, e, cell);
             }
         }
@@ -42,6 +47,25 @@ public partial class CellEffectsView : Node3D
             _nodes.Remove(key);
         }
         foreach (var (node, _, cell) in _nodes.Values) node.Visible = visible(cell);
+    }
+
+    /// <summary>
+    /// The effect's cyclic visual effect (fire, ice, poison pool…): replaces the built-in style, is added over it, or is
+    /// not duplicated on the cell — by the effect's «наложение». Only the look: the damage stays in the effect's data.
+    /// </summary>
+    private void AttachLoop(Node3D n, CellEffectDef def, Cell cell)
+    {
+        if (Db == null || string.IsNullOrEmpty(def.LoopVfx) || Db.Get<VfxDef>(def.LoopVfx) is not { } vfx) return;
+        if (vfx.Overlay == VfxOverlay.NoDuplicate &&
+            _nodes.Values.Any(x => x.Cell == cell && x.Node.HasMeta("loop") && (string)x.Node.GetMeta("loop") == vfx.Id))
+            return;
+        if (vfx.Overlay == VfxOverlay.Replace)
+            foreach (var c in n.GetChildren())
+                if (c is not Label3D)
+                    c.QueueFree();
+        n.SetMeta("loop", vfx.Id);
+        var loop = Vfx.Start(n, vfx, n.GlobalPosition, Db, persistent: true);
+        if (loop != null && !vfx.Loop) loop.SetMeta("oneshot", true);
     }
 
     public void UpdateVisibility(Func<Cell, bool> visible)

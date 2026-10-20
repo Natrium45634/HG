@@ -73,6 +73,11 @@ public enum SimEventType
     DefenseEnded,
     /// <summary>An attack avoided by a defensive stance (dodge or parry).</summary>
     DefenseAvoided,
+    /// <summary>
+    /// A stage (hit) of a skill resolved — for the presentation (projectile, stage effect, sound): DamageType = skill ID,
+    /// Value = stage index (≥ 0 — something was hit, −(index + 1) — missed), Cell = the stage's anchor.
+    /// </summary>
+    StageResolved,
 }
 
 public enum LogLevel

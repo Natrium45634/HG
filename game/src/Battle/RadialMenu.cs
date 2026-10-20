@@ -9,7 +9,7 @@ using HexTactics.Game.UI;
 namespace HexTactics.Game.Battle;
 
 /// <summary>One entry of the radial menu: a skill (or the stance) with its availability against the target.</summary>
-public sealed record RadialItem(SkillDef? Skill, string Label, string Icon, bool Enabled, string Reason, string Tooltip, bool Approach);
+public sealed record RadialItem(SkillDef? Skill, string Label, string Icon, bool Enabled, string Reason, string Tooltip, bool Approach, Texture2D? Image = null);
 
 /// <summary>
 /// Radial skill menu (docs/DECISIONS_3.md §42): the defensive skill in a hexagonal button in the centre,
@@ -127,6 +127,16 @@ public partial class RadialMenu : Control
             Name = "Radial_" + (item.Skill?.Id ?? "stance"),
         };
         b.AddThemeFontSizeOverride("font_size", 12);
+        if (item.Image != null)
+        {
+            // The skill's image icon (resource «иконка навыка») above the name.
+            b.Icon = item.Image;
+            b.ExpandIcon = true;
+            b.Text = item.Label;
+            b.IconAlignment = HorizontalAlignment.Center;
+            b.VerticalIconAlignment = VerticalAlignment.Top;
+            b.AddThemeConstantOverride("icon_max_width", (int)(size * 0.45f));
+        }
         var bg = !item.Enabled ? new Color(0.17f, 0.17f, 0.19f, 0.95f) : hex ? new Color(0.20f, 0.30f, 0.42f, 0.97f) : new Color(0.22f, 0.24f, 0.28f, 0.97f);
         var border = !item.Enabled ? Ui.Bad : item.Approach ? Ui.Warn : hex ? new Color(0.55f, 0.8f, 1f) : Ui.Accent;
         int radius = hex ? 14 : (int)(size / 2);

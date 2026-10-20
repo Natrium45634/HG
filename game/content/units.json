@@ -158,7 +158,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -297,7 +302,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -395,7 +405,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -486,7 +501,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -588,7 +608,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -679,7 +704,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -810,7 +840,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -919,7 +954,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1010,7 +1050,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1101,7 +1146,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1245,7 +1295,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1336,7 +1391,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1445,7 +1505,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1536,7 +1601,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1869,7 +1939,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -1968,7 +2043,12 @@
         "deathVfx": "crystal_shatter",
         "attackSound": "",
         "hitSound": "zap",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -2110,7 +2190,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     },
     {
@@ -2201,7 +2286,12 @@
         "deathVfx": "",
         "attackSound": "",
         "hitSound": "",
-        "deathSound": ""
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
       }
     }
   ]

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
+using HexTactics.Game.App;
 using HexTactics.Game.Render;
 using HexTactics.Game.UI;
 
@@ -61,59 +62,44 @@ public partial class AssetPanel : DefListPanel
 {
     private PreviewStage? _stage;
     private Label? _problem;
+    private Label? _stats;
 
     public AssetPanel(EditorContext ctx) : base(ctx, DefCategory.Asset, "Ресурсы (модели, текстуры, звуки, материалы)", null,
         () => new AssetDef { Name = "Новый материал", Kind = AssetKind.Material })
     {
     }
 
+    public const string Formats = "*.glb, *.gltf, *.fbx, *.obj, *.png, *.jpg, *.jpeg, *.webp, *.tga, *.hdr, *.exr, *.ogg, *.wav, *.mp3 ; Ресурсы";
+
     public override void _Ready()
     {
         base._Ready();
-        var importButton = Ui.Button("Импорт файла…", ImportFile, "glTF/GLB, PNG/JPEG/WebP, OGG/WAV — файл проверяется и копируется в пакет (assets/…)");
+        var importButton = Ui.Button("Импорт файла…", ImportFile, "glTF/GLB, FBX, OBJ, PNG/JPEG/WebP/TGA/HDR/EXR, OGG/WAV/MP3 — окно импорта: анализ, требования, назначение");
         importButton.Name = "ImportAssetFile";
+        var checkButton = Ui.Button("Проверить файл…", () => Dialogs.OpenFile(this, AssetImportDialog.CheckTitle, path => AssetImportDialog.Open(this, Ctx, path, null, checkOnly: true), Formats),
+            "Анализ файла по требованиям без создания ресурса");
+        checkButton.Name = "CheckAssetFile";
         // Above the library list (the first column of the panel).
-        if (GetChild(0) is VBoxContainer left) left.AddChild(importButton);
+        if (GetChild(0) is VBoxContainer left)
+        {
+            left.AddChild(importButton);
+            left.AddChild(checkButton);
+        }
     }
 
     private void ImportFile()
     {
-        Dialogs.OpenFile(this, "Импорт ресурса", path =>
+        Dialogs.OpenFile(this, AssetImportDialog.Title, path => AssetImportDialog.Open(this, Ctx, path, def =>
         {
-            byte[] bytes;
-            try
-            {
-                bytes = File.ReadAllBytes(path);
-            }
-            catch (Exception e)
-            {
-                Dialogs.Info(this, "Импорт ресурса", e.Message);
-                return;
-            }
-            var def = AssetValidator.Import(Ctx.Db, Path.GetFileName(path), bytes, Assets.Read, out var error);
-            if (def == null)
-            {
-                Dialogs.Info(this, "Ресурс отклонён", $"{Path.GetFileName(path)}: {error}");
-                return;
-            }
-            try
-            {
-                var full = Path.Combine(App.Main.Instance.Content.UserRoot, def.Path.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
-                if (!File.Exists(full)) File.WriteAllBytes(full, bytes);
-            }
-            catch (Exception e)
-            {
-                Dialogs.Info(this, "Импорт ресурса", "Файл не записан: " + e.Message);
-                return;
-            }
-            Ctx.Db.Add(def);
-            Ctx.MarkDirty();
             RefreshList();
             Select(def);
-            string clips = def.Clips.Count > 0 ? $"\nАнимации в файле: {string.Join(", ", def.Clips)}\nРоли: {string.Join(", ", def.Animations.Select(a => $"{Names.Of(a.Role)} → {a.Clip}"))}" : "";
-            Dialogs.Info(this, "Ресурс импортирован", $"{def.DisplayName} [{def.Id}] — {Names.Of(def.Kind)}, {def.Size / 1024.0:0.#} КБ\n{def.Path}{clips}");
-        }, "*.glb, *.gltf, *.png, *.jpg, *.jpeg, *.webp, *.ogg, *.wav ; Ресурсы", "*.glb, *.gltf ; Модели", "*.png, *.jpg, *.jpeg, *.webp ; Изображения", "*.ogg, *.wav ; Звуки");
+            // After the import window has closed (one exclusive window at a time).
+            Callable.From(() =>
+            {
+                string clips = def.Clips.Count > 0 ? $"\nАнимации в файле: {string.Join(", ", def.Clips)}\nРоли: {string.Join(", ", def.Animations.Select(a => $"{Names.Of(a.Role)} → {a.Clip}"))}" : "";
+                Dialogs.Info(this, "Ресурс импортирован", $"{def.DisplayName} [{def.Id}] — {Names.Of(def.Kind)}, {def.Size / 1024.0:0.#} КБ\n{def.Path}{clips}");
+            }).CallDeferred();
+        }), Formats, "*.glb, *.gltf, *.fbx, *.obj ; Модели", "*.png, *.jpg, *.jpeg, *.webp, *.tga, *.hdr, *.exr ; Изображения", "*.ogg, *.wav, *.mp3 ; Звуки");
     }
 
     protected override Control BuildDetail(Def d)
@@ -130,6 +116,18 @@ public partial class AssetPanel : DefListPanel
         side.AddChild(_problem);
         var problem = a.HasFile ? AssetValidator.FileProblem(a, Assets.Read(a.Path)) : null;
         _problem.Text = problem != null ? "⚠ " + problem + " — в игре будет использовано базовое представление" : Assets.Problems.GetValueOrDefault(a.Id, "");
+        _problem.Name = "AssetProblem";
+        if (!string.IsNullOrEmpty(a.Analysis)) side.AddChild(Ui.Label("Анализ: " + a.Analysis, 12, Ui.TextDim, wrap: true));
+        // What the renderer does not draw in the current mode — said plainly (TZ §11.3).
+        var unsupported = Assets.Unsupported(a);
+        if (unsupported.Count > 0)
+        {
+            var u = Ui.Label(string.Join("\n", unsupported.Select(x => "ℹ " + x)), 12, Ui.Warn, wrap: true);
+            u.Name = "AssetUnsupported";
+            side.AddChild(u);
+        }
+        _stats = Ui.Label("", 12, Ui.TextDim, wrap: true);
+        side.AddChild(_stats);
         _stage = new PreviewStage();
         side.AddChild(_stage);
         var buttons = new HFlowContainer();
@@ -156,6 +154,11 @@ public partial class AssetPanel : DefListPanel
                     _stage.Root.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.25f, BottomRadius = 0.3f, Height = 0.6f }, Position = new Vector3(0, 0.3f, 0) });
                     return;
                 }
+                // What the engine read (for FBX the only place where geometry is counted).
+                var (tris, bones, engineClips) = Assets.EngineStats(model);
+                if (_stats != null)
+                    _stats.Text = $"Движок: треугольников {tris:N0}, костей {bones}, анимаций {engineClips.Count}" +
+                                  (tris > Ctx.Db.Rules.Assets.WarnTriangles ? $" — больше {Ctx.Db.Rules.Assets.WarnTriangles:N0}, задайте упрощённую модель" : "");
                 var holder = new Node3D { Position = new Vector3(0, (float)a.YOffset, 0), RotationDegrees = new Vector3(0, (float)a.RotationY, 0), Scale = Vector3.One * (float)a.Scale };
                 holder.AddChild(model);
                 _stage.Root.AddChild(holder);
@@ -243,5 +246,81 @@ public partial class VfxPanel : DefListPanel
     {
         if (_stage == null || !_stage.IsInsideTree()) return;
         Render.Vfx.Play(_stage.Root, v, new Vector3(0, 0.1f, 0), Ctx.Db);
+    }
+}
+
+/// <summary>
+/// «Требования к ресурсам» (TZ §16): the page built from the limits of the rules — formats, sizes, models, textures,
+/// materials, skeletons, markers, attachment points, performance, naming, examples, common mistakes — with export to
+/// TXT and HTML (PDF — by printing the HTML), the file check and the summary of the resources of the content.
+/// </summary>
+public partial class RequirementsPanel : VBoxContainer
+{
+    private readonly EditorContext _ctx;
+
+    public RequirementsPanel(EditorContext ctx)
+    {
+        _ctx = ctx;
+    }
+
+    public override void _Ready()
+    {
+        AddThemeConstantOverride("separation", 8);
+        var limits = _ctx.Db.Rules.Assets;
+        var bar = new HFlowContainer();
+        AddChild(bar);
+        bar.AddChild(Ui.Label("Требования к ресурсам", 18, Ui.Accent));
+        bar.AddChild(Ui.Button("Экспорт TXT…", () => Save("requirements.txt", AssetRequirements.ToText(limits), "*.txt ; Текст")).Also(b => b.Name = "ExportRequirementsTxt"));
+        bar.AddChild(Ui.Button("Экспорт HTML…", () => Save("requirements.html", AssetRequirements.ToHtml(limits), "*.html ; HTML")).Also(b => b.Name = "ExportRequirementsHtml"));
+        bar.AddChild(Ui.Button("Проверить файл…", () => Dialogs.OpenFile(this, AssetImportDialog.CheckTitle,
+            path => AssetImportDialog.Open(this, _ctx, path, null, checkOnly: true), AssetPanel.Formats)).Also(b => b.Name = "RequirementsCheckFile"));
+        AddChild(Ui.Label("Лимиты — в «Правила боя» → «Ресурсы: лимиты»; страница и проверка при импорте берут их оттуда.", 12, Ui.TextDim, wrap: true));
+
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled }.Expand(true, true);
+        AddChild(scroll);
+        var body = Ui.VBox(4).Expand(true);
+        scroll.AddChild(body);
+
+        // The summary of the content's resources (the debug view of the visual layer).
+        var report = AssetReport.Build(_ctx.Db, Assets.Read);
+        body.AddChild(Ui.Label("Ресурсы контента", 15, Ui.Accent));
+        var summary = Ui.Label(string.Join("\n", report.Lines()), 13, Ui.Text, wrap: true);
+        summary.Name = "AssetSummary";
+        body.AddChild(summary);
+        if (Assets.Problems.Count > 0)
+            body.AddChild(Ui.Label("Ошибки загрузки в игре: " + string.Join("; ", Assets.Problems.Select(kv => $"{kv.Key}: {kv.Value}")), 12, Ui.Warn, wrap: true));
+        if (Assets.PendingCount > 0) body.AddChild(Ui.Label($"Моделей в очереди фоновой загрузки: {Assets.PendingCount}", 12, Ui.TextDim));
+        body.AddChild(Ui.Sep());
+
+        foreach (var sec in AssetRequirements.Build(limits))
+        {
+            body.AddChild(Ui.Label(sec.Title, 15, Ui.Accent));
+            foreach (var line in sec.Lines) body.AddChild(Ui.Label("• " + line, 13, Ui.Text, wrap: true));
+            if (sec.Table is { Count: > 0 } table)
+            {
+                var grid = new GridContainer { Columns = table[0].Length, Name = "RequirementsTable" };
+                grid.AddThemeConstantOverride("h_separation", 18);
+                for (int i = 0; i < table.Count; i++)
+                    foreach (var c in table[i])
+                        grid.AddChild(Ui.Label(c, 13, i == 0 ? Ui.TextDim : Ui.Text));
+                body.AddChild(grid);
+            }
+        }
+    }
+
+    private void Save(string name, string text, string filter)
+    {
+        Dialogs.SaveFile(this, "Экспорт требований", name, path =>
+        {
+            try
+            {
+                File.WriteAllText(path, text, new System.Text.UTF8Encoding(true));
+                Dialogs.Info(this, "Экспорт требований", "Сохранено: " + path);
+            }
+            catch (Exception e)
+            {
+                Dialogs.Info(this, "Экспорт требований", e.Message);
+            }
+        }, filter);
     }
 }

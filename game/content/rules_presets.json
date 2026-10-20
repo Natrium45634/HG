@@ -271,6 +271,75 @@
           "hit": "",
           "hitSound": "thud"
         },
+        "assets": {
+          "textures": [
+            {
+              "purpose": "HexSurface",
+              "recommendedMin": 512,
+              "recommendedMax": 1024,
+              "max": 4096,
+              "needsAlpha": false
+            },
+            {
+              "purpose": "Environment",
+              "recommendedMin": 1024,
+              "recommendedMax": 1024,
+              "max": 4096,
+              "needsAlpha": false
+            },
+            {
+              "purpose": "Atlas",
+              "recommendedMin": 2048,
+              "recommendedMax": 2048,
+              "max": 4096,
+              "needsAlpha": false
+            },
+            {
+              "purpose": "Character",
+              "recommendedMin": 1024,
+              "recommendedMax": 2048,
+              "max": 4096,
+              "needsAlpha": false
+            },
+            {
+              "purpose": "SkillIcon",
+              "recommendedMin": 128,
+              "recommendedMax": 256,
+              "max": 1024,
+              "needsAlpha": true
+            },
+            {
+              "purpose": "StatusIcon",
+              "recommendedMin": 64,
+              "recommendedMax": 128,
+              "max": 512,
+              "needsAlpha": true
+            },
+            {
+              "purpose": "Mask",
+              "recommendedMin": 256,
+              "recommendedMax": 1024,
+              "max": 2048,
+              "needsAlpha": false
+            },
+            {
+              "purpose": "Other",
+              "recommendedMin": 64,
+              "recommendedMax": 2048,
+              "max": 4096,
+              "needsAlpha": false
+            }
+          ],
+          "maxImageMb": 64,
+          "maxModelMb": 100,
+          "warnModelMb": 25,
+          "warnTriangles": 100000,
+          "warnBones": 256,
+          "warnAnimationSeconds": 60,
+          "maxSoundMb": 64,
+          "warnSoundSeconds": 15,
+          "warnTotalMb": 512
+        },
         "vision": {
           "updateInterval": 0.25,
           "fogOfWar": true,

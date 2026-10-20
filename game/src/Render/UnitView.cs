@@ -42,6 +42,11 @@ public partial class UnitView : Node3D
     private AnimationPlayer? _anim;
     private readonly List<GeometryInstance3D> _modelParts = new();
     private readonly Dictionary<AnimRole, (string Clip, float Speed, bool Loop)> _clips = new();
+    /// <summary>The role mapping of the model (variants, priority, interruption, blend, end, markers).</summary>
+    private readonly Dictionary<AnimRole, AnimationMapDef> _maps = new();
+    private AssetDef? _asset;
+    /// <summary>Seconds until the cast's release when its role started (the hit marker is fitted to it).</summary>
+    private double _toRelease = -1;
     private float _baseScale = 1;
     private float _roleTime;
     private bool _roleStarted;
@@ -80,6 +85,9 @@ public partial class UnitView : Node3D
         var faction = db.Faction(unit.FactionId);
         var fcol = Ui.Parse(faction?.Color, new Color(0.6f, 0.6f, 0.6f));
         _bodyColor = Ui.Parse(unit.Def.Visual.Color, fcol.Lightened(0.15f));
+        // Colour variants (docs/DECISIONS_3.md §47): by the unit's number — the look only.
+        var variants = unit.Def.Visual.ColorVariants;
+        if (variants.Count > 0) _bodyColor = Ui.Parse(variants[unit.Id % variants.Count], _bodyColor);
         float scale = (float)Math.Clamp(unit.Def.Visual.Scale, 0.3, 3.0) * 1.2f;
         BuildBase(faction?.Shape ?? FactionShape.Circle, fcol);
         AddChild(_body);
@@ -91,18 +99,63 @@ public partial class UnitView : Node3D
         _visualYaw = Board.YawOf(unit.Facing);
     }
 
-    /// <summary>Puts the unit's model in place of the figure; on any problem the figure stays.</summary>
+    /// <summary>
+    /// Puts the unit's model in place of the figure (docs/DECISIONS_3.md §47): loaded in the background — the figure is
+    /// shown until it is ready; the simplified model with «упрощённые эффекты»; on a problem — the resource's fallback,
+    /// the unit's fallback, then the figure.
+    /// </summary>
     private void AttachModel(ContentDatabase db)
     {
-        var id = Unit.Def.Visual.Model;
+        var v = Unit.Def.Visual;
+        var id = App.Main.Instance.Settings.SimplifiedEffects && !string.IsNullOrEmpty(v.SimplifiedModel) ? v.SimplifiedModel : v.Model;
         if (string.IsNullOrEmpty(id)) return;
-        var asset = db.Get<AssetDef>(id);
-        var model = Assets.Model(asset);
-        if (asset == null || model == null)
+        var chain = new List<AssetDef>();
+        if (db.Get<AssetDef>(id) is { } first)
         {
-            ModelProblem = asset == null ? $"ресурс «{id}» не найден" : Assets.Problems.GetValueOrDefault(asset.Id, "модель не загружена");
+            chain.Add(first);
+            if (db.Get<AssetDef>(first.Fallback) is { } fb && fb != first) chain.Add(fb);
+        }
+        if (db.Get<AssetDef>(v.FallbackModel) is { } unitFb && !chain.Contains(unitFb)) chain.Add(unitFb);
+        if (chain.Count == 0)
+        {
+            ModelProblem = $"ресурс «{id}» не найден";
             return;
         }
+        ModelLoading = true;
+        TryLoad(chain, 0);
+    }
+
+    /// <summary>The model is still being loaded (the figure is shown).</summary>
+    public bool ModelLoading { get; private set; }
+
+    /// <summary>Game speed for clips and procedural animation (0 — pause).</summary>
+    public float TimeScale { get; set; } = 1;
+
+    private void TryLoad(List<AssetDef> chain, int i)
+    {
+        if (i >= chain.Count)
+        {
+            ModelLoading = false;
+            ModelProblem = Assets.Problems.GetValueOrDefault(chain[0].Id, "модель не загружена");
+            return;
+        }
+        Assets.ModelLater(chain[i], model =>
+        {
+            if (!GodotObject.IsInstanceValid(this)) return;
+            if (model == null)
+            {
+                TryLoad(chain, i + 1);
+                return;
+            }
+            ModelLoading = false;
+            if (i > 0) ModelProblem = $"«{chain[0].DisplayName}» не загружена — резервная «{chain[i].DisplayName}»";
+            Install(chain[i], model);
+        });
+    }
+
+    private void Install(AssetDef asset, Node3D model)
+    {
+        _asset = asset;
         var holder = new Node3D
         {
             Name = "Model",
@@ -115,15 +168,95 @@ public partial class UnitView : Node3D
         _model = holder;
         foreach (var part in _bodyParts) part.Visible = false;
         CollectGeometry(model);
+        // Colour variant of a model: a light tint over its materials.
+        var variants = Unit.Def.Visual.ColorVariants;
+        if (variants.Count > 0)
+        {
+            var tint = new StandardMaterial3D { AlbedoColor = _bodyColor with { A = 0.3f }, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded };
+            foreach (var g in _modelParts) g.MaterialOverlay = tint;
+        }
         _anim = Assets.PlayerOf(model);
         if (_anim == null) return;
+        _anim.AnimationFinished += OnClipFinished;
         var clips = _anim.GetAnimationList();
         foreach (var m in asset.Animations)
             if (clips.Contains(m.Clip) && !_clips.ContainsKey(m.Role))
-                _clips[m.Role] = (m.Clip, (float)m.Speed, m.Loop || VisualState.Loops(m.Role));
+            {
+                _clips[m.Role] = (m.Clip, (float)m.Speed, m.End == AnimEndRule.Loop || m.Loop || VisualState.Loops(m.Role));
+                _maps[m.Role] = m;
+            }
         foreach (var role in Enum.GetValues<AnimRole>())
             if (!_clips.ContainsKey(role) && AssetValidator.GuessClip(role, clips) is { } guess)
                 _clips[role] = (guess, 1f, VisualState.Loops(role));
+        _roleStarted = false; // replay the current role with the model
+    }
+
+    /// <summary>Default priorities of roles when the mapping gives none: death interrupts everything.</summary>
+    private static int DefaultPriority(AnimRole r) => r switch
+    {
+        AnimRole.Death => 100,
+        AnimRole.Control => 80,
+        AnimRole.Hit => 60,
+        AnimRole.Attack or AnimRole.Skill => 50,
+        AnimRole.Block or AnimRole.Dodge => 40,
+        AnimRole.Spawn => 30,
+        AnimRole.Move or AnimRole.Fly or AnimRole.Burrow => 20,
+        AnimRole.Turn => 15,
+        _ => 0,
+    };
+
+    private int PriorityOf(AnimRole r) => _maps.TryGetValue(r, out var m) && m.Priority > 0 ? m.Priority : DefaultPriority(r);
+
+    private void OnClipFinished(StringName name)
+    {
+        if (name.ToString() != CurrentClip) return;
+        _clipBusy = false;
+        if (_maps.TryGetValue(Role, out var m) && m.End == AnimEndRule.HoldLast) return;
+        if (Role != AnimRole.Idle && _clips.TryGetValue(AnimRole.Idle, out var idle) && _anim != null && !VisualState.Loops(Role))
+        {
+            _anim.Play(idle.Clip, 0.2f, idle.Speed);
+            CurrentClip = idle.Clip;
+        }
+    }
+
+    private bool _clipBusy;
+
+    /// <summary>
+    /// A hit of a series resolved (docs/DECISIONS_3.md §45, §47): the strike clip plays again, from just before its
+    /// «проверка попадания» marker — the look follows the battle's moment, never the other way round.
+    /// </summary>
+    public void ReplayStrike(AnimRole role)
+    {
+        if (_anim == null || !_clips.TryGetValue(role, out var c)) return;
+        double at = 0;
+        if (_maps.TryGetValue(role, out var m) && m.Markers.FirstOrDefault(x => x.Kind == AnimMarker.HitCheck) is { } hit) at = Math.Max(0, hit.Time - 0.12);
+        _anim.Play(c.Clip, 0.05f, c.Speed);
+        _anim.Seek(at, true);
+        CurrentClip = c.Clip;
+        _clipBusy = true;
+    }
+
+    /// <summary>
+    /// Position of an attachment point (weapon, projectile, magic source, hit, death, status, facing): the model's node
+    /// by name or the offset set by hand; without a model — sensible points of the figure.
+    /// </summary>
+    public Vector3 AttachmentPos(AttachmentPoint p)
+    {
+        var a = _asset?.Attachments.FirstOrDefault(x => x.Point == p);
+        if (a != null && _model != null)
+        {
+            if (!string.IsNullOrEmpty(a.Node) && _model.FindChild(a.Node, true, false) is Node3D n) return n.GlobalPosition;
+            return _model.GlobalTransform * new Vector3((float)a.X, (float)a.Y, -(float)a.Z);
+        }
+        var fwd = new Vector3(-Mathf.Sin(_visualYaw), 0, -Mathf.Cos(_visualYaw));
+        return p switch
+        {
+            AttachmentPoint.Weapon or AttachmentPoint.Projectile or AttachmentPoint.MagicSource => GlobalPosition + fwd * 0.3f + new Vector3(0, 0.6f, 0),
+            AttachmentPoint.Status => GlobalPosition + new Vector3(0, 1.2f, 0),
+            AttachmentPoint.Death => GlobalPosition + new Vector3(0, 0.1f, 0),
+            AttachmentPoint.Facing => GlobalPosition + fwd * 0.5f + new Vector3(0, 0.15f, 0),
+            _ => GlobalPosition + new Vector3(0, 0.5f, 0),
+        };
     }
 
     private void CollectGeometry(Node n)
@@ -132,18 +265,36 @@ public partial class UnitView : Node3D
         foreach (var c in n.GetChildren()) CollectGeometry(c);
     }
 
-    /// <summary>Starts the animation of a new role: the model clip if mapped, otherwise procedural.</summary>
+    /// <summary>
+    /// Starts the animation of a new role: the model clip if mapped (a random variant, with its blend), otherwise
+    /// procedural. A non-interruptible clip keeps playing unless the new role has a higher priority; the clip of an
+    /// attack or a skill is sped up or slowed down so that its «проверка попадания» marker meets the release.
+    /// </summary>
     private void EnterRole(AnimRole role)
     {
+        if (_roleStarted && _clipBusy && CurrentClip.Length > 0 && _maps.TryGetValue(Role, out var cur) && !cur.Interruptible && PriorityOf(role) <= PriorityOf(Role)) return;
         _roleStarted = true;
         Role = role;
         _roleTime = 0;
         CurrentClip = "";
+        _clipBusy = false;
         if (_anim == null || !_clips.TryGetValue(role, out var c)) return;
-        var anim = _anim.GetAnimation(c.Clip);
+        string clip = c.Clip;
+        float speed = c.Speed;
+        float blend = -1;
+        if (_maps.TryGetValue(role, out var map))
+        {
+            var options = map.Variants.Where(x => _anim.HasAnimation(x)).Prepend(map.Clip).ToList();
+            clip = options[(int)(GD.Randi() % (uint)options.Count)];
+            blend = (float)map.Blend;
+            if (_toRelease > 0.05 && role is AnimRole.Attack or AnimRole.Skill && map.Markers.FirstOrDefault(x => x.Kind == AnimMarker.HitCheck) is { } hit && hit.Time > 0)
+                speed = (float)Math.Clamp(hit.Time / _toRelease * speed, 0.25, 4);
+        }
+        var anim = _anim.GetAnimation(clip);
         if (anim != null) anim.LoopMode = c.Loop ? Animation.LoopModeEnum.Linear : Animation.LoopModeEnum.None;
-        _anim.Play(c.Clip, -1, c.Speed);
-        CurrentClip = c.Clip;
+        _anim.Play(clip, blend, speed);
+        CurrentClip = clip;
+        _clipBusy = !c.Loop;
     }
 
     /// <summary>
@@ -538,8 +689,10 @@ public partial class UnitView : Node3D
         float targetYaw = PreviewYaw ?? Board.YawOf(u.Facing);
         _visualYaw = Mathf.LerpAngle(_visualYaw, targetYaw, Math.Min(1, delta * (PreviewYaw.HasValue ? 24 : 14)));
         var role = VisualState.RoleOf(sim, u);
+        _toRelease = u.Casting != null && !u.Casting.Released ? (u.Casting.ReleaseTick - sim.Tick) * sim.Dt : -1;
         if (role != Role || !_roleStarted) EnterRole(role);
-        _roleTime += delta;
+        if (_anim != null) _anim.SpeedScale = TimeScale;
+        _roleTime += delta * TimeScale;
         Procedural(_visualYaw);
         _arrow.Position = new Vector3(-Mathf.Sin(_visualYaw) * 0.52f, 0.145f, -Mathf.Cos(_visualYaw) * 0.52f);
         _arrow.Basis = new Basis(Vector3.Up, _visualYaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
