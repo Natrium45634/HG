@@ -402,7 +402,7 @@ public sealed class CommandSystem
         u.Queue.Remove(cmd);
         _sim.Emit(SimEventType.CommandCompleted, LogLevel.Diagnostic, $"{u.Name}: выполнено — {cmd.Describe(_sim)}", u.Id);
         RecomputeEstimates(u);
-        if (u.Queue.Count == 0 && Rules.Autopause.QueueEmpty && _sim.IsPlayerControlled(u))
+        if (u.Queue.Count == 0 && Rules.Autopause.QueueEmpty && _sim.IsPlayerControlled(u) && !cmd.YieldReturn)
             _sim.RequestAutopause($"{u.Name}: очередь выполнена");
     }
 
@@ -427,6 +427,16 @@ public sealed class CommandSystem
         // Hard cap on the total waiting time of one command, whatever the reasons were.
         if (++cmd.TotalWaitTicks > _sim.TicksFor(Rules.Queue.MaxWaitSeconds))
             return Resolve(u, cmd, FailureAction.Skip, $"превышено максимальное ожидание ({Rules.Queue.MaxWaitSeconds:0} с): {message}", reason);
+        // A column through a narrow pass (docs/DECISIONS_3.md §54): the hex ahead is held by an ally who is moving
+        // himself — keep the path and wait for him without spending the attempts of the policy (the total cap above
+        // still holds; cycles are broken separately, a stuck head gives up and then lets the column through).
+        if (reason == FailureReason.PathBlocked && cmd.Type == CommandType.Move && cmd.Path is { Count: > 0 } &&
+            _sim.GetUnit(u.WaitingFor) is { Alive: true } ahead && !_sim.IsHostile(u, ahead) && IsMoving(ahead) && ahead.WaitingFor != u.Id)
+        {
+            cmd.Status = CommandStatus.Waiting;
+            cmd.StatusText = $"ждёт: впереди {ahead.Name}";
+            return false;
+        }
         switch (policy.Action)
         {
             case FailureAction.Wait:
@@ -449,7 +459,7 @@ public sealed class CommandSystem
                     {
                         cmd.RepathAttempts++;
                         var path = _sim.Planner.Route(u, cmd, u.Pos, u.Facing, cmd.TargetCell!.Value);
-                        if (!path.Found && ThroughMovingAllies(u, cmd.TargetCell!.Value) is { } through) path = through;
+                        if (!path.Found && ThroughMovingAllies(u, cmd, cmd.TargetCell!.Value) is { } through) path = through;
                         if (path.Found)
                         {
                             cmd.Path = path.Path;
@@ -472,6 +482,16 @@ public sealed class CommandSystem
     private bool Resolve(Unit u, Command cmd, FailureAction action, string message, FailureReason reason)
     {
         ReleaseDestination(u, cmd);
+        if (cmd.YieldReturn)
+        {
+            // The way back to a hex given up to a passing ally: dropped quietly (the unit simply stays where it is).
+            cmd.Status = CommandStatus.Skipped;
+            cmd.StatusText = message;
+            u.Queue.Remove(cmd);
+            _sim.Emit(SimEventType.CommandSkipped, LogLevel.Diagnostic, $"{u.Name}: не вернулся на место — {message}", u.Id);
+            RecomputeEstimates(u);
+            return true;
+        }
         bool player = _sim.IsPlayerFaction(u.FactionId) || _sim.Options.AdminMode;
         u.StopReason = message;
         u.StopTick = _sim.Tick;
@@ -560,7 +580,7 @@ public sealed class CommandSystem
                 var ignoring = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { IgnoreUnits = true });
                 if (!ignoring.Found) return Fail(FailureReason.NoPath, path.Reason);
                 // Blocked only by allies who are moving themselves: go — they will step aside or swap (docs/DECISIONS_3.md §44).
-                path = ThroughMovingAllies(u, target) ?? path;
+                path = ThroughMovingAllies(u, cmd, target) ?? path;
                 if (!path.Found) return Fail(FailureReason.PathBlocked, "путь перекрыт юнитами");
             }
             cmd.Path = path.Path;
@@ -572,6 +592,8 @@ public sealed class CommandSystem
         var to = _sim.Map.Get(next);
         var check = MovementRules.Check(MoveContext.For(_sim, u), from, to, false, out var cost);
         if (check == StepCheck.Occupied && Rules.Move.AllowSwap && TrySwap(u, cmd, to!))
+            return Result.Continue;
+        if (check == StepCheck.Occupied && Rules.Move.YieldToAllies && TryYield(u, cmd, to!))
             return Result.Continue;
         if (check != StepCheck.Ok)
         {
@@ -610,15 +632,62 @@ public sealed class CommandSystem
     }
 
     /// <summary>A path that only passes allies who are moving themselves (they will step aside or swap); null if none.</summary>
-    private PathResult? ThroughMovingAllies(Unit u, HexCoord target)
+    private PathResult? ThroughMovingAllies(Unit u, Command cmd, HexCoord target)
     {
         var ignoring = _sim.Pathfinder.Find(_sim, u, u.Pos, target, new PathOptions { IgnoreUnits = true });
         if (!ignoring.Found) return null;
         foreach (var c in ignoring.Path)
             foreach (var o in _sim.Map.Get(c)!.Occupants)
-                if (o.Alive && o != u && (_sim.IsHostile(u, o) || !IsMoving(o)))
+                if (o.Alive && o != u && (_sim.IsHostile(u, o) || !(IsMoving(o) || !cmd.YieldReturn && CanYield(u, o))))
                     return null;
         return ignoring;
+    }
+
+    /// <summary>An ally standing without orders who can let a passing ally through (docs/DECISIONS_3.md §54).</summary>
+    private bool CanYield(Unit mover, Unit o) =>
+        Rules.Move.YieldToAllies && o.Alive && !_sim.IsHostile(mover, o) && o.FactionId == mover.FactionId && o.Queue.Current == null && !o.StepTo.HasValue &&
+        o.BusyUntil <= _sim.Tick && o.Casting == null && o.Stance == null && !o.Flags.BlocksMovement && !o.Flags.BlocksActions && o.Stat(Stats.MoveSpeed) > 0;
+
+    /// <summary>
+    /// A passing unit and an ally standing on its next hex without orders swap places; the ally then walks back to
+    /// its hex (quietly; given up after a short wait if the hex stays taken) — a narrow pass is never locked by those who already arrived.
+    /// Only the passing unit pays for the step; the way back is paid as usual.
+    /// </summary>
+    private bool TryYield(Unit u, Command cmd, Cell to)
+    {
+        // The way back never displaces anyone (no ping-pong between two units wanting the same hex).
+        if (cmd.YieldReturn) return false;
+        var other = to.Occupants.FirstOrDefault(o => o.Alive && o != u);
+        if (other == null || !CanYield(u, other) || to.Occupants.Count(o => o.Alive && o != u) != 1) return false;
+        var mine = _sim.Map.Get(u.Pos)!;
+        if (MovementRules.Check(MoveContext.For(_sim, u), mine, to, true, out var c1) != StepCheck.Ok) return false;
+        if (MovementRules.Check(MoveContext.For(_sim, other), to, mine, true, out var c2) != StepCheck.Ok) return false;
+        double a1 = c1 * Rules.Ap.MovePerCost;
+        if (u.Ap + 1e-9 < a1) return false;
+        u.Ap -= a1;
+        cmd.SpentAp += a1;
+        var up = u.Pos;
+        var op = other.Pos;
+        var facing = other.Facing;
+        mine.Occupants.Remove(u);
+        to.Occupants.Remove(other);
+        _sim.Relocate(u, op, null, "проход через союзника");
+        _sim.Relocate(other, up, null, "пропускает союзника");
+        u.Facing = up.DirectionTo(op) ?? u.Facing;
+        u.BusyUntil = _sim.Tick + Math.Max(1, _sim.TicksFor(c1 / Math.Max(0.01, u.Stat(Stats.MoveSpeed))));
+        other.BusyUntil = _sim.Tick + Math.Max(1, _sim.TicksFor(c2 / Math.Max(0.01, other.Stat(Stats.MoveSpeed))));
+        cmd.Path!.RemoveAt(0);
+        u.WaitingFor = other.WaitingFor = -1;
+        ClearWait(cmd);
+        _sim.CellEffects.OnUnitEntered(u, to);
+        _sim.CellEffects.OnUnitEntered(other, mine);
+        var back = Command.Move(op);
+        back.ArrivalFacing = facing;
+        back.YieldReturn = true;
+        back.PolicyOverride = new FailurePolicyDef { Action = FailureAction.Wait, WaitSeconds = 3, Then = FailureAction.Skip };
+        Enqueue(other, back, 0, false);
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{other.Name} пропускает {u.Name}", u.Id, other.Id, op);
+        return true;
     }
 
     private static bool IsMoving(Unit o) => o.StepTo.HasValue || o.Queue.Current is { Type: CommandType.Move, IsFinished: false } || o.Queue.Current is { Type: CommandType.Follow };

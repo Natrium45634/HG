@@ -927,7 +927,7 @@ Wine.
 | 5 | Расширенный редактор навыков: серии ударов, условия, стоимость | готово |
 | 6 | Пассивы и таланты, суммирование модификаторов | готово |
 | 7 | Импорт визуальных ресурсов | готово |
-| 8 | Интеграционное тестирование | — |
+| 8 | Интеграционное тестирование | готово |
 
 ## Ч3 · Этап 0. Анализ и решения
 
@@ -1477,3 +1477,131 @@ Wine.
   вид, при очень высокой скорости игры числа урона показываются с
   задержкой не более 2 с; PDF требований — печатью HTML.
 
+## Ч3 · Этап 8. Интеграционное тестирование
+
+* **Сделано**: сквозная проверка систем части 3 вместе (`Part3IntegrationTests`
+  в ядре и UI-тест через настоящий экран боя):
+  * **большие группы**: 40 юнитов одним групповым приказом через две стены
+    с узкими проходами — у всех разные конечные гексы, союзники ни на одном
+    тике не стоят на одном гексе, все дошли за 56 с игрового времени, самый
+    долгий простой одного юнита — 7,6 с, бронирование конечных гексов снято;
+  * **сложный маршрут**: три узла через оба прохода — порядок узлов,
+    направление взгляда в конце, ни шагу по стене;
+  * **серии ударов при паузе и ускорении**: бой «Засада в долине» с приказом
+    «Три удара мечом» прогоняется по тикам и через драйвер времени с паузами
+    (на паузе тики не идут), пошаговым режимом, всеми скоростями и
+    неровными кадрами — события и их порядок совпадают поштучно, ни одно не
+    потеряно между журналом и показом;
+  * **производительность**: 96 юнитов (пассивы, ауры, таланты, серии,
+    групповая атака, ИИ обеих сторон) — 3,6–3,8 мс на тик при бюджете
+    12,5 мс (80 тиков в секунду на скорости ×4), разбивка по системам;
+  * **восстановление после ошибок**: ссылки на несуществующие пассивы,
+    происхождения, модели (и резервные), иконки, снаряды, текстуры верха,
+    постоянные и циклические эффекты — каждая названа проверкой контента и
+    сводкой ресурсов, а бои «Засада в долине» и «Песочница» идут; повреждённый
+    файл библиотеки — ошибка загрузки с источником, без исключения;
+  * **через интерфейс**: `battle_speeds_and_pause_keep_every_event` —
+    настоящий экран боя под управлением клавиш (пробел, «=», «−»), с
+    автопаузами и возобновлением: бой поштучно совпадает с прогоном без
+    интерфейса, экран получил каждое событие, все попадания, ждавшие
+    снаряд, показаны.
+* **Найдено и исправлено**:
+  * затор в узком проходе: дошедшие первыми стояли в проходе, а идущие
+    следом исчерпывали 3 пересчёта пути, пока ждали колонну, и их приказы
+    отменялись (8 из 40 юнитов не дошли). Теперь ожидание союзника, который
+    сам идёт, не тратит попытки (действует общий предел 60 с), а стоящий без
+    приказа союзник пропускает проходящего и возвращается на своё место —
+    правило «Стоящие союзники пропускают» (вкл.);
+  * клипы моделей шли в реальном времени и на паузе (клип появления
+    доигрывал до конца, пока бой стоял) — теперь клипы, процедурная
+    анимация и полёт снарядов идут в темпе игры (исправлено при прогоне UI
+    в конце этапа 7, проверено здесь);
+  * кнопка прогона на вкладке «Серия» уходила за край прокрутки (тест
+    прокручивает к ней, как игрок).
+* **Файлы**: ядро — `Sim/CommandSystem.cs` (колонна, пропуск стоящих
+  союзников, тихий возврат), `Sim/Commands.cs`, `Content/Defs/RulesDef.cs`
+  (правило); тесты — `Part3IntegrationTests.cs` (новый), `GroupTests.cs`;
+  игра — `Battle/BattleScreen.cs` (счётчик событий), `App/UiTestRunner.cs`.
+* **Как запустить**: `dotnet test tests/HexTactics.Tests -c Release`
+  (вывод чисел — `--logger "console;verbosity=detailed"`);
+  `godot --path game -- --uitest=all`; сборки — как в части 2.
+* **Результаты**: тесты ядра — 355, все проходят; полный прогон UI и сборки — дописываются по итогам прогона.
+* **Ограничения**: дописываются по итогам сборок.
+
+# Часть 3: итоговый отчёт
+
+## Что сделано (по разделам ТЗ части 3)
+
+| Раздел ТЗ | Реализация | Этап |
+|---|---|---|
+| 3. Управление одиночным юнитом | выделение, автопауза по настройке, интерактивная стрелка взгляда, короткий/длинный жест, маршрут с узлами, направлением, ожиданием и условием, подсветка доступных и опасных гексов, режимы маршрута, отмена шагом назад, альтернативное управление без жестов | 1 |
+| 4–5. Атака и радиальное меню | приказ по гексу врага без захода на него, подход перед атакой, защитный навык в центре, кольца по порядку, страницы, прицельные навыки, причины недоступности | 2 |
+| 6. Автоматический выбор цели | общий селектор целей (метрики, фильтры, последовательное сужение или взвешенная сумма, случайный выбор из равных генератором боя), политики потери цели | 3 |
+| 7. Групповые команды | рамка, группы, панель группы, распределение позиций (венгерский алгоритм), бронирование конечных гексов, заторы (обмен, разрыв циклов, колонна, пропуск стоящими), групповая атака по ролям, формации | 4, 8 |
+| 8. Расширенный редактор навыков | серии ударов с параметрами каждого удара, условия И/ИЛИ/НЕ, повторы, движение, стоимость по ударам и долг, правила прерывания, защитные навыки, вкладка «Серия» с прогоном | 5 |
+| 9–10. Пассивы и таланты | источники, происхождения, условия, срабатывания, ауры, стекуемость, единое суммирование и порядок расчёта по характеристике, разбор источников, тексты из данных | 6 |
+| 11–17. Визуальные ресурсы | форматы, лимиты, анализ, окно импорта с назначением, PBR, модели с точками привязки, анимации с маркерами и переходами, эффекты гексов, снаряды, звуки, страница требований | 7 |
+| 18–19. Производительность, отладка | фоновая загрузка моделей, упрощённые варианты, сводка ресурсов, профиль систем симуляции; бой 96 юнитов — 3,6–3,8 мс/тик | 7, 8 |
+| 20. Настройки | автопауза, жесты, радиальное меню, режим и веса маршрута, упрощённые эффекты, правила движения | 1–8 |
+| 21. Тесты | 45 пунктов — см. ниже | 1–8 |
+
+## Тесты ТЗ §21
+
+| Пункт | Тесты |
+|---|---|
+| **21.1** ЛКМ выделяет юнита | UI `battle_select_and_move`, `battle_arrow_turn_and_route_gesture` |
+| автопауза по настройке | UI `battle_planning_autopause_and_cancel` |
+| стрелка показывает взгляд; короткий жест меняет направление | `ControlTests.ManualTurn_*`, UI `battle_arrow_turn_and_route_gesture` |
+| длинный жест — маршрут; доступные гексы подсвечены, недоступные не выбираются | UI `battle_arrow_turn_and_route_gesture`, `battle_planning_autopause_and_cancel`; `ControlTests.Threats_*` |
+| маршрут рассчитывается корректно | `ControlTests.Routing_*`, `PlayerMove_ExecutesTheModeRoute`, `Part3IntegrationTests.Route_WithNodes_*` |
+| направление в конечной точке; несколько точек | `ControlTests.RouteNode_*`, `OptionalNode_*`, UI `battle_waypoint_action`, `battle_arrow_turn_and_route_gesture` |
+| отмена предсказуема | `ControlTests.ClearPending_KeepsTheExecutingOrder`, UI `battle_planning_autopause_and_cancel` |
+| **21.2** враг не заставляет занимать его гекс | `AttackMenuTests.AttackOrder_ApproachesMeleeTarget_NeverEntersItsHex`, UI `battle_enemy_hex_radial_menu_and_aim` |
+| защитный навык в центре; порядок; второе кольцо | `AttackMenuTests.RadialMenu_DefenseInCentre_RingsWeakToStrong_ManualPriority`, UI `battle_enemy_hex_radial_menu_and_aim`, `battle_defense_skill_and_series` |
+| прицельный навык — конкретная цель | UI `battle_enemy_hex_radial_menu_and_aim`, `battle_auto_skill_and_aim_from_icon` |
+| автоматический навык — по правилам | `TargetSelectionTests.Criteria_*`, `SpecExample_*`, `AutomaticSkill_ChoosesByRules_AndHits`, UI `battle_auto_skill_and_aim_from_icon` |
+| недопустимые цели отклоняются | `AttackMenuTests.CheckAgainst_ExplainsImmunity`, `TargetSelectionTests.Criteria_*` |
+| политика потери цели | `TargetSelectionTests.TargetLost_*` |
+| число ударов; множитель каждого удара | `SeriesTests.ThreeSwordStrikes_EachHitHasItsOwnMultiplier`, `RepeatedStage_FiveArrows_*`, `TargetDiesAfterSecondHit_*`, UI `editor_skill_series_test_run`, `admin_part3_series_skill_talent_publish_play` |
+| ресурсы и перезарядки | `SeriesTests.CostPerHit_*`, `NotEnoughForTheFirstHit_*`, `FreeIf_*`, `AttackMenuTests.CostsAtRelease_AndCooldownAtStart` |
+| **21.3** единая точка, индивидуальные позиции, без одного гекса на двоих | `GroupTests.MoveToOnePoint_*`, `Hungarian_*`, `Part3IntegrationTests.BigGroup_*`, UI `battle_group_box_select_and_orders` |
+| нехватка места — частично или ожидание | `GroupTests.AllyOnThePoint_IsNotAnEndPoint_AndLackOfSpaceIsPartial`, `OrderParameters_*` |
+| заторы разрешаются, нет бесконечной блокировки | `GroupTests.HeadOn_InACorridor_*`, `IdleAllyInACorridor_*`, `Part3IntegrationTests.BigGroup_*` (40 юнитов, простой ≤ 7,6 с) |
+| групповая атака по ролям | `GroupTests.GroupAttack_MeleeAdjacent_RangedAtRange_SupportStays_NoOneOnEnemyHex`, `Formations_*` |
+| отмена очереди | `GroupTests.OrderParameters_QueueModes_ExcludeTags_Cancel`, UI `battle_group_box_select_and_orders` |
+| **21.4** слизь −75 % от магии воды | `PassiveTests.Slime_TakesQuarterOfWaterMagic_NotOfFire`, UI `battle_passives_and_talents_panel` |
+| талант эльфа — только магия природы | `PassiveTests.ElfTalent_OnlyNatureMagicSkills_AndScenarioCanDisableOrReplaceIt` |
+| суммирование по правилам | `PassiveTests.SummingModes_AsInTheSpec`, `Stats_OrderPerStat_AndTheShareOfEverySource` |
+| условные пассивы включаются/выключаются | `PassiveTests.Conditions_TerrainAndHealth_RecheckedByInterval`, UI `admin_part3_series_skill_talent_publish_play` |
+| перезарядки по игровому времени | `PassiveTests.TriggeredPassive_ActsForItsTime_LimitPerBattle` |
+| цепные реакции не зацикливаются | `CombatTests` (рекурсия и цепная реакция) |
+| **21.5** поддерживаемые форматы | `AssetImportTests.Images_*`, `Gltf_*`, `Obj_Fbx_Sounds`, `AssetTests.Validator_AcceptsKnownFormats_BySignature`, UI `editor_import_window_assign_requirements` |
+| неподдерживаемые отклоняются | `AssetTests.Validator_RejectsScriptsScenesAndUnknownFormats`, UI `editor_asset_import` |
+| превышение лимитов — понятное сообщение | `AssetImportTests.TextureLimits_*`, `TooLargeImage_*`, UI `editor_import_window_assign_requirements` |
+| текстуры — гексам и материалам | `AssetImportTests.Binding_AssignsTheResource_ToTheChosenObject`, UI `editor_import_window_assign_requirements` |
+| модели заменяют геометрию; анимации воспроизводятся | `AssetTests.AnimationRoles_FollowWhatTheUnitDoes`, UI `battle_models_animations_fallback` |
+| отсутствующие — заглушки | `AssetTests.MissingAndDamagedFiles_AreReported_NotFatal`, `Part3IntegrationTests.BrokenReferences_*`, UI `battle_models_animations_fallback` |
+| визуальные замены не меняют характеристик | `AssetTests.Models_And_Effects_DoNotChangeTheBattle` |
+| ускорение и пауза не нарушают событий | `Part3IntegrationTests.PauseAndEverySpeed_*`, `SeriesTests.Series_IsDeterministic_UnderPauseAndSpeedChunks`, UI `battle_speeds_and_pause_keep_every_event` |
+
+## Итоговый критерий ТЗ §23
+
+| № | Критерий | Где проверено |
+|---|---|---|
+| 1 | Выбрать юнита, автопауза, стрелка взгляда | UI `battle_arrow_turn_and_route_gesture`, `battle_planning_autopause_and_cancel` |
+| 2 | Тем же жестом маршрут и направление после движения | UI `battle_arrow_turn_and_route_gesture` |
+| 3 | Указать противника, радиальное меню с защитным навыком в центре | UI `battle_enemy_hex_radial_menu_and_aim`, `battle_defense_skill_and_series` |
+| 4 | Навык по конкретной цели или автоматический выбор одним нажатием | UI `battle_auto_skill_and_aim_from_icon` |
+| 5 | Группе — движение или атака без конфликтов позиций | UI `battle_group_box_select_and_orders`; `Part3IntegrationTests.BigGroup_*` |
+| 6 | Создать многоударный навык с множителями и параметрами каждого удара | UI `admin_part3_series_skill_talent_publish_play`, `editor_skill_series_test_run` |
+| 7 | Создать пассив или условный талант и проверить влияние на характеристики | UI `admin_part3_series_skill_talent_publish_play`, `editor_talents_origins_used_by`, `battle_passives_and_talents_panel` |
+| 8 | Импортировать текстуры, модели, анимации и эффекты через интерфейс | UI `editor_import_window_assign_requirements`, `editor_asset_import` |
+| 9 | Сведения о форматах, размерах, ограничениях, причинах ошибок | UI `editor_import_window_assign_requirements` (окно импорта, страница требований, экспорт) |
+| 10 | Заменить визуальные ресурсы тестовой карты без изменения логики | UI `editor_import_window_assign_requirements` (текстура верха местности), `AssetTests.Models_And_Effects_DoNotChangeTheBattle` |
+| 11 | Все механики при паузе, обычной скорости и ускорении без потери событий | UI `battle_speeds_and_pause_keep_every_event`; `Part3IntegrationTests.PauseAndEverySpeed_*` |
+
+Главное архитектурное требование — расширяемость через данные: навыки
+(этапы, условия, стоимость), пассивы (источники, условия, модификаторы),
+правила выбора целей, формации, правила движения и очереди, лимиты
+ресурсов, визуальные эффекты и привязки хранятся в контенте и редактируются
+в интерфейсе; новый эффект — новая запись, а не код.

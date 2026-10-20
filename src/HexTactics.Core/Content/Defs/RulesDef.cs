@@ -77,6 +77,8 @@ public sealed class MoveRules
     [Ed("Штраф опасных клеток", "Добавка к стоимости опасной клетки при поиске пути игрока (обход при почти равной цене)"), EdRange(0, 100)] public double HazardPenalty { get; set; } = 0.01;
     [Ed("Обмен местами", "Два союзника, идущие навстречу друг другу, меняются гексами за один шаг (docs/DECISIONS_3.md §44)")]
     public bool AllowSwap { get; set; } = true;
+    [Ed("Стоящие союзники пропускают", "Союзник без приказа меняется местами с проходящим и возвращается на своё место — узкий проход не запирается теми, кто уже пришёл")]
+    public bool YieldToAllies { get; set; } = true;
     [Ed("Разрыв ничьих маршрута", "При равной стоимости маршрута игрока: по порядку критериев")]
     public List<RouteTieBreak> TieBreak { get; set; } = new() { RouteTieBreak.Turns, RouteTieBreak.Steps };
 }

@@ -143,6 +143,32 @@ public class GroupTests
     }
 
     [Fact]
+    public void IdleAllyInACorridor_LetsTheOtherThrough_AndReturns_UnlessTheRuleIsOff()
+    {
+        foreach (bool rule in new[] { true, false })
+        {
+            var db = Db();
+            db.Rules.Move.YieldToAllies = rule;
+            var map = TestUtil.Field(12, 5);
+            foreach (var c in map.Cells.Where(c => c.C.Q is >= 3 and <= 8 && c.C.R != 2)) c.T = "wall";
+            var sim = TestUtil.Sim(db, map);
+            var guard = sim.Spawn(db.Unit("soldier")!, null, new HexCoord(5, 2), HexDirection.SW);
+            var runner = sim.Spawn(db.Unit("soldier")!, null, new HexCoord(1, 2), HexDirection.E);
+            Assert.Null(sim.Enqueue(runner, Command.Move(new HexCoord(10, 2))));
+            sim.RunSeconds(25);
+            Assert.Equal(new HexCoord(5, 2), guard.Pos);
+            if (rule)
+            {
+                Assert.Equal(new HexCoord(10, 2), runner.Pos);
+                Assert.Equal(HexDirection.SW, guard.Facing); // back on its hex, facing as before
+                Assert.Contains(sim.Log.Entries, e => e.Text.Contains("пропускает"));
+                Assert.Empty(guard.Queue.Items);
+            }
+            else Assert.NotEqual(new HexCoord(10, 2), runner.Pos);
+        }
+    }
+
+    [Fact]
     public void GroupAttack_MeleeAdjacent_RangedAtRange_SupportStays_NoOneOnEnemyHex()
     {
         var db = Db();

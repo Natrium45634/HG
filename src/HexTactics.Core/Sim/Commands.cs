@@ -62,6 +62,8 @@ public sealed class Command
     public bool AutoTarget { get; set; }
     /// <summary>The end hex of this move is reserved by a group order (released when the order ends).</summary>
     public bool ReservesDestination { get; set; }
+    /// <summary>Automatic return to the hex the unit gave up to a passing ally (quiet: no autopause, no failure message).</summary>
+    public bool YieldReturn { get; internal set; }
     /// <summary>Overrides the skill's «target lost» policy for this order.</summary>
     public TargetLostPolicy? OnTargetLost { get; set; }
 

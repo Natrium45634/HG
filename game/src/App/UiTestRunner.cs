@@ -66,10 +66,12 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_asset_import", EditorAssetImport));
         _tests.Add(("editor_import_window_assign_requirements", EditorImportWindow));
         _tests.Add(("battle_projectiles_loop_vfx_icons", BattleProjectilesAndLoops));
+        _tests.Add(("battle_speeds_and_pause_keep_every_event", BattleSpeedsAndPause));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
         // The acceptance path of part 2 (TZ «Итоговый критерий»): everything through the game UI.
+        _tests.Add(("admin_part3_series_skill_talent_publish_play", AdminPart3Flow));
         _tests.Add(("admin_full_flow_create_save_export_import_play", AdminFullFlow));
         _ = Run();
     }
@@ -1519,11 +1521,171 @@ public partial class UiTestRunner : Node
         Render.Assets.Reset();
     }
 
+    /// <summary>
+    /// Part 3, stage 8 (TZ §23.11): the real battle screen driven by the keys — pause, resume, faster, slower — gives
+    /// exactly the battle of a headless run with the same orders; the screen receives every event; the hits held for
+    /// projectiles are all shown.
+    /// </summary>
+    private async Task BattleSpeedsAndPause()
+    {
+        var db = Main.Instance.Content.Published;
+        var sc = db.Get<ScenarioDef>("valley_ambush")!;
+        var bs = await OpenBattle("valley_ambush");
+        var reference = ScenarioSystem.Create(db, sc, null, false);
+        reference.ConsumeAutopause();
+        void Orders(Simulation sim)
+        {
+            var knight = sim.Units.First(u => u.Def.Id == "knight");
+            var mage = sim.Units.First(u => u.Def.Id == "mage");
+            var foe = sim.Units.Where(x => x.Alive && sim.IsHostile(knight, x)).OrderBy(x => HexCoord.Distance(x.Pos, knight.Pos)).First();
+            sim.Enqueue(knight, new Command { Type = CommandType.Skill, SkillId = "triple_strike", TargetUnitId = foe.Id, Approach = true });
+            sim.Enqueue(mage, new Command { Type = CommandType.Skill, SkillId = "fireball", TargetUnitId = foe.Id, Approach = true });
+        }
+        Check(bs.Sim.Tick == 0, "бой должен стоять на паузе до начала проверки");
+        Orders(bs.Sim);
+        Orders(reference);
+        var keys = new[] { Godot.Key.Space, Godot.Key.Equal, Godot.Key.Equal, Godot.Key.Space, Godot.Key.Space, Godot.Key.Minus, Godot.Key.Equal, Godot.Key.Equal, Godot.Key.Minus };
+        var speeds = new HashSet<int>();
+        int pausedFrames = 0;
+        if (bs.Driver.Paused) await Key(Godot.Key.Space);
+        for (int i = 0; i < 54; i++)
+        {
+            if (i % 6 == 0) await Key(keys[i / 6 % keys.Length]);
+            else await Frames(1);
+            if (bs.Driver.Paused)
+            {
+                pausedFrames++;
+                long t0 = bs.Sim.Tick;
+                await Frames(2);
+                Check(bs.Sim.Tick == t0, "на паузе бой не должен идти");
+                if (i % 6 >= 3) bs.Resume(); // an autopause or our pause: the player continues
+            }
+            speeds.Add(bs.Driver.SpeedIndex);
+        }
+        bs.Driver.Paused = true;
+        await Frames(2);
+        long ticks = bs.Sim.Tick;
+        Check(ticks > bs.Sim.TicksFor(5), $"бой почти не шёл ({ticks} тиков)");
+        Check(speeds.Count >= 2 && pausedFrames > 0, $"скорость и пауза должны меняться (скоростей {speeds.Count}, кадров паузы {pausedFrames})");
+        for (long k = reference.Tick; k < ticks; k++) reference.Step();
+        Check(reference.Log.TotalCount == bs.Sim.Log.TotalCount, $"событий в бою {bs.Sim.Log.TotalCount}, в эталоне {reference.Log.TotalCount}");
+        var a = bs.Sim.Log.Entries.Select(e => $"{e.Tick}|{e.Type}|{e.Text}").ToList();
+        var b = reference.Log.Entries.Select(e => $"{e.Tick}|{e.Type}|{e.Text}").ToList();
+        int diff = Enumerable.Range(0, Math.Min(a.Count, b.Count)).FirstOrDefault(i => a[i] != b[i], -1);
+        Check(diff < 0, diff < 0 ? "" : $"бой разошёлся с эталоном: «{a[diff]}» ≠ «{b[diff]}»");
+        Check(bs.EventsSeen == bs.Sim.Log.TotalCount, $"экран получил {bs.EventsSeen} событий из {bs.Sim.Log.TotalCount}");
+        await Frames(60);
+        Check(bs.LaggedHits == 0, "показ попаданий, ждавших снаряд, не завершился");
+        GD.Print($"скорости и пауза: тиков {ticks}, событий {bs.Sim.Log.TotalCount}, скоростей {speeds.Count}, кадров паузы {pausedFrames}");
+    }
+
     private async Task ClickHex(BoardViewport vp, HexCoord c)
     {
         var cell = vp.Board.Map!.Get(c)!;
         var local = vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(c, Render.Board.PickY(cell)));
         await Click(vp.GetGlobalRect().Position + local);
+    }
+
+    /// <summary>
+    /// The final criterion of part 3 (TZ §23.6–7) through the editor: a new multi-hit skill from the template with
+    /// its own multiplier per hit and a test run, a conditional talent with the player's text, a unit that has both;
+    /// saved to the library; in a battle on the published content the talent changes the stat only while its
+    /// condition holds and the skill strikes three times with its multipliers.
+    /// </summary>
+    private async Task AdminPart3Flow()
+    {
+        var cm = Main.Instance.Content;
+        // 1. The skill: «Создать», the «Три удара» template, the second hit at 90 %, a run on the test map.
+        await OpenEditor("skills");
+        await ClickButton("Создать");
+        var panel = Find<SkillEditorPanel>(GetTree().Root).First();
+        var skill = Current<SkillDef>(panel);
+        skill.Name = "Тройной выпад";
+        skill.Targeting = TargetingMode.Unit;
+        skill.RangeMax = 1;
+        skill.ApCost = 2;
+        panel.Select(skill);
+        await Frames(4);
+        var tabs = Find<TabContainer>(panel).First(t => t.GetTabCount() >= 5);
+        tabs.CurrentTab = 3;
+        await Frames(4);
+        await ClickButton("Шаблон «Три удара»");
+        Check(skill.Stages.Count == 3 && skill.Stages.Select(x => x.DamageMultiplier).SequenceEqual(new[] { 0.7, 0.85, 1.2 }), "шаблон должен дать три удара 70/85/120 %");
+        foreach (var st in skill.Stages) st.Area = new AreaDef { Shape = AreaShape.Single };
+        skill.Stages[1].DamageMultiplier = 0.9;
+        panel.Select(skill);
+        await Frames(4);
+        tabs = Find<TabContainer>(panel).First(t => t.GetTabCount() >= 5);
+        tabs.CurrentTab = 3;
+        await Frames(4);
+        var run = Find<Button>(panel).First(b => b.Name == "SeriesTestRun");
+        for (Node? n = run.GetParent(); n != null; n = n.GetParent())
+            if (n is ScrollContainer sc)
+            {
+                sc.EnsureControlVisible(run);
+                break;
+            }
+        await Frames(3);
+        await Click(run.GetGlobalRect().GetCenter());
+        await Frames(4);
+        Check(Find<Label>(panel).Any(l => l.Text.StartsWith("Удар 3 →")), "прогон нового навыка должен показать третий удар");
+
+        // 2. The talent: +6 armor while the owner's health is at most 50 %.
+        await OpenEditor("talents");
+        await ClickButton("Создать");
+        var tp = Find<PassivePanel>(GetTree().Root).First();
+        var talent = Current<PassiveDef>(tp);
+        talent.Name = "Закалка ветерана";
+        talent.Kind = PassiveKind.Talent;
+        talent.Modifiers.Add(new ModifierDef { Target = ModifierTarget.Stat, Stat = Stats.Armor, Value = 6, Mode = ModifierMode.FlatBefore });
+        talent.When = new UnitConditionDef { Type = UnitConditionType.HpFraction, Subject = ConditionSubject.Self, Compare = CompareMode.AtMost, Value = 0.5 };
+        tp.Select(talent);
+        await Frames(4);
+        var text = Find<Label>(tp).FirstOrDefault(l => l.Name == "PassivePreview")?.Text ?? "";
+        Check(text.Contains("Закалка ветерана") && text.Contains("Условие"), "текст для игрока должен показать талант и его условие: " + text);
+
+        // 3. A unit with both.
+        await OpenEditor("units");
+        await ClickButton("Создать");
+        var unit = Current<UnitDef>(Find<DefListPanel>(GetTree().Root).First());
+        unit.Name = "Ветеран";
+        unit.Faction = "player";
+        unit.BasicAttack = "strike";
+        unit.Skills.Add(skill.Id);
+        unit.Passives.Add(talent.Id);
+        unit.Stats[Stats.HpMax] = 100;
+        unit.Stats[Stats.Armor] = 2;
+
+        // 4. Save to the library.
+        await ClickButton("Сохранить");
+        var pub = Dialog("Опубликовать изменения");
+        Check(pub != null, "окно публикации должно открыться (без критических ошибок)");
+        if (Find<CheckBox>(pub!).FirstOrDefault(b => b.Text.StartsWith("Принимаю")) is { } accept) accept.ButtonPressed = true;
+        Confirm(pub);
+        await Frames(4);
+        CloseDialogs();
+        var db = cm.Published;
+        Check(db.Get<SkillDef>(skill.Id) != null && db.Get<PassiveDef>(talent.Id) != null && db.Get<UnitDef>(unit.Id) != null, "навык, талант и юнит должны быть в библиотеке");
+
+        // 5. A battle on the published content.
+        var map = db.Get<MapDef>("arena")!;
+        var sim = new Simulation(db, map, new SimOptions { Seed = 9, PlayerFactions = new() { "player" }, AiFactions = new(), FogOfWar = false });
+        var cell = sim.Map.Cells.First(c => c.Terrain.IsPassableFor("walk") && c.Terrain.AllowsPlacement && c.Occupants.Count == 0 &&
+                                            sim.Map.Get(c.Coord.Neighbor(HexDirection.E)) is { } n && n.Terrain.IsPassableFor("walk") && n.Terrain.AllowsPlacement && n.Occupants.Count == 0);
+        var vet = sim.Spawn(db.Get<UnitDef>(unit.Id)!, null, cell.Coord, HexDirection.E);
+        var foe = sim.Spawn(db.Unit("orc_brute")!, null, cell.Coord.Neighbor(HexDirection.E), HexDirection.W);
+        sim.RunSeconds(1);
+        double calm = vet.Stat(Stats.Armor);
+        sim.Combat.DealDamage(null, vet, 60, "true", null, "тест", null, DamageSource.Other);
+        sim.RunSeconds(1);
+        double hurt = vet.Stat(Stats.Armor);
+        Check(Math.Abs(hurt - calm - 6) < 1e-6, $"талант: броня {calm} → {hurt}, ожидалось +6 при здоровье ≤ 50 %");
+        Check(sim.Enqueue(vet, Command.Skill(skill.Id, null, foe.Id)) == null, "приказ нового навыка не принят");
+        for (long i = 0; i < sim.TicksFor(10) && sim.Log.Entries.Count(e => e.Type == SimEventType.SkillHit && e.Text.Contains("Тройной выпад")) < 3; i++) sim.Step();
+        var hits = sim.Log.Entries.Where(e => e.Type == SimEventType.SkillHit && e.Text.Contains("Тройной выпад")).Select(e => e.Text).ToList();
+        Check(hits.Count == 3, "в бою должно быть три удара: " + string.Join(" | ", hits));
+        Check(hits[0].Contains("70 %") && hits[1].Contains("90 %") && hits[2].Contains("120 %"), "множители ударов: " + string.Join(" | ", hits));
+        GD.Print("часть 3, итоговый путь: " + string.Join(" | ", hits) + $"; броня {calm} → {hurt}");
     }
 
     private static T Current<T>(DefListPanel p) where T : Def => (T)p.Current!;

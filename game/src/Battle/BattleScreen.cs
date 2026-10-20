@@ -426,8 +426,12 @@ public partial class BattleScreen : Node
         return Sim.Vision.IsVisibleToPlayer(u);
     }
 
+    /// <summary>Events the screen received from the simulation (UI tests: none may be lost at any speed).</summary>
+    public long EventsSeen { get; private set; }
+
     private void OnSimEvent(SimEvent e, double lag = 0)
     {
+        EventsSeen++;
         bool visible = e.PlayerVisible || _admin;
         _hud.AppendLog(e, visible);
         if (!visible) return;
