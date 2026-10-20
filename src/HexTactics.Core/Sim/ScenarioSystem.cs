@@ -1047,6 +1047,9 @@ public sealed class ScenarioSystem
         }
     }
 
+    /// <summary>Current phase number of a boss, from 1 (0 — before the first phase).</summary>
+    public int PhaseNumberOf(Unit u) => _bossPhases.TryGetValue(u.Id, out var fired) && fired.Count > 0 ? fired.Max() + 1 : 0;
+
     /// <summary>Current phase name of a boss ("" — before the first phase).</summary>
     public string PhaseOf(Unit u)
     {

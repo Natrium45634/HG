@@ -64,6 +64,8 @@ public sealed class ResourceDef : Def
     [Ed("Максимум по умолчанию"), EdRange(0, 100000)] public double DefaultMax { get; set; } = 100;
     [Ed("Восстановление/с по умолчанию"), EdRange(-1000, 1000)] public double DefaultRegen { get; set; }
     [Ed("Показывать шкалу")] public bool ShowBar { get; set; } = true;
+    [Ed("Минимум", "0 — обычный ресурс; отрицательный — разрешён долг (серия навыка «в долг»), шкала показывает «−»"), EdRange(-100000, 0)]
+    public double MinValue { get; set; }
 }
 
 public enum FactionShape

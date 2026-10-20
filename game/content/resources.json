@@ -12,7 +12,8 @@
       "color": "#4a7fd0",
       "defaultMax": 50,
       "defaultRegen": 1,
-      "showBar": true
+      "showBar": true,
+      "minValue": 0
     },
     {
       "id": "energy",
@@ -24,7 +25,8 @@
       "color": "#d0b030",
       "defaultMax": 100,
       "defaultRegen": 5,
-      "showBar": true
+      "showBar": true,
+      "minValue": 0
     },
     {
       "id": "ammo",
@@ -36,7 +38,21 @@
       "color": "#9a9a9a",
       "defaultMax": 20,
       "defaultRegen": 0,
-      "showBar": true
+      "showBar": true,
+      "minValue": 0
+    },
+    {
+      "id": "rage",
+      "name": "Ярость",
+      "description": "Копится в бою; «Безрассудный натиск» может уйти в долг до −15 (шкала показывает минус, восстановление возвращает к нулю).",
+      "tags": [],
+      "group": "Бой",
+      "version": 1,
+      "color": "#d04a3a",
+      "defaultMax": 30,
+      "defaultRegen": 1,
+      "showBar": true,
+      "minValue": -15
     }
   ]
 }

@@ -157,6 +157,27 @@ public sealed class SkillDef : Def
     [Ed("Крит без доп. урона", "Крит не увеличивает урон — только эффекты крита", Group = "Урон")] public bool CritNoExtraDamage { get; set; }
     [Ed("Эффекты крита", "Применяются к цели при критическом ударе", Group = "Урон")] public List<SkillEffectDef> CritEffects { get; set; } = new();
     [Ed("Пробивает щиты", Group = "Урон")] public bool PiercesShields { get; set; }
+    [Ed("Пробивает защиту", "Защитные стойки целей действуют по своему правилу «пробитие брони»", Group = "Урон")] public bool PiercesDefense { get; set; }
+
+    // Series of hits (docs/DECISIONS_3.md §45).
+    [Ed("Крит в серии", "Отдельный бросок для каждого удара или один на всю серию (по цели)", Group = "Серия")]
+    public SeriesCritMode SeriesCrit { get; set; } = SeriesCritMode.PerHit;
+    [Ed("Прекращать при гибели цели", "Оставшиеся удары отменяются (если этап не перенаправляет удар)", Group = "Серия")]
+    public bool StopOnTargetDeath { get; set; } = true;
+    [Ed("Смена цели", "После гибели цели — только при явной настройке", Group = "Серия")]
+    public RetargetRule RetargetOnDeath { get; set; } = RetargetRule.Never;
+    [Ed("Ресурс кончился во время серии", Group = "Серия")] public ResourceOutPolicy OnResourceOut { get; set; } = ResourceOutPolicy.CancelRemaining;
+    [Ed("Прекращать при гибели исполнителя", "Выкл. — отложенные этапы срабатывают и после гибели (взрыв, ловушка)", Group = "Серия")]
+    public bool StopOnCasterDeath { get; set; } = true;
+    [Ed("Прекращать при контроле", "Оглушение/немота исполнителя отменяют оставшиеся удары", Group = "Серия")]
+    public bool StopOnControl { get; set; }
+    [Ed("Занят до конца серии", "Исполнитель не начинает новых действий, пока не прошли все удары (выкл. — только восстановление)", Group = "Серия")]
+    public bool HoldDuringSeries { get; set; }
+    [Ed("Бесплатно при условии", "Если условие выполнено при запуске — стоимость запуска не списывается", Group = "Стоимость")]
+    public UnitConditionDef? FreeIf { get; set; }
+
+    [Ed("Защита", "Параметры защитного навыка: снижение, уклонение, парирование, блоки, секторы, поддержание", Group = "Защита")]
+    public DefenseStanceDef Defense { get; set; } = new();
 
     [Ed("Этапы", "Каждый этап — область и эффекты, со своей задержкой", Group = "Этапы")]
     public List<SkillStageDef> Stages { get; set; } = new();
@@ -194,6 +215,46 @@ public sealed class SkillStageDef
     [Ed("Макс. целей", "0 = без ограничения; выбираются ближайшие к центру"), EdRange(0, 1000)] public int MaxTargets { get; set; }
     [Ed("Блокируется препятствиями", "Клетки, закрытые от точки применения, исключаются")] public bool BlockedByObstacles { get; set; } = true;
     [Ed("Проходит сквозь цели", "Для линии: нет — останавливается на первом юните")] public bool Pierce { get; set; } = true;
+
+    // Parameters of the hit (docs/DECISIONS_3.md §45): every stage of a series is one hit.
+    [Ed("Тип атаки", "Влияет на бонус крита, укрытие и защиту", Group = "Удар")] public StageAttackKind AttackKind { get; set; } = StageAttackKind.Inherit;
+    [Ed("Множитель урона", "1 = 100 % величины эффектов урона этапа (0,7 — 70 % силы атаки)", Group = "Удар"), EdRange(0, 100)]
+    public double DamageMultiplier { get; set; } = 1;
+    [Ed("Фиксированная прибавка", "К урону каждого эффекта урона после множителя", Group = "Удар"), EdRange(-100000, 100000)]
+    public double FlatBonus { get; set; }
+    [Ed("Тип урона удара", "Пусто — тип эффекта; элемент задаётся типом урона", Group = "Удар"), EdRef(DefCategory.DamageType)]
+    public string DamageType { get; set; } = "";
+    [Ed("Попадание", Group = "Удар")] public StageHitMode HitMode { get; set; } = StageHitMode.Inherit;
+    [Ed("Модификатор точности", "Прибавка к шансу попадания (0,1 = +10 %)", Group = "Удар"), EdRange(-1, 1)] public double AccuracyBonus { get; set; }
+    [Ed("Критический удар", Group = "Удар")] public CritRule Crit { get; set; } = CritRule.Inherit;
+    [Ed("Бонус шанса крита", Group = "Удар"), EdRange(-1, 1)] public double CritChanceBonus { get; set; }
+    [Ed("Множитель крита", "0 — обычный (характеристика исполнителя)", Group = "Удар"), EdRange(0, 100)] public double CritMultiplier { get; set; }
+    [Ed("Множитель шанса состояний", "Шанс эффектов «состояние» этапа × множитель", Group = "Удар"), EdRange(0, 100)]
+    public double StatusChanceMultiplier { get; set; } = 1;
+    [Ed("Стоимость удара", "За удар, при попадании, при промахе, возврат при убийстве/промахе", Group = "Удар")]
+    public List<StageCostDef> Costs { get; set; } = new();
+    [Ed("Тег удара", "Для пассивок и реакций (например finisher)", Group = "Удар")] public string Tag { get; set; } = "";
+    [Ed("Смена цели", "Если цель серии погибла", Group = "Удар")] public RetargetRule Retarget { get; set; } = RetargetRule.Inherit;
+
+    [Ed("Условие", "Проверяется перед этапом; пусто — всегда", Group = "Последовательность")] public UnitConditionDef? Condition { get; set; }
+    [Ed("Если условие не выполнено", Group = "Последовательность")] public ConditionFailAction OnConditionFail { get; set; } = ConditionFailAction.SkipStage;
+    [Ed("Повторить раз", "Этап выполняется N раз (конечное число; > 100 — ошибка)", Group = "Последовательность"), EdRange(1, 1000)]
+    public int Repeat { get; set; } = 1;
+    [Ed("Интервал повтора, с", Group = "Последовательность"), EdRange(0, 60)] public double RepeatInterval { get; set; } = 0.3;
+    [Ed("Завершающий этап", "Выполняется и при безопасном прекращении серии (отступление, приземление)", Group = "Последовательность")]
+    public bool Final { get; set; }
+    [Ed("Движение исполнителя", "До удара этапа", Group = "Последовательность")] public StageMove Move { get; set; } = StageMove.None;
+    [Ed("Гексов движения", "Рывок — до соседней с целью клетки, не дальше; отступление — на столько гексов"), EdRange(1, 20),
+     EdShowIf(nameof(Move), StageMove.DashToTarget, StageMove.Retreat)]
+    public int MoveDistance { get; set; } = 3;
+    [Ed("ОД за гекс движения"), EdRange(0, 100), EdShowIf(nameof(Move), StageMove.DashToTarget, StageMove.Retreat)] public double MoveApPerHex { get; set; }
+
+    [Ed("Анимация", "Роль клипа модели исполнителя", Group = "Вид")] public AnimRole Animation { get; set; } = AnimRole.Attack;
+    [Ed("Клип", "Необязательно: имя клипа вместо роли", Group = "Вид")] public string AnimationClip { get; set; } = "";
+    [Ed("Звук", Group = "Вид"), EdRef(DefCategory.Asset)] public string Sound { get; set; } = "";
+    [Ed("Визуальный эффект", Group = "Вид"), EdRef(DefCategory.Vfx)] public string Vfx { get; set; } = "";
+
+    [JsonIgnore] public bool HasDamage => Effects.Exists(e => e.Type == EffectType.Damage);
 }
 
 public enum AreaShape

@@ -61,6 +61,22 @@ public class AttackMenuTests
     }
 
     [Fact]
+    public void AttackOrder_FarApproach_AcceptedWhenTheWalkCostsMoreThanMaxAp()
+    {
+        var db = Db();
+        db.Get<UnitDef>("soldier")!.Stats[Stats.DetectionRange] = 40;
+        var sim = TestUtil.Sim(db, TestUtil.Field(30, 6));
+        var u = sim.Spawn(db.Unit("soldier")!, null, new HexCoord(0, 2), HexDirection.E);
+        var enemy = sim.Spawn(db.Unit("dummy")!, null, new HexCoord(28, 2), HexDirection.W);
+        var cmd = Command.Attack(enemy.Id);
+        cmd.Approach = true;
+        Assert.Null(sim.Enqueue(u, cmd)); // the walk is paid step by step, like a move
+        Assert.True(u.Queue.Items[0].EstimatedAp > u.ApMax, $"оценка {u.Queue.Items[0].EstimatedAp} ОД, путь {sim.Planner.ProjectQueue(u)[0].Estimate.Path?.Count}");
+        TestUtil.RunUntil(sim, () => enemy.Hp < 100, 80);
+        Assert.True(enemy.Hp < 100);
+    }
+
+    [Fact]
     public void AttackOrder_WithoutApproach_DoesNotMove()
     {
         var db = Db();

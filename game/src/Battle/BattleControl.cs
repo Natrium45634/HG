@@ -503,6 +503,12 @@ public partial class BattleScreen
             return;
         }
         var s = it.Skill;
+        // The unit's defensive skill is the «defend» order: its stance holds until another order (docs/DECISIONS_3.md §45).
+        if (s == u.DefenseSkill)
+        {
+            SubmitAppend(Command.Defend());
+            return;
+        }
         if (s.Kind == SkillKind.Defense || (target == null && s.Targeting == TargetingMode.Self && s.Stages.All(st => st.Area.Shape is AreaShape.Single or AreaShape.Radius or AreaShape.Ring or AreaShape.Cross or AreaShape.Global)))
         {
             SubmitAppend(Command.Skill(s.Id, null));

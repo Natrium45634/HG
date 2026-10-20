@@ -64,6 +64,15 @@ public enum SimEventType
     Vfx,
     /// <summary>A sound by ID (text) at the cell.</summary>
     Sound,
+    // Part 3 (docs/DECISIONS_3.md §45).
+    /// <summary>One hit of a series resolved («удар 2 из 3»).</summary>
+    SkillHit,
+    /// <summary>A series of hits stopped early (target died, condition, resource, caster).</summary>
+    SeriesStopped,
+    DefenseStarted,
+    DefenseEnded,
+    /// <summary>An attack avoided by a defensive stance (dodge or parry).</summary>
+    DefenseAvoided,
 }
 
 public enum LogLevel

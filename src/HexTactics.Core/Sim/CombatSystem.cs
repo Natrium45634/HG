@@ -46,6 +46,19 @@ public sealed class AttackRoll
 }
 
 /// <summary>Combat math and the generic unit-effect executor used by skills, statuses, cells and passives.</summary>
+/// <summary>
+/// Parameters of one hit of a series (docs/DECISIONS_3.md §45): attack kind, hit mode and accuracy, crit rule
+/// and bonus; ForcedCrit — the series' single crit roll for this target.
+/// </summary>
+public readonly record struct HitSpec(StageAttackKind Kind, StageHitMode Mode, double Accuracy, CritRule Crit, double CritBonus, bool? ForcedCrit)
+{
+    public static HitSpec Of(SkillStageDef st) => new(st.AttackKind, st.HitMode, st.AccuracyBonus, st.Crit, st.CritChanceBonus, null);
+
+    /// <summary>Is the hit ranged (cover, crit bonus): the stage's kind or the skill's.</summary>
+    public static bool IsRanged(SkillDef? skill, HitSpec? spec) =>
+        spec?.Kind is StageAttackKind.Ranged || (spec?.Kind is null or StageAttackKind.Inherit && skill?.Ranged == true);
+}
+
 public sealed class CombatSystem
 {
     private readonly Simulation _sim;
@@ -155,7 +168,7 @@ public sealed class CombatSystem
         return n;
     }
 
-    public double HitChance(Unit attacker, Unit target, SkillDef? skill, HexCoord attackerPos, bool noticed, bool surprise)
+    public double HitChance(Unit attacker, Unit target, SkillDef? skill, HexCoord attackerPos, bool noticed, bool surprise, HitSpec? spec = null)
     {
         var c = Rules.Combat;
         var det = Rules.Detection;
@@ -168,7 +181,7 @@ public sealed class CombatSystem
         double height = ((ac?.Height ?? 0) - (tc?.Height ?? 0)) * Rules.Height.AccuracyPerLevel;
         double sur = surprise ? det.SurpriseAccuracy : 0;
         int dist = HexCoord.Distance(attackerPos, target.Pos);
-        double cover = skill != null && skill.Ranged && dist > 1 ? (tc?.Cover ?? 0) * c.CoverFactor : 0;
+        double cover = HitSpec.IsRanged(skill, spec) && dist > 1 ? (tc?.Cover ?? 0) * c.CoverFactor : 0;
         double p;
         var f = HitFormula();
         if (f != null)
@@ -189,6 +202,7 @@ public sealed class CombatSystem
         {
             p = c.BaseHit + acc - eva + height + sur - cover;
         }
+        p += spec?.Accuracy ?? 0;
         return Math.Clamp(p, c.MinHit, Math.Max(c.MinHit, c.MaxHit));
     }
 
@@ -220,7 +234,7 @@ public sealed class CombatSystem
     /// Rolls an attack against one target: one draw for notice/surprise, then hit, block, crit.
     /// Draw order is fixed for determinism.
     /// </summary>
-    public AttackRoll Roll(Unit attacker, Unit target, SkillDef? skill, HexCoord attackerPos)
+    public AttackRoll Roll(Unit attacker, Unit target, SkillDef? skill, HexCoord attackerPos, HitSpec? spec = null)
     {
         double pNotice = NoticeChance(attacker, target, attackerPos, out var sector, out var sees);
         double pSurprise = SurpriseChance(sector, sees, target);
@@ -228,9 +242,15 @@ public sealed class CombatSystem
         bool noticed = u < pNotice;
         bool surprise = !noticed && u >= 1.0 - pSurprise;
 
-        double pHit = HitChance(attacker, target, skill, attackerPos, noticed, surprise);
-        bool hit = skill?.HitMode == HitMode.AlwaysHit || _sim.Rng.Chance(pHit);
-        if (skill?.HitMode == HitMode.AlwaysHit) pHit = 1.0;
+        double pHit = HitChance(attacker, target, skill, attackerPos, noticed, surprise, spec);
+        bool always = spec?.Mode switch
+        {
+            StageHitMode.AlwaysHit => true,
+            StageHitMode.Roll => false,
+            _ => skill?.HitMode == HitMode.AlwaysHit,
+        };
+        bool hit = always || _sim.Rng.Chance(pHit);
+        if (always) pHit = 1.0;
 
         double pBlock = 0;
         bool blocked = false;
@@ -244,8 +264,13 @@ public sealed class CombatSystem
         if (hit)
         {
             // Crit chance: attacker, skill, attack kind and sector bonuses, target protection (docs/DECISIONS_2.md §29).
-            pCrit = _sim.Damage.CritChance(attacker, target, skill, sector, surprise);
-            if (pCrit > 0) crit = _sim.Rng.Chance(pCrit);
+            pCrit = _sim.Damage.CritChance(attacker, target, skill, sector, surprise, spec);
+            if (spec?.ForcedCrit is { } forced)
+            {
+                // One crit roll for the whole series: the first hit's result, for this target.
+                crit = forced && pCrit > 0;
+            }
+            else if (pCrit > 0) crit = _sim.Rng.Chance(pCrit);
         }
 
         var roll = new AttackRoll

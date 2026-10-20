@@ -963,8 +963,11 @@ public partial class BattleHud : Control
         foreach (var r in u.Resources.Values)
         {
             if (!r.Def.ShowBar) continue;
-            var b = new Bar { FillColor = Ui.Parse(r.Def.Color, Ui.ApColor) }.MinSize(300, 14);
-            b.Set(r.Current, r.Max, $"{r.Def.DisplayName} {r.Current:0}/{r.Max:0}" + (r.Regen != 0 ? $" (+{r.Regen:0.#}/с)" : ""));
+            // A resource in debt is shown with its minus sign (no hidden negative values, docs/DECISIONS_3.md §45).
+            bool debt = r.Current < -1e-9;
+            var b = new Bar { FillColor = debt ? Ui.Bad : Ui.Parse(r.Def.Color, Ui.ApColor) }.MinSize(300, 14);
+            b.Set(debt ? -r.Current : r.Current, debt ? Math.Max(1, -r.Def.MinValue) : r.Max,
+                $"{r.Def.DisplayName} {r.Current:0.#}/{r.Max:0}" + (debt ? $" — долг (минимум {r.Def.MinValue:0})" : "") + (r.Regen != 0 ? $" (+{r.Regen:0.#}/с)" : ""));
             _resources.AddChild(b);
         }
 
@@ -997,8 +1000,18 @@ public partial class BattleHud : Control
         if (u.Flags.Blind) flags.Add("ослеплён");
         if (u.Flags.Invisible) flags.Add("невидим");
         if (u.Flags.Fear) flags.Add("страх");
-        if (u.Defending) flags.Add("в стойке");
+        if (u.Defending && u.Stance == null) flags.Add("в стойке");
         if (flags.Count > 0) _statuses.AddChild(Ui.Label("Состояние: " + string.Join(", ", flags), 12, Ui.Warn));
+        if (u.Stance is { } stance)
+        {
+            string left = stance.UntilTick == long.MaxValue ? "до другого приказа" : $"ещё {(stance.UntilTick - Sim.Tick) * Sim.Dt:0.#} с";
+            string blocks = stance.BlocksLeft > 0 ? $", осталось атак: {stance.BlocksLeft}" : "";
+            _statuses.AddChild(Ui.Label($"▣ «{stance.Skill.DisplayName}»: {stance.Def.Describe()} — {left}{blocks}" +
+                                        (stance.Avoided + stance.Reduced > 0 ? $" · отражено {stance.Avoided}, ослаблено {stance.Reduced}" : ""), 12, Ui.Accent, wrap: true));
+        }
+        var series = Sim.Skills.PendingStages.FirstOrDefault(p => p.Cast.Caster == u && !p.Cast.Series.Stopped)?.Cast;
+        if (series != null && series.Series.TotalHits > 1)
+            _statuses.AddChild(Ui.Label($"⚔ «{series.Skill.DisplayName}»: удар {series.Series.HitsDone} из {series.Series.TotalHits}", 12, Ui.Accent));
 
         if (u.Casting != null && !u.Casting.Released)
             _current.Text = $"Готовит «{u.Casting.Skill.DisplayName}» — {u.Casting.Progress(Sim.Tick):P0}";
@@ -1162,7 +1175,7 @@ public partial class BattleHud : Control
             if (active) b.AddThemeStyleboxOverride("normal", Ui.Box(new Color(0.34f, 0.30f, 0.20f), Ui.Accent, 5, 2, 8));
             else if (a.Enabled && a.Warning != "") b.AddThemeStyleboxOverride("normal", Ui.Box(new Color(0.24f, 0.22f, 0.17f), Ui.Warn, 5, 1, 8));
             var act = a;
-            if (a.Skill != null)
+            if (a.Skill != null && a.Key != "defend")
             {
                 // Skill icon: a click uses it automatically (if the skill allows), a drag onto the map aims it (docs/DECISIONS_3.md §43).
                 b.ButtonDown += () => _bs.BeginSkillPress(act);
@@ -1213,8 +1226,20 @@ public partial class BattleHud : Control
         if (!string.IsNullOrEmpty(s.Description)) lines.Add(s.Description);
         lines.Add($"{Names.Of(s.Kind)} · {Names.Of(s.Targeting)}" + (s.Targeting is TargetingMode.Unit or TargetingMode.Cell ? $" · дальность {s.RangeMin}–{s.RangeMax}" : ""));
         lines.Add($"ОД {s.ApCost:0.#}" + string.Concat(s.ResourceCosts.Select(r => $" · {r.Resource} {r.Amount:0}")) + $" · подготовка {s.PrepTime:0.##} с · перезарядка {s.Cooldown:0.#} с");
-        foreach (var st in s.Stages)
-            lines.Add($"• {Names.Of(st.Area.Shape)}{(st.Delay > 0 ? $" через {st.Delay:0.##} с" : "")}: " + string.Join(", ", st.Effects.Select(e => e.Describe())));
+        if (SkillText.IsSeries(s))
+        {
+            // A sequence: every hit with its multiplier, moment, condition and costs (docs/DECISIONS_3.md §45).
+            var summary = SkillText.Summary(s);
+            if (summary != "") lines.Add(summary);
+            lines.AddRange(SkillText.StageLines(s).Select(l => "• " + l));
+        }
+        else
+        {
+            foreach (var st in s.Stages)
+                lines.Add($"• {Names.Of(st.Area.Shape)}{(st.Delay > 0 ? $" через {st.Delay:0.##} с" : "")}: " + string.Join(", ", st.Effects.Select(e => e.Describe())));
+        }
+        if (s.Defense.Enabled) lines.Add($"Защита ({Names.Of(s.Defense.Kind)}): {s.Defense.Describe()}");
+        if (u.DefenseSkill == s) lines.Add("Защитный навык юнита — центр радиального меню, клавиша B");
         return string.Join("\n", lines);
     }
 

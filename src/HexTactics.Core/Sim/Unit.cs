@@ -189,6 +189,10 @@ public sealed class Unit
     public Dictionary<string, long> PassivePeriodicTimer { get; } = new(StringComparer.Ordinal);
 
     public bool Defending { get; internal set; }
+    /// <summary>Active defensive stance of a defensive skill (docs/DECISIONS_3.md §45); null — none or the rules' stance.</summary>
+    public DefenseState? Stance { get; internal set; }
+    /// <summary>Tick of the last use of each skill (conditions «применил навык недавно»).</summary>
+    public Dictionary<string, long> LastSkillUse { get; } = new(StringComparer.Ordinal);
     public SkillCast? Casting { get; internal set; }
     /// <summary>Unit is busy (recovery after a skill, turning) until this tick.</summary>
     public long BusyUntil { get; internal set; }

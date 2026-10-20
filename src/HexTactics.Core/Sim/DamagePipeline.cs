@@ -21,6 +21,10 @@ public sealed class DamageRequest
     public string Cause { get; init; } = "";
     public int ReflectDepth { get; init; }
     public List<(Unit Target, bool Surprise)>? DeferredInterrupts { get; init; }
+    /// <summary>Critical multiplier of the hit (a stage of a series); 0 — the attacker's stat.</summary>
+    public double CritMultiplier { get; init; }
+    /// <summary>Tag of the hit (a stage of a series) for passives and reactions.</summary>
+    public string HitTag { get; init; } = "";
 }
 
 public sealed class DamagePart
@@ -206,13 +210,22 @@ public sealed class DamagePipeline
     // ------------------------------------------------------------------ crit
 
     /// <summary>Crit chance of an attack: attacker stat, skill and rules bonuses (attack kind, sector), minus target protection.</summary>
-    public double CritChance(Unit attacker, Unit target, SkillDef? skill, AttackSector sector, bool surprise)
+    public double CritChance(Unit attacker, Unit target, SkillDef? skill, AttackSector sector, bool surprise, HitSpec? spec = null)
     {
-        if (skill != null && !skill.CanCrit) return 0;
+        bool can = spec?.Crit switch
+        {
+            CritRule.Allowed => true,
+            CritRule.Never => false,
+            _ => skill == null || skill.CanCrit,
+        };
+        if (!can) return 0;
         if (target.Defenses.Any(d => d.CritImmune)) return 0;
         var c = Rules.Damage.Crit;
-        double p = attacker.Stat(Stats.CritChance) + (skill?.CritChanceBonus ?? 0) + (surprise ? Rules.Detection.SurpriseCrit : 0);
-        if (skill != null)
+        double p = attacker.Stat(Stats.CritChance) + (skill?.CritChanceBonus ?? 0) + (spec?.CritBonus ?? 0) + (surprise ? Rules.Detection.SurpriseCrit : 0);
+        var kind = spec?.Kind ?? StageAttackKind.Inherit;
+        if (kind != StageAttackKind.Inherit)
+            p += kind switch { StageAttackKind.Ranged => c.RangedBonus, StageAttackKind.Melee => c.MeleeBonus, _ => c.SpellBonus };
+        else if (skill != null)
             p += skill.Kind == SkillKind.Attack ? (skill.Ranged ? c.RangedBonus : c.MeleeBonus) : skill.Kind == SkillKind.Spell ? c.SpellBonus : 0;
         p += sector switch
         {
@@ -228,6 +241,16 @@ public sealed class DamagePipeline
 
     public DamageResult Apply(DamageRequest q)
     {
+        // Defensive stances act inside the pipeline (docs/DECISIONS_3.md §45).
+        bool stance = q.Target.Stance != null;
+        var r = ApplyCore(q, out var avoided);
+        if (stance) _sim.Defense.AfterHit(q, r, avoided);
+        return r;
+    }
+
+    private DamageResult ApplyCore(DamageRequest q, out DefenseSystem.Avoid avoided)
+    {
+        avoided = DefenseSystem.Avoid.None;
         var target = q.Target;
         var attacker = q.Attacker;
         var rule = Rules.Damage.For(q.Source);
@@ -277,6 +300,13 @@ public sealed class DamagePipeline
             Finish(q, r, rule);
             return r;
         }
+        if (target.Stance != null && (avoided = _sim.Defense.TryAvoid(q)) != DefenseSystem.Avoid.None)
+        {
+            r.Missed = true;
+            r.Step("защитный навык", 0, avoided == DefenseSystem.Avoid.Dodge ? "уклонение" : "парирование");
+            Finish(q, r, rule);
+            return r;
+        }
 
         // 5. Critical hit.
         bool crit = q.Roll?.Crit ?? false;
@@ -289,7 +319,7 @@ public sealed class DamagePipeline
         r.Crit = crit;
         if (crit && q.Skill?.CritNoExtraDamage != true && attacker != null)
         {
-            double mult = Math.Max(Rules.Damage.Crit.MinMultiplier, attacker.Stat(Stats.CritMult));
+            double mult = q.CritMultiplier > 0 ? q.CritMultiplier : Math.Max(Rules.Damage.Crit.MinMultiplier, attacker.Stat(Stats.CritMult));
             double total = parts.Sum(p => p.Amount);
             double bonus = Math.Max(0, attacker.Stat(Stats.CritBonus));
             foreach (var p in parts) p.Amount = p.Amount * mult + (total > 0 ? bonus * p.Amount / total : 0);
@@ -352,6 +382,7 @@ public sealed class DamagePipeline
         if (q.Roll?.Blocked == true)
             foreach (var p in parts)
                 p.Amount *= 1.0 - Math.Clamp(target.Stat(Stats.BlockReduction), 0, 1);
+        double stanceCut = target.Stance != null ? _sim.Defense.Reduce(q, parts, Taxonomy) : 0;
         dmg = parts.Sum(p => p.Amount);
         var formula = _sim.Combat.CustomDamage(beforeResist, armor, -r.ModifierPercent / 100.0, crit, q.Roll?.Surprise == true, q.Roll?.Blocked == true);
         if (formula.HasValue) dmg = Math.Max(0, formula.Value);
@@ -362,7 +393,7 @@ public sealed class DamagePipeline
         r.FlatReduction = flat;
         r.Mitigated = afterResist - final;
         r.Step("броня, снижение, блок", final,
-            (armor > 0 ? $"броня {armor:0.#}" : "") + (flat != 0 ? $" снижение {flat:+0.#;-0.#}" : "") + (q.Roll?.Blocked == true ? " блок" : "") + (formula.HasValue ? " формула правил" : ""));
+            (armor > 0 ? $"броня {armor:0.#}" : "") + (flat != 0 ? $" снижение {flat:+0.#;-0.#}" : "") + (q.Roll?.Blocked == true ? " блок" : "") + (stanceCut > 0 ? $" защита −{stanceCut:0.#}" : "") + (formula.HasValue ? " формула правил" : ""));
         if (final <= 0)
         {
             r.Step("итог", 0, afterResist <= 0 ? "урон погашен модификаторами" : "");

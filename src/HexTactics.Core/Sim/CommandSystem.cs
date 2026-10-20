@@ -56,7 +56,8 @@ public sealed class CommandSystem
         if (u.Queue.Current != null && u.Queue.Current.Status != CommandStatus.Pending && idx == 0) idx = 1;
         u.Queue.Insert(idx, c);
         RecomputeEstimates(u);
-        if (c.EstimatedAp > u.ApMax + 1e-9 && c.Type != CommandType.Move)
+        // The walk of an approach is paid step by step like a move (the skill's own cost is checked above).
+        if (c.EstimatedAp > u.ApMax + 1e-9 && c.Type != CommandType.Move && !c.Approach)
         {
             u.Queue.Remove(c);
             RecomputeEstimates(u);
@@ -102,6 +103,8 @@ public sealed class CommandSystem
                 c.Duration = Math.Min(c.Duration, Rules.Queue.MaxWaitSeconds);
                 return null;
             case CommandType.Defend:
+                if (u.DefenseSkill is { } ds)
+                    return ds.ApCost > u.ApMax + 1e-9 ? $"«{ds.DisplayName}» дороже максимума ОД" : null;
                 if (Rules.Ap.DefendCost > u.ApMax + 1e-9) return "стойка дороже максимума ОД";
                 return null;
             case CommandType.Follow:
@@ -200,7 +203,13 @@ public sealed class CommandSystem
                     _sim.Skills.Interrupt(u, refundCast ? InterruptCause.Cancelled : InterruptCause.Death, "отмена");
                 break;
             case CommandType.Defend:
-                if (u.Defending)
+                if (u.Casting != null && !u.Casting.Released)
+                    _sim.Skills.Interrupt(u, refundCast ? InterruptCause.Cancelled : InterruptCause.Death, "отмена");
+                if (u.Stance != null)
+                {
+                    if (u.Stance.CommandId == c.Id && !u.Stance.Def.AllowMove) _sim.Defense.End(u, "приказ отменён");
+                }
+                else if (u.Defending)
                 {
                     u.Defending = false;
                     _sim.Statuses.RecalculateModifiers(u);
@@ -859,7 +868,7 @@ public sealed class CommandSystem
             // Costs paid at the release were missing: the skill did not fire and the command is already resolved.
             if (cast.Interrupted) return Result.Continue;
             cmd.Phase = 2;
-            u.BusyUntil = _sim.Tick + _sim.TicksFor(skill.RecoveryTime);
+            u.BusyUntil = _sim.Skills.SeriesEnd(cast) + _sim.TicksFor(skill.RecoveryTime);
             AfterUse(u, cmd, skill);
             return u.BusyUntil > _sim.Tick ? Result.Continue : Result.Done;
         }
@@ -1010,6 +1019,8 @@ public sealed class CommandSystem
 
     private Result ExecDefend(Unit u, Command cmd)
     {
+        // The unit's defensive skill with a stance (docs/DECISIONS_3.md §45); otherwise the rules' stance of part 1.
+        if (u.DefenseSkill is { } ds) return ExecDefenseSkill(u, cmd, ds);
         if (cmd.Phase == 0)
         {
             if (u.Flags.BlocksActions) return Fail(FailureReason.Disabled, "юнит оглушён");
@@ -1032,6 +1043,45 @@ public sealed class CommandSystem
         _sim.Statuses.RecalculateModifiers(u);
         _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name} выходит из стойки", u.Id);
         return Result.Done;
+    }
+
+    /// <summary>
+    /// Defensive skill: preparation and costs as any skill, then the stance holds the order — for its duration
+    /// (or the order's), or until another order when the duration is 0; a stance that allows moving releases
+    /// the order at once and lasts by itself.
+    /// </summary>
+    private Result ExecDefenseSkill(Unit u, Command cmd, SkillDef s)
+    {
+        if (cmd.Phase < 10)
+        {
+            var check = _sim.Skills.Validate(u, s, null, -1, null, u.Pos, u.Facing);
+            if (!check.Ok) return Fail(check.Reason == FailureReason.None ? FailureReason.Invalid : check.Reason, check.Message);
+            ClearWait(cmd);
+            _sim.Skills.Begin(u, s, check, -1);
+            cmd.SpentAp += s.ApCost;
+            cmd.Phase = 10;
+        }
+        if (cmd.Phase == 10)
+        {
+            var cast = u.Casting;
+            if (cast == null) return Fail(FailureReason.Invalid, "подготовка прервана");
+            if (_sim.Tick < cast.ReleaseTick) return Result.Continue;
+            _sim.Skills.Release(cast);
+            if (cast.Interrupted) return Result.Continue;
+            u.BusyUntil = _sim.Skills.SeriesEnd(cast) + _sim.TicksFor(s.RecoveryTime);
+            if (u.Stance != null && cmd.Duration > 0) u.Stance.UntilTick = _sim.Tick + _sim.TicksFor(cmd.Duration);
+            cmd.Phase = 11;
+            if (u.Stance == null || s.Defense.AllowMove) return Result.Done;
+            return Result.Continue;
+        }
+        // Holding the stance.
+        if (u.Stance == null) return Result.Done;
+        if (u.Stance.UntilTick == long.MaxValue && u.Queue.Count > 1)
+        {
+            _sim.Defense.End(u, "новый приказ");
+            return Result.Done;
+        }
+        return Result.Continue;
     }
 
     /// <summary>Follow a unit: keep within two hexes of it (a free neighbouring hex as the goal) until another order.</summary>

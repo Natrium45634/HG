@@ -287,7 +287,7 @@ public sealed class Planner
                     return new CommandEstimate
                     {
                         Ap = walk.Cost * Rules.Ap.MovePerCost + s.ApCost,
-                        Seconds = walk.StepCosts.Sum(x => Math.Max(_sim.Dt, x / speed)) + s.PrepTime + s.RecoveryTime,
+                        Seconds = walk.StepCosts.Sum(x => Math.Max(_sim.Dt, x / speed)) + s.PrepTime + s.RecoveryTime + (s.HoldDuringSeries ? SkillText.Duration(s) : 0),
                         EndPos = at.Value,
                         EndFacing = s.FaceTarget ? face : facing,
                         Path = walk.Path,
@@ -297,7 +297,7 @@ public sealed class Planner
                 return new CommandEstimate
                 {
                     Ap = s.ApCost + steps * Rules.Turn.ApPerStep,
-                    Seconds = s.PrepTime + s.RecoveryTime + steps * Rules.Turn.SecondsPerStep,
+                    Seconds = s.PrepTime + s.RecoveryTime + (s.HoldDuringSeries ? SkillText.Duration(s) : 0) + steps * Rules.Turn.SecondsPerStep,
                     EndPos = pos,
                     EndFacing = end,
                     Feasible = chk.Ok,
@@ -305,7 +305,12 @@ public sealed class Planner
                 };
             }
             case CommandType.Defend:
-                return new CommandEstimate { Ap = Rules.Ap.DefendCost, Seconds = c.Duration, EndPos = pos, EndFacing = facing };
+                return new CommandEstimate
+                {
+                    Ap = u.DefenseSkill?.ApCost ?? Rules.Ap.DefendCost,
+                    Seconds = c.Duration > 0 ? c.Duration : u.DefenseSkill?.Defense.Duration ?? 0,
+                    EndPos = pos, EndFacing = facing,
+                };
             case CommandType.Wait:
                 return new CommandEstimate { Seconds = c.Duration, EndPos = pos, EndFacing = facing };
         }
@@ -566,7 +571,15 @@ public sealed class Planner
         else
             list.Add(new ActionInfo("attack", "Атака", false, "нет обычной атаки"));
         foreach (var s in u.Skills) list.Add(SkillAction(u, s, "skill:" + s.Id, s.DisplayName, block, ApWarn));
-        list.Add(new ActionInfo("defend", "Стойка", block == "", block, ApWarn(Rules.Ap.DefendCost)));
+        if (u.DefenseSkill is { } ds)
+        {
+            // The unit's defensive skill: its own costs and cooldown (docs/DECISIONS_3.md §45).
+            long cd = u.CooldownRemaining(ds.Id, _sim.Tick);
+            string why = block != "" ? block : cd > 0 ? $"перезарядка {cd * _sim.Dt:0.#} с" : "";
+            list.Add(new ActionInfo("defend", ds.DisplayName, why == "", why, ApWarn(ds.ApCost), Skill: ds));
+        }
+        else
+            list.Add(new ActionInfo("defend", "Стойка", block == "", block, ApWarn(Rules.Ap.DefendCost)));
         list.Add(new ActionInfo("wait", "Ожидание", control == "", control));
         list.Add(new ActionInfo("queue", "Очередь", control == "" && u.Queue.Count > 0, control != "" ? control : u.Queue.Count == 0 ? "очередь пуста" : ""));
         list.Add(new ActionInfo("info", "Характеристики", true, ""));

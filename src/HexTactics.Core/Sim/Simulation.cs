@@ -77,6 +77,8 @@ public sealed class Simulation
         Scenario = new ScenarioSystem(this);
         Planner = new Planner(this);
         Targets = new TargetSelector(this);
+        Defense = new DefenseSystem(this);
+        Conditions = new UnitConditions(this);
         Groups = new GroupPlanner(this);
         GroupOrders = new GroupOrders(this);
 
@@ -124,6 +126,10 @@ public sealed class Simulation
     public Planner Planner { get; }
     /// <summary>Automatic target choice (docs/DECISIONS_3.md §43).</summary>
     public TargetSelector Targets { get; }
+    /// <summary>Defensive stances of defensive skills (docs/DECISIONS_3.md §45).</summary>
+    public DefenseSystem Defense { get; }
+    /// <summary>Conditions of skill stages and passives (AND/OR/NOT trees).</summary>
+    public UnitConditions Conditions { get; }
     /// <summary>Group positions and formations (docs/DECISIONS_3.md §44).</summary>
     public GroupPlanner Groups { get; }
     public GroupOrders GroupOrders { get; }
@@ -481,9 +487,10 @@ public sealed class Simulation
             foreach (var r in u.Resources.Values)
             {
                 if (r.Regen == 0) continue;
-                r.Current = Math.Clamp(r.Current + r.Regen * Dt, 0, r.Max);
+                r.Current = Math.Clamp(r.Current + r.Regen * Dt, Math.Min(0, Math.Min(r.Current, r.Def.MinValue)), r.Max);
             }
             Statuses.UpdateUnit(u);
+            Defense.Update(u);
             Damage.UpdateShields(u);
             Reactions.UpdatePeriodic(u);
             // Standing over a pit (rescue status expired, layer changed): fall now.

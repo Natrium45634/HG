@@ -334,6 +334,8 @@ public static class ContentValidator
         if (u.Skills.Distinct().Count() != u.Skills.Count) issues.Add(Warn(u, "Skills", "Навык указан несколько раз"));
         if (!db.Rules.Move.MovementCategories.Contains(u.MoveCategory))
             issues.Add(Err(u, "MoveCategory", $"Неизвестная категория движения '{u.MoveCategory}'"));
+        if (!string.IsNullOrEmpty(u.DefenseSkill) && db.Skill(u.DefenseSkill) is { } ds && ds.Targeting != TargetingMode.Self)
+            issues.Add(Warn(u, "DefenseSkill", $"Защитный навык «{ds.DisplayName}» не наводится «на себя» — команда защиты применит его к исполнителю"));
     }
 
     private static void CheckStatus(StatusDef s, List<ContentIssue> issues)
@@ -382,7 +384,7 @@ public static class ContentValidator
             var st = s.Stages[i];
             var path = $"Stages[{i}]";
             int effects = st.Effects.Count + st.Area.Cells.Sum(c => c.Effects.Count);
-            if (effects == 0) issues.Add(Warn(s, path, "Этап без эффектов"));
+            if (effects == 0 && !s.Defense.Enabled && st.Move == StageMove.None) issues.Add(Warn(s, path, "Этап без эффектов"));
             if (st.Area.Shape == AreaShape.Mask)
             {
                 if (st.Area.Cells.Count == 0) issues.Add(Err(s, path + ".Area", "Маска без клеток"));
@@ -406,6 +408,78 @@ public static class ContentValidator
             }
         }
         if (s.ApCost > 0 && s.ApCost > 1000) issues.Add(Err(s, "ApCost", "Слишком большая стоимость"));
+        CheckSeries(db, s, issues);
+    }
+
+    /// <summary>Series of hits, stage conditions, costs and defensive stances (docs/DECISIONS_3.md §45).</summary>
+    private static void CheckSeries(ContentDatabase db, SkillDef s, List<ContentIssue> issues)
+    {
+        int hits = 0;
+        for (int i = 0; i < s.Stages.Count; i++)
+        {
+            var st = s.Stages[i];
+            var path = $"Stages[{i}]";
+            if (st.Repeat < 1) issues.Add(Err(s, path + ".Repeat", "Повтор этапа меньше 1"));
+            if (st.Repeat > 100)
+                issues.Add(Err(s, path + ".Repeat", $"Повтор этапа {st.Repeat} раз: больше 100 — последовательность без гарантированного завершения за разумное время"));
+            if (st.Repeat > 1 && st.RepeatInterval <= 0)
+                issues.Add(Warn(s, path + ".RepeatInterval", "Повторы без интервала срабатывают в одно мгновение — анимации и журнал их не разделят"));
+            if (st.HasDamage) hits += Math.Max(1, Math.Min(st.Repeat, 100));
+            if (st.DamageMultiplier <= 0 && st.FlatBonus <= 0 && st.HasDamage)
+                issues.Add(Warn(s, path + ".DamageMultiplier", "Множитель урона 0 — удар не наносит урона"));
+            if (st.Condition != null) CheckCondition(s, path + ".Condition", st.Condition, issues);
+            if (st.Move == StageMove.DashToTarget && s.Targeting is not (TargetingMode.Unit or TargetingMode.Cell))
+                issues.Add(Warn(s, path + ".Move", "Рывок к цели у навыка без цели (направление/на себя) — исполнитель останется на месте"));
+            foreach (var c in st.Costs)
+                if (!string.IsNullOrEmpty(c.Resource) && db.Get<ResourceDef>(c.Resource) == null)
+                    issues.Add(Err(s, path + ".Costs", $"Ресурс '{c.Resource}' не найден"));
+        }
+        if (hits > 12)
+            issues.Add(Warn(s, "Stages", $"Серия из {hits} ударов: проверьте производительность (каждый удар — бросок и расчёт урона), длительность анимаций и баланс"));
+        if (s.FreeIf != null) CheckCondition(s, "FreeIf", s.FreeIf, issues);
+        if (s.OnResourceOut == ResourceOutPolicy.Debt)
+        {
+            var used = s.Stages.SelectMany(st => st.Costs).Where(c => !string.IsNullOrEmpty(c.Resource)).Select(c => c.Resource).Distinct().ToList();
+            if (!used.Any(r => db.Get<ResourceDef>(r)?.MinValue < 0))
+                issues.Add(Warn(s, "OnResourceOut", "«В долг» без ресурса с отрицательным минимумом: долг невозможен, при нехватке оставшиеся этапы отменяются"));
+            if (s.Stages.SelectMany(st => st.Costs).Any(c => string.IsNullOrEmpty(c.Resource)))
+                issues.Add(Warn(s, "OnResourceOut", "Очки действия в долг не уходят: при нехватке ОД оставшиеся этапы отменяются"));
+        }
+        if (s.RetargetOnDeath == RetargetRule.Inherit) issues.Add(Err(s, "RetargetOnDeath", "«Как в серии» допустимо только у этапа"));
+        var d = s.Defense;
+        if (d.Enabled)
+        {
+            if (d.DamageReduction <= 0 && d.DodgeChance <= 0 && d.ParryChance <= 0 && d.ReflectPercent <= 0 && d.EvasionBonus <= 0 && d.BlockBonus <= 0)
+                issues.Add(Warn(s, "Defense", "Защита включена, но ничего не делает (нет снижения, уклонения, парирования, отражения и бонусов)"));
+            if (d.Duration <= 0 && d.AllowMove)
+                issues.Add(Warn(s, "Defense.Duration", "Защита без длительности, допускающая движение, длится до нового приказа"));
+            if (d.DodgeChance + d.ParryChance > 1)
+                issues.Add(Warn(s, "Defense", "Сумма шансов уклонения и парирования больше 100 %: парирование срабатывает только после неудачного уклонения"));
+            foreach (var c in d.Upkeep)
+                if (!string.IsNullOrEmpty(c.Resource) && db.Get<ResourceDef>(c.Resource) == null)
+                    issues.Add(Err(s, "Defense.Upkeep", $"Ресурс '{c.Resource}' не найден"));
+        }
+        else if (s.Kind == SkillKind.Defense && s.Stages.All(st => st.Effects.All(e => e.Type is not (EffectType.Shield or EffectType.ApplyStatus or EffectType.ModifyStat))))
+        {
+            issues.Add(Warn(s, "Defense", "Защитный навык без защиты (раздел «Защита» выключен) и без щита/состояния на себя"));
+        }
+    }
+
+    private static void CheckCondition(Def owner, string path, UnitConditionDef c, List<ContentIssue> issues, int depth = 0)
+    {
+        if (depth > 16)
+        {
+            issues.Add(Err(owner, path, "Условие вложено глубже 16 уровней"));
+            return;
+        }
+        if (c.Type is UnitConditionType.Any or UnitConditionType.Not && c.Children.Count == 0)
+            issues.Add(Warn(owner, path, $"«{c.Describe()}» без вложенных условий никогда не выполняется"));
+        if (c.Type == UnitConditionType.HasStatus && string.IsNullOrEmpty(c.Status)) issues.Add(Err(owner, path, "Не выбрано состояние условия"));
+        if (c.Type == UnitConditionType.AfterSkill && string.IsNullOrEmpty(c.Skill)) issues.Add(Err(owner, path, "Не выбран навык условия"));
+        if (c.Type == UnitConditionType.OnTerrain && c.Terrains.Count == 0) issues.Add(Warn(owner, path, "Не выбраны поверхности условия"));
+        if (c.Type == UnitConditionType.UnitType && c.Types.Count == 0) issues.Add(Warn(owner, path, "Не выбраны типы существ условия"));
+        if (c.Type == UnitConditionType.Scenario && c.ScenarioCondition == null) issues.Add(Err(owner, path, "Не задано условие сценария"));
+        for (int i = 0; i < c.Children.Count; i++) CheckCondition(owner, $"{path}.Children[{i}]", c.Children[i], issues, depth + 1);
     }
 
     private static void CheckMap(ContentDatabase db, MapDef m, List<ContentIssue> issues)

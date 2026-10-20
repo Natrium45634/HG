@@ -108,6 +108,7 @@ public partial class SkillEditorPanel : DefListPanel
         _cellTab = Tab("Клетка");
         _stageTab = Tab("Этап");
         _skillTab = Tab("Навык");
+        _seriesTab = Tab("Серия");
         _previewTab = Tab("Превью и тест");
         root.AddChild(_tabs);
 
@@ -132,6 +133,7 @@ public partial class SkillEditorPanel : DefListPanel
         if (_skill != null) OnEdited(_skill);
         RefreshCanvas();
         RefreshPreview();
+        if (_tabs.CurrentTab != 3) RefreshSeriesTab();
     }
 
     private void RefreshAll()
@@ -148,6 +150,7 @@ public partial class SkillEditorPanel : DefListPanel
         RefreshCellTab();
         RefreshStageTab();
         RefreshSkillTab();
+        RefreshSeriesTab();
         RefreshPreview();
     }
 

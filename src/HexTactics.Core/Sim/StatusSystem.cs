@@ -464,7 +464,13 @@ public sealed class StatusSystem
             if (!level.Offense.IsEmpty) u.Offenses.Add(level.Offense);
         }
         foreach (var (mod, _) in u.StatChanges) u.Stats.AddModifier(mod);
-        if (u.Defending)
+        if (u.Stance != null)
+        {
+            // A defensive skill's stance: its own bonuses instead of the rules' (docs/DECISIONS_3.md §45).
+            if (u.Stance.Def.EvasionBonus != 0) u.Stats.AddFlat(Content.Stats.Evasion, u.Stance.Def.EvasionBonus);
+            if (u.Stance.Def.BlockBonus != 0) u.Stats.AddFlat(Content.Stats.BlockChance, u.Stance.Def.BlockBonus);
+        }
+        else if (u.Defending)
         {
             u.Stats.AddFlat(Content.Stats.Evasion, _sim.Rules.Ap.DefendEvasionBonus);
             u.Stats.AddFlat(Content.Stats.BlockChance, _sim.Rules.Ap.DefendBlockBonus);

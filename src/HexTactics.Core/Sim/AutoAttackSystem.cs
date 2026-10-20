@@ -134,7 +134,7 @@ public sealed class AutoAttackSystem
                 }
             }
             _sim.Skills.Release(cast);
-            u.BusyUntil = _sim.Tick + _sim.TicksFor(s.RecoveryTime);
+            u.BusyUntil = _sim.Skills.SeriesEnd(cast) + _sim.TicksFor(s.RecoveryTime);
         }
     }
 

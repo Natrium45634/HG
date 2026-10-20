@@ -43,6 +43,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_enemy_hex_radial_menu_and_aim", BattleRadialMenuAndAim));
         _tests.Add(("battle_auto_skill_and_aim_from_icon", BattleAutoSkillAndIconAim));
         _tests.Add(("battle_group_box_select_and_orders", BattleGroupOrders));
+        _tests.Add(("battle_defense_skill_and_series", BattleDefenseSkillAndSeries));
+        _tests.Add(("editor_skill_series_test_run", EditorSkillSeriesTestRun));
         _tests.Add(("editor_skill_mask_click", EditorSkillMaskClick));
         _tests.Add(("editor_map_paint", EditorMapPaint));
         _tests.Add(("editor_create_delete", EditorCreateDelete));
@@ -656,6 +658,75 @@ public partial class UiTestRunner : Node
     }
 
     // ------------------------------------------------------------------ editor tests
+
+    /// <summary>
+    /// Part 3, stage 5: the defensive skill in the centre of the radial menu holds a stance (shown in the unit
+    /// panel) until another order; a series of hits shows its progress and every hit in the log.
+    /// </summary>
+    private async Task BattleDefenseSkillAndSeries()
+    {
+        var bs = await OpenBattle("sandbox");
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        bs.Select(knight);
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(knight));
+        await Frames(6);
+        bs.OpenSkillMenu(null, new Vector2(800, 450));
+        await Frames(3);
+        var radial = bs.Hud.Radial;
+        Check(radial.IsOpen && radial.CentreItem?.Skill?.Id == "shield_wall", "в центре меню рыцаря должна быть «Стена щитов»");
+        await Click(radial.Buttons.First(b => b.Name == "Radial_shield_wall").GetGlobalRect().GetCenter());
+        Check(knight.Queue.Count == 1 && knight.Queue.Items[0].Type == CommandType.Defend, "центр меню не дал приказ защиты");
+        for (int i = 0; i < 20; i++) bs.Sim.Step();
+        Check(knight.Stance?.Skill.Id == "shield_wall", "стойка не началась");
+        await Frames(20);
+        Check(Find<Label>(bs.Hud).Any(l => l.Visible && l.Text.Contains("«Стена щитов»")), "панель юнита не показывает защиту");
+        // Another order ends the stance («until another order»).
+        bs.Sim.Enqueue(knight, Command.Turn(knight.Facing.Rotate(1)));
+        for (int i = 0; i < 20; i++) bs.Sim.Step();
+        Check(knight.Stance == null, "новый приказ не завершил стойку");
+
+        // «Три удара мечом» against an enemy: three hits in the log, each with its multiplier.
+        var orc = bs.Sim.Units.First(u => u.Alive && bs.Sim.IsHostile(knight, u) && u.Def.Id.Contains("orc"));
+        var cmd = bs.CommandAgainst(knight, bs.Db.Skill("triple_strike")!, orc);
+        var err = bs.Sim.Enqueue(knight, cmd);
+        Check(err == null, "приказ «Три удара мечом» не принят: " + err);
+        bool sawProgress = false;
+        for (int i = 0; i < 400 && !bs.Sim.Log.Entries.Any(e => e.Text.Contains("удар 3 из 3")) && orc.Alive; i++)
+        {
+            bs.Sim.Step();
+            if (i % 5 == 0)
+            {
+                await Frames(1);
+                sawProgress |= Find<Label>(bs.Hud).Any(l => l.Visible && l.Text.Contains("«Три удара мечом»: удар"));
+            }
+        }
+        var hits = bs.Sim.Log.Entries.Where(e => e.Type == SimEventType.SkillHit && e.Text.Contains("Три удара мечом")).Select(e => e.Text).ToList();
+        Check(hits.Count == 3 || !orc.Alive && hits.Count >= 1, "в журнале нет трёх ударов: " + string.Join(" | ", hits));
+        Check(hits.Count == 0 || hits[0].Contains("70 %"), "первый удар должен быть 70 %: " + hits.FirstOrDefault());
+        Check(sawProgress, "панель юнита не показывала ход серии");
+    }
+
+    /// <summary>The skill editor's «Серия» tab: the hits in order, and a run on the test map with every hit.</summary>
+    private async Task EditorSkillSeriesTestRun()
+    {
+        await OpenEditor("skills");
+        var panel = Find<SkillEditorPanel>(GetTree().Root).First();
+        panel.Select("triple_strike");
+        await Frames(6);
+        var tabs = Find<TabContainer>(panel).First(t => t.GetTabCount() >= 5);
+        tabs.CurrentTab = 3;
+        await Frames(4);
+        Check(Find<Button>(panel).Any(b => b.Name == "SeriesStage_2" && b.Text.Contains("Удар 3") && b.Text.Contains("120 %")), "на вкладке «Серия» нет третьего удара 120 %");
+        var run = Find<Button>(panel).First(b => b.Name == "SeriesTestRun");
+        await Click(run.GetGlobalRect().GetCenter());
+        await Frames(4);
+        Check(Find<Label>(panel).Any(l => l.Text.StartsWith("Удар 3 →")), "прогон не показал третий удар");
+        Check(Find<Label>(panel).Any(l => l.Text.StartsWith("Исполнитель:")), "нет итога прогона");
+        // A hit of the list opens its stage.
+        await Click(Find<Button>(panel).First(b => b.Name == "SeriesStage_1").GetGlobalRect().GetCenter());
+        await Frames(4);
+        Check(tabs.CurrentTab == 1, "щелчок по удару не открыл вкладку этапа");
+    }
 
     private async Task<EditorScreen> OpenEditor(string tab)
     {
