@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
@@ -30,6 +31,10 @@ public partial class Main : Node
     public override void _Ready()
     {
         Instance = this;
+        // The same numbers and percents in every text on every system (docs/DECISIONS_3.md §54): the formatting does not
+        // follow the OS regional settings — a Windows build must read like the tested one.
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         foreach (var a in OS.GetCmdlineUserArgs())
         {
             var s = a.TrimStart('-');

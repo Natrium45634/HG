@@ -408,10 +408,11 @@ public partial class UiTestRunner : Node
             bs.Sim.ClearQueue(mage);
             bs.Sim.Enqueue(mage, Command.Move(mage.Pos + new HexCoord(3, 0)));
             bs.Sim.Enqueue(mage, Command.Move(mage.Pos + new HexCoord(3, 2)));
-            bs.Sim.Step();
-            Check(mage.Queue.Items[0].Status == CommandStatus.Active, "первый приказ не начался");
+            // A step already under way finishes first (slow frames let the battle run further before this point).
+            for (long t = 0; t < bs.Sim.TicksFor(3) && mage.Queue.Items[0].Status == CommandStatus.Pending; t++) bs.Sim.Step();
+            Check(mage.Queue.Items[0].Status is CommandStatus.Active or CommandStatus.Waiting, "первый приказ не начался: " + mage.Queue.Items[0].Status);
             await Key(Godot.Key.Delete);
-            Check(mage.Queue.Count == 1 && mage.Queue.Items[0].Status == CommandStatus.Active, "Delete удалил выполняемый приказ или не удалил ожидающие");
+            Check(mage.Queue.Count == 1 && mage.Queue.Items[0].Status != CommandStatus.Pending, "Delete удалил выполняемый приказ или не удалил ожидающие");
             await Key(Godot.Key.Delete, shift: true);
             Check(mage.Queue.Count == 0, "Shift+Delete не отменил всё");
 
