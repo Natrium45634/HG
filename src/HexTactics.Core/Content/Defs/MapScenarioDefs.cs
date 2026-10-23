@@ -147,6 +147,14 @@ public sealed class WaveUnitDef
     [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
 }
 
+/// <summary>How a group spreads its enemies over its routes (docs/DECISIONS_4.md §57).</summary>
+public enum GroupRouteSelect
+{
+    [Ed("Один маршрут")] Single,
+    [Ed("По очереди")] RoundRobin,
+    [Ed("Случайно (ГСЧ боя)")] Random,
+}
+
 /// <summary>
 /// A group of appearance (docs/DECISIONS_4.md §58): identical instances of one template on one schedule, from a spawn
 /// base along a route to a target. The wave stores groups, not every enemy.
@@ -175,8 +183,21 @@ public sealed class SpawnGroupDef
     [Ed("Повтор через, с", "От начала предыдущего выхода группы"), EdRange(1, 3600)] public double RepeatEvery { get; set; } = 30;
     [Ed("Модификаторы экземпляров", "Только у врагов этой группы; шаблон не меняется")] public List<StatModDef> StatMods { get; set; } = new();
     [Ed("Условие отмены", "Выполнено — оставшиеся враги группы не появятся")] public ConditionDef? CancelCondition { get; set; }
-    [Ed("Из пресета", "Пресет, из которого создана группа (для справки)"), EdRef(DefCategory.GroupPreset)] public string Preset { get; set; } = "";
+    [Ed("Из пресета", "ID пресета, из которого создана группа (для справки: группа — копия, удаление пресета её не меняет)")] public string Preset { get; set; } = "";
     [Ed("Подобрана по бюджету", "Создана подбором по бюджету угрозы; заменяется при новом закреплении")] public bool FromBudget { get; set; }
+    // Stage 3 (docs/DECISIONS_4.md §57): several routes for one group.
+    [Ed("Другие маршруты", "Враги группы распределяются между основным и этими маршрутами")] public List<string> AltRoutes { get; set; } = new();
+    [Ed("Выбор маршрута", "Если указаны другие маршруты")] public GroupRouteSelect RouteSelect { get; set; } = GroupRouteSelect.RoundRobin;
+
+    /// <summary>The main route and the other ones (empty IDs skipped).</summary>
+    public List<string> Routes()
+    {
+        var list = new List<string> { Route };
+        foreach (var r in AltRoutes)
+            if (r != "" && !list.Contains(r))
+                list.Add(r);
+        return list;
+    }
 
     /// <summary>Bases in turn: the main one first, then the extra ones (empty IDs skipped).</summary>
     public List<string> Bases()

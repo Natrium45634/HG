@@ -134,6 +134,13 @@ public partial class OverlayLayer : MeshInstance3D
         Disc(p, radius, col, onTop);
     }
 
+    /// <summary>A diamond (a fork of a route, a possible fork while drawing).</summary>
+    public void Diamond(HexCoord c, Color col, float radius = 0.22f, float lift = 0.08f, bool onTop = true)
+    {
+        var p = Board.Center(c, Y(c, lift));
+        Disc(p, radius, col, onTop, 4);
+    }
+
     public void Disc(Vector3 p, float radius, Color col, bool onTop = true, int seg = 12)
     {
         for (int i = 0; i < seg; i++)

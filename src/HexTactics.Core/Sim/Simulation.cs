@@ -76,6 +76,7 @@ public sealed class Simulation
         AutoAttacks = new AutoAttackSystem(this);
         Scenario = new ScenarioSystem(this);
         Structures = new StructureSystem(this);
+        Routes = new RouteNavigator(this);
         Planner = new Planner(this);
         Targets = new TargetSelector(this);
         Defense = new DefenseSystem(this);
@@ -102,6 +103,8 @@ public sealed class Simulation
     public RulesDef Rules { get; }
     public SimOptions Options { get; }
     public SimRng Rng { get; }
+    /// <summary>Walking route graphs of the scenario (docs/DECISIONS_4.md §57).</summary>
+    public RouteNavigator Routes { get; }
     public BattleMap Map { get; }
     public List<ContentIssue> BuildIssues { get; }
     public StackingMode Stacking { get; set; }

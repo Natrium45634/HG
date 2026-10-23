@@ -99,7 +99,7 @@ public sealed class AiSystem
         }
 
         // Wave enemies with «идти по маршруту, не отвлекаясь» walk on (only blockers stop them, handled above).
-        if (p.RouteFocus && u.Route != null && FollowRoute(u)) return;
+        if ((p.RouteFocus || u.Nav?.Focus == true) && u.Route != null && FollowRoute(u)) return;
 
         var visible = _sim.Units.Where(e => e.Alive && _sim.IsHostile(u, e) && _sim.Vision.CanFactionSee(u.FactionId, e)).ToList();
         var cur = u.Queue.Current;
@@ -180,18 +180,34 @@ public sealed class AiSystem
     /// <summary>Moves to the next point of the unit's route; false when the route is finished.</summary>
     private bool FollowRoute(Unit u)
     {
-        var route = u.Route!;
-        while (u.RouteIndex < route.Count)
+        // A route graph plans edge by edge: at the end of the planned hexes the navigator picks the next exit.
+        for (int guard = 0; guard < 4 && u.Route != null; guard++)
         {
-            var pt = route[u.RouteIndex];
-            int d = HexCoord.Distance(u.Pos, pt);
-            var cell = _sim.Map.Get(pt);
-            bool occupied = cell != null && cell.Occupants.Any(o => o != u && o.Alive && o.Layer == u.Layer);
-            if (d == 0 || (d == 1 && occupied && u.RouteIndex < route.Count - 1)) u.RouteIndex++;
-            else break;
+            var route = u.Route;
+            while (u.RouteIndex < route.Count)
+            {
+                var pt = route[u.RouteIndex];
+                int d = HexCoord.Distance(u.Pos, pt);
+                var cell = _sim.Map.Get(pt);
+                bool occupied = cell != null && cell.Occupants.Any(o => o != u && o.Alive && o.Layer == u.Layer);
+                if (d == 0 || (d == 1 && occupied && u.RouteIndex < route.Count - 1)) u.RouteIndex++;
+                else break;
+            }
+            if (u.RouteIndex < route.Count)
+                return MoveTo(u, route[u.RouteIndex], 0, u.Nav != null
+                    ? $"идёт по маршруту «{u.Nav.Route}»: ребро {u.Nav.Edge}, гекс {u.RouteIndex + 1}/{route.Count}"
+                    : $"идёт по маршруту: точка {u.RouteIndex + 1}/{route.Count}");
+            if (u.Nav == null) return false;
+            switch (_sim.Routes.Advance(u, out var why))
+            {
+                case RouteStep.Wait:
+                    Explain(u, why);
+                    return true;
+                case RouteStep.Finished:
+                    return false;
+            }
         }
-        if (u.RouteIndex >= route.Count) return false;
-        return MoveTo(u, route[u.RouteIndex], 0, $"идёт по маршруту: точка {u.RouteIndex + 1}/{route.Count}");
+        return false;
     }
 
     private HexCoord MapCenter()

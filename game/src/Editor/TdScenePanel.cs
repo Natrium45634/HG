@@ -55,6 +55,8 @@ public partial class TdScenePanel : DefListPanel
     public ScenarioObjectType? PlaceType { get; private set; }
     public string SelectedObject { get; private set; } = "";
     public string SelectedRoute { get; private set; } = "";
+    /// <summary>The node of the selected route chosen by a click (its rule and exits in the properties).</summary>
+    public string SelectedNode { get; private set; } = "";
     public WaveDef? SelectedWave { get; private set; }
     public SpawnGroupDef? SelectedGroup { get; private set; }
     public ScenarioDef? Scene => _sc;
@@ -175,6 +177,8 @@ public partial class TdScenePanel : DefListPanel
         _moving = null;
         for (int i = 0; i < _modeButtons.Count; i++) _modeButtons[i].ButtonPressed = i == (int)m;
         if (m != TdMode.Objects) PlaceType = null;
+        // Routes mode starts on the first route, so its nodes and properties are visible at once.
+        if (m == TdMode.Routes && Route(SelectedRoute) == null) SelectedRoute = _sc?.Routes.FirstOrDefault()?.Id ?? "";
         RefreshLibrary();
         RefreshProps();
         Hint();
@@ -194,7 +198,8 @@ public partial class TdScenePanel : DefListPanel
         {
             TdMode.Objects when PlaceType is { } t => $"ЛКМ по гексу — поставить «{ScenarioObjects.Caption(t)}». ПКМ по объекту — меню. Esc — выбор.",
             TdMode.Objects => "ЛКМ — выбрать объект, протяжка — передвинуть; Shift+ЛКМ по соседнему гексу — добавить/убрать гекс базы; R — повернуть; Delete — удалить.",
-            TdMode.Routes when Route(SelectedRoute) is { } r => $"Маршрут «{r.DisplayName}»: протяните ЛКМ от базы спавна до цели (начало у конца линии — продолжить её).",
+            TdMode.Routes when Route(SelectedRoute) is { Nodes.Count: 0 } r => $"Маршрут «{r.DisplayName}»: протяните ЛКМ от базы спавна до цели.",
+            TdMode.Routes when Route(SelectedRoute) is { } r => $"«{r.DisplayName}»: протяжка от узла или линии — ветка (конец на маршруте — слияние или петля), от конца — продление; клик по узлу — его правило и выходы.",
             TdMode.Routes => "Выберите базу спавна (ЛКМ) и нажмите «Создать маршрут» — или сразу протяните ЛКМ от базы спавна.",
             _ => "Выберите волну и группу; «Добавить группу» привязывает её к выбранной базе спавна и её маршруту.",
         };
@@ -286,7 +291,19 @@ public partial class TdScenePanel : DefListPanel
         }
 
         // Routes; the one being drawn on top with its live problems.
-        ScenarioObjectsView.DrawRoutes(o, _sc, Mode == TdMode.Routes ? SelectedRoute : "", Mode == TdMode.Routes ? 0.9f : 0.5f);
+        ScenarioObjectsView.DrawRoutes(o, _sc, Mode == TdMode.Routes ? SelectedRoute : "", Mode == TdMode.Routes ? 0.9f : 0.5f, SelectedNode);
+        // A possible fork or merge: the hex under the mouse (or the drawn line's ends) on the selected route.
+        if (Mode == TdMode.Routes && Route(SelectedRoute) is { Nodes.Count: > 0 } sr)
+        {
+            bool On(HexCoord c) => RouteGraph.NodeAt(sr, c) != null || RouteGraph.EdgeAt(sr, c) != null;
+            var hot = new Color(1f, 0.92f, 0.3f, 0.6f + 0.4f * pulse);
+            if (_drawing == null && _view.HoverHex is HexCoord hv && On(hv)) o.Diamond(hv, hot, 0.16f);
+            if (_drawing is { Cells.Count: > 1 } dr)
+            {
+                o.Diamond(dr.Cells[0], hot, 0.24f);
+                if (On(dr.Cells[^1])) o.Diamond(dr.Cells[^1], hot, 0.24f);
+            }
+        }
         if (_drawing != null)
         {
             var others = new HashSet<HexCoord>(_sc.Routes.Where(r => r != _drawRoute).SelectMany(r => r.MainPath()));
@@ -616,14 +633,16 @@ public partial class TdScenePanel : DefListPanel
             SelectedRoute = r.Id;
         }
         var blocked = _sc.Objects.Where(o => o.Health != null && o.Id != r.Target).SelectMany(o => o.Cells());
+        bool onRoute = RouteGraph.NodeAt(r, at) != null || RouteGraph.EdgeAt(r, at) != null;
+        if (r.Nodes.Count > 0 && !onRoute)
+        {
+            // A drawn route grows only from itself (docs/DECISIONS_4.md §57): a branch starts at its node or edge.
+            _status.Text = $"Маршрут «{r.DisplayName}» уже нарисован: начните у его узла или линии (ветка, продление) — или «Перерисовать»";
+            return;
+        }
         _drawing = new RouteDrawing(Ctx.Db, _map, ScenarioObjectsCheck.CategoriesOf(Ctx.Db, _sc, r), blocked);
         _drawRoute = r;
-        var old = r.MainPath();
-        if (old.Count > 0 && old[^1] == at)
-        {
-            // Continue from the end of the line.
-            _drawing.Cells.AddRange(old);
-        }
+        if (r.Nodes.Count > 0) _drawing.To(at); // a branch (or an extension) from this hex
         else
         {
             // A line started on the spawn base itself begins at its exit hex.
@@ -643,10 +662,19 @@ public partial class TdScenePanel : DefListPanel
         return d;
     }
 
+    /// <summary>The route as it would be after the line being drawn: a new line, or the graph with the branch.</summary>
+    private RouteDef Preview(RouteDef r, List<HexCoord> cells)
+    {
+        if (r.Nodes.Count == 0) return DraftOf(r, cells);
+        var copy = ContentJson.Clone(r);
+        if (cells.Count > 1 && RouteGraph.NodeOn(copy, cells[0]) is { } from) RouteGraph.AddBranch(copy, from, cells);
+        return copy;
+    }
+
     private void LiveCheck()
     {
         if (_drawing == null || _drawRoute == null || _sc == null || _map == null) return;
-        _liveProblems = ScenarioObjectsCheck.Route(Ctx.Db, _sc, _map, DraftOf(_drawRoute, _drawing.Cells))
+        _liveProblems = ScenarioObjectsCheck.Route(Ctx.Db, _sc, _map, Preview(_drawRoute, _drawing.Cells))
             .Where(p => p.Severity != IssueSeverity.Info).ToList();
         var first = _liveProblems.FirstOrDefault(p => p.Severity == IssueSeverity.Error && !p.Message.Contains("не доходит") && !p.Message.Contains("не завершён"));
         _status.Text = $"Гексов: {_drawing.Cells.Count}" + (first != null ? $" · ⛔ {first.Message}" : " · линия проходима");
@@ -659,16 +687,40 @@ public partial class TdScenePanel : DefListPanel
         _drawing = null;
         _drawRoute = null;
         if (_sc == null) return;
-        var committed = DraftOf(r, d.Cells);
-        // The route keeps its identity and settings; only the line changes. Nothing is cut or redirected.
-        r.Nodes = committed.Nodes;
-        r.Edges = committed.Edges;
+        string what;
+        if (r.Nodes.Count > 0 && d.Cells.Count <= 1)
+        {
+            // A click on the route: select its node (rule of the fork, exits, loop) — nothing is drawn.
+            var n = RouteGraph.NodeAt(r, d.Cells.FirstOrDefault());
+            SelectedNode = n?.Id ?? "";
+            _status.Text = n != null ? $"Узел {(n.Name != "" ? n.Name : n.Id)} ({n.Kind}): правило и выходы — справа" : "Клик по линии маршрута: протяните, чтобы начать ветку";
+            RefreshProps();
+            return;
+        }
+        if (r.Nodes.Count == 0)
+        {
+            var committed = DraftOf(r, d.Cells);
+            // The route keeps its identity and settings; only the line changes. Nothing is cut or redirected.
+            r.Nodes = committed.Nodes;
+            r.Edges = committed.Edges;
+            what = "линия";
+        }
+        else
+        {
+            var from = RouteGraph.NodeOn(r, d.Cells[0])!;
+            bool extension = !r.Out(from.Id).Any();
+            var e = RouteGraph.AddBranch(r, from, d.Cells);
+            var to = r.Node(e.To)!;
+            what = e.Loop != null ? $"петля {e.Id} в узел {to.Id}" : extension ? $"продление от {from.Id}"
+                : r.In(to.Id).Count() > 1 ? $"ветка {e.Id} от развилки {from.Id} со слиянием в {to.Id}" : $"ветка {e.Id} от развилки {from.Id}";
+            SelectedNode = from.Id;
+        }
         Edited();
         var mine = _problems.Where(p => p.Object == r.Id && p.Severity != IssueSeverity.Info).ToList();
         var err = mine.FirstOrDefault(p => p.Severity == IssueSeverity.Error);
         _status.Text = err == null
-            ? $"Маршрут «{r.DisplayName}»: {d.Cells.Count} гексов, проверка пройдена" + (mine.Count > 0 ? $" (предупреждений: {mine.Count})" : "")
-            : $"Маршрут «{r.DisplayName}» сохранён с ошибкой: {err.Message}" + (err.Message.Contains("не доходит") ? " — «Продлить до цели» в списке слева" : "");
+            ? $"Маршрут «{r.DisplayName}»: {what}, {d.Cells.Count} гексов, проверка пройдена" + (mine.Count > 0 ? $" (предупреждений: {mine.Count})" : "")
+            : $"Маршрут «{r.DisplayName}» ({what}) сохранён с ошибкой: {err.Message}" + (err.Message.Contains("не доходит") || err.Message.Contains("обрывается") ? " — «Продлить до цели» или протяните ветку дальше" : "");
         RefreshLibrary();
         RefreshProps();
     }
@@ -692,14 +744,72 @@ public partial class TdScenePanel : DefListPanel
             _status.Text = $"От конца маршрута «{r.DisplayName}» нет проходимого пути до «{target.DisplayName}»";
             return false;
         }
-        d.Cells.AddRange(rest);
-        var c = DraftOf(r, d.Cells);
-        r.Nodes = c.Nodes;
-        r.Edges = c.Edges;
+        var main = r.MainPath();
+        var endNode = main.Count > 0 ? RouteGraph.NodeAt(r, main[^1]) : null;
+        if (endNode != null && rest.Count > 0)
+        {
+            var cells = new List<HexCoord> { endNode.C };
+            cells.AddRange(rest);
+            RouteGraph.AddBranch(r, endNode, cells);
+        }
+        else
+        {
+            d.Cells.AddRange(rest);
+            var c = DraftOf(r, d.Cells);
+            r.Nodes = c.Nodes;
+            r.Edges = c.Edges;
+        }
         _status.Text = $"Маршрут «{r.DisplayName}» продлён на {rest.Count} гекс(ов) до «{target.DisplayName}»";
         Edited();
         RefreshLibrary();
         return true;
+    }
+
+    /// <summary>
+    /// «Соединить маршруты»: the end of a goes by the shortest passable way to the nearest node of b; the rest of b
+    /// from there is copied into a (a shared stretch; b is not changed).
+    /// </summary>
+    public bool JoinRoutes(RouteDef a, RouteDef b)
+    {
+        if (_sc == null || _map == null) return false;
+        var main = a.MainPath();
+        var aEnd = main.Count > 0 ? RouteGraph.NodeAt(a, main[^1]) : null;
+        if (aEnd == null)
+        {
+            _status.Text = $"У маршрута «{a.DisplayName}» нет конца линии";
+            return false;
+        }
+        var blocked = _sc.Objects.Where(o => o.Health != null).SelectMany(o => o.Cells());
+        var d = new RouteDrawing(Ctx.Db, _map, ScenarioObjectsCheck.CategoriesOf(Ctx.Db, _sc, a), blocked);
+        foreach (var n in b.Nodes.Where(n => b.Reachable().Contains(n.Id)).OrderBy(n => HexCoord.Distance(n.C, aEnd.C)))
+        {
+            var way = n.C == aEnd.C ? new List<HexCoord>() : d.ShortestPath(aEnd.C, n.C, 200);
+            if (way == null) continue;
+            var link = new List<HexCoord> { aEnd.C };
+            link.AddRange(way);
+            RouteGraph.Join(a, b, aEnd, n, link);
+            _status.Text = $"«{a.DisplayName}» соединён с «{b.DisplayName}» в узле {n.Id} {n.C}: дальше общий участок до «{Obj(b.Target)?.DisplayName ?? b.Target}»";
+            Edited();
+            RefreshLibrary();
+            RefreshProps();
+            return true;
+        }
+        _status.Text = $"От конца «{a.DisplayName}» нет проходимого пути ни к одному узлу «{b.DisplayName}»";
+        return false;
+    }
+
+    /// <summary>Removes an exit of a node and every node no longer reachable from the start.</summary>
+    private void RemoveBranch(RouteDef r, RouteEdgeDef e)
+    {
+        r.Edges.Remove(e);
+        var reach = r.Reachable();
+        r.Nodes.RemoveAll(n => !reach.Contains(n.Id));
+        r.Edges.RemoveAll(x => !reach.Contains(x.From) || !reach.Contains(x.To));
+        RouteGraph.UpdateKinds(r);
+        if (r.Node(SelectedNode) == null) SelectedNode = "";
+        Edited();
+        RefreshLibrary();
+        RefreshProps();
     }
 
     /// <summary>Draws a route through the given hexes as the drag gesture would (for the tests and scripted use).</summary>
@@ -814,6 +924,7 @@ public partial class TdScenePanel : DefListPanel
                     var b = Btn($"{(errs > 0 ? "⛔" : "✓")} {r.DisplayName} · {Math.Max(0, r.MainPath().Count - 1)} гекс.", () =>
                     {
                         SelectedRoute = rr.Id;
+                        SelectedNode = "";
                         RefreshLibrary();
                         RefreshProps();
                         Hint();
@@ -843,6 +954,15 @@ public partial class TdScenePanel : DefListPanel
                         _status.Text = $"Маршрут «{sr.DisplayName}» назначен групп: {n}";
                         Edited();
                     }, "Всем группам базы спавна этого маршрута");
+                    var others = _sc.Routes.Where(x => x != sr && x.Nodes.Count > 0).ToList();
+                    if (others.Count > 0 && sr.Nodes.Count > 0)
+                    {
+                        var pickJoin = new OptionButton { FocusMode = FocusModeEnum.None, Name = "TdJoinWith", ClipText = true };
+                        foreach (var o in others) pickJoin.AddItem(o.DisplayName);
+                        _library.AddChild(pickJoin);
+                        Btn("⇄ Соединить с выбранным", () => JoinRoutes(sr, others[Math.Max(0, pickJoin.Selected)]),
+                            "Конец этого маршрута соединяется с ближайшим узлом другого, дальше — общий участок", "TdJoin");
+                    }
                     Btn("✗ Удалить маршрут", () =>
                     {
                         _sc.Routes.Remove(sr);
@@ -1052,6 +1172,7 @@ public partial class TdScenePanel : DefListPanel
         grid.Choices[nameof(SpawnGroupDef.Route)] = RouteChoices;
         grid.Choices[nameof(SpawnGroupDef.Target)] = () => ObjectChoices(_ => true);
         grid.Choices[nameof(RouteDef.Spawn)] = () => ObjectChoices(o => o.Spawn != null);
+        grid.Choices[nameof(RouteDef.Fallback)] = RouteChoices;
         grid.Choices[nameof(BaseDefeatDef.MainBase)] = () => ObjectChoices(o => o.Type == ScenarioObjectType.PlayerBase);
         grid.SetTarget(target, Ctx.Db);
         grid.Changed += () =>
@@ -1073,8 +1194,37 @@ public partial class TdScenePanel : DefListPanel
                 _props.AddChild(Ui.Label($"{ScenarioObjects.Caption(o.Type)} [{o.Id}] · {o.Anchor} · гексов {o.Cells().Count}", 15, Ui.Accent, wrap: true));
                 _props.AddChild(Grid(o, RefreshLibrary));
                 return;
+            case TdMode.Routes when Route(SelectedRoute) is { } r && r.Node(SelectedNode) is { } node:
+            {
+                _props.AddChild(Ui.Label($"Узел {node.Id} {node.C} · маршрут «{r.DisplayName}»", 15, Ui.Accent, wrap: true));
+                var back = Ui.Button("← К маршруту", () =>
+                {
+                    SelectedNode = "";
+                    RefreshProps();
+                });
+                _props.AddChild(back);
+                var ng = Grid(node, RefreshLibrary);
+                ng.Name = "TdNodeGrid";
+                _props.AddChild(ng);
+                foreach (var e in r.Out(node.Id).ToList())
+                {
+                    var ee = e;
+                    _props.AddChild(Ui.Sep());
+                    var head = Ui.HBox(4);
+                    head.AddChild(Ui.Label($"Выход {e.Id} → {e.To} · гексов {e.Cells.Count}" + (r.IsLoopEdge(e) ? " · петля" : ""), 14, Ui.Parse(r.Color, Ui.Text)).Expand());
+                    var del = Ui.Button("✗", () => RemoveBranch(r, ee), "Удалить этот выход и всё, что стало недостижимым");
+                    del.Name = "TdDelEdge_" + e.Id;
+                    head.AddChild(del);
+                    _props.AddChild(head);
+                    var eg = Grid(e, RefreshLibrary);
+                    eg.Name = "TdEdgeGrid_" + e.Id;
+                    _props.AddChild(eg);
+                }
+                return;
+            }
             case TdMode.Routes when Route(SelectedRoute) is { } r:
-                _props.AddChild(Ui.Label($"Маршрут [{r.Id}] · гексов {Math.Max(0, r.MainPath().Count - 1)}", 15, Ui.Accent, wrap: true));
+                _props.AddChild(Ui.Label($"Маршрут [{r.Id}] · гексов {Math.Max(0, r.MainPath().Count - 1)} · узлов {r.Nodes.Count} · рёбер {r.Edges.Count}", 15, Ui.Accent, wrap: true));
+                _props.AddChild(Ui.Label("Клик по узлу маршрута — его правило и выходы; протяжка от узла или линии — ветка; конец на маршруте — слияние или петля.", 12, Ui.TextDim, wrap: true));
                 _props.AddChild(Grid(r, RefreshLibrary));
                 return;
             case TdMode.Waves when SelectedGroup is { } g:

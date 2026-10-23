@@ -121,7 +121,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           }
         ],
         "customEnd": false,
@@ -226,7 +228,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           },
           {
             "id": "w2_g2",
@@ -250,7 +254,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           }
         ],
         "customEnd": false,
@@ -355,7 +361,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           },
           {
             "id": "w3_g2",
@@ -379,7 +387,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           },
           {
             "id": "w3_g3",
@@ -403,7 +413,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           }
         ],
         "customEnd": false,

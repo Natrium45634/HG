@@ -143,6 +143,8 @@ public static class ContentChecks
 
     private static bool FlagIsSet(ContentDatabase db, ScenarioDef s, List<UnitDef> units, string flag)
     {
+        // Nodes of the routes set their flags when an enemy passes (docs/DECISIONS_4.md §57).
+        if (s.Routes.Any(r => r.Nodes.Any(n => n.Event == flag))) return true;
         // Skills, passives and statuses can set flags too (operation «событие сценария»).
         if (db.AllDefs().Where(d => d is not ScenarioDef).SelectMany(Operations).Any(x => x.Effect.Type == EffectType.SetFlag && x.Effect.Text == flag)) return true;
         var actions = s.Triggers.SelectMany(t => t.Actions).Concat(s.Waves.SelectMany(w => w.OnStart.Concat(w.OnEnd)))

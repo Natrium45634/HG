@@ -594,9 +594,7 @@ public sealed class CombatSystem
             {
                 var points = _sim.Scenario.RoutePoints(e.Route);
                 if (points == null) break;
-                target.Route = new List<HexCoord>(points);
-                target.RouteIndex = 0;
-                target.RouteId = e.Route;
+                _sim.Routes.Assign(target, e.Route, fromStart: false);
                 if (_sim.Scenario.Def?.Route(e.Route) is { Target: not "" } sr) target.TargetObject = sr.Target;
                 string rname = _sim.Scenario.Def?.Route(e.Route)?.DisplayName ?? _sim.Map.Def.FindRoute(e.Route)?.Name ?? e.Route;
                 _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{target.Name}: новый маршрут «{rname}» — {cause}", source?.Id ?? -1, target.Id);

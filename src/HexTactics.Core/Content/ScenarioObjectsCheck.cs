@@ -123,37 +123,48 @@ public static class ScenarioObjectsCheck
         else if (!SpawnArea(spawn).Any(c => HexCoord.Distance(c, path[0]) <= 1))
             list.Add(new(IssueSeverity.Error, "Routes", $"{name} начинается в {path[0]}, далеко от базы спавна «{spawn.DisplayName}» — начните линию у неё", path[0], r.Id));
 
-        // The hexes: contiguous, on the map, passable for every group that uses the route, not through structures.
+        // The hexes of every edge: contiguous from its node, on the map, passable for every group that uses the
+        // route, not through other structures. A hex shared by edges (a merge) is checked once per edge.
         var cats = categories ?? CategoriesOf(db, sc, r);
         var structures = sc.Objects.Where(o => o.Health != null && o.Id != r.Target).ToList();
-        for (int i = 0; i < path.Count; i++)
+        var lines = r.Edges.Count > 0 ? r.Edges.Select(e => (Edge: e, Path: r.EdgePath(e))).ToList() : new() { (Edge: (RouteEdgeDef)null!, Path: path) };
+        var reported = new HashSet<HexCoord>();
+        foreach (var (edge, line) in lines)
         {
-            var c = path[i];
-            if (i > 0 && HexCoord.Distance(path[i - 1], c) != 1)
+            for (int i = 0; i < line.Count; i++)
             {
-                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: разрыв между {path[i - 1]} и {c} — гексы маршрута должны быть соседними", c, r.Id));
-                continue;
-            }
-            if (!cells.TryGetValue(c, out var cell))
-            {
-                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: гекс {c} вне карты", c, r.Id));
-                continue;
-            }
-            foreach (var cat in cats)
-            {
-                bool ok = i == 0 ? MapAnalysis.IsWalkable(db, cell, cat) : cells.TryGetValue(path[i - 1], out var prev) && MapAnalysis.CanStep(db, prev, cell, cat);
-                if (!ok)
+                var c = line[i];
+                if (i > 0 && HexCoord.Distance(line[i - 1], c) != 1)
                 {
-                    string why = !MapAnalysis.IsWalkable(db, cell, cat) ? $"непроходим для «{cat}» ({db.Terrain(cell.T)?.DisplayName ?? cell.T})" : "слишком большой перепад высоты";
-                    list.Add(new(IssueSeverity.Error, "Routes", $"{name}: гекс {c} {why}", c, r.Id));
-                    break;
+                    list.Add(new(IssueSeverity.Error, "Routes", $"{name}: разрыв между {line[i - 1]} и {c} — гексы маршрута должны быть соседними", c, r.Id));
+                    continue;
                 }
+                if (!reported.Add(c) && i > 0) continue;
+                if (!cells.TryGetValue(c, out var cell))
+                {
+                    list.Add(new(IssueSeverity.Error, "Routes", $"{name}: гекс {c} вне карты", c, r.Id));
+                    continue;
+                }
+                foreach (var cat in cats)
+                {
+                    bool ok = i == 0 ? MapAnalysis.IsWalkable(db, cell, cat) : cells.TryGetValue(line[i - 1], out var prev) && MapAnalysis.CanStep(db, prev, cell, cat);
+                    if (!ok)
+                    {
+                        string why = !MapAnalysis.IsWalkable(db, cell, cat) ? $"непроходим для «{cat}» ({db.Terrain(cell.T)?.DisplayName ?? cell.T})" : "слишком большой перепад высоты";
+                        list.Add(new(IssueSeverity.Error, "Routes", $"{name}: гекс {c} {why}", c, r.Id));
+                        break;
+                    }
+                }
+                if (structures.FirstOrDefault(o => o.Occupies(c)) is { } s)
+                    list.Add(new(IssueSeverity.Error, "Routes", $"{name} проходит через «{s.DisplayName}» в {c}", c, r.Id));
             }
-            if (structures.FirstOrDefault(o => o.Occupies(c)) is { } s)
-                list.Add(new(IssueSeverity.Error, "Routes", $"{name} проходит через «{s.DisplayName}» в {c}", c, r.Id));
+            if (edge != null && r.Node(edge.To) is { } to && edge.Cells.Count > 0 && edge.Cells[^1] != to.C)
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: ребро {edge.Id} не доходит до узла {to.Id} {to.C}", edge.Cells[^1], r.Id));
         }
         foreach (var c in path.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key).Take(3))
-            list.Add(new(IssueSeverity.Warning, "Routes", $"{name} проходит гекс {c} дважды — для петли используйте граф маршрута (этап 3)", c, r.Id));
+            if (!r.Edges.Any(e => e.Loop != null))
+                list.Add(new(IssueSeverity.Warning, "Routes", $"{name} проходит гекс {c} дважды — для петли отметьте ребро петлёй", c, r.Id));
+        list.AddRange(GraphProblems(sc, r, name));
 
         // End: the assigned target (or an explicit end rule).
         if (r.End == RouteEndKind.Target)
@@ -174,6 +185,54 @@ public static class ScenarioObjectsCheck
         else list.Add(new(IssueSeverity.Info, "Routes", $"{name}: {(r.End == RouteEndKind.Patrol ? "бесконечный патруль" : "враги останавливаются в конце")} — цель не требуется", path[^1], r.Id));
         if (!sc.Waves.Any(w => w.Groups.Any(g => g.Route == r.Id)))
             list.Add(new(IssueSeverity.Info, "Routes", $"{name} не назначен ни одной группе", path[0], r.Id));
+        return list;
+    }
+
+    /// <summary>
+    /// The graph of a route (docs/DECISIONS_4.md §57): edges between existing nodes, every node reachable, no dead
+    /// end before the target, forks with a working rule, loops with an exit (or an explicit patrol), the fallback
+    /// route exists.
+    /// </summary>
+    public static List<ScenarioProblem> GraphProblems(ScenarioDef sc, RouteDef r, string name)
+    {
+        var list = new List<ScenarioProblem>();
+        if (r.Nodes.Count == 0) return list;
+        foreach (var id in r.Nodes.GroupBy(n => n.Id).Where(g => g.Count() > 1).Select(g => g.Key))
+            list.Add(new(IssueSeverity.Error, "Routes", $"{name}: ID узла «{id}» повторяется", null, r.Id));
+        foreach (var e in r.Edges)
+            if (r.Node(e.From) == null || r.Node(e.To) == null)
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: ребро {e.Id} ссылается на несуществующий узел", e.Cells.FirstOrDefault(), r.Id));
+        var reach = r.Reachable();
+        foreach (var n in r.Nodes.Where(n => !reach.Contains(n.Id)))
+            list.Add(new(IssueSeverity.Warning, "Routes", $"{name}: узел {(n.Name != "" ? n.Name : n.Id)} {n.C} недостижим от начала", n.C, r.Id));
+        var target = sc.Object(r.Target);
+        foreach (var n in r.Nodes.Where(n => reach.Contains(n.Id)))
+        {
+            var outs = r.Out(n.Id).ToList();
+            string nn = n.Name != "" ? n.Name : n.Id;
+            if (outs.Count == 0 && r.End == RouteEndKind.Target && target != null && n.C != r.MainPath().LastOrDefault()
+                && target.Cells().All(c => HexCoord.Distance(c, n.C) > 1))
+                list.Add(new(r.AllowIncomplete ? IssueSeverity.Warning : IssueSeverity.Error, "Routes", $"{name}: ветка обрывается в узле {nn} {n.C}, не дойдя до цели — продлите её или соедините с маршрутом", n.C, r.Id));
+            if (outs.Count >= 2)
+            {
+                if (n.Rule == RouteForkRule.Weights && outs.All(e => e.Weight <= 0))
+                    list.Add(new(IssueSeverity.Error, "Routes", $"{name}: развилка {nn} «по весам», но у всех выходов вес 0", n.C, r.Id));
+                if (n.Rule == RouteForkRule.Tags && outs.All(e => e.Tags.Count > 0))
+                    list.Add(new(IssueSeverity.Info, "Routes", $"{name}: развилка {nn} «по тегам» без выхода по умолчанию — враг без подходящих тегов пойдёт по первому", n.C, r.Id));
+                if (n.Rule == RouteForkRule.Condition && outs.All(e => e.Condition == null))
+                    list.Add(new(IssueSeverity.Warning, "Routes", $"{name}: развилка {nn} «по условию», но у выходов нет условий", n.C, r.Id));
+                if (outs.All(e => e.Condition != null) && outs.All(e => e.Loop == null))
+                    list.Add(new(IssueSeverity.Warning, "Routes", $"{name}: у всех выходов развилки {nn} есть условия — пока ни одно не выполнено, враг ждёт в узле", n.C, r.Id));
+            }
+        }
+        // Loops: every edge of a cycle needs a limit or an exit; the route must still lead somewhere.
+        foreach (var e in r.Edges.Where(r.IsLoopEdge))
+            if (r.End != RouteEndKind.Patrol && !r.IsControlledLoop(e))
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: петля через ребро {e.Id} без числа повторений и условия выхода — отметьте «бесконечный патруль» или задайте выход", e.Cells.FirstOrDefault(), r.Id));
+        if (r.End == RouteEndKind.Target && reach.Count > 0 && !r.Nodes.Any(n => reach.Contains(n.Id) && !r.Out(n.Id).Any()))
+            list.Add(new(IssueSeverity.Error, "Routes", $"{name}: из петель нет выхода к концу маршрута", r.StartNode()?.C, r.Id));
+        if (r.Fallback != "" && (sc.Route(r.Fallback) == null || r.Fallback == r.Id))
+            list.Add(new(IssueSeverity.Error, "Routes", $"{name}: запасной маршрут «{r.Fallback}» не найден", r.StartNode()?.C, r.Id));
         return list;
     }
 
@@ -205,6 +264,8 @@ public static class ScenarioObjectsCheck
                 else if (r != null && b != null && r.Spawn != "" && r.Spawn != b.Id && g.ExtraBases.Count == 0)
                     list.Add(new(IssueSeverity.Warning, path, $"{name}: маршрут «{r.DisplayName}» начинается у «{r.Spawn}», а группа — у «{b.Id}»", b.Anchor, b.Id));
                 if (g.Target != "" && sc.Object(g.Target) == null) list.Add(new(IssueSeverity.Error, path, $"{name}: цель «{g.Target}» не найдена"));
+                foreach (var alt in g.AltRoutes.Where(x => x != "" && sc.Route(x) == null && map?.FindRoute(x) == null))
+                    list.Add(new(IssueSeverity.Error, path, $"{name}: другой маршрут «{alt}» не найден", b?.Anchor));
                 if (g.SubgroupSize > 0 && g.SubgroupSize >= g.Count && g.Repeats == 0)
                     list.Add(new(IssueSeverity.Info, path, $"{name}: подгруппа ({g.SubgroupSize}) не меньше количества ({g.Count}) — пауза не действует"));
                 if (g.MaxAlive > 0 && w.MaxAlive > 0 && g.MaxAlive > w.MaxAlive)

@@ -18,6 +18,27 @@ public enum RouteNodeKind
     [Ed("Контрольная точка")] Checkpoint,
 }
 
+/// <summary>How a fork picks the exit for an enemy (docs/DECISIONS_4.md §57).</summary>
+public enum RouteForkRule
+{
+    [Ed("Первый доступный (по приоритету)")] FirstAvailable,
+    [Ed("По весам (ГСЧ боя)")] Weights,
+    [Ed("По тегам и категориям группы")] Tags,
+    [Ed("По условию ребра")] Condition,
+    [Ed("По загрузке (где меньше врагов)")] Load,
+    [Ed("По очереди")] RoundRobin,
+}
+
+/// <summary>A loop: an edge back to an earlier node (docs/DECISIONS_4.md §57).</summary>
+public sealed class RouteLoopDef
+{
+    [Ed("Повторений", "Сколько раз враг проходит петлю; 0 — без ограничения (только у патруля)"), EdRange(0, 1000)] public int MaxRepeats { get; set; } = 2;
+    [Ed("Условие выхода", "Выполнено — петля больше не выбирается")] public ConditionDef? ExitCondition { get; set; }
+    [Ed("Атаковать по пути", "Нет — враг на петле идёт, не отвлекаясь на цели")] public bool Engage { get; set; } = true;
+
+    public override string ToString() => (MaxRepeats > 0 ? $"×{MaxRepeats}" : "без ограничения") + (ExitCondition != null ? ", с условием выхода" : "");
+}
+
 /// <summary>How a route ends: at a target, or by a rule for patrols and guards.</summary>
 public enum RouteEndKind
 {
@@ -32,7 +53,9 @@ public sealed class RouteNodeDef
     [Ed("Гекс"), EdHidden] public HexCoord C { get; set; }
     [Ed("Тип узла")] public RouteNodeKind Kind { get; set; } = RouteNodeKind.Normal;
     [Ed("Название")] public string Name { get; set; } = "";
-    [Ed("Событие", "Триггер сценария, запускаемый при прохождении узла"), EdHidden] public string Event { get; set; } = "";
+    [Ed("Флаг события", "Устанавливается, когда враг проходит узел (для триггеров и условий)")] public string Event { get; set; } = "";
+    [Ed("Правило развилки", "Какой выход выбирает враг, если выходов несколько")] public RouteForkRule Rule { get; set; } = RouteForkRule.FirstAvailable;
+    [Ed("Ожидание в узле, с", "Враг стоит в узле перед продолжением (пост, точка петли)"), EdRange(0, 3600)] public double DwellSeconds { get; set; }
 
     public override string ToString() => $"{(Name == "" ? Id : Name)} {C} ({Kind})";
 }
@@ -45,9 +68,11 @@ public sealed class RouteEdgeDef
     [Ed("Гексы", "Путь от узла «из» (не включая его) до узла «в» (включая его)"), EdHidden] public List<HexCoord> Cells { get; set; } = new();
     [Ed("Приоритет"), EdRange(-100, 100)] public int Priority { get; set; }
     [Ed("Вес выбора", "Для развилки «по весам»"), EdRange(0, 1000)] public double Weight { get; set; } = 1;
-    [Ed("Теги")] public List<string> Tags { get; set; } = new();
+    [Ed("Теги", "Для развилки «по тегам»: ребро выбирают враги с такими тегами, категорией, меткой или группой")] public List<string> Tags { get; set; } = new();
+    [Ed("Условие использования", "Ребро доступно, пока выполнено")] public ConditionDef? Condition { get; set; }
+    [Ed("Петля", "Ребро ведёт назад: число повторений и выход")] public RouteLoopDef? Loop { get; set; }
 
-    public override string ToString() => $"{From} → {To} ({Cells.Count} гексов)";
+    public override string ToString() => $"{From} → {To} ({Cells.Count} гексов)" + (Loop != null ? " ↺" : "");
 }
 
 /// <summary>
@@ -63,6 +88,7 @@ public sealed class RouteDef
     [Ed("Цель", "Объект в конце маршрута (база игрока, цель, контрольная точка)")] public string Target { get; set; } = "";
     [Ed("Завершение")] public RouteEndKind End { get; set; } = RouteEndKind.Target;
     [Ed("Разрешить незавершённый", "Подтверждение автора: маршрут без цели всё равно используется")] public bool AllowIncomplete { get; set; }
+    [Ed("Запасной маршрут", "Выход из узла заблокирован — враг переходит на этот маршрут")] public string Fallback { get; set; } = "";
     [Ed("Узлы"), EdHidden] public List<RouteNodeDef> Nodes { get; set; } = new();
     [Ed("Рёбра"), EdHidden] public List<RouteEdgeDef> Edges { get; set; } = new();
 
@@ -88,7 +114,8 @@ public sealed class RouteDef
         var cur = start;
         while (cur != null && cur.Kind != RouteNodeKind.End)
         {
-            var e = Out(cur.Id).FirstOrDefault();
+            // The way on, not around a loop: exits outside cycles first.
+            var e = Out(cur.Id).OrderBy(x => IsLoopEdge(x) ? 1 : 0).FirstOrDefault(x => !seen.Contains(x.Id));
             if (e == null || !seen.Add(e.Id)) break;
             path.AddRange(e.Cells);
             cur = Node(e.To);
@@ -99,11 +126,174 @@ public sealed class RouteDef
     /// <summary>Every hex used by the route (for drawing and checks).</summary>
     public IEnumerable<HexCoord> AllCells() => Nodes.Select(n => n.C).Concat(Edges.SelectMany(e => e.Cells)).Distinct();
 
+    public IEnumerable<RouteEdgeDef> In(string nodeId) => Edges.Where(e => e.To == nodeId);
+
+    public RouteEdgeDef? Edge(string id) => Edges.FirstOrDefault(e => e.Id == id);
+
+    /// <summary>The hexes of an edge with its first node: from the «from» hex to the «to» hex.</summary>
+    public List<HexCoord> EdgePath(RouteEdgeDef e)
+    {
+        var list = new List<HexCoord>();
+        if (Node(e.From) is { } f) list.Add(f.C);
+        list.AddRange(e.Cells);
+        return list;
+    }
+
+    /// <summary>Nodes reachable from the start along the edges.</summary>
+    public HashSet<string> Reachable(string? from = null)
+    {
+        var seen = new HashSet<string>();
+        var start = from ?? StartNode()?.Id;
+        if (start == null) return seen;
+        var stack = new Stack<string>();
+        stack.Push(start);
+        while (stack.Count > 0)
+        {
+            var n = stack.Pop();
+            if (!seen.Add(n)) continue;
+            foreach (var e in Out(n)) stack.Push(e.To);
+        }
+        return seen;
+    }
+
+    /// <summary>An edge of a cycle: its «to» node leads back to its «from» node.</summary>
+    public bool IsLoopEdge(RouteEdgeDef e) => e.From == e.To || Reachable(e.To).Contains(e.From);
+
+    /// <summary>
+    /// A cycle edge without its own loop settings is controlled when an edge of the same cycle has them (a limit or
+    /// an exit): that edge stops the cycle.
+    /// </summary>
+    public bool IsControlledLoop(RouteEdgeDef e) => LoopControls(e).Any();
+
+    /// <summary>The edges with loop settings (a limit or an exit) on a cycle through this edge (itself included).</summary>
+    public IEnumerable<RouteEdgeDef> LoopControls(RouteEdgeDef e)
+    {
+        var fromTo = Reachable(e.To);
+        return Edges.Where(f => (f.Loop is { MaxRepeats: > 0 } || f.Loop?.ExitCondition != null)
+                                && (f == e || fromTo.Contains(f.From) && Reachable(f.To).Contains(e.From)));
+    }
+
+    /// <summary>A node that ends the route: the end kind, or no exit at all.</summary>
+    public bool IsEnd(RouteNodeDef n) => n.Kind == RouteNodeKind.End || !Edges.Any(e => e.From == n.Id);
+
     public override string ToString() => $"{DisplayName} [{Id}]";
 }
 
 public static class RouteGraph
 {
+    public static string NewNodeId(RouteDef r)
+    {
+        for (int i = r.Nodes.Count + 1; ; i++)
+            if (r.Nodes.All(n => n.Id != $"n{i}")) return $"n{i}";
+    }
+
+    public static string NewEdgeId(RouteDef r)
+    {
+        for (int i = r.Edges.Count + 1; ; i++)
+            if (r.Edges.All(e => e.Id != $"e{i}")) return $"e{i}";
+    }
+
+    public static RouteNodeDef? NodeAt(RouteDef r, HexCoord c) => r.Nodes.FirstOrDefault(n => n.C == c);
+
+    /// <summary>An edge passing a hex between its nodes: the edge and the index of the hex in its cells.</summary>
+    public static (RouteEdgeDef Edge, int Index)? EdgeAt(RouteDef r, HexCoord c)
+    {
+        foreach (var e in r.Edges)
+        {
+            int i = e.Cells.IndexOf(c);
+            if (i >= 0 && i < e.Cells.Count - 1) return (e, i);
+        }
+        return null;
+    }
+
+    /// <summary>Splits an edge at one of its inner hexes: a new node there, the edge becomes two.</summary>
+    public static RouteNodeDef Split(RouteDef r, RouteEdgeDef e, int index)
+    {
+        var at = e.Cells[index];
+        var node = new RouteNodeDef { Id = NewNodeId(r), C = at, Kind = RouteNodeKind.Normal };
+        r.Nodes.Add(node);
+        var tail = new RouteEdgeDef
+        {
+            Id = NewEdgeId(r), From = node.Id, To = e.To, Cells = e.Cells.Skip(index + 1).ToList(),
+            Priority = e.Priority, Weight = e.Weight, Tags = new List<string>(e.Tags), Condition = e.Condition, Loop = e.Loop,
+        };
+        e.Cells = e.Cells.Take(index + 1).ToList();
+        e.To = node.Id;
+        e.Loop = null;
+        r.Edges.Add(tail);
+        return node;
+    }
+
+    /// <summary>
+    /// The node of a route at a hex: an existing node, or a new one splitting the edge that passes there; null — the
+    /// hex is not on the route.
+    /// </summary>
+    public static RouteNodeDef? NodeOn(RouteDef r, HexCoord c)
+    {
+        if (NodeAt(r, c) is { } n) return n;
+        return EdgeAt(r, c) is { } hit ? Split(r, hit.Edge, hit.Index) : null;
+    }
+
+    /// <summary>
+    /// A new edge from a node along drawn hexes (the first is the node's hex). It ends at a node of the route there
+    /// (a merge or a loop) or at a new node. Kinds are recomputed.
+    /// </summary>
+    public static RouteEdgeDef AddBranch(RouteDef r, RouteNodeDef from, IReadOnlyList<HexCoord> cells)
+    {
+        var to = cells.Count > 1 ? NodeOn(r, cells[^1]) : null;
+        if (to == null)
+        {
+            to = new RouteNodeDef { Id = NewNodeId(r), C = cells[^1], Kind = RouteNodeKind.Normal };
+            r.Nodes.Add(to);
+        }
+        var e = new RouteEdgeDef { Id = NewEdgeId(r), From = from.Id, To = to.Id, Cells = cells.Skip(1).ToList() };
+        if (r.IsLoopEdge(e) || e.From == e.To) e.Loop = new RouteLoopDef();
+        r.Edges.Add(e);
+        UpdateKinds(r);
+        return e;
+    }
+
+    /// <summary>Fork/merge/end/normal from the edges; the start, checkpoints and the author's kinds stay.</summary>
+    public static void UpdateKinds(RouteDef r)
+    {
+        foreach (var n in r.Nodes)
+        {
+            if (n.Kind is RouteNodeKind.Start or RouteNodeKind.Checkpoint) continue;
+            int outs = r.Edges.Count(e => e.From == n.Id), ins = r.Edges.Count(e => e.To == n.Id);
+            n.Kind = outs == 0 ? RouteNodeKind.End : outs >= 2 ? RouteNodeKind.Fork : ins >= 2 ? RouteNodeKind.Merge : RouteNodeKind.Normal;
+        }
+    }
+
+    /// <summary>
+    /// «Соединить маршруты»: the part of route b reachable from its node nearest to a's end is copied into a and the
+    /// end of a is joined to it by the given hexes (from a's end node to the b node, both included). a takes b's
+    /// target and end rule. Returns the copied node standing for the b node.
+    /// </summary>
+    public static RouteNodeDef? Join(RouteDef a, RouteDef b, RouteNodeDef aEnd, RouteNodeDef bNode, IReadOnlyList<HexCoord> link)
+    {
+        var map = new Dictionary<string, RouteNodeDef>();
+        foreach (var id in b.Reachable(bNode.Id))
+        {
+            var src = b.Node(id)!;
+            var copy = new RouteNodeDef { Id = NewNodeId(a), C = src.C, Kind = src.Kind == RouteNodeKind.Start ? RouteNodeKind.Normal : src.Kind, Name = src.Name, Event = src.Event, Rule = src.Rule, DwellSeconds = src.DwellSeconds };
+            a.Nodes.Add(copy);
+            map[id] = copy;
+        }
+        foreach (var e in b.Edges.Where(e => map.ContainsKey(e.From) && map.ContainsKey(e.To)))
+            a.Edges.Add(new RouteEdgeDef
+            {
+                Id = NewEdgeId(a), From = map[e.From].Id, To = map[e.To].Id, Cells = new List<HexCoord>(e.Cells), Priority = e.Priority, Weight = e.Weight,
+                Tags = new List<string>(e.Tags), Condition = e.Condition, Loop = e.Loop,
+            });
+        var joined = map[bNode.Id];
+        if (aEnd.Kind == RouteNodeKind.End) aEnd.Kind = RouteNodeKind.Normal;
+        a.Edges.Add(new RouteEdgeDef { Id = NewEdgeId(a), From = aEnd.Id, To = joined.Id, Cells = link.Skip(1).ToList() });
+        a.Target = b.Target;
+        a.End = b.End;
+        UpdateKinds(a);
+        return joined;
+    }
+
     public static string NewId(ScenarioDef sc)
     {
         for (int i = 1; ; i++)

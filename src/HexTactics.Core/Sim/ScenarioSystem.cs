@@ -274,15 +274,20 @@ public sealed class ScenarioSystem
                 _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Name}», группа «{g.Id}»: {(def == null ? $"нет шаблона «{g.Unit}»" : $"нет базы спавна «{g.SpawnBase}»")} — пропущена");
                 continue;
             }
-            string target = g.Target != "" ? g.Target : Def?.Route(g.Route)?.Target ?? "";
             int n = WaveSchedule.CountOf(g, w);
             var mods = ModsOf(w, g);
-            // Subgroups inside a run, the runs one after another; several bases take the enemies in turn.
+            var routes = g.Routes();
+            int turn = 0;
+            // Subgroups inside a run, the runs one after another; several bases take the enemies in turn, several
+            // routes — by the group's rule.
             for (int rep = 0; rep <= g.Repeats; rep++)
                 for (int k = 0; k < n; k++)
                 {
                     var b = bases[k % bases.Count];
-                    list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, g.Route, target, g.Id, b.Id,
+                    string route = routes.Count == 1 || g.RouteSelect == GroupRouteSelect.Single ? routes[0]
+                        : g.RouteSelect == GroupRouteSelect.Random ? routes[_sim.Rng.NextInt(0, routes.Count)] : routes[turn++ % routes.Count];
+                    string target = g.Target != "" ? g.Target : Def?.Route(route)?.Target ?? "";
+                    list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, route, target, g.Id, b.Id,
                         g.Faction != "" ? g.Faction : w.Faction, b.Spawn!.InitialDelay + rep * g.RepeatEvery + g.OffsetOf(k), mods));
                 }
         }
@@ -492,7 +497,9 @@ public sealed class ScenarioSystem
         _createdTotal++;
         if (p.SpawnBase != "") _createdByBase[p.SpawnBase] = CreatedBy(p.SpawnBase) + 1;
         if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
-        if (points != null && points.Count > 0)
+        if (RouteNavigator.IsGraph(Def?.Route(routeId)))
+            _sim.Routes.Assign(u, routeId, fromStart: true);
+        else if (points != null && points.Count > 0)
         {
             u.Route = new List<HexCoord>(points);
             // Already on the route: continue from the nearest point ahead.
@@ -890,9 +897,8 @@ public sealed class ScenarioSystem
                 if (points == null) break;
                 foreach (var u in Targets(a, actor))
                 {
-                    u.Route = new List<HexCoord>(points);
-                    u.RouteIndex = 0;
-                    u.RouteId = a.Route;
+                    // A graph route: from the nearest node of it; a route of the map: from its first point.
+                    _sim.Routes.Assign(u, a.Route, fromStart: false);
                     if (Def?.Route(a.Route) is { Target: not "" } r) u.TargetObject = r.Target;
                 }
                 break;

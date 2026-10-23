@@ -70,6 +70,7 @@ public partial class UiTestRunner : Node
         // Part 4 (docs/DECISIONS_4.md): the TD scene.
         _tests.Add(("editor_td_scene_bases_route_group_battle", EditorTdScene));
         _tests.Add(("editor_td_waves_library_presets_budget_battle", EditorTdWaves));
+        _tests.Add(("editor_td_route_graph_fork_merge_battle", EditorTdRouteGraph));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -1584,6 +1585,26 @@ public partial class UiTestRunner : Node
         GD.Print($"скорости и пауза: тиков {ticks}, событий {bs.Sim.Log.TotalCount}, скоростей {speeds.Count}, кадров паузы {pausedFrames}");
     }
 
+    /// <summary>Drags the left button through several points (a gesture that bends).</summary>
+    private async Task DragPath(IReadOnlyList<Vector2> points, int stepsPerLeg = 4)
+    {
+        var from = points[0];
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = from, GlobalPosition = from });
+        await Frames(2);
+        Input.ParseInputEvent(new InputEventMouseButton { Position = from, GlobalPosition = from, ButtonIndex = MouseButton.Left, Pressed = true });
+        await Frames(2);
+        for (int leg = 1; leg < points.Count; leg++)
+            for (int i = 1; i <= stepsPerLeg; i++)
+            {
+                var p = points[leg - 1].Lerp(points[leg], (float)i / stepsPerLeg);
+                Input.ParseInputEvent(new InputEventMouseMotion { Position = p, GlobalPosition = p, ButtonMask = MouseButtonMask.Left });
+                await Frames(1);
+            }
+        var to = points[^1];
+        Input.ParseInputEvent(new InputEventMouseButton { Position = to, GlobalPosition = to, ButtonIndex = MouseButton.Left, Pressed = false });
+        await Frames(3);
+    }
+
     /// <summary>Scrolls the button into view (inside a scrolled panel) and clicks it.</summary>
     private async Task ClickInView(Control c)
     {
@@ -2323,7 +2344,69 @@ public partial class UiTestRunner : Node
         var w2 = bs.Sim.Scenario.Waves[2];
         Check(string.Join(",", w2.Def.Groups.Where(x => x.FromBudget).Select(x => x.ToString())) == pinnedText && w2.Budget == null, "в бою закреплённый состав не должен подбираться заново");
         // Restore the shipped scene in the draft for the following tests.
+        draft.Table(DefCategory.Scenario).Remove("td_pass");
         draft.Add(ContentJson.Clone(Main.Instance.Content.Published.Get<ScenarioDef>("td_pass")!));
         draft.Table(DefCategory.GroupPreset).Remove(preset.Id);
+        ContentValidator.Validate(draft);
+    }
+    /// <summary>
+    /// Part 4, stage 3 through the editor: on «Перевал» a detour drawn by a bending drag from a hex of the route to a
+    /// further hex of it makes a fork and a merge (the crossing of nothing else is created); a click on the fork
+    /// selects it with its rule and exits; with «по очереди» the enemies of the first wave take both exits in battle.
+    /// </summary>
+    private async Task EditorTdRouteGraph()
+    {
+        await OpenEditor("td");
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass");
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = panel.Scene!;
+        var vp = panel.View;
+        await CameraSettled(vp.Board.Rig);
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Routes").GetGlobalRect().GetCenter());
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdRoute_route_1"));
+        Check(panel.SelectedRoute == "route_1", "маршрут не выбран");
+        var r = sc.Route("route_1")!;
+        HexCoord Off(int col, int row) => new(col - row / 2, row);
+        Vector2 Scr(HexCoord c) => vp.GetGlobalRect().Position + vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(c, Render.Board.PickY(vp.Board.Map!.Get(c)!)));
+        var forkAt = Off(4, 5);
+        var mergeAt = Off(7, 6);
+        Check(r.MainPath().Contains(forkAt) && r.MainPath().Contains(mergeAt), "ожидаемые гексы не на маршруте");
+        int nodes = r.Nodes.Count;
+        await DragPath(new[] { Scr(forkAt), Scr(Off(4, 6)), Scr(Off(5, 7)), Scr(Off(7, 7)), Scr(mergeAt) });
+        var fork = RouteGraph.NodeAt(r, forkAt);
+        var merge = RouteGraph.NodeAt(r, mergeAt);
+        Check(fork != null && fork.Kind == RouteNodeKind.Fork && merge != null && merge.Kind == RouteNodeKind.Merge,
+            $"протяжка обхода должна создать развилку и слияние ({panel.StatusText}; узлы {string.Join(" ", r.Nodes.Select(n => $"{n.Id}{n.C}:{n.Kind}"))})");
+        var exits = r.Out(fork!.Id).ToList();
+        Check(exits.Count == 2 && exits.Any(e => e.Cells.Contains(Off(5, 7))), "у развилки должно быть два выхода, один — через обход");
+        Check(r.MainPath().SequenceEqual(sc.Route("route_1")!.MainPath()) && r.MainPath()[^1] == Off(13, 3), "основная линия не должна измениться");
+        Check(!panel.Problems.Any(p => p.Object == r.Id && p.Severity == IssueSeverity.Error), "граф с обходом должен пройти проверку: " + string.Join("; ", panel.Problems.Where(p => p.Object == r.Id).Select(p => p.Message)));
+        // A click on the fork selects it: its rule and both exits are shown.
+        await ClickHex(vp, forkAt);
+        Check(panel.SelectedNode == fork.Id, $"клик по развилке должен выбрать узел ({panel.SelectedNode})");
+        Check(Find<UI.PropertyGrid>(panel).Any(g => g.Name == "TdNodeGrid") && exits.All(e => Find<UI.PropertyGrid>(panel).Any(g => g.Name == "TdEdgeGrid_" + e.Id)), "свойства узла и выходов не показаны");
+        fork.Rule = RouteForkRule.RoundRobin;
+
+        // Battle: the scouts split over both exits.
+        await Click(Find<Button>(panel).First(b => b.Name == "TdRun").GetGlobalRect().GetCenter());
+        await Frames(10);
+        var bs = Battle();
+        var scouts = new List<Unit>();
+        for (int i = 0; i < 20 * 40; i++)
+        {
+            bs.Sim.Step();
+            scouts = bs.Sim.Units.Where(u => u.Group == "scouts").ToList();
+            if (scouts.Count == 4 && scouts.All(u => !u.Alive || u.Nav!.Taken.Any(id => exits.Any(e => e.Id == id)))) break;
+        }
+        await Frames(5);
+        foreach (var e in exits)
+            Check(scouts.Any(u => u.Nav!.Taken.Contains(e.Id)), $"по выходу {e.Id} никто не пошёл: " + string.Join(" | ", scouts.Select(u => string.Join(">", u.Nav!.Taken))));
+        var draft = Main.Instance.Content.Draft!;
+        draft.Table(DefCategory.Scenario).Remove("td_pass");
+        draft.Add(ContentJson.Clone(Main.Instance.Content.Published.Get<ScenarioDef>("td_pass")!));
+        ContentValidator.Validate(draft);
+        Check(nodes == 2, "в исходном маршруте два узла");
     }
 }

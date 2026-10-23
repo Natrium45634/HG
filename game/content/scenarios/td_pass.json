@@ -88,9 +88,26 @@
         "target": "base_1",
         "end": "Target",
         "allowIncomplete": false,
+        "fallback": "",
         "nodes": [
-          { "id": "n1", "c": [-1, 3], "kind": "Start", "name": "", "event": "" },
-          { "id": "n2", "c": [12, 3], "kind": "End", "name": "", "event": "" }
+          {
+            "id": "n1",
+            "c": [-1, 3],
+            "kind": "Start",
+            "name": "",
+            "event": "",
+            "rule": "FirstAvailable",
+            "dwellSeconds": 0
+          },
+          {
+            "id": "n2",
+            "c": [12, 3],
+            "kind": "End",
+            "name": "",
+            "event": "",
+            "rule": "FirstAvailable",
+            "dwellSeconds": 0
+          }
         ],
         "edges": [
           {
@@ -180,7 +197,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           }
         ],
         "customEnd": false,
@@ -285,7 +304,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           }
         ],
         "customEnd": false,
@@ -390,7 +411,9 @@
             "repeatEvery": 30,
             "statMods": [],
             "preset": "",
-            "fromBudget": false
+            "fromBudget": false,
+            "altRoutes": [],
+            "routeSelect": "RoundRobin"
           }
         ],
         "customEnd": false,

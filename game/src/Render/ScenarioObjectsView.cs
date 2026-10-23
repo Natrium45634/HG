@@ -97,10 +97,12 @@ public partial class ScenarioObjectsView : Node3D
     }
 
     /// <summary>
-    /// The routes of the scenario on the overlay: the main line in the route colour with direction arrows, a ring at
-    /// the start, a diamond at the end. The selected route is wider and brighter.
+    /// The routes of the scenario on the overlay (docs/DECISIONS_4.md §57): every edge in the route colour with
+    /// direction arrows (loops thinner), and the nodes by kind — a ring at the start, a diamond at a fork, a small
+    /// ring at a merge, a dot at an end, a dashed ring at a checkpoint. Shapes, not only colours. The selected route
+    /// is wider and brighter; its selected node pulses.
     /// </summary>
-    public static void DrawRoutes(OverlayLayer o, ScenarioDef sc, string selected = "", float alpha = 0.85f)
+    public static void DrawRoutes(OverlayLayer o, ScenarioDef sc, string selected = "", float alpha = 0.85f, string selectedNode = "")
     {
         foreach (var r in sc.Routes)
         {
@@ -109,9 +111,32 @@ public partial class ScenarioObjectsView : Node3D
             bool sel = r.Id == selected;
             var col = Ui.Parse(r.Color, new Color(1f, 0.6f, 0.25f));
             col.A = sel ? 1f : alpha * (selected == "" ? 1f : 0.55f);
-            DrawLine(o, path, col, sel ? 0.13f : 0.08f);
-            o.RingHex(path[0], col, 0.07f, 0.6f);
-            o.Dot(path[^1], col, sel ? 0.2f : 0.15f);
+            float w = sel ? 0.13f : 0.08f;
+            if (r.Edges.Count == 0) DrawLine(o, path, col, w);
+            foreach (var e in r.Edges)
+                DrawLine(o, r.EdgePath(e), r.IsLoopEdge(e) ? new Color(col.R, col.G, col.B, col.A * 0.7f) : col, r.IsLoopEdge(e) ? w * 0.6f : w);
+            foreach (var n in r.Nodes)
+            {
+                switch (n.Kind)
+                {
+                    case RouteNodeKind.Start:
+                        o.RingHex(n.C, col, 0.07f, 0.6f);
+                        break;
+                    case RouteNodeKind.Fork:
+                        o.Diamond(n.C, col, sel ? 0.26f : 0.2f);
+                        break;
+                    case RouteNodeKind.Merge:
+                        o.RingHex(n.C, col, 0.06f, 0.38f);
+                        break;
+                    case RouteNodeKind.Checkpoint:
+                        o.DashedRing(n.C, col, 0.06f, 0.55f);
+                        break;
+                    case RouteNodeKind.End:
+                        o.Dot(n.C, col, sel ? 0.2f : 0.15f);
+                        break;
+                }
+                if (sel && n.Id == selectedNode) o.RingHex(n.C, new Color(1f, 1f, 1f, 0.6f + 0.4f * o.Pulse(5)), 0.1f, 0.75f);
+            }
         }
     }
 

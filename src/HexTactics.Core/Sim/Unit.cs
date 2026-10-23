@@ -261,6 +261,8 @@ public sealed class Unit
     public string RouteId { get; set; } = "";
     public string Group { get; set; } = "";
     public string TargetObject { get; set; } = "";
+    /// <summary>Position on a route graph (docs/DECISIONS_4.md §57); null — no graph route.</summary>
+    public RouteNav? Nav { get; set; }
     /// <summary>The spawn base the unit came from (limits of the base).</summary>
     public string SpawnBase { get; set; } = "";
     /// <summary>
