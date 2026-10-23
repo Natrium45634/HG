@@ -84,7 +84,8 @@ public partial class UiTestRunner : Node
         int ran = 0;
         foreach (var (name, body) in _tests)
         {
-            if (_which != "all" && _which != name) continue;
+            // One name, several names separated by commas, or «all».
+            if (_which != "all" && !_which.Split(',', StringSplitOptions.TrimEntries).Contains(name)) continue;
             ran++;
             _current = name;
             try
