@@ -455,6 +455,7 @@ public sealed class StatusSystem
         u.Offenses.Clear();
         if (!u.Def.Defense.IsEmpty) u.Defenses.Add(u.Def.Defense);
         if (!u.Def.Offense.IsEmpty) u.Offenses.Add(u.Def.Offense);
+        foreach (var (m, src) in u.InstanceMods) u.Stats.AddModifier(m, 1, src);
         foreach (var pi in u.PassiveInstances.OrderBy(x => x.Def.Order))
         {
             var p = pi.Def;

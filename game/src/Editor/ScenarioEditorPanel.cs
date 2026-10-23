@@ -199,10 +199,11 @@ public partial class ScenarioEditorPanel : DefListPanel
         if (_sc != null)
             foreach (var w in _sc.Waves)
             {
-                var mk = map?.FindMarker(w.SpawnMarker);
-                if (mk == null) continue;
-                var cell = _preview.Map.Get(mk.C);
-                _view.Labels.Add(Render.Board.Center(mk.C, (cell == null ? 0 : Render.Board.SurfaceY(cell)) + 0.95f), $"{w.Name} @ {w.Time:0} с", new Color(1f, 0.6f, 0.5f), 20);
+                // Where the wave appears: its marker (old waves) or the spawn base of its first group.
+                HexCoord? at = map?.FindMarker(w.SpawnMarker)?.C ?? _sc.Object(w.Groups.FirstOrDefault()?.SpawnBase ?? "")?.Anchor;
+                if (at == null) continue;
+                var cell = _preview.Map.Get(at.Value);
+                _view.Labels.Add(Render.Board.Center(at.Value, (cell == null ? 0 : Render.Board.SurfaceY(cell)) + 0.95f), $"{w.Name} @ {w.Time:0} с", new Color(1f, 0.6f, 0.5f), 20);
             }
         o.Commit();
         _view.Labels.End();

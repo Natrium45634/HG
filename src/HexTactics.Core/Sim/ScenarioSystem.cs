@@ -34,6 +34,12 @@ public sealed class PlannedSpawn
     public string Group { get; init; } = "";
     public string SpawnBase { get; init; } = "";
     public string Faction { get; init; } = "";
+    /// <summary>Modifiers of the instance: the group's and the wave's difficulty (docs/DECISIONS_4.md §58).</summary>
+    public List<(StatModDef Mod, string Source)> Mods { get; init; } = new();
+    /// <summary>Why the appearance waits now (a limit), "" — it does not.</summary>
+    public string WaitReason { get; set; } = "";
+    /// <summary>Planned again after waiting for a slot (holds that slot until it appears).</summary>
+    public bool Replanned { get; set; }
 }
 
 public sealed class WaveRuntime
@@ -45,6 +51,12 @@ public sealed class WaveRuntime
     public List<int> UnitIds { get; } = new();
     public long StartedTick { get; set; } = -1;
     public long ClearedTick { get; set; } = -1;
+    /// <summary>The composition picked by the budget at the start (an unpinned budget wave).</summary>
+    public BudgetResult? Budget { get; set; }
+    /// <summary>Groups whose «условие отмены» fired.</summary>
+    public HashSet<string> CancelledGroups { get; } = new(StringComparer.Ordinal);
+    /// <summary>The wave ran out of its «макс. продолжительность».</summary>
+    public bool Expired { get; set; }
     public int Total => Planned.Count;
     public int Spawned => Planned.Count(p => p.Done);
 }
@@ -99,6 +111,12 @@ public sealed class ScenarioSystem
     public long TriggerCycleCuts { get; private set; }
     private bool _hadPlayerUnits;
     private int _nextSpawnId = 1;
+    private readonly Dictionary<string, int> _createdByBase = new(StringComparer.Ordinal);
+    private int _createdTotal;
+
+    /// <summary>Enemies created by waves so far (for «лимит созданных»).</summary>
+    public int CreatedTotal => _createdTotal;
+    public int CreatedBy(string spawnBase) => _createdByBase.GetValueOrDefault(spawnBase);
 
     public ScenarioSystem(Simulation sim)
     {
@@ -143,6 +161,7 @@ public sealed class ScenarioSystem
     public void Load(ScenarioDef sc)
     {
         Def = sc;
+        ScenarioObjects.ResolveMarkers(sc, _sim.Map.Def);
         // Structures first: their hexes are taken before units are placed (docs/DECISIONS_4.md §56).
         _sim.Structures.Load(sc);
         foreach (var su in sc.Units)
@@ -194,36 +213,78 @@ public sealed class ScenarioSystem
 
     /// <summary>One appearance before it is planned on the timeline.</summary>
     private sealed record SpawnItem(UnitDef Def, string Tag, string AiProfile, HexCoord From, string Marker, string Route, string Target, string Group,
-        string Base, string Faction, double Offset);
+        string Base, string Faction, double Offset, List<(StatModDef, string)> Mods);
+
+    /// <summary>The wave's difficulty and the group's own modifiers as instance modifiers.</summary>
+    private static List<(StatModDef, string)> ModsOf(WaveDef w, SpawnGroupDef? g)
+    {
+        var list = new List<(StatModDef, string)>();
+        var d = w.Difficulty;
+        string src = $"сложность волны «{w.Name}»";
+        if (d.Health != 1) list.Add((new StatModDef { Stat = Stats.HpMax, Mul = d.Health - 1 }, src));
+        if (d.Power != 1)
+        {
+            list.Add((new StatModDef { Stat = Stats.Power, Mul = d.Power - 1 }, src));
+            list.Add((new StatModDef { Stat = Stats.MagicPower, Mul = d.Power - 1 }, src));
+        }
+        if (d.Speed != 1) list.Add((new StatModDef { Stat = Stats.MoveSpeed, Mul = d.Speed - 1 }, src));
+        if (g != null)
+            foreach (var m in g.StatMods)
+                list.Add((m, $"группа «{(g.Name != "" ? g.Name : g.Id)}»"));
+        return list;
+    }
+
+    /// <summary>The groups a wave spawns now: its own and, for an unpinned budget, the picked ones.</summary>
+    private List<SpawnGroupDef> GroupsOf(WaveRuntime w)
+    {
+        var groups = w.Def.Groups.Where(g => g.Enabled).ToList();
+        var b = w.Def.Budget;
+        if (b.Enabled && !b.Pinned && Def != null)
+        {
+            w.Budget = WaveBudget.Compose(_sim.Content, w.Def, b, WaveBudget.SeedOf(b, Def.Seed != 0 ? Def.Seed : _sim.Options.Seed, w.Index));
+            groups.AddRange(WaveBudget.ToGroups(w.Budget, b, w.Def.Id != "" ? w.Def.Id : $"w{w.Index + 1}"));
+            _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Волна «{w.Def.Name}» по бюджету: {w.Budget}");
+            foreach (var pr in w.Budget.Problems) _sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"Волна «{w.Def.Name}»: {pr}");
+        }
+        return groups;
+    }
 
     /// <summary>Appearances of a wave: the old composition at spawn markers, then the groups at their spawn bases.</summary>
-    private List<SpawnItem> SpawnItems(WaveDef w, List<MapMarkerDef> markers)
+    private List<SpawnItem> SpawnItems(WaveRuntime wr, List<MapMarkerDef> markers)
     {
+        var w = wr.Def;
         var list = new List<SpawnItem>();
         if (markers.Count > 0)
         {
             int i = 0;
+            var mods = ModsOf(w, null);
             foreach (var (wu, def) in WaveUnits(w))
             {
                 var m = markers[i % markers.Count];
-                list.Add(new SpawnItem(def, wu.Tag, wu.AiProfile, m.C, m.Id, w.Route, "", "", "", w.Faction, w.Interval * i));
+                list.Add(new SpawnItem(def, wu.Tag, wu.AiProfile, m.C, m.Id, w.Route, "", "", "", w.Faction, w.Interval * i, mods));
                 i++;
             }
         }
-        foreach (var g in w.Groups)
+        foreach (var g in GroupsOf(wr))
         {
-            if (!g.Enabled) continue;
             var def = _sim.Content.Unit(g.Unit);
-            var b = Def?.Object(g.SpawnBase);
-            if (def == null || b?.Spawn == null)
+            var bases = g.Bases().Select(id => Def?.Object(id)).Where(b => b?.Spawn != null).Select(b => b!).ToList();
+            if (def == null || bases.Count == 0)
             {
                 _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Name}», группа «{g.Id}»: {(def == null ? $"нет шаблона «{g.Unit}»" : $"нет базы спавна «{g.SpawnBase}»")} — пропущена");
                 continue;
             }
             string target = g.Target != "" ? g.Target : Def?.Route(g.Route)?.Target ?? "";
-            for (int k = 0; k < g.Count; k++)
-                list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, g.Route, target, g.Id, b.Id,
-                    g.Faction != "" ? g.Faction : w.Faction, b.Spawn.InitialDelay + g.Delay + g.Interval * k));
+            int n = WaveSchedule.CountOf(g, w);
+            var mods = ModsOf(w, g);
+            // Subgroups inside a run, the runs one after another; several bases take the enemies in turn.
+            for (int rep = 0; rep <= g.Repeats; rep++)
+                for (int k = 0; k < n; k++)
+                {
+                    var b = bases[k % bases.Count];
+                    list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, g.Route, target, g.Id, b.Id,
+                        g.Faction != "" ? g.Faction : w.Faction, b.Spawn!.InitialDelay + rep * g.RepeatEvery + g.OffsetOf(k), mods));
+                }
         }
         return list;
     }
@@ -246,13 +307,13 @@ public sealed class ScenarioSystem
     {
         if (w.State is WaveState.Cancelled or WaveState.Cleared || w.Planned.Count > 0) return;
         var markers = w.Def.AllSpawnMarkers().Select(id => _sim.Map.Def.FindMarker(id)).Where(m => m != null).Select(m => m!).ToList();
-        if (markers.Count == 0 && w.Def.Groups.Count == 0)
+        if (markers.Count == 0 && w.Def.Groups.Count == 0 && !w.Def.Budget.Enabled)
         {
             _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Def.Name}»: нет точки появления");
             w.State = WaveState.Cancelled;
             return;
         }
-        var list = SpawnItems(w.Def, markers);
+        var list = SpawnItems(w, markers);
         if (lead && list.Count > 0)
         {
             double maxLead = 0;
@@ -266,7 +327,7 @@ public sealed class ScenarioSystem
             {
                 Id = _nextSpawnId++, Wave = w.Index, Def = it.Def, Marker = it.Marker, From = it.From,
                 Tick = baseTick + _sim.TicksFor(it.Offset), Tag = it.Tag, AiProfile = it.AiProfile,
-                Route = it.Route, Target = it.Target, Group = it.Group, SpawnBase = it.Base, Faction = it.Faction,
+                Route = it.Route, Target = it.Target, Group = it.Group, SpawnBase = it.Base, Faction = it.Faction, Mods = it.Mods,
             };
             w.Planned.Add(p);
             Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
@@ -312,7 +373,15 @@ public sealed class ScenarioSystem
         foreach (var p in w.Planned)
         {
             if (p.Done || _sim.Tick < p.Tick) continue;
-            if (!ignoreLimit && w.Def.MaxAlive > 0 && AliveOf(w) >= w.Def.MaxAlive)
+            if (CreatedLimit(p) is { } full)
+            {
+                // «Лимит созданных» is not «лимит живых»: the appearance does not wait, it is cancelled.
+                p.Done = true;
+                Warnings.Remove(p.Id);
+                _sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"Волна «{w.Def.Name}»: {full} — появление «{p.Def.DisplayName}» отменено");
+                continue;
+            }
+            if (!ignoreLimit && AliveLimit(w, p) is { } reason)
             {
                 // No free slot: the appearance waits; its line disappears and is planned again when a slot frees.
                 if (!p.Postponed)
@@ -320,10 +389,46 @@ public sealed class ScenarioSystem
                     p.Postponed = true;
                     Warnings.Remove(p.Id);
                 }
+                if (p.WaitReason != reason)
+                {
+                    p.WaitReason = reason;
+                    _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Def.Name}»: «{p.Def.DisplayName}» ждёт — {reason}");
+                }
                 continue;
             }
+            p.WaitReason = "";
             SpawnOne(w, p);
         }
+    }
+
+    private bool IsWaveEnemy(Unit u) => u.Alive && u.Wave >= 0 && !u.IsStructure;
+
+    /// <summary>
+    /// The dispatcher's limits of the living (docs/DECISIONS_4.md §58): the group, the wave, the spawn base, the
+    /// scenario. Null — a slot is free. <paramref name="reserved"/> counts appearances already re-planned.
+    /// </summary>
+    private string? AliveLimit(WaveRuntime w, PlannedSpawn p, int reserved = 0)
+    {
+        if (w.Def.MaxAlive > 0 && AliveOf(w) + reserved >= w.Def.MaxAlive) return $"лимит живых волны {w.Def.MaxAlive}";
+        if (p.Group != "" && w.Def.Groups.FirstOrDefault(g => g.Id == p.Group) is { MaxAlive: > 0 } g
+            && w.UnitIds.Count(id => _sim.GetUnit(id) is { Alive: true } u && u.Group == p.Group) + reserved >= g.MaxAlive)
+            return $"лимит живых группы «{g.Id}» {g.MaxAlive}";
+        if (p.SpawnBase != "" && Def?.Object(p.SpawnBase)?.Spawn is { MaxAlive: > 0 } sp
+            && _sim.Units.Count(u => IsWaveEnemy(u) && u.SpawnBase == p.SpawnBase) + reserved >= sp.MaxAlive)
+            return $"лимит живых базы «{Def!.Object(p.SpawnBase)!.DisplayName}» {sp.MaxAlive}";
+        if (Def?.Limits.MaxAliveEnemies is > 0 and var max && _sim.Units.Count(IsWaveEnemy) + reserved >= max)
+            return $"лимит живых врагов сценария {max}";
+        return null;
+    }
+
+    /// <summary>The limits of the created: the spawn base and the scenario (for the whole battle).</summary>
+    private string? CreatedLimit(PlannedSpawn p)
+    {
+        if (p.SpawnBase != "" && Def?.Object(p.SpawnBase) is { Spawn.MaxCreated: > 0 } b && CreatedBy(p.SpawnBase) >= b.Spawn!.MaxCreated)
+            return $"лимит созданных базы «{b.DisplayName}» {b.Spawn.MaxCreated} исчерпан";
+        if (Def?.Limits.MaxCreatedEnemies is > 0 and var max && _createdTotal >= max)
+            return $"лимит созданных врагов сценария {max} исчерпан";
+        return null;
     }
 
     private void SpawnOne(WaveRuntime w, PlannedSpawn p)
@@ -377,6 +482,15 @@ public sealed class ScenarioSystem
         u.Group = p.Group;
         u.RouteId = routeId;
         u.TargetObject = p.Target;
+        u.SpawnBase = p.SpawnBase;
+        if (p.Mods.Count > 0)
+        {
+            u.InstanceMods.AddRange(p.Mods);
+            _sim.Statuses.RecalculateModifiers(u);
+            u.Hp = u.HpMax;
+        }
+        _createdTotal++;
+        if (p.SpawnBase != "") _createdByBase[p.SpawnBase] = CreatedBy(p.SpawnBase) + 1;
         if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
         if (points != null && points.Count > 0)
         {
@@ -433,27 +547,56 @@ public sealed class ScenarioSystem
     {
         foreach (var w in _waves)
         {
+            // «Условие прерывания» (docs/DECISIONS_4.md §58): the rest of the wave does not appear.
+            if (w.State is WaveState.Pending or WaveState.Scheduled or WaveState.Active && w.Def.CancelCondition != null && Evaluate(w.Def.CancelCondition))
+            {
+                CancelWave(w.Index);
+                continue;
+            }
             switch (w.State)
             {
                 case WaveState.Pending:
+                {
+                    long at = _sim.Tick + _sim.TicksFor(w.Def.Delay);
+                    // «Мин. интервал до следующей» of the previous wave holds back every wave that is not on a timer.
+                    if (w.Index > 0 && _waves[w.Index - 1] is { StartedTick: >= 0 } prev && prev.Def.MinGapNext > 0)
+                        at = Math.Max(at, prev.StartedTick + _sim.TicksFor(prev.Def.MinGapNext));
                     if (w.Def.Start == WaveStart.AfterPrevious && w.Index > 0 && _waves[w.Index - 1].State is WaveState.Cleared or WaveState.Cancelled)
-                        Schedule(w, _sim.Tick + _sim.TicksFor(w.Def.Delay), lead: true);
+                        Schedule(w, at, lead: true);
                     else if (w.Def.Start == WaveStart.AfterPrevious && w.Index == 0)
-                        Schedule(w, _sim.Tick + _sim.TicksFor(w.Def.Delay), lead: true);
+                        Schedule(w, at, lead: true);
                     else if (w.Def.Start == WaveStart.OnCondition && Evaluate(w.Def.StartCondition))
-                        Schedule(w, _sim.Tick + _sim.TicksFor(w.Def.Delay), lead: true);
+                        Schedule(w, at, lead: true);
                     break;
+                }
                 case WaveState.Scheduled:
                 case WaveState.Active:
                 {
-                    // Postponed appearances get a new time (and a new line) as soon as a slot frees.
-                    if (w.Def.MaxAlive > 0 && AliveOf(w) < w.Def.MaxAlive)
-                        foreach (var p in w.Planned.Where(p => !p.Done && p.Postponed).Take(w.Def.MaxAlive - AliveOf(w)))
+                    CancelGroups(w);
+                    if (!w.Expired && w.Def.MaxDuration > 0 && w.StartedTick >= 0 && _sim.Tick - w.StartedTick >= _sim.TicksFor(w.Def.MaxDuration))
+                    {
+                        w.Expired = true;
+                        int n = 0;
+                        foreach (var p in w.Planned.Where(p => !p.Done))
                         {
-                            p.Postponed = false;
-                            p.Tick = _sim.Tick + _sim.TicksFor(Warnings.LeadSeconds(w.Def, p.Def, p.Faction, p.From, p.Marker, p.Route));
-                            Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
+                            p.Done = true;
+                            Warnings.Remove(p.Id);
+                            n++;
                         }
+                        _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Волна «{w.Def.Name}»: время вышло ({w.Def.MaxDuration:0} с)" + (n > 0 ? $", не появились {n}" : ""));
+                    }
+                    // Postponed appearances get a new time (and a new line) as soon as their limits let them.
+                    int reserved = w.Planned.Count(p => !p.Done && !p.Postponed && p.Replanned);
+                    foreach (var p in w.Planned.Where(p => !p.Done && p.Postponed))
+                    {
+                        if (AliveLimit(w, p, reserved) != null) continue;
+                        p.Postponed = false;
+                        p.Replanned = true;
+                        p.WaitReason = "";
+                        reserved++;
+                        p.Tick = _sim.Tick + _sim.TicksFor(Warnings.LeadSeconds(w.Def, p.Def, p.Faction, p.From, p.Marker, p.Route));
+                        Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
+                    }
                     ProcessSpawns(w);
                     if (w.State == WaveState.Active && w.Planned.All(p => p.Done))
                     {
@@ -469,6 +612,24 @@ public sealed class ScenarioSystem
                     break;
                 }
             }
+        }
+    }
+
+    /// <summary>«Условие отмены» of a group: its remaining appearances are cancelled once.</summary>
+    private void CancelGroups(WaveRuntime w)
+    {
+        foreach (var g in w.Def.Groups)
+        {
+            if (g.CancelCondition == null || w.CancelledGroups.Contains(g.Id) || !Evaluate(g.CancelCondition)) continue;
+            w.CancelledGroups.Add(g.Id);
+            int n = 0;
+            foreach (var p in w.Planned.Where(p => !p.Done && p.Group == g.Id))
+            {
+                p.Done = true;
+                Warnings.Remove(p.Id);
+                n++;
+            }
+            _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Волна «{w.Def.Name}»: группа «{(g.Name != "" ? g.Name : g.Id)}» отменена условием" + (n > 0 ? $", не появились {n}" : ""));
         }
     }
 

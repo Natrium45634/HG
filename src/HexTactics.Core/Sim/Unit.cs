@@ -261,6 +261,13 @@ public sealed class Unit
     public string RouteId { get; set; } = "";
     public string Group { get; set; } = "";
     public string TargetObject { get; set; } = "";
+    /// <summary>The spawn base the unit came from (limits of the base).</summary>
+    public string SpawnBase { get; set; } = "";
+    /// <summary>
+    /// Modifiers of this instance only (a wave group, the wave's difficulty): kept through every recalculation,
+    /// shown with their source, the template is not changed.
+    /// </summary>
+    public List<(StatModDef Mod, string Source)> InstanceMods { get; } = new();
     /// <summary>A structure of the scenario (a base, a tower): it does not move and occupies <see cref="Footprint"/>.</summary>
     public bool IsStructure { get; internal set; }
     public string ObjectId { get; internal set; } = "";

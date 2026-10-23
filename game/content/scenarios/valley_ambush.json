@@ -1,5 +1,5 @@
 {
-  "formatVersion": 4,
+  "formatVersion": 5,
   "kind": "scenario",
   "scenario": {
     "id": "valley_ambush",
@@ -81,7 +81,60 @@
         "name": ""
       }
     ],
-    "objects": [],
+    "objects": [
+      {
+        "id": "spawn_east_gate",
+        "name": "Появление «east_gate»",
+        "type": "SpawnBase",
+        "faction": "enemy",
+        "anchor": [20, 6],
+        "facing": "E",
+        "footprint": [],
+        "marker": "east_gate",
+        "tags": [],
+        "description": "",
+        "spawn": {
+          "active": true,
+          "initialDelay": 0,
+          "maxAlive": 0,
+          "maxCreated": 0,
+          "areaRadius": 0,
+          "moveCategories": [],
+          "reactivateInterval": 0,
+          "spawnVfx": "",
+          "blocked": "NearestFree",
+          "searchRadius": 4
+        },
+        "model": "",
+        "color": ""
+      },
+      {
+        "id": "spawn_south",
+        "name": "Появление «south»",
+        "type": "SpawnBase",
+        "faction": "enemy",
+        "anchor": [14, 14],
+        "facing": "E",
+        "footprint": [],
+        "marker": "south",
+        "tags": [],
+        "description": "",
+        "spawn": {
+          "active": true,
+          "initialDelay": 0,
+          "maxAlive": 0,
+          "maxCreated": 0,
+          "areaRadius": 0,
+          "moveCategories": [],
+          "reactivateInterval": 0,
+          "spawnVfx": "",
+          "blocked": "NearestFree",
+          "searchRadius": 4
+        },
+        "model": "",
+        "color": ""
+      }
+    ],
     "routes": [],
     "baseDefeat": { "mode": "MainBase", "mainBase": "", "count": 2 },
     "waves": [
@@ -109,17 +162,63 @@
           "flag": "",
           "fraction": 0.5
         },
-        "spawnMarker": "east_gate",
+        "spawnMarker": "",
         "spawnMarkers": [],
         "route": "",
         "interval": 0,
         "maxAlive": 0,
         "faction": "enemy",
-        "units": [
-          { "unit": "goblin", "count": 3, "tag": "", "aiProfile": "" },
-          { "unit": "goblin_archer", "count": 1, "tag": "", "aiProfile": "" }
+        "units": [],
+        "groups": [
+          {
+            "id": "w1_g1",
+            "name": "",
+            "unit": "goblin",
+            "enabled": true,
+            "count": 3,
+            "delay": 0,
+            "interval": 0,
+            "spawnBase": "spawn_east_gate",
+            "route": "",
+            "target": "",
+            "faction": "",
+            "aiProfile": "",
+            "tag": "",
+            "subgroupSize": 0,
+            "subgroupPause": 5,
+            "maxAlive": 0,
+            "extraBases": [],
+            "repeats": 0,
+            "repeatEvery": 30,
+            "statMods": [],
+            "preset": "",
+            "fromBudget": false
+          },
+          {
+            "id": "w1_g2",
+            "name": "",
+            "unit": "goblin_archer",
+            "enabled": true,
+            "count": 1,
+            "delay": 0,
+            "interval": 0,
+            "spawnBase": "spawn_east_gate",
+            "route": "",
+            "target": "",
+            "faction": "",
+            "aiProfile": "",
+            "tag": "",
+            "subgroupSize": 0,
+            "subgroupPause": 5,
+            "maxAlive": 0,
+            "extraBases": [],
+            "repeats": 0,
+            "repeatEvery": 30,
+            "statMods": [],
+            "preset": "",
+            "fromBudget": false
+          }
         ],
-        "groups": [],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",
@@ -144,7 +243,29 @@
         "onEnd": [],
         "warning": true,
         "warningSeconds": 0,
-        "message": "С востока подходят гоблины!"
+        "message": "С востока подходят гоблины!",
+        "id": "",
+        "maxDuration": 0,
+        "minGapNext": 0,
+        "difficulty": { "health": 1, "power": 1, "speed": 1, "count": 1 },
+        "budget": {
+          "enabled": false,
+          "budget": 20,
+          "minUnits": 3,
+          "maxUnits": 15,
+          "categories": [],
+          "requiredTags": [],
+          "forbiddenTags": [],
+          "maxEliteShare": 0.25,
+          "leader": "",
+          "maxUnitCost": 0,
+          "moveCategories": [],
+          "spawnBase": "",
+          "route": "",
+          "interval": 1,
+          "seed": 0,
+          "pinned": false
+        }
       },
       {
         "name": "Стая",
@@ -170,14 +291,39 @@
           "flag": "",
           "fraction": 0.5
         },
-        "spawnMarker": "south",
+        "spawnMarker": "",
         "spawnMarkers": [],
         "route": "",
         "interval": 0,
         "maxAlive": 0,
         "faction": "enemy",
-        "units": [{ "unit": "wolf", "count": 3, "tag": "", "aiProfile": "" }],
-        "groups": [],
+        "units": [],
+        "groups": [
+          {
+            "id": "w2_g1",
+            "name": "",
+            "unit": "wolf",
+            "enabled": true,
+            "count": 3,
+            "delay": 0,
+            "interval": 0,
+            "spawnBase": "spawn_south",
+            "route": "",
+            "target": "",
+            "faction": "",
+            "aiProfile": "",
+            "tag": "",
+            "subgroupSize": 0,
+            "subgroupPause": 5,
+            "maxAlive": 0,
+            "extraBases": [],
+            "repeats": 0,
+            "repeatEvery": 30,
+            "statMods": [],
+            "preset": "",
+            "fromBudget": false
+          }
+        ],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",
@@ -202,7 +348,29 @@
         "onEnd": [],
         "warning": true,
         "warningSeconds": 0,
-        "message": "Из южного леса выбегает стая волков!"
+        "message": "Из южного леса выбегает стая волков!",
+        "id": "",
+        "maxDuration": 0,
+        "minGapNext": 0,
+        "difficulty": { "health": 1, "power": 1, "speed": 1, "count": 1 },
+        "budget": {
+          "enabled": false,
+          "budget": 20,
+          "minUnits": 3,
+          "maxUnits": 15,
+          "categories": [],
+          "requiredTags": [],
+          "forbiddenTags": [],
+          "maxEliteShare": 0.25,
+          "leader": "",
+          "maxUnitCost": 0,
+          "moveCategories": [],
+          "spawnBase": "",
+          "route": "",
+          "interval": 1,
+          "seed": 0,
+          "pinned": false
+        }
       }
     ],
     "victory": [
@@ -369,6 +537,12 @@
     ],
     "passives": [],
     "passiveOverrides": [],
-    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+    "limits": {
+      "stacking": "ByUnitType",
+      "fogOfWar": true,
+      "timeLimit": 0,
+      "maxAliveEnemies": 0,
+      "maxCreatedEnemies": 0
+    }
   }
 }

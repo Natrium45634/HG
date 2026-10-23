@@ -20,6 +20,7 @@ public static class ContentMigrator
         [1] = V1ToV2,
         [2] = V2ToV3,
         [3] = V3ToV4,
+        [4] = V4ToV5,
     };
 
     public static JsonObject? Migrate(JsonNode node, string expectedKind, out List<string> notes, out string? error)
@@ -228,6 +229,67 @@ public static class ContentMigrator
             u["defense"] = defense;
         }
         if (converted > 0) notes.Add($"v3→v4: сопротивления ({converted}) переведены в проценты: 0.5 → −50 %, 1 → иммунитет");
+    }
+
+    /// <summary>
+    /// v4 → v5 (docs/DECISIONS_4.md §73): an old wave — spawn markers of the map and a list «unit × count» — becomes
+    /// spawn bases linked to the markers (one per marker, shared by the waves) and one group per line of the list.
+    /// The schedule stays the same: the i-th enemy of the wave appears at «interval × i» from the i-th marker in turn.
+    /// </summary>
+    private static void V4ToV5(JsonObject root, string kind, List<string> notes)
+    {
+        if (kind != "scenario" || root["scenario"] is not JsonObject sc || sc["waves"] is not JsonArray waves) return;
+        var objects = sc["objects"] as JsonArray ?? new JsonArray();
+        sc["objects"] = objects;
+        int groups = 0, bases = 0;
+        for (int wi = 0; wi < waves.Count; wi++)
+        {
+            if (waves[wi] is not JsonObject w || w["units"] is not JsonArray units || units.Count == 0) continue;
+            var markers = new List<string>();
+            if ((string?)w["spawnMarker"] is { Length: > 0 } m0) markers.Add(m0);
+            if (w["spawnMarkers"] is JsonArray extra)
+                foreach (var m in extra)
+                    if ((string?)m is { Length: > 0 } ms && !markers.Contains(ms))
+                        markers.Add(ms);
+            if (markers.Count == 0) continue;
+            var baseIds = new List<string>();
+            foreach (var m in markers)
+            {
+                string id = "spawn_" + m;
+                baseIds.Add(id);
+                if (objects.OfType<JsonObject>().Any(o => (string?)o["id"] == id)) continue;
+                objects.Add(new JsonObject
+                {
+                    ["id"] = id, ["name"] = $"Появление «{m}»", ["type"] = "SpawnBase", ["faction"] = (string?)w["faction"] ?? "enemy", ["marker"] = m,
+                    ["spawn"] = new JsonObject { ["blocked"] = "NearestFree", ["searchRadius"] = 4 },
+                });
+                bases++;
+            }
+            double interval = w["interval"] is JsonValue iv && iv.TryGetValue<double>(out var ivd) ? ivd : 0;
+            var list = w["groups"] as JsonArray ?? new JsonArray();
+            int start = 0;
+            for (int r = 0; r < units.Count; r++)
+            {
+                if (units[r] is not JsonObject u) continue;
+                int count = u["count"] is JsonValue cv && cv.TryGetValue<int>(out var c) ? c : 1;
+                var rotation = new JsonArray();
+                for (int k = 1; k < baseIds.Count; k++) rotation.Add(baseIds[(start + k) % baseIds.Count]);
+                list.Add(new JsonObject
+                {
+                    ["id"] = $"w{wi + 1}_g{r + 1}", ["unit"] = (string?)u["unit"] ?? "", ["count"] = count,
+                    ["delay"] = Math.Round(interval * start, 6), ["interval"] = interval,
+                    ["spawnBase"] = baseIds[start % baseIds.Count], ["extraBases"] = rotation,
+                    ["route"] = (string?)w["route"] ?? "", ["tag"] = (string?)u["tag"] ?? "", ["aiProfile"] = (string?)u["aiProfile"] ?? "",
+                });
+                start += count;
+                groups++;
+            }
+            w["groups"] = list;
+            w["units"] = new JsonArray();
+            w["spawnMarker"] = "";
+            w["spawnMarkers"] = new JsonArray();
+        }
+        if (groups > 0) notes.Add($"v4→v5: состав волн переведён в группы ({groups}), точки появления — в базы спавна ({bases})");
     }
 
     private static int DropComputed(JsonNode? node)

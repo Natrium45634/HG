@@ -120,6 +120,7 @@ public static class ContentValidator
         DefCategory.Vfx => "визуальный эффект",
         DefCategory.Formation => "формация",
         DefCategory.Origin => "происхождение",
+        DefCategory.GroupPreset => "пресет группы",
         _ => c.ToString(),
     };
 
@@ -670,7 +671,7 @@ public static class ContentValidator
         {
             var w = s.Waves[i];
             // Groups come from spawn bases; the old composition needs a spawn marker.
-            if (!w.AllSpawnMarkers().Any() && (w.Units.Count > 0 || w.Groups.Count == 0)) issues.Add(Err(s, $"Waves[{i}]", "Нет точки появления"));
+            if (!w.AllSpawnMarkers().Any() && (w.Units.Count > 0 || w.Groups.Count == 0 && !w.Budget.Enabled)) issues.Add(Err(s, $"Waves[{i}]", "Нет точки появления"));
             foreach (var m in w.AllSpawnMarkers())
                 if (map.FindMarker(m) == null)
                     issues.Add(Err(s, $"Waves[{i}]", $"Метка появления '{m}' не найдена на карте"));

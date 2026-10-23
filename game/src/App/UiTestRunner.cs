@@ -69,6 +69,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_speeds_and_pause_keep_every_event", BattleSpeedsAndPause));
         // Part 4 (docs/DECISIONS_4.md): the TD scene.
         _tests.Add(("editor_td_scene_bases_route_group_battle", EditorTdScene));
+        _tests.Add(("editor_td_waves_library_presets_budget_battle", EditorTdWaves));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -1583,6 +1584,19 @@ public partial class UiTestRunner : Node
         GD.Print($"скорости и пауза: тиков {ticks}, событий {bs.Sim.Log.TotalCount}, скоростей {speeds.Count}, кадров паузы {pausedFrames}");
     }
 
+    /// <summary>Scrolls the button into view (inside a scrolled panel) and clicks it.</summary>
+    private async Task ClickInView(Control c)
+    {
+        for (Node? n = c.GetParent(); n != null; n = n.GetParent())
+            if (n is ScrollContainer sc)
+            {
+                sc.EnsureControlVisible(c);
+                break;
+            }
+        await Frames(3);
+        await Click(c.GetGlobalRect().GetCenter());
+    }
+
     /// <summary>Waits until the smooth camera stops (framing a new map eases in over several frames).</summary>
     private async Task CameraSettled(Render.CameraRig rig)
     {
@@ -1925,7 +1939,8 @@ public partial class UiTestRunner : Node
             Check(sc != null, "сценарий должен вернуться");
             Check(draft.Unit("goblin")!.Name == "Гоблин (изменён)", "существующий объект не должен перезаписываться");
             Check(draft.Unit("goblin_copy") != null && draft.Unit("goblin_copy")!.Name != "Гоблин (изменён)", "копия должна получить новый ID и содержимое пакета");
-            Check(sc!.Waves.SelectMany(w => w.Units).Any(u => u.Unit == "goblin_copy"), "ссылки сценария должны перейти на копию");
+            Check(sc!.Waves.SelectMany(w => w.Units).Any(u => u.Unit == "goblin_copy") || sc.Waves.SelectMany(w => w.Groups).Any(g => g.Unit == "goblin_copy"),
+                "ссылки сценария должны перейти на копию");
 
             // A damaged package is rejected without changes.
             var bytes = File.ReadAllBytes(pkgPath);
@@ -2236,5 +2251,79 @@ public partial class UiTestRunner : Node
         Check(b.Hp < b.HpMax, "дошедшие враги должны нанести урон базе");
         await Frames(10);
         Main.Instance.Content.Draft!.Table(DefCategory.Scenario).Remove(sc.Id);
+    }
+    /// <summary>
+    /// Part 4, stage 2 through the editor: the «Волны» mode of «Оборона перевала» — the template library filtered by
+    /// search, a card adds a group bound to the chosen spawn base and its route; «Сохранить как пресет» and a group
+    /// from the preset; a wave by budget — «Подобрать», «Закрепить» (groups appear and stay); the schedule; in battle
+    /// the waves panel shows the progress and why an appearance waits (the group's limit of the living).
+    /// </summary>
+    private async Task EditorTdWaves()
+    {
+        await OpenEditor("td");
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass");
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = panel.Scene!;
+        var draft = Main.Instance.Content.Draft!;
+        await CameraSettled(panel.View.Board.Rig);
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Waves").GetGlobalRect().GetCenter());
+        await ClickHex(panel.View, sc.Object("spawn_1")!.Anchor);
+        Check(panel.SelectedObject == "spawn_1", "клик по базе спавна в режиме «Волны» должен выбрать её");
+        await Click(Find<Button>(panel).First(b => b.Text.StartsWith("▾ Стая")).GetGlobalRect().GetCenter());
+        Check(panel.SelectedWave?.Name == "Стая", "волна «Стая» не выбрана");
+
+        // The library: a search leaves the wolf card; the card adds a group to the chosen wave and base.
+        var search = Find<LineEdit>(panel).First(l => l.Name == "TdTplSearch");
+        search.Text = "волк";
+        search.EmitSignal(LineEdit.SignalName.TextChanged, "волк");
+        await Frames(3);
+        var cards = Find<Button>(panel).Where(b => b.Name.ToString().StartsWith("TdTpl_") && b.IsVisibleInTree()).ToList();
+        Check(cards.Count == 1 && cards[0].Name == "TdTpl_wolf" && cards[0].Text.Contains("угроза"), "поиск «волк» должен оставить карточку волка с угрозой: " + string.Join(", ", cards.Select(c => c.Name)));
+        int groupsBefore = sc.Waves[1].Groups.Count;
+        await ClickInView(cards[0]);
+        var g = sc.Waves[1].Groups.Last();
+        Check(sc.Waves[1].Groups.Count == groupsBefore + 1 && g.Unit == "wolf" && g.SpawnBase == "spawn_1" && g.Route == "route_1", $"карточка должна добавить группу волка у пещеры по её маршруту ({g.Unit}, {g.SpawnBase}, {g.Route})");
+
+        // A preset from the group, then a group from the preset.
+        g.Count = 2;
+        g.SubgroupSize = 1;
+        g.SubgroupPause = 2;
+        Check(panel.SelectedGroup == g, "новая группа должна быть выбрана");
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdSavePreset"));
+        var preset = draft.All<GroupPresetDef>().LastOrDefault();
+        Check(preset != null && preset.Template.Unit == "wolf" && preset.Template.SpawnBase == "" && preset.Template.SubgroupSize == 1, "пресет не сохранён или хранит базу сцены");
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdPreset_" + preset!.Id));
+        var fromPreset = sc.Waves[1].Groups.Last();
+        Check(fromPreset != g && fromPreset.Preset == preset.Id && fromPreset.Unit == "wolf" && fromPreset.SpawnBase == "spawn_1" && fromPreset.Id != g.Id, "группа из пресета не создана");
+
+        // A wave by budget: «Подобрать» shows the pick, «Закрепить» makes it groups.
+        var w = sc.Waves[2];
+        w.Budget = new WaveBudgetDef { Enabled = true, Budget = 12, MinUnits = 2, MaxUnits = 6, SpawnBase = "spawn_1", Route = "route_1", Interval = 1 };
+        await ClickInView(Find<Button>(panel).First(b => b.Text.StartsWith("▾ Таран")));
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdBudgetPick"));
+        var preview = Find<Label>(panel).First(l => l.Name == "TdBudgetPreview");
+        Check(preview.Text.Contains(" из 12"), "«Подобрать» должен показать состав и затраты: " + preview.Text);
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdBudgetPin"));
+        var picked = w.Groups.Where(x => x.FromBudget).ToList();
+        Check(w.Budget.Pinned && picked.Count > 0 && picked.All(x => x.SpawnBase == "spawn_1"), "«Закрепить» должен записать подобранные группы");
+        string pinnedText = string.Join(",", picked.Select(x => x.ToString()));
+        Check(LabelVisible("Таран:"), "расписание должно показывать волну «Таран»");
+
+        // Battle on the draft: a limit of the living holds the scouts back; the panel says why.
+        sc.Waves[0].Groups[0].MaxAlive = 1;
+        await Click(Find<Button>(panel).First(b => b.Name == "TdRun").GetGlobalRect().GetCenter());
+        await Frames(10);
+        var bs = Battle();
+        var w0 = bs.Sim.Scenario.Waves[0];
+        for (int i = 0; i < 20 * 30 && !w0.Planned.Any(p => p.WaitReason.Contains("лимит живых группы")); i++) bs.Sim.Step();
+        await Frames(10);
+        Check(LabelVisible("Волна «Разведка»") && LabelVisible("ждёт: лимит живых группы"), "панель волн должна показать прогресс и причину ожидания");
+        var w2 = bs.Sim.Scenario.Waves[2];
+        Check(string.Join(",", w2.Def.Groups.Where(x => x.FromBudget).Select(x => x.ToString())) == pinnedText && w2.Budget == null, "в бою закреплённый состав не должен подбираться заново");
+        // Restore the shipped scene in the draft for the following tests.
+        draft.Add(ContentJson.Clone(Main.Instance.Content.Published.Get<ScenarioDef>("td_pass")!));
+        draft.Table(DefCategory.GroupPreset).Remove(preset.Id);
     }
 }

@@ -190,9 +190,12 @@ public partial class BattleHud : Control
     private void RefreshObjectives()
     {
         var obs = Sim.Scenario.Objectives;
-        _objPanel.Visible = obs.Count > 0;
-        if (obs.Count == 0) return;
-        string key = string.Join("|", obs.Select(o => $"{o.State}:{o.Progress}"));
+        // Waves of the dispatcher (docs/DECISIONS_4.md §58): the current ones with progress and why they wait.
+        var waves = Sim.Scenario.Waves.Where(w => w.State is WaveState.Scheduled or WaveState.Active).ToList();
+        _objPanel.Visible = obs.Count > 0 || waves.Count > 0;
+        if (!_objPanel.Visible) return;
+        string WaitOf(WaveRuntime w) => w.Planned.FirstOrDefault(p => !p.Done && p.WaitReason != "")?.WaitReason ?? "";
+        string key = string.Join("|", obs.Select(o => $"{o.State}:{o.Progress}")) + "#" + string.Join("|", waves.Select(w => $"{w.Index}:{w.Spawned}/{w.Total}:{WaitOf(w)}"));
         if (key == _objKey) return;
         _objKey = key;
         Ui.ClearChildren(_objList);
@@ -220,6 +223,13 @@ public partial class BattleHud : Control
                 _ => o.Progress,
             };
             if (sub.Length > 0) _objList.AddChild(Ui.Label("   " + sub, 12, Ui.TextDim, wrap: true));
+        }
+        foreach (var w in waves)
+        {
+            var wl = Ui.Label($"≋ Волна «{w.Def.Name}»: {w.Spawned}/{w.Total}", 13, Ui.Accent, wrap: true);
+            wl.Name = "WaveProgress_" + w.Index;
+            _objList.AddChild(wl);
+            if (WaitOf(w) is { Length: > 0 } why) _objList.AddChild(Ui.Label("   ждёт: " + why, 12, Ui.Warn, wrap: true));
         }
     }
 

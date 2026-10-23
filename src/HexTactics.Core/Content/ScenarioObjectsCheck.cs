@@ -17,12 +17,13 @@ public static class ScenarioObjectsCheck
 {
     public static List<ScenarioProblem> All(ContentDatabase db, ScenarioDef sc, MapDef map)
     {
+        ScenarioObjects.ResolveMarkers(sc, map);
         var list = new List<ScenarioProblem>();
         list.AddRange(Objects(db, sc, map));
         foreach (var id in sc.Routes.GroupBy(r => r.Id).Where(g => g.Count() > 1).Select(g => g.Key))
             list.Add(new(IssueSeverity.Error, "Routes", $"ID маршрута «{id}» повторяется"));
         foreach (var r in sc.Routes) list.AddRange(Route(db, sc, map, r));
-        list.AddRange(Groups(db, sc));
+        list.AddRange(Groups(db, sc, map));
         return list;
     }
 
@@ -176,7 +177,7 @@ public static class ScenarioObjectsCheck
         return list;
     }
 
-    public static List<ScenarioProblem> Groups(ContentDatabase db, ScenarioDef sc)
+    public static List<ScenarioProblem> Groups(ContentDatabase db, ScenarioDef sc, MapDef? map = null)
     {
         var list = new List<ScenarioProblem>();
         for (int wi = 0; wi < sc.Waves.Count; wi++)
@@ -185,21 +186,50 @@ public static class ScenarioObjectsCheck
             foreach (var g in w.Groups)
             {
                 string name = $"Волна «{w.Name}», группа «{(g.Name == "" ? g.Unit : g.Name)}»";
-                string path = $"Waves[{wi}].Groups";
+                string path = $"Waves[{wi}].Groups[{g.Id}]";
                 if (db.Unit(g.Unit) == null) list.Add(new(IssueSeverity.Error, path, $"{name}: шаблон «{g.Unit}» не найден"));
                 var b = sc.Object(g.SpawnBase);
                 if (g.SpawnBase == "") list.Add(new(IssueSeverity.Error, path, $"{name}: не указана база спавна"));
                 else if (b == null) list.Add(new(IssueSeverity.Error, path, $"{name}: база спавна «{g.SpawnBase}» не найдена"));
                 else if (b.Spawn == null) list.Add(new(IssueSeverity.Error, path, $"{name}: «{b.DisplayName}» не база спавна", b.Anchor, b.Id));
+                foreach (var extra in g.ExtraBases.Where(x => x != ""))
+                {
+                    var eb = sc.Object(extra);
+                    if (eb == null) list.Add(new(IssueSeverity.Error, path, $"{name}: доп. база спавна «{extra}» не найдена"));
+                    else if (eb.Spawn == null) list.Add(new(IssueSeverity.Error, path, $"{name}: «{eb.DisplayName}» не база спавна", eb.Anchor, eb.Id));
+                }
                 var r = sc.Route(g.Route);
-                if (g.Route == "") list.Add(new(IssueSeverity.Warning, path, $"{name}: маршрут не назначен — враги пойдут по профилю ИИ", b?.Anchor));
-                else if (r == null) list.Add(new(IssueSeverity.Error, path, $"{name}: маршрут «{g.Route}» не найден", b?.Anchor));
-                else if (b != null && r.Spawn != "" && r.Spawn != b.Id)
+                bool mapRoute = r == null && map?.FindRoute(g.Route) != null;
+                if (g.Route == "") list.Add(new(IssueSeverity.Info, path, $"{name}: маршрут не назначен — враги действуют по профилю ИИ", b?.Anchor));
+                else if (r == null && !mapRoute) list.Add(new(IssueSeverity.Error, path, $"{name}: маршрут «{g.Route}» не найден", b?.Anchor));
+                else if (r != null && b != null && r.Spawn != "" && r.Spawn != b.Id && g.ExtraBases.Count == 0)
                     list.Add(new(IssueSeverity.Warning, path, $"{name}: маршрут «{r.DisplayName}» начинается у «{r.Spawn}», а группа — у «{b.Id}»", b.Anchor, b.Id));
                 if (g.Target != "" && sc.Object(g.Target) == null) list.Add(new(IssueSeverity.Error, path, $"{name}: цель «{g.Target}» не найдена"));
+                if (g.SubgroupSize > 0 && g.SubgroupSize >= g.Count && g.Repeats == 0)
+                    list.Add(new(IssueSeverity.Info, path, $"{name}: подгруппа ({g.SubgroupSize}) не меньше количества ({g.Count}) — пауза не действует"));
+                if (g.MaxAlive > 0 && w.MaxAlive > 0 && g.MaxAlive > w.MaxAlive)
+                    list.Add(new(IssueSeverity.Info, path, $"{name}: лимит живых группы ({g.MaxAlive}) больше лимита волны ({w.MaxAlive})"));
+                if (b?.Spawn is { MaxCreated: > 0 } sp && WaveSchedule.CountOf(g, w) * (g.Repeats + 1) > sp.MaxCreated)
+                    list.Add(new(IssueSeverity.Warning, path, $"{name}: врагов {WaveSchedule.CountOf(g, w) * (g.Repeats + 1)}, а лимит созданных базы «{b.DisplayName}» — {sp.MaxCreated}: лишние не появятся", b.Anchor, b.Id));
             }
             foreach (var id in w.Groups.GroupBy(g => g.Id).Where(x => x.Key != "" && x.Count() > 1).Select(x => x.Key))
                 list.Add(new(IssueSeverity.Error, $"Waves[{wi}].Groups", $"Волна «{w.Name}»: ID группы «{id}» повторяется"));
+
+            // The threat budget: its limits must be satisfiable (the same pick the battle makes).
+            var bd = w.Budget;
+            if (!bd.Enabled) continue;
+            string bp = $"Waves[{wi}].Budget";
+            if (bd.MinUnits > bd.MaxUnits) list.Add(new(IssueSeverity.Error, bp, $"Волна «{w.Name}»: мин. врагов ({bd.MinUnits}) больше макс. ({bd.MaxUnits})"));
+            var sb = sc.Object(bd.SpawnBase);
+            if (!bd.Pinned)
+            {
+                if (bd.SpawnBase == "" || sb?.Spawn == null) list.Add(new(IssueSeverity.Error, bp, $"Волна «{w.Name}» по бюджету: не указана база спавна (или это не база спавна)"));
+                if (bd.Route != "" && sc.Route(bd.Route) == null && map?.FindRoute(bd.Route) == null) list.Add(new(IssueSeverity.Error, bp, $"Волна «{w.Name}» по бюджету: маршрут «{bd.Route}» не найден"));
+                var pick = WaveBudget.Compose(db, w, bd, WaveBudget.SeedOf(bd, sc.Seed, wi));
+                foreach (var pr in pick.Problems) list.Add(new(IssueSeverity.Warning, bp, $"Волна «{w.Name}» по бюджету: {pr}"));
+            }
+            else if (!w.Groups.Any(g => g.FromBudget))
+                list.Add(new(IssueSeverity.Warning, bp, $"Волна «{w.Name}»: бюджет отмечен закреплённым, но подобранных групп нет — нажмите «Подобрать и закрепить»"));
         }
         return list;
     }

@@ -1,5 +1,5 @@
 {
-  "formatVersion": 4,
+  "formatVersion": 5,
   "kind": "scenario",
   "scenario": {
     "id": "facility_breach",
@@ -109,6 +109,12 @@
     "triggers": [],
     "passives": [],
     "passiveOverrides": [],
-    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+    "limits": {
+      "stacking": "ByUnitType",
+      "fogOfWar": true,
+      "timeLimit": 0,
+      "maxAliveEnemies": 0,
+      "maxCreatedEnemies": 0
+    }
   }
 }

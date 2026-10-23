@@ -166,8 +166,79 @@ public sealed class SpawnGroupDef
     [Ed("Фракция", "Пусто — фракция волны"), EdRef(DefCategory.Faction)] public string Faction { get; set; } = "";
     [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
     [Ed("Метка-ID", "Для условий и целей")] public string Tag { get; set; } = "";
+    // Stage 2 (docs/DECISIONS_4.md §58): subgroups, limits, several bases, repeats, local modifiers.
+    [Ed("Размер подгруппы", "Враги выходят пачками по N, между пачками — пауза; 0 — без подгрупп"), EdRange(0, 1000)] public int SubgroupSize { get; set; }
+    [Ed("Пауза между подгруппами, с"), EdRange(0, 600)] public double SubgroupPause { get; set; } = 5;
+    [Ed("Лимит живых группы", "Одновременно живых врагов группы; 0 — без лимита"), EdRange(0, 10_000)] public int MaxAlive { get; set; }
+    [Ed("Доп. базы спавна", "Враги распределяются по базам по очереди (основная — первая)")] public List<string> ExtraBases { get; set; } = new();
+    [Ed("Повторов", "Сколько раз группа выходит снова (0 — один раз)"), EdRange(0, 100)] public int Repeats { get; set; }
+    [Ed("Повтор через, с", "От начала предыдущего выхода группы"), EdRange(1, 3600)] public double RepeatEvery { get; set; } = 30;
+    [Ed("Модификаторы экземпляров", "Только у врагов этой группы; шаблон не меняется")] public List<StatModDef> StatMods { get; set; } = new();
+    [Ed("Условие отмены", "Выполнено — оставшиеся враги группы не появятся")] public ConditionDef? CancelCondition { get; set; }
+    [Ed("Из пресета", "Пресет, из которого создана группа (для справки)"), EdRef(DefCategory.GroupPreset)] public string Preset { get; set; } = "";
+    [Ed("Подобрана по бюджету", "Создана подбором по бюджету угрозы; заменяется при новом закреплении")] public bool FromBudget { get; set; }
 
-    public override string ToString() => $"{(Name == "" ? Unit : Name)} ×{Count}";
+    /// <summary>Bases in turn: the main one first, then the extra ones (empty IDs skipped).</summary>
+    public List<string> Bases()
+    {
+        var list = new List<string>();
+        if (SpawnBase != "") list.Add(SpawnBase);
+        foreach (var b in ExtraBases)
+            if (b != "" && !list.Contains(b))
+                list.Add(b);
+        return list;
+    }
+
+    /// <summary>
+    /// Seconds from the start of the wave to the k-th enemy of one run of the group: interval inside a subgroup,
+    /// the pause between subgroups.
+    /// </summary>
+    public double OffsetOf(int k)
+    {
+        int gaps = SubgroupSize > 0 ? k / SubgroupSize : 0;
+        return Delay + (k - gaps) * Interval + gaps * SubgroupPause;
+    }
+
+    public override string ToString() => $"{(Name == "" ? Unit : Name)} ×{Count}" + (Repeats > 0 ? $" ×{Repeats + 1} раз" : "");
+}
+
+/// <summary>Difficulty of a wave (docs/DECISIONS_4.md §58): multipliers on its enemies, the templates stay.</summary>
+public sealed class WaveDifficultyDef
+{
+    [Ed("Здоровье ×"), EdRange(0.1, 100)] public double Health { get; set; } = 1;
+    [Ed("Сила и магия ×", "Сила и сила магии врагов волны"), EdRange(0.1, 100)] public double Power { get; set; } = 1;
+    [Ed("Скорость ×"), EdRange(0.1, 10)] public double Speed { get; set; } = 1;
+    [Ed("Количество ×", "Количество в каждой группе (округление вверх)"), EdRange(0.1, 100)] public double Count { get; set; } = 1;
+
+    [JsonIgnore] public bool IsDefault => Health == 1 && Power == 1 && Speed == 1 && Count == 1;
+
+    public override string ToString() => IsDefault ? "обычная" : $"здоровье ×{Health:0.##}, сила ×{Power:0.##}, скорость ×{Speed:0.##}, количество ×{Count:0.##}";
+}
+
+/// <summary>
+/// A wave composed by a threat budget (docs/DECISIONS_4.md §58): the author sets the budget and the limits; the
+/// composition is picked deterministically by the seed and can be pinned — then it no longer changes.
+/// </summary>
+public sealed class WaveBudgetDef
+{
+    [Ed("Подбирать состав по бюджету")] public bool Enabled { get; set; }
+    [Ed("Бюджет угрозы", "Сумма стоимостей угрозы врагов"), EdRange(0, 1_000_000)] public double Budget { get; set; } = 20;
+    [Ed("Мин. врагов"), EdRange(0, 1000)] public int MinUnits { get; set; } = 3;
+    [Ed("Макс. врагов"), EdRange(1, 1000)] public int MaxUnits { get; set; } = 15;
+    [Ed("Категории существ", "Пусто — любые (например, beast, humanoid)")] public List<string> Categories { get; set; } = new();
+    [Ed("Обязательные теги", "У шаблона должны быть все")] public List<string> RequiredTags { get; set; } = new();
+    [Ed("Запрещённые теги")] public List<string> ForbiddenTags { get; set; } = new();
+    [Ed("Макс. доля элитных", "Элитный — тег «elite» или босс"), EdRange(0, 1)] public double MaxEliteShare { get; set; } = 0.25;
+    [Ed("Лидер", "Обязательный шаблон: первым в составе"), EdRef(DefCategory.Unit)] public string Leader { get; set; } = "";
+    [Ed("Предел стоимости шаблона", "0 — без предела"), EdRange(0, 100_000)] public double MaxUnitCost { get; set; }
+    [Ed("Типы перемещения", "Пусто — любые")] public List<string> MoveCategories { get; set; } = new();
+    [Ed("База спавна", "ID объекта сценария")] public string SpawnBase { get; set; } = "";
+    [Ed("Маршрут", "ID маршрута сценария")] public string Route { get; set; } = "";
+    [Ed("Интервал, с", "Между врагами подобранного состава"), EdRange(0, 600)] public double Interval { get; set; } = 1;
+    [Ed("Seed подбора", "0 — от seed сценария и номера волны")] public ulong Seed { get; set; }
+    [Ed("Состав закреплён", "Закреплённый состав хранится группами волны и при запуске не подбирается заново")] public bool Pinned { get; set; }
+
+    public override string ToString() => Enabled ? $"бюджет {Budget:0.#}" + (Pinned ? " (закреплён)" : "") : "нет";
 }
 
 public enum WaveStart
@@ -202,6 +273,13 @@ public sealed class WaveDef
     [Ed("Маркер предупреждения", "Линия будущего пути перед появлением")] public bool Warning { get; set; } = true;
     [Ed("Мин. предупреждение, с", "0 — из правил"), EdRange(0, 600)] public double WarningSeconds { get; set; }
     [Ed("Сообщение")] public string Message { get; set; } = "";
+    // Stage 2 (docs/DECISIONS_4.md §58).
+    [Ed("ID волны", "Стабильный; для событий, отчётов и пресетов")] public string Id { get; set; } = "";
+    [Ed("Макс. продолжительность, с", "0 — без ограничения; по истечении оставшиеся появления отменяются"), EdRange(0, 36000)] public double MaxDuration { get; set; }
+    [Ed("Мин. интервал до следующей, с", "Следующая волна (кроме волн по времени) не начнётся раньше — от начала этой"), EdRange(0, 3600)] public double MinGapNext { get; set; }
+    [Ed("Условие прерывания", "Выполнено — волна отменяется, оставшиеся враги не появятся")] public ConditionDef? CancelCondition { get; set; }
+    [Ed("Сложность", "Множители врагов волны")] public WaveDifficultyDef Difficulty { get; set; } = new();
+    [Ed("Бюджет угрозы", "Подбор состава по бюджету")] public WaveBudgetDef Budget { get; set; } = new();
 
     public IEnumerable<string> AllSpawnMarkers()
     {
@@ -490,4 +568,6 @@ public sealed class ScenarioLimitsDef
     [Ed("Совместное нахождение на гексе", "По настройкам типов юнитов / запрещено / разрешено всем")] public StackingMode Stacking { get; set; } = StackingMode.ByUnitType;
     [Ed("Туман войны")] public bool FogOfWar { get; set; } = true;
     [Ed("Лимит времени, с", "0 = без лимита (по истечении — поражение)"), EdRange(0, 36000)] public double TimeLimit { get; set; }
+    [Ed("Лимит живых врагов", "Одновременно на поле по всем волнам; 0 — без лимита (остальные ждут)"), EdRange(0, 10_000)] public int MaxAliveEnemies { get; set; }
+    [Ed("Лимит созданных врагов", "За весь бой; 0 — без лимита (оставшиеся появления отменяются)"), EdRange(0, 100_000)] public int MaxCreatedEnemies { get; set; }
 }

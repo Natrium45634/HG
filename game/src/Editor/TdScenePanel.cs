@@ -66,6 +66,9 @@ public partial class TdScenePanel : DefListPanel
     public TdScenePanel(EditorContext ctx, Action<ScenarioDef> test) : base(ctx, DefCategory.Scenario, "TD-сцена", null, null)
     {
         _test = test;
+        // «--tdmode=routes|waves» opens the workspace in that mode (screenshots, tests).
+        if (App.Main.Instance.Args.TryGetValue("tdmode", out var m))
+            Mode = m switch { "routes" => TdMode.Routes, "waves" => TdMode.Waves, _ => TdMode.Objects };
     }
 
     protected override bool UseScroll => false;
@@ -712,7 +715,11 @@ public partial class TdScenePanel : DefListPanel
 
     // ------------------------------------------------------------------ waves
 
-    public SpawnGroupDef? AddGroup(ScenarioObjectDef? spawn = null)
+    /// <summary>
+    /// A group in the chosen wave from a spawn base and its route: a template (a card of the library), a preset, or
+    /// the first template of the base's team.
+    /// </summary>
+    public SpawnGroupDef? AddGroup(ScenarioObjectDef? spawn = null, string? unitId = null, GroupPresetDef? preset = null)
     {
         if (_sc == null) return null;
         spawn ??= Obj(SelectedObject) is { Spawn: not null } s ? s : _sc.Objects.FirstOrDefault(x => x.Spawn != null);
@@ -730,12 +737,15 @@ public partial class TdScenePanel : DefListPanel
         int n = _sc.Waves.Sum(w => w.Groups.Count) + 1;
         string gid;
         do gid = $"group_{n++}"; while (_sc.Waves.Any(w => w.Groups.Any(g => g.Id == gid)));
-        var unit = Ctx.Db.All<UnitDef>().FirstOrDefault(u => u.Faction == spawn.Faction) ?? Ctx.Db.All<UnitDef>().FirstOrDefault(u => u.Faction == "enemy");
-        var g = new SpawnGroupDef
+        string route = _sc.Routes.FirstOrDefault(r => r.Spawn == spawn.Id)?.Id ?? "";
+        SpawnGroupDef g;
+        if (preset != null) g = preset.Instantiate(gid, spawn.Id, route);
+        else
         {
-            Id = gid, Unit = unit?.Id ?? "", Count = 3, Interval = 1.5, SpawnBase = spawn.Id,
-            Route = _sc.Routes.FirstOrDefault(r => r.Spawn == spawn.Id)?.Id ?? "",
-        };
+            var unit = (unitId != null ? Ctx.Db.Unit(unitId) : null)
+                       ?? Ctx.Db.All<UnitDef>().FirstOrDefault(u => u.Faction == spawn.Faction) ?? Ctx.Db.All<UnitDef>().FirstOrDefault(u => u.Faction == "enemy");
+            g = new SpawnGroupDef { Id = gid, Unit = unit?.Id ?? "", Count = 3, Interval = 1.5, SpawnBase = spawn.Id, Route = route };
+        }
         wave.Groups.Add(g);
         SelectedWave = wave;
         SelectedGroup = g;
@@ -872,7 +882,8 @@ public partial class TdScenePanel : DefListPanel
                     {
                         var gg = g;
                         bool bad = _problems.Any(p => p.Severity == IssueSeverity.Error && p.Path.Contains(g.Id));
-                        var gb = Btn($"    {(bad ? "⛔" : "•")} {g} · {Obj(g.SpawnBase)?.DisplayName ?? "?"}", () =>
+                        string gname = g.Name != "" ? g.Name : Ctx.Db.Unit(g.Unit)?.DisplayName ?? g.Unit;
+                        var gb = Btn($"    {(bad ? "⛔" : g.FromBudget ? "≈" : "•")} {gname} ×{g.Count}{(g.Repeats > 0 ? $" ×{g.Repeats + 1} раз" : "")} · {Obj(g.SpawnBase)?.DisplayName ?? "?"}", () =>
                         {
                             SelectedWave = ww;
                             SelectedGroup = gg;
@@ -882,9 +893,146 @@ public partial class TdScenePanel : DefListPanel
                         if (g == SelectedGroup) gb.AddThemeColorOverride("font_color", Ui.Accent);
                     }
                 }
+                BuildTemplateLibrary();
+                BuildPresets((t, a, tip, name) => Btn(t, a, tip, name));
+                BuildSchedule();
                 break;
             }
         }
+    }
+
+    // Library of templates (docs/DECISIONS_4.md §69): cards with the threat cost and filters; a click adds a group.
+    private string _tplSearch = "";
+    private string _tplFaction = "enemy";
+    private string _tplCategory = "";
+    private string _tplMove = "";
+    private VBoxContainer? _cards;
+
+    private void BuildTemplateLibrary()
+    {
+        _library.AddChild(Ui.Sep());
+        _library.AddChild(Ui.Label("Шаблоны врагов (клик — группа):", 13, Ui.TextDim));
+        var search = new LineEdit { PlaceholderText = "поиск по названию, ID, тегу", Text = _tplSearch, Name = "TdTplSearch" };
+        search.TextChanged += t =>
+        {
+            _tplSearch = t;
+            RefreshCards();
+        };
+        _library.AddChild(search);
+        OptionButton Filter(string name, string current, IEnumerable<string> values, string all, Action<string> set)
+        {
+            var ob = new OptionButton { FocusMode = FocusModeEnum.None, Name = name, ClipText = true };
+            var list = new List<string> { "" };
+            ob.AddItem(all);
+            foreach (var v in values.Where(v => v != "").Distinct().OrderBy(v => v))
+            {
+                list.Add(v);
+                ob.AddItem(v);
+            }
+            ob.Selected = Math.Max(0, list.IndexOf(current));
+            ob.ItemSelected += i =>
+            {
+                set(list[(int)i]);
+                RefreshCards();
+            };
+            _library.AddChild(ob);
+            return ob;
+        }
+        var units = Ctx.Db.All<UnitDef>().ToList();
+        Filter("TdTplFaction", _tplFaction, units.Select(u => u.Faction), "все команды", v => _tplFaction = v);
+        Filter("TdTplCategory", _tplCategory, units.Select(u => u.CreatureCategory), "все категории", v => _tplCategory = v);
+        Filter("TdTplMove", _tplMove, units.Select(u => u.MoveCategory), "все типы перемещения", v => _tplMove = v);
+        _cards = Ui.VBox(3);
+        _library.AddChild(_cards);
+        RefreshCards();
+    }
+
+    /// <summary>The cards of templates matching the filters (sorted by threat cost).</summary>
+    public IEnumerable<UnitDef> TemplateCards()
+    {
+        string q = _tplSearch.Trim().ToLowerInvariant();
+        return Ctx.Db.All<UnitDef>()
+            .Where(u => (_tplFaction == "" || u.Faction == _tplFaction) && (_tplCategory == "" || u.CreatureCategory == _tplCategory) && (_tplMove == "" || u.MoveCategory == _tplMove))
+            .Where(u => q == "" || u.DisplayName.ToLowerInvariant().Contains(q) || u.Id.Contains(q) || u.Tags.Any(t => t.Contains(q)))
+            .OrderBy(u => ThreatCost.Of(Ctx.Db, u)).ThenBy(u => u.Id);
+    }
+
+    public void SetTemplateFilter(string search = "", string faction = "enemy", string category = "", string move = "")
+    {
+        _tplSearch = search;
+        _tplFaction = faction;
+        _tplCategory = category;
+        _tplMove = move;
+        RefreshLibrary();
+    }
+
+    private void RefreshCards()
+    {
+        if (_cards == null || !IsInstanceValid(_cards)) return;
+        Ui.ClearChildren(_cards);
+        int shown = 0;
+        foreach (var u in TemplateCards())
+        {
+            if (++shown > 40) break;
+            var uu = u;
+            double hp = u.Stats.GetValueOrDefault(Stats.HpMax, Ctx.Db.Stat(Stats.HpMax)?.Default ?? 0);
+            var b = Ui.Button($"{u.DisplayName}\nугроза {ThreatCost.Of(Ctx.Db, u):0.#} · HP {hp:0} · {u.CreatureCategory}/{u.MoveCategory}", () => AddGroup(null, uu.Id),
+                $"{u.Id} · {u.Faction}" + (u.Tags.Count > 0 ? " · теги: " + string.Join(", ", u.Tags) : "") + (u.ThreatCost > 0 ? " · стоимость задана автором" : " · стоимость — оценка по характеристикам"));
+            b.Name = "TdTpl_" + u.Id;
+            b.Alignment = HorizontalAlignment.Left;
+            b.ClipText = true;
+            b.CustomMinimumSize = new Vector2(0, 46);
+            _cards.AddChild(b);
+        }
+        if (shown == 0) _cards.AddChild(Ui.Label("Нет шаблонов под фильтры", 12, Ui.TextDim));
+    }
+
+    private void BuildPresets(Func<string, Action, string, string, Button> btn)
+    {
+        var presets = Ctx.Db.All<GroupPresetDef>().ToList();
+        _library.AddChild(Ui.Sep());
+        _library.AddChild(Ui.Label($"Пресеты групп ({presets.Count}):", 13, Ui.TextDim));
+        foreach (var p in presets)
+        {
+            var pp = p;
+            btn($"⧉ {p.DisplayName} · {Ctx.Db.Unit(p.Template.Unit)?.DisplayName ?? p.Template.Unit} ×{p.Template.Count}", () => AddGroup(null, null, pp),
+                "Добавить группу из пресета в выбранную волну, от выбранной базы", "TdPreset_" + p.Id);
+        }
+    }
+
+    /// <summary>«Сохранить как пресет»: the group without the scene's base, route and target.</summary>
+    public GroupPresetDef SavePreset(SpawnGroupDef g)
+    {
+        int n = 1;
+        string id;
+        do id = $"preset_{n++}"; while (Ctx.Db.Get<GroupPresetDef>(id) != null);
+        var t = ContentJson.Clone(g);
+        t.Id = "";
+        t.SpawnBase = t.Route = t.Target = t.Preset = "";
+        t.ExtraBases.Clear();
+        t.FromBudget = false;
+        var p = new GroupPresetDef { Id = id, Name = g.Name != "" ? g.Name : $"{Ctx.Db.Unit(g.Unit)?.DisplayName ?? g.Unit} ×{g.Count}", Template = t };
+        Ctx.Db.Add(p);
+        Ctx.MarkDirty();
+        _status.Text = $"Пресет «{p.DisplayName}» [{p.Id}] сохранён в черновик (раздел «Пресеты групп»)";
+        RefreshLibrary();
+        return p;
+    }
+
+    private void BuildSchedule()
+    {
+        if (_sc == null) return;
+        var lines = WaveSchedule.Preview(Ctx.Db, _sc);
+        _library.AddChild(Ui.Sep());
+        _library.AddChild(Ui.Label("Расписание:", 13, Ui.TextDim));
+        foreach (var l in lines.Take(40))
+        {
+            string when = l.Absolute ? $"{Ui.FormatTime(l.Start)}–{Ui.FormatTime(l.End)}" : $"+{l.Start:0.#}…{l.End:0.#} с";
+            var lab = Ui.Label($"{when} {l.WaveName}: {l.Unit}" + (l.Count > 0 ? $" ×{l.Count}" : "") + (l.Base != "" ? $" · {l.Base}" : ""), 12, l.Absolute ? Ui.Text : Ui.TextDim, wrap: true);
+            lab.TooltipText = l.Absolute ? "Время от начала боя" : "Время от начала волны (волна по событию или после предыдущей)";
+            _library.AddChild(lab);
+        }
+        if (lines.Count == 0) _library.AddChild(Ui.Label("Групп нет", 12, Ui.TextDim));
     }
 
     private static string Icon(ScenarioObjectDef o) => o.Type switch
@@ -930,13 +1078,54 @@ public partial class TdScenePanel : DefListPanel
                 _props.AddChild(Grid(r, RefreshLibrary));
                 return;
             case TdMode.Waves when SelectedGroup is { } g:
+            {
                 _props.AddChild(Ui.Label($"Группа [{g.Id}] волны «{SelectedWave?.Name}»", 15, Ui.Accent, wrap: true));
+                var save = Ui.Button("⧉ Сохранить как пресет", () => SavePreset(g), "Шаблон, количество, интервалы, подгруппы, лимиты и модификаторы — без базы и маршрута");
+                save.Name = "TdSavePreset";
+                _props.AddChild(save);
                 _props.AddChild(Grid(g, RefreshLibrary));
                 return;
+            }
             case TdMode.Waves when SelectedWave is { } w:
+            {
                 _props.AddChild(Ui.Label($"Волна «{w.Name}»", 15, Ui.Accent, wrap: true));
+                var budget = Ui.HBox(4);
+                var preview = Ui.Label(w.Budget.Enabled ? (w.Budget.Pinned ? $"Состав закреплён: {w.Groups.Count(x => x.FromBudget)} групп" : "Состав подбирается при запуске (seed сцены)") : "Бюджет угрозы выключен", 12, Ui.TextDim, wrap: true);
+                preview.Name = "TdBudgetPreview";
+                var pick = Ui.Button("Подобрать", () =>
+                {
+                    var r = WaveBudget.Compose(Ctx.Db, w, w.Budget, WaveBudget.SeedOf(w.Budget, _sc!.Seed, _sc.Waves.IndexOf(w)));
+                    preview.Text = r + (r.Problems.Count > 0 ? "\n⚠ " + string.Join("\n⚠ ", r.Problems) : "");
+                }, "Показать состав, который даст бюджет (seed сцены и номер волны)");
+                pick.Name = "TdBudgetPick";
+                var pin = Ui.Button("Закрепить", () =>
+                {
+                    if (!w.Budget.Enabled) w.Budget.Enabled = true;
+                    var r = WaveBudget.Pin(Ctx.Db, _sc!, w);
+                    _status.Text = $"Состав волны «{w.Name}» закреплён: {r}";
+                    Edited();
+                    RefreshLibrary();
+                    RefreshProps();
+                }, "Подобранный состав становится группами волны и больше не меняется");
+                pin.Name = "TdBudgetPin";
+                var unpin = Ui.Button("Снять", () =>
+                {
+                    WaveBudget.Unpin(w);
+                    _status.Text = $"Закрепление волны «{w.Name}» снято: состав подбирается при каждом запуске";
+                    Edited();
+                    RefreshLibrary();
+                    RefreshProps();
+                }, "Убрать подобранные группы, подбирать заново при запуске");
+                unpin.Name = "TdBudgetUnpin";
+                budget.AddChild(Ui.Label("Бюджет:", 13, Ui.TextDim));
+                budget.AddChild(pick);
+                budget.AddChild(pin);
+                budget.AddChild(unpin);
+                _props.AddChild(budget);
+                _props.AddChild(preview);
                 _props.AddChild(Grid(w, RefreshLibrary));
                 return;
+            }
         }
         _props.AddChild(Ui.Label("Сцена", 15, Ui.Accent));
         _props.AddChild(Grid(_sc, null, p =>

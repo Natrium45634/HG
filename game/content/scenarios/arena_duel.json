@@ -1,5 +1,5 @@
 {
-  "formatVersion": 4,
+  "formatVersion": 5,
   "kind": "scenario",
   "scenario": {
     "id": "arena_duel",
@@ -114,6 +114,12 @@
     "triggers": [],
     "passives": [],
     "passiveOverrides": [],
-    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+    "limits": {
+      "stacking": "ByUnitType",
+      "fogOfWar": true,
+      "timeLimit": 0,
+      "maxAliveEnemies": 0,
+      "maxCreatedEnemies": 0
+    }
   }
 }

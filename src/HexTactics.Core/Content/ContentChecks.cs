@@ -100,8 +100,10 @@ public static class ContentChecks
         }
 
         if (map == null) return;
-        var tags = new HashSet<string>(s.Units.Select(u => u.Tag).Concat(s.Waves.SelectMany(w => w.Units).Select(u => u.Tag)).Where(t => !string.IsNullOrEmpty(t)));
-        var unitDefs = s.Units.Select(u => db.Unit(u.Unit)).Concat(s.Waves.SelectMany(w => w.Units).Select(u => db.Unit(u.Unit))).Where(u => u != null).Select(u => u!).Distinct().ToList();
+        var tags = new HashSet<string>(s.Units.Select(u => u.Tag).Concat(s.Waves.SelectMany(w => w.Units).Select(u => u.Tag))
+            .Concat(s.Waves.SelectMany(w => w.Groups).Select(g => g.Tag)).Concat(s.Objects.Select(o => o.Id)).Where(t => !string.IsNullOrEmpty(t)));
+        var unitDefs = s.Units.Select(u => db.Unit(u.Unit)).Concat(s.Waves.SelectMany(w => w.Units).Select(u => db.Unit(u.Unit)))
+            .Concat(s.Waves.SelectMany(w => w.Groups).Select(g => db.Unit(g.Unit))).Where(u => u != null).Select(u => u!).Distinct().ToList();
         bool hasBoss = unitDefs.Any(u => u.Boss.IsBoss);
 
         // Conditions and actions of the scenario, its boss phases and the AI rules of its units.

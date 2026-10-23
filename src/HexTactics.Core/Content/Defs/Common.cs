@@ -31,6 +31,8 @@ public enum DefCategory
     Formation,
     /// <summary>Races, species, classes, roles: sets of passives and talents (docs/DECISIONS_3.md §46).</summary>
     Origin,
+    /// <summary>Saved wave groups to reuse in scenarios (docs/DECISIONS_4.md §58).</summary>
+    GroupPreset,
 }
 
 /// <summary>Base class of every content definition.</summary>

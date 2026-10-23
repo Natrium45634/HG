@@ -1,5 +1,5 @@
 {
-  "formatVersion": 4,
+  "formatVersion": 5,
   "kind": "scenario",
   "scenario": {
     "id": "td_pass",
@@ -171,7 +171,16 @@
             "target": "",
             "faction": "",
             "aiProfile": "route_raider",
-            "tag": ""
+            "tag": "",
+            "subgroupSize": 0,
+            "subgroupPause": 5,
+            "maxAlive": 0,
+            "extraBases": [],
+            "repeats": 0,
+            "repeatEvery": 30,
+            "statMods": [],
+            "preset": "",
+            "fromBudget": false
           }
         ],
         "customEnd": false,
@@ -198,7 +207,29 @@
         "onEnd": [],
         "warning": true,
         "warningSeconds": 0,
-        "message": ""
+        "message": "",
+        "id": "",
+        "maxDuration": 0,
+        "minGapNext": 0,
+        "difficulty": { "health": 1, "power": 1, "speed": 1, "count": 1 },
+        "budget": {
+          "enabled": false,
+          "budget": 20,
+          "minUnits": 3,
+          "maxUnits": 15,
+          "categories": [],
+          "requiredTags": [],
+          "forbiddenTags": [],
+          "maxEliteShare": 0.25,
+          "leader": "",
+          "maxUnitCost": 0,
+          "moveCategories": [],
+          "spawnBase": "",
+          "route": "",
+          "interval": 1,
+          "seed": 0,
+          "pinned": false
+        }
       },
       {
         "name": "Стая",
@@ -245,7 +276,16 @@
             "target": "",
             "faction": "",
             "aiProfile": "route_raider",
-            "tag": ""
+            "tag": "",
+            "subgroupSize": 0,
+            "subgroupPause": 5,
+            "maxAlive": 0,
+            "extraBases": [],
+            "repeats": 0,
+            "repeatEvery": 30,
+            "statMods": [],
+            "preset": "",
+            "fromBudget": false
           }
         ],
         "customEnd": false,
@@ -272,7 +312,29 @@
         "onEnd": [],
         "warning": true,
         "warningSeconds": 0,
-        "message": ""
+        "message": "",
+        "id": "",
+        "maxDuration": 0,
+        "minGapNext": 0,
+        "difficulty": { "health": 1, "power": 1, "speed": 1, "count": 1 },
+        "budget": {
+          "enabled": false,
+          "budget": 20,
+          "minUnits": 3,
+          "maxUnits": 15,
+          "categories": [],
+          "requiredTags": [],
+          "forbiddenTags": [],
+          "maxEliteShare": 0.25,
+          "leader": "",
+          "maxUnitCost": 0,
+          "moveCategories": [],
+          "spawnBase": "",
+          "route": "",
+          "interval": 1,
+          "seed": 0,
+          "pinned": false
+        }
       },
       {
         "name": "Таран",
@@ -319,7 +381,16 @@
             "target": "",
             "faction": "",
             "aiProfile": "route_raider",
-            "tag": ""
+            "tag": "",
+            "subgroupSize": 0,
+            "subgroupPause": 5,
+            "maxAlive": 0,
+            "extraBases": [],
+            "repeats": 0,
+            "repeatEvery": 30,
+            "statMods": [],
+            "preset": "",
+            "fromBudget": false
           }
         ],
         "customEnd": false,
@@ -346,7 +417,29 @@
         "onEnd": [],
         "warning": true,
         "warningSeconds": 0,
-        "message": ""
+        "message": "",
+        "id": "",
+        "maxDuration": 0,
+        "minGapNext": 0,
+        "difficulty": { "health": 1, "power": 1, "speed": 1, "count": 1 },
+        "budget": {
+          "enabled": false,
+          "budget": 20,
+          "minUnits": 3,
+          "maxUnits": 15,
+          "categories": [],
+          "requiredTags": [],
+          "forbiddenTags": [],
+          "maxEliteShare": 0.25,
+          "leader": "",
+          "maxUnitCost": 0,
+          "moveCategories": [],
+          "spawnBase": "",
+          "route": "",
+          "interval": 1,
+          "seed": 0,
+          "pinned": false
+        }
       }
     ],
     "victory": [
@@ -377,6 +470,12 @@
     "triggers": [],
     "passives": [],
     "passiveOverrides": [],
-    "limits": { "stacking": "ByUnitType", "fogOfWar": true, "timeLimit": 0 }
+    "limits": {
+      "stacking": "ByUnitType",
+      "fogOfWar": true,
+      "timeLimit": 0,
+      "maxAliveEnemies": 0,
+      "maxCreatedEnemies": 0
+    }
   }
 }

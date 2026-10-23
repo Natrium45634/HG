@@ -189,6 +189,18 @@ public static class ScenarioObjects
         return o;
     }
 
+    /// <summary>
+    /// Objects linked to a marker of the map (old scenarios migrated to format 5) stand on that marker: the anchor
+    /// follows the map. An object whose marker is gone keeps its last position.
+    /// </summary>
+    public static void ResolveMarkers(ScenarioDef sc, MapDef? map)
+    {
+        if (map == null) return;
+        foreach (var o in sc.Objects)
+            if (o.Marker != "" && map.FindMarker(o.Marker) is { } m)
+                o.Anchor = m.C;
+    }
+
     /// <summary>A copy with a new ID: references to templates, routes and resources stay.</summary>
     public static ScenarioObjectDef Duplicate(ScenarioDef sc, ScenarioObjectDef src, HexCoord at)
     {
