@@ -76,6 +76,9 @@ public partial class BoardViewport : SubViewportContainer
                 }
                 else
                 {
+                    // The hex under the release (a gesture ends where the button is let go).
+                    HoverCell = Board.PickCell(mb.Position);
+                    HoverHex = HoverCell?.Coord ?? Board.PickHex(mb.Position);
                     _drag = false;
                     Clicked?.Invoke(HoverHex, HoverCell, mb);
                 }

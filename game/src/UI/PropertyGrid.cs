@@ -39,6 +39,11 @@ public partial class PropertyGrid : VBoxContainer
     public static Func<Def, bool>? IdLocked { get; set; }
     /// <summary>Properties to skip (by name) at the top level (edited by a custom tool).</summary>
     public HashSet<string> Skip { get; } = new();
+    /// <summary>
+    /// Choices for string properties by name (IDs inside a scenario: bases, routes — docs/DECISIONS_4.md §69): shown as
+    /// a list instead of a text field; nested grids inherit them.
+    /// </summary>
+    public Dictionary<string, Func<IEnumerable<(string Id, string Label)>>> Choices { get; } = new();
 
     public PropertyGrid()
     {
@@ -275,6 +280,7 @@ public partial class PropertyGrid : VBoxContainer
             value ??= Activator.CreateInstance(type);
             var section = Section(parent, ed.Label, 1, owner.GetType().Name + "." + prop.Name + "#" + owner.GetHashCode());
             var sub = new PropertyGrid { LabelWidth = Math.Max(140, LabelWidth - 14), ReadOnly = ReadOnly };
+            foreach (var kv in Choices) sub.Choices[kv.Key] = kv.Value;
             sub.SetTarget(value!, _db, _depth + 1);
             var created = value;
             sub.Changed += () =>
@@ -403,6 +409,7 @@ public partial class PropertyGrid : VBoxContainer
         {
             var s = (string?)value ?? "";
             if (refAttr != null) return RefOption(refAttr, s, v => set(v));
+            if (Choices.TryGetValue(prop.Name, out var choices)) return ChoiceOption(choices(), s, v => set(v));
             if (prop.GetCustomAttribute<EdColorAttribute>() != null)
             {
                 // Empty colour = "not set" (no outline, default side colour…): shown explicitly, never as white.
@@ -486,6 +493,26 @@ public partial class PropertyGrid : VBoxContainer
             return box;
         }
         return Ui.Label($"({type.Name})", 13, Ui.TextDim);
+    }
+
+    private static OptionButton ChoiceOption(IEnumerable<(string Id, string Label)> choices, string current, Action<string> set)
+    {
+        var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
+        var ids = new List<string> { "" };
+        ob.AddItem("(нет)");
+        foreach (var (id, label) in choices)
+        {
+            ids.Add(id);
+            ob.AddItem(label);
+        }
+        if (!ids.Contains(current))
+        {
+            ids.Add(current);
+            ob.AddItem($"⚠ {current} (не найден)");
+        }
+        ob.Selected = Math.Max(0, ids.IndexOf(current));
+        ob.ItemSelected += i => set(ids[(int)i]);
+        return ob;
     }
 
     public OptionButton RefOption(EdRefAttribute refAttr, string current, Action<string> set, bool allowEmptyOverride = false)
@@ -820,6 +847,7 @@ public partial class PropertyGrid : VBoxContainer
                 }, "Удалить"));
                 box.AddChild(head);
                 var sub = new PropertyGrid { LabelWidth = Math.Max(140, LabelWidth - 16), ReadOnly = ReadOnly };
+                foreach (var kv in Choices) sub.Choices[kv.Key] = kv.Value;
                 sub.SetTarget(item, _db, _depth + 1);
                 sub.Changed += () =>
                 {

@@ -36,6 +36,9 @@
       },
       { "unit": "scout", "faction": "", "c": [1, 2], "facing": "E", "tag": "", "aiProfile": "", "name": "" }
     ],
+    "objects": [],
+    "routes": [],
+    "baseDefeat": { "mode": "MainBase", "mainBase": "", "count": 2 },
     "waves": [
       {
         "name": "Разведка",
@@ -68,6 +71,7 @@
         "maxAlive": 0,
         "faction": "enemy",
         "units": [{ "unit": "goblin", "count": 4, "tag": "", "aiProfile": "route_raider" }],
+        "groups": [],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",
@@ -128,6 +132,7 @@
           { "unit": "goblin", "count": 3, "tag": "", "aiProfile": "route_raider" },
           { "unit": "wolf", "count": 2, "tag": "", "aiProfile": "route_raider" }
         ],
+        "groups": [],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",
@@ -189,6 +194,7 @@
           { "unit": "goblin_archer", "count": 2, "tag": "", "aiProfile": "route_raider" },
           { "unit": "goblin", "count": 2, "tag": "", "aiProfile": "route_raider" }
         ],
+        "groups": [],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",

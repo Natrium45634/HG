@@ -77,10 +77,15 @@ Windows 10/11 x64. Бойцы, навыки, эффекты клеток, сос
   анализом и лимитами (PNG/JPEG/WebP/TGA/HDR/EXR, glTF/GLB/FBX/OBJ,
   WAV/OGG/MP3), привязки к местности, юнитам, навыкам и эффектам,
   снаряды, маркеры анимаций, страница «Требования к ресурсам».
+* **Часть 4** (идёт по этапам, [docs/STAGES.md](docs/STAGES.md)): рабочее
+  место «TD-сцена» — базы игрока и спавна из нескольких гексов,
+  маршруты, нарисованные протяжкой мыши с проверкой проходимости,
+  группы волн у баз спавна, урон по базе и поражение по базам.
 
 Принятые правила и значения по умолчанию —
-[docs/DECISIONS.md](docs/DECISIONS.md), расширения частей 2 и 3 —
-[DECISIONS_2.md](docs/DECISIONS_2.md) и [DECISIONS_3.md](docs/DECISIONS_3.md).
+[docs/DECISIONS.md](docs/DECISIONS.md), расширения частей 2–4 —
+[DECISIONS_2.md](docs/DECISIONS_2.md), [DECISIONS_3.md](docs/DECISIONS_3.md) и
+[DECISIONS_4.md](docs/DECISIONS_4.md).
 
 ## Требования
 

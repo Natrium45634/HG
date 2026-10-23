@@ -39,6 +39,7 @@
           "alliesBlockPath": true,
           "hazardPenalty": 0.01,
           "allowSwap": true,
+          "yieldToAllies": true,
           "tieBreak": ["Turns", "Steps"]
         },
         "layers": {

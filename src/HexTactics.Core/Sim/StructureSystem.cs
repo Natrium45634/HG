@@ -49,6 +49,7 @@ public sealed class StructureSystem
             Blockable = new BlockableDef { CanBeBlocked = false },
             AiProfile = "",
             SpawnWarning = false,
+            Visual = new UnitVisualDef { Model = o.Model, Color = o.Color },
         };
     }
 

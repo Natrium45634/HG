@@ -399,7 +399,7 @@ public sealed class Simulation
     // ------------------------------------------------------------------ command API (UI / AI)
 
     /// <summary>Can the player issue commands to this unit?</summary>
-    public bool CanPlayerCommand(Unit u) => u.Alive && (Options.AdminMode || IsPlayerControlled(u));
+    public bool CanPlayerCommand(Unit u) => u.Alive && !u.IsStructure && (Options.AdminMode || IsPlayerControlled(u));
 
     /// <summary>Enqueue (or insert) a command after validation. Returns an error text or null.</summary>
     public string? Enqueue(Unit u, Command c, int insertIndex = -1, bool replaceQueue = false) =>

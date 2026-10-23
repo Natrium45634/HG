@@ -511,6 +511,21 @@
       "showInPanel": true,
       "calcOrder": "Standard",
       "rounding": "None"
+    },
+    {
+      "id": "base_damage",
+      "name": "Урон по базе",
+      "description": "Сколько здоровья снимает с базы враг, дошедший до неё по маршруту",
+      "tags": [],
+      "group": "TD",
+      "version": 1,
+      "default": 25,
+      "min": 0,
+      "max": 100000,
+      "format": "Number",
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     }
   ]
 }

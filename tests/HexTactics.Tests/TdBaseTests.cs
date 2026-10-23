@@ -220,4 +220,41 @@ public class TdBaseTests
         Assert.Equal(east.Count, west.Count);
         Assert.Contains(new HexCoord(13, 2), west);
     }
+    [Fact]
+    public void Drawing_FillsGaps_ByAPassablePath_BacktracksAndExtendsToTheTarget()
+    {
+        var (db, sc) = Strip(0);
+        var map = db.Get<MapDef>("strip")!;
+        // A wall across the middle with a gap at the top row.
+        for (int r = 1; r < 5; r++) TestUtil.SetCell(map, new HexCoord(7 - r / 2, r), "wall");
+        var d = new RouteDrawing(db, map, new[] { "walk" }, sc.Object("base_1")!.Cells());
+        Assert.True(d.To(new HexCoord(1, 2)));
+        Assert.False(d.To(new HexCoord(1, 2)));
+        d.To(new HexCoord(2, 2));
+        // A jump of several hexes: filled hex by hex, around the wall, never through it.
+        d.To(new HexCoord(10, 2));
+        for (int i = 1; i < d.Cells.Count; i++) Assert.Equal(1, HexCoord.Distance(d.Cells[i - 1], d.Cells[i]));
+        Assert.All(d.Cells, c => Assert.True(d.IsWalkable(c), $"{c} непроходим"));
+        Assert.NotEmpty(d.Filled);
+        // Back onto the previous hex takes the last one away.
+        int n = d.Cells.Count;
+        d.To(d.Cells[^2]);
+        Assert.Equal(n - 1, d.Cells.Count);
+        // «Продлить до цели»: the rest of the way to a hex next to the base.
+        var rest = d.WayTo(sc.Object("base_1")!)!;
+        Assert.NotNull(rest);
+        d.Cells.AddRange(rest);
+        var r2 = RouteGraph.FromCells("r2", d.Cells, "spawn_1", "base_1");
+        Assert.DoesNotContain(ScenarioObjectsCheck.Route(db, sc, map, r2), p => p.Severity == IssueSeverity.Error && !p.Message.Contains("далеко"));
+        // No way at all: the straight line is drawn (not cut) and the check names the wall.
+        for (int r = 0; r < 5; r++) TestUtil.SetCell(map, new HexCoord(7 - r / 2, r), "wall");
+        var d2 = new RouteDrawing(db, map);
+        d2.To(new HexCoord(2, 2));
+        d2.To(new HexCoord(12, 2));
+        Assert.Equal(new HexCoord(12, 2), d2.Cells[^1]);
+        Assert.Contains(d2.Cells, c => !d2.IsWalkable(c));
+        var d3 = new RouteDrawing(db, map);
+        d3.To(new HexCoord(2, 2));
+        Assert.Null(d3.WayTo(sc.Object("base_1")!));
+    }
 }

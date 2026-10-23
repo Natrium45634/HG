@@ -67,6 +67,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_import_window_assign_requirements", EditorImportWindow));
         _tests.Add(("battle_projectiles_loop_vfx_icons", BattleProjectilesAndLoops));
         _tests.Add(("battle_speeds_and_pause_keep_every_event", BattleSpeedsAndPause));
+        // Part 4 (docs/DECISIONS_4.md): the TD scene.
+        _tests.Add(("editor_td_scene_bases_route_group_battle", EditorTdScene));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -1580,6 +1582,19 @@ public partial class UiTestRunner : Node
         GD.Print($"скорости и пауза: тиков {ticks}, событий {bs.Sim.Log.TotalCount}, скоростей {speeds.Count}, кадров паузы {pausedFrames}");
     }
 
+    /// <summary>Waits until the smooth camera stops (framing a new map eases in over several frames).</summary>
+    private async Task CameraSettled(Render.CameraRig rig)
+    {
+        var last = rig.Camera.GlobalPosition;
+        for (int i = 0; i < 240; i++)
+        {
+            await Frames(1);
+            var now = rig.Camera.GlobalPosition;
+            if (now.DistanceTo(last) < 0.0005f) return;
+            last = now;
+        }
+    }
+
     private async Task ClickHex(BoardViewport vp, HexCoord c)
     {
         var cell = vp.Board.Map!.Get(c)!;
@@ -2106,5 +2121,119 @@ public partial class UiTestRunner : Node
         var route = map.Routes[^1];
         Check(route.Points.Count == 2 && route.Points[0] == new HexCoord(2, 2) && route.Points[1] == new HexCoord(4, 2), $"точки маршрута: {string.Join(" ", route.Points)}");
         Check(Main.Instance.Content.DraftDirty, "черновик не помечен изменённым");
+    }
+    /// <summary>
+    /// Part 4, stage 1 through the editor: a new TD scene — a spawn base and a player base placed by clicks, a hex
+    /// added to the base by Shift+click, a route drawn by dragging the left button (a gap filled, the short line kept
+    /// and reported, then «Продлить до цели»), a group bound to the base and the route, the object menu by the right
+    /// button, a duplicate with a new ID; the battle on the draft: enemies leave the spawn base along the route and
+    /// damage the base.
+    /// </summary>
+    private async Task EditorTdScene()
+    {
+        await OpenEditor("td");
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        await ClickButton("Создать");
+        await Frames(10);
+        var sc = panel.Scene;
+        Check(sc != null && sc.Name == "Новая TD-сцена", "новая TD-сцена не создана");
+        sc = sc!;
+        sc.Map = "td_pass";
+        panel.Select(sc);
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var vp = panel.View;
+        Check(vp.Board.Map != null && vp.Board.Map.Contains(new HexCoord(12, 4)), "карта «Перевал» не показана");
+        HexCoord Off(int col, int row) => new(col - row / 2, row);
+        await CameraSettled(vp.Board.Rig);
+        var spawnAt = Off(0, 3);
+        var baseAt = Off(14, 4);
+
+        // Objects: place by the library buttons and clicks on hexes.
+        await Click(Find<Button>(panel).First(b => b.Name == "TdPlace_SpawnBase").GetGlobalRect().GetCenter());
+        await ClickHex(vp, spawnAt);
+        await Click(Find<Button>(panel).First(b => b.Name == "TdPlace_PlayerBase").GetGlobalRect().GetCenter());
+        await ClickHex(vp, baseAt);
+        Check(sc.Objects.Count == 2, $"объектов {sc.Objects.Count}, ожидалось 2");
+        var spawn = sc.Objects.First(o => o.Type == ScenarioObjectType.SpawnBase);
+        var bas = sc.Objects.First(o => o.Type == ScenarioObjectType.PlayerBase);
+        Check(spawn.Anchor == spawnAt && spawn.Spawn != null, "база спавна не на месте или без компонента «Спавн»");
+        Check(bas.Anchor == baseAt && bas.Health is { Main: true }, "база игрока не на месте или не главная");
+        // A second hex of the base: Shift + left click next to it (select mode).
+        await Click(Find<Button>(panel).First(b => b.Name == "TdPlace_None").GetGlobalRect().GetCenter());
+        await ClickHex(vp, baseAt);
+        Check(panel.SelectedObject == bas.Id, "клик по базе не выбрал её");
+        var extra = baseAt + new HexCoord(1, 0);
+        var cell = vp.Board.Map!.Get(extra)!;
+        var pos = vp.GetGlobalRect().Position + vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(extra, Render.Board.PickY(cell)));
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = pos, GlobalPosition = pos });
+        await Frames(2);
+        Input.ParseInputEvent(new InputEventMouseButton { Position = pos, GlobalPosition = pos, ButtonIndex = MouseButton.Left, Pressed = true, ShiftPressed = true });
+        Input.ParseInputEvent(new InputEventMouseButton { Position = pos, GlobalPosition = pos, ButtonIndex = MouseButton.Left, Pressed = false, ShiftPressed = true });
+        await Frames(4);
+        Check(bas.Cells().Count == 2 && bas.Occupies(extra), $"Shift+ЛКМ должен добавить гекс базы (гексов {bas.Cells().Count})");
+        await Frames(4);
+        Check(vp.Board.Views.Values.Any(v => v.Unit.ObjectId == bas.Id && v.Unit.Footprint!.Count == 2), "предпросмотр не показывает базу из двух гексов");
+
+        // Routes: drag from the spawn base to the middle of the pass — the line is kept, the check says it is short.
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Routes").GetGlobalRect().GetCenter());
+        Vector2 Scr(HexCoord c) => vp.GetGlobalRect().Position + vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(c, Render.Board.PickY(vp.Board.Map!.Get(c)!)));
+        var mid = Off(4, 4);
+        await CameraSettled(vp.Board.Rig);
+        await Drag(Scr(spawnAt), Scr(mid), 3);
+        Check(sc.Routes.Count == 1, $"протяжка от базы спавна должна создать маршрут (маршрутов {sc.Routes.Count}; {panel.StatusText})");
+        var route = sc.Routes[0];
+        var path = route.MainPath();
+        Check(path.Count >= 4 && path[0] == spawnAt && path[^1] == mid, $"линия маршрута: {string.Join(" ", path)}");
+        for (int i = 1; i < path.Count; i++) Check(HexCoord.Distance(path[i - 1], path[i]) == 1, $"разрыв между {path[i - 1]} и {path[i]}");
+        Check(route.Spawn == spawn.Id && route.Target == bas.Id, "маршрут не связан с базой спавна и главной базой");
+        Check(panel.Problems.Any(p => p.Object == route.Id && p.Severity == IssueSeverity.Error && p.Message.Contains("не доходит до цели")),
+            "короткий маршрут должен быть отмечен «не доходит до цели», а не обрезан или перенаправлен");
+        var drawn = path;
+        await Click(Find<Button>(panel).First(b => b.Name == "TdExtend").GetGlobalRect().GetCenter());
+        path = route.MainPath();
+        Check(path.Take(drawn.Count).SequenceEqual(drawn) && bas.Cells().Any(c => HexCoord.Distance(c, path[^1]) == 1), "«Продлить до цели» не довёл маршрут до базы");
+        Check(!panel.Problems.Any(p => p.Object == route.Id && p.Severity == IssueSeverity.Error), "после продления у маршрута остались ошибки: "
+            + string.Join("; ", panel.Problems.Where(p => p.Object == route.Id).Select(p => p.Message)));
+
+        // Waves: a group of the spawn base gets its route.
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Waves").GetGlobalRect().GetCenter());
+        await ClickHex(vp, spawnAt);
+        await Click(Find<Button>(panel).First(b => b.Name == "TdAddGroup").GetGlobalRect().GetCenter());
+        var g = sc.Waves.SelectMany(w => w.Groups).SingleOrDefault();
+        Check(g != null && g.SpawnBase == spawn.Id && g.Route == route.Id && g.Unit != "", "группа не привязана к базе спавна и маршруту");
+        g!.Count = 3;
+        g.AiProfile = "route_raider";
+        sc.Waves[0].Time = 1;
+
+        // The object menu (right button) and a duplicate with a new ID.
+        await Click(Scr(spawnAt), MouseButton.Right);
+        var menu = Find<PopupMenu>(panel).First(m => m.Name == "TdObjectMenu");
+        var items = Enumerable.Range(0, menu.ItemCount).Select(i => menu.GetItemText(i)).ToList();
+        Check(menu.Visible && items.Contains("Добавить группу") && items.Contains("Создать маршрут") && items.Contains("Дублировать") && items.Contains("Удалить"),
+            "ПКМ по базе спавна должна открыть её меню: " + string.Join(", ", items));
+        menu.Hide();
+        panel.MenuCommand(spawn.Id, 4);
+        var copy = sc.Objects.Last();
+        Check(sc.Objects.Count == 3 && copy.Id != spawn.Id && copy.Type == ScenarioObjectType.SpawnBase && copy.Spawn != null, "дубликат должен получить новый ID");
+        panel.MenuCommand(copy.Id, 6);
+        await Frames(3);
+        Check(sc.Objects.Count == 2, "удаление дубликата без ссылок должно пройти сразу");
+        panel.RunCheck(true);
+        Check(!panel.Problems.Any(p => p.Severity == IssueSeverity.Error), "в готовой сцене есть ошибки: " + string.Join("; ", panel.Problems.Where(p => p.Severity == IssueSeverity.Error).Select(p => p.Message)));
+
+        // Battle on the draft: enemies leave the spawn base along the route and damage the base.
+        await Click(Find<Button>(panel).First(b => b.Name == "TdRun").GetGlobalRect().GetCenter());
+        await Frames(10);
+        var bs = Battle();
+        var b = bs.Sim.Structures.Of(bas.Id);
+        Check(b != null && b.Footprint!.Count == 2, "в бою нет базы из двух гексов");
+        Check(bs.Board.Views.TryGetValue(b!.Id, out var bv) && bv.Unit.IsStructure, "база не показана на поле");
+        for (int i = 0; i < 20 * 120 && b.Hp >= b.HpMax; i++) bs.Sim.Step();
+        var enemies = bs.Sim.Units.Where(u => u.Group == g.Id).ToList();
+        Check(enemies.Count == 3 && enemies.All(u => u.RouteId == route.Id), $"враги группы: {enemies.Count}, маршрут {string.Join(",", enemies.Select(u => u.RouteId))}");
+        Check(b.Hp < b.HpMax, "дошедшие враги должны нанести урон базе");
+        await Frames(10);
+        Main.Instance.Content.Draft!.Table(DefCategory.Scenario).Remove(sc.Id);
     }
 }

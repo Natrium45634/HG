@@ -89,6 +89,14 @@ public partial class UnitView : Node3D
         var variants = unit.Def.Visual.ColorVariants;
         if (variants.Count > 0) _bodyColor = Ui.Parse(variants[unit.Id % variants.Count], _bodyColor);
         float scale = (float)Math.Clamp(unit.Def.Visual.Scale, 0.3, 3.0) * 1.2f;
+        if (unit.IsStructure)
+        {
+            AddChild(_body);
+            BuildStructure(fcol);
+            AttachModel(db);
+            BuildBars(1.75f);
+            return;
+        }
         BuildBase(faction?.Shape ?? FactionShape.Circle, fcol);
         AddChild(_body);
         BuildBody(unit.Def.Visual.Shape, _bodyColor, fcol);
@@ -409,6 +417,56 @@ public partial class UnitView : Node3D
         _selectRing.Visible = false;
     }
 
+    /// <summary>
+    /// A structure (docs/DECISIONS_4.md §56): a block on every occupied hex in the team colour and a building on the
+    /// anchor by the object type — a keep for a base, a turret for a defence, a crystal for a goal.
+    /// </summary>
+    private void BuildStructure(Color fcol)
+    {
+        var u = Unit;
+        var origin = Board.Center(u.Pos);
+        var wall = Mats.Solid(fcol.Darkened(0.35f), 0.75f);
+        var top = Mats.Solid(fcol.Darkened(0.05f), 0.55f);
+        var trim = Mats.Emissive(fcol.Lightened(0.35f), 0.7f);
+        var body = Mats.Solid(_bodyColor, 0.5f);
+        void P(Mesh m, Material mt, Vector3 p, Vector3? r = null) => _bodyParts.Add(Part(_body, m, mt, p, r));
+        foreach (var c in u.Footprint ?? new List<HexCoord> { u.Pos })
+        {
+            var p = Board.Center(c) - origin;
+            P(new CylinderMesh { TopRadius = 0.8f, BottomRadius = 0.88f, Height = 0.3f, RadialSegments = 6, Rings = 1 }, wall, p + new Vector3(0, 0.15f, 0), new Vector3(0, 30, 0));
+            P(new CylinderMesh { TopRadius = 0.72f, BottomRadius = 0.72f, Height = 0.05f, RadialSegments = 6, Rings = 1 }, top, p + new Vector3(0, 0.32f, 0), new Vector3(0, 30, 0));
+            P(new TorusMesh { InnerRadius = 0.74f, OuterRadius = 0.8f, Rings = 6, RingSegments = 3 }, trim, p + new Vector3(0, 0.31f, 0), new Vector3(0, 30, 0));
+        }
+        if (u.Def.Tags.Contains("defense"))
+        {
+            P(new CylinderMesh { TopRadius = 0.22f, BottomRadius = 0.3f, Height = 0.7f, RadialSegments = 8 }, body, new Vector3(0, 0.7f, 0));
+            P(new BoxMesh { Size = new Vector3(0.12f, 0.12f, 0.55f) }, Mats.Solid(new Color(0.75f, 0.77f, 0.8f), 0.3f, 0.7f), new Vector3(0, 1.0f, -0.3f));
+            P(new SphereMesh { Radius = 0.2f, Height = 0.3f, RadialSegments = 10, Rings = 5 }, trim, new Vector3(0, 1.08f, 0));
+        }
+        else if (u.Def.Tags.Contains("goal"))
+        {
+            P(new CylinderMesh { TopRadius = 0f, BottomRadius = 0.34f, Height = 0.6f, RadialSegments = 4 }, trim, new Vector3(0, 0.95f, 0));
+            P(new CylinderMesh { TopRadius = 0.34f, BottomRadius = 0f, Height = 0.45f, RadialSegments = 4 }, trim, new Vector3(0, 0.42f, 0));
+        }
+        else
+        {
+            // Keep with four battlements and a roof: reads as «база» from any side.
+            P(new CylinderMesh { TopRadius = 0.36f, BottomRadius = 0.44f, Height = 0.95f, RadialSegments = 6 }, body, new Vector3(0, 0.8f, 0), new Vector3(0, 30, 0));
+            for (int i = 0; i < 6; i++)
+            {
+                float a = Mathf.Tau * i / 6;
+                P(new BoxMesh { Size = new Vector3(0.14f, 0.16f, 0.14f) }, body, new Vector3(Mathf.Cos(a) * 0.34f, 1.34f, Mathf.Sin(a) * 0.34f));
+            }
+            P(new PrismMesh { Size = new Vector3(0.42f, 0.32f, 0.42f) }, trim, new Vector3(0, 1.5f, 0));
+        }
+        // No facing arrow on a structure; the selection ring spans the anchor hex.
+        _arrow = Part(this, new BoxMesh { Size = Vector3.One * 0.01f }, Mats.Solid(fcol), Vector3.Zero, shadow: false);
+        _arrow.Visible = false;
+        _selectRing = Part(this, new TorusMesh { InnerRadius = 0.84f, OuterRadius = 0.94f, Rings = 6, RingSegments = 4 },
+            Mats.Emissive(new Color(1, 1, 1), 1.4f), new Vector3(0, 0.36f, 0), new Vector3(0, 30, 0), shadow: false);
+        _selectRing.Visible = false;
+    }
+
     private void BuildBody(UnitShape shape, Color c, Color fcol)
     {
         var mat = Mats.Solid(c, 0.55f);
@@ -616,6 +674,19 @@ public partial class UnitView : Node3D
     {
         Ghost = ghost;
         var u = Unit;
+        if (u.IsStructure && !u.Alive)
+        {
+            // A destroyed structure stays as ruins: it sinks, darkens and keeps its place on the board.
+            if (_deathTime < 0) _deathTime = 0;
+            _deathTime += delta;
+            float k = Math.Min(1, _deathTime / 1.2f);
+            _bars.Visible = false;
+            _selectRing.Visible = false;
+            _body.Scale = new Vector3(1, Math.Max(0.3f, 1 - 0.7f * k), 1);
+            foreach (var part in _bodyParts) part.Transparency = 0.35f * k;
+            Visible = visible || ghost;
+            return;
+        }
         if (!u.Alive)
         {
             if (Role != AnimRole.Death || !_roleStarted) EnterRole(AnimRole.Death);
@@ -693,7 +764,12 @@ public partial class UnitView : Node3D
         if (role != Role || !_roleStarted) EnterRole(role);
         if (_anim != null) _anim.SpeedScale = TimeScale;
         _roleTime += delta * TimeScale;
-        Procedural(_visualYaw);
+        if (u.IsStructure)
+        {
+            _visualYaw = 0;
+            _body.Scale = Vector3.One;
+        }
+        else Procedural(_visualYaw);
         _arrow.Position = new Vector3(-Mathf.Sin(_visualYaw) * 0.52f, 0.145f, -Mathf.Cos(_visualYaw) * 0.52f);
         _arrow.Basis = new Basis(Vector3.Up, _visualYaw) * new Basis(Vector3.Right, -Mathf.Pi / 2);
         foreach (var (m, off, fix) in _extraArrows)

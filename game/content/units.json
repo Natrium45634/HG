@@ -874,7 +874,8 @@
         "ap_regen": 0.9,
         "detection_range": 6,
         "armor": 3,
-        "power": 4
+        "power": 4,
+        "base_damage": 60
       },
       "defense": {
         "modifiers": [{ "match": "cat:Physical", "percent": -15 }, { "match": "el:fire", "percent": 25 }],
@@ -1077,7 +1078,15 @@
         "crowdAccuracyPenalty": 0.05,
         "layout": "Cluster"
       },
-      "stats": { "hp_max": 55, "move_speed": 2.4, "ap_max": 8, "ap_regen": 1.2, "detection_range": 8, "evasion": 0.2 },
+      "stats": {
+        "hp_max": 55,
+        "move_speed": 2.4,
+        "ap_max": 8,
+        "ap_regen": 1.2,
+        "detection_range": 8,
+        "evasion": 0.2,
+        "base_damage": 20
+      },
       "defense": {
         "modifiers": [],
         "immune": [],

@@ -62,6 +62,9 @@
         "name": ""
       }
     ],
+    "objects": [],
+    "routes": [],
+    "baseDefeat": { "mode": "MainBase", "mainBase": "", "count": 2 },
     "waves": [],
     "victory": [
       {

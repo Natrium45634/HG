@@ -81,6 +81,9 @@
         "name": ""
       }
     ],
+    "objects": [],
+    "routes": [],
+    "baseDefeat": { "mode": "MainBase", "mainBase": "", "count": 2 },
     "waves": [
       {
         "name": "Подкрепление",
@@ -116,6 +119,7 @@
           { "unit": "goblin", "count": 3, "tag": "", "aiProfile": "" },
           { "unit": "goblin_archer", "count": 1, "tag": "", "aiProfile": "" }
         ],
+        "groups": [],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",
@@ -173,6 +177,7 @@
         "maxAlive": 0,
         "faction": "enemy",
         "units": [{ "unit": "wolf", "count": 3, "tag": "", "aiProfile": "" }],
+        "groups": [],
         "customEnd": false,
         "endCondition": {
           "type": "TimeElapsed",

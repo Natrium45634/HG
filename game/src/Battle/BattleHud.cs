@@ -935,6 +935,8 @@ public partial class BattleHud : Control
         }
         _hp.Visible = _ap.Visible = _apInfo.Visible = true;
         _resources.Visible = _statuses.Visible = _current.Visible = true;
+        // A structure (docs/DECISIONS_4.md §56) has no action points and takes no orders.
+        if (u.IsStructure) _ap.Visible = _apInfo.Visible = false;
         if (slow) RefreshAutoAttack(u);
         var faction = _bs.Db.Faction(u.FactionId);
         var fcol = Ui.Parse(faction?.Color, Ui.Text);
@@ -1040,6 +1042,10 @@ public partial class BattleHud : Control
             _current.Text = $"Готовит «{u.Casting.Skill.DisplayName}» — {u.Casting.Progress(Sim.Tick):P0}";
         else if (u.Queue.Current is { } c)
             _current.Text = $"{c.Describe(Sim)} — {Names.Of(c.Status)}{(string.IsNullOrEmpty(c.StatusText) ? "" : ": " + c.StatusText)}";
+        else if (u.IsStructure)
+            _current.Text = !u.Alive ? "Разрушена"
+                : $"Сооружение · гексов {u.Footprint?.Count ?? 1} · прорвалось врагов: {Sim.Structures.Reached.GetValueOrDefault(u.ObjectId)}"
+                  + (u.Indestructible ? " · неразрушима" : "");
         else
             _current.Text = !u.Alive ? ""
                 : u.StopTick >= 0 && Sim.Tick - u.StopTick < Sim.TicksFor(6) && u.StopReason != "" ? "Остановлен: " + u.StopReason

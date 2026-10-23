@@ -407,6 +407,7 @@ public partial class BattleScreen : Node
         UpdateBlockCaptions();
         Board.TimeScale = (float)Driver.Speed;
         Board.SyncUnits(Sim, Driver.Alpha, UnitVisible, _ => false, dt);
+        Board.Objects.Sync(_scenario, Sim.Map, _db);
         foreach (var v in Board.Views.Values) v.ShowName = _diag && v.Unit.AiControlled;
         Board.SyncFog(Sim, fog);
         Board.Effects.UpdateVisibility(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));
@@ -830,6 +831,8 @@ public partial class BattleScreen : Node
         DrawBlocking(o);
         DrawSpawnWarnings(o);
         DrawObjectives(o);
+        // Enemy routes of the scenario (docs/DECISIONS_4.md §57): faint, so the board stays readable.
+        if (_scenario.Routes.Count > 0) Render.ScenarioObjectsView.DrawRoutes(o, _scenario, "", 0.55f);
 
         if (_diag) DrawAiDebug(o);
 

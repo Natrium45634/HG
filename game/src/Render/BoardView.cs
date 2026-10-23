@@ -19,6 +19,8 @@ public partial class BoardView : Node3D
     public TerrainNode Terrain { get; } = new() { Name = "Terrain" };
     public OverlayLayer Overlay { get; } = new() { Name = "Overlay" };
     public CellEffectsView Effects { get; } = new() { Name = "Effects" };
+    /// <summary>Scenario objects without health: spawn portals, checkpoints, markers (docs/DECISIONS_4.md §56).</summary>
+    public ScenarioObjectsView Objects { get; } = new() { Name = "Objects" };
     private readonly Node3D _units = new() { Name = "Units" };
     private readonly Node3D _fx = new() { Name = "Fx" };
     private readonly MeshInstance3D _fog = new() { Name = "Fog", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
@@ -46,6 +48,7 @@ public partial class BoardView : Node3D
         AddChild(Rig);
         AddChild(Terrain);
         AddChild(Effects);
+        AddChild(Objects);
         AddChild(_units);
         AddChild(_fog);
         AddChild(Overlay);
