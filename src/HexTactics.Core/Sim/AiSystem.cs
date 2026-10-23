@@ -354,6 +354,8 @@ public sealed class AiSystem
         int maxRange = skill.Targeting is TargetingMode.Unit or TargetingMode.Cell ? skill.RangeMax : Math.Max(1, skill.Stages.FirstOrDefault()?.Area.Size ?? 1);
         int minRange = skill.Targeting is TargetingMode.Unit or TargetingMode.Cell ? skill.RangeMin : 1;
         int desired = p.KeepDistance ? Math.Clamp(p.PreferredRange, minRange, maxRange) : minRange;
+        // A structure is approached at its nearest hex (docs/DECISIONS_4.md §56).
+        var aim = StructureSystem.AimCell(target, u.Pos);
 
         // Keep going if already heading to an attack position and the target barely moved.
         var curMove = u.Queue.Current;
@@ -364,27 +366,28 @@ public sealed class AiSystem
         // Melee: A* to any cell next to the target (cheap). Ranged: bounded flood + range/LoS filter.
         if (maxRange <= 1 && !p.HoldPosition)
         {
-            var path = _sim.Pathfinder.Find(_sim, u, u.Pos, target.Pos, new PathOptions { GoalTolerance = 1, HazardPenalty = p.HazardAvoidance, MaxExpanded = 3000 });
+            var path = _sim.Pathfinder.Find(_sim, u, u.Pos, aim, new PathOptions { GoalTolerance = 1, HazardPenalty = p.HazardAvoidance, MaxExpanded = 3000 });
             var dest = path.Found ? path.End : path.Nearest;
             if (dest == null || dest.Value == u.Pos) return false;
             u.Ai.MoveGoal = target.Pos;
             Issue(u, Command.Move(dest.Value), $"идёт к {target.Name} ({why}), чтобы атаковать «{skill.DisplayName}»");
-            if (Affordable(u, skill) && HexCoord.Distance(dest.Value, target.Pos) <= 1) _sim.Enqueue(u, MakeSkillCommand(u, skill, target));
+            if (Affordable(u, skill) && StructureSystem.DistanceTo(dest.Value, target) <= 1) _sim.Enqueue(u, MakeSkillCommand(u, skill, target));
             return true;
         }
 
-        double budget = Math.Min(40, HexCoord.Distance(u.Pos, target.Pos) * 2.0 + 6);
+        double budget = Math.Min(40, HexCoord.Distance(u.Pos, aim) * 2.0 + 6);
         var reach = _sim.Pathfinder.Flood(_sim, u, u.Pos, budget, new PathOptions { MaxExpanded = 1500 });
         HexCoord? best = null;
         double bestScore = double.MaxValue;
         foreach (var kv in reach)
         {
             var c = kv.Key;
-            int d = HexCoord.Distance(c, target.Pos);
-            int bonus = _sim.Skills.RangeBonus(skill, c, target.Pos);
+            var at = StructureSystem.AimCell(target, c);
+            int d = HexCoord.Distance(c, at);
+            int bonus = _sim.Skills.RangeBonus(skill, c, at);
             if (d < minRange || d > maxRange + bonus) continue;
             if (p.HoldPosition && u.Ai.HoldCenter is HexCoord hc && HexCoord.Distance(c, hc) > p.HoldRadius) continue;
-            if (skill.RequiresLoS && !_sim.Los.Has(_sim.Map, _sim.Rules, c, target.Pos)) continue;
+            if (skill.RequiresLoS && !_sim.Los.Has(_sim.Map, _sim.Rules, c, at)) continue;
             var cell = _sim.Map.Get(c)!;
             double score = kv.Value + Math.Abs(d - desired) * 0.7 + (cell.IsHazard ? p.HazardAvoidance : 0);
             if (score < bestScore)
@@ -397,7 +400,7 @@ public sealed class AiSystem
         {
             // Get closer even if no attack cell is reachable now.
             if (p.HoldPosition) return false;
-            return MoveTo(u, target.Pos, Math.Max(1, minRange), $"сближается с {target.Name} ({why})");
+            return MoveTo(u, aim, Math.Max(1, minRange), $"сближается с {target.Name} ({why})");
         }
         if (best.Value == u.Pos) return false;
         var cur = u.Queue.Current;

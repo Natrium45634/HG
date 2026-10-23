@@ -40,12 +40,15 @@ public static class Stats
     public const string ControlResist = "control_resist";
     /// <summary>Shields placed on the unit are stronger: × (1 + value).</summary>
     public const string ShieldPower = "shield_power";
+    // Part 4 (docs/DECISIONS_4.md §56, §60).
+    /// <summary>Damage to a base when the unit reaches it.</summary>
+    public const string BaseDamage = "base_damage";
 
     public static readonly string[] All =
     {
         HpMax, MoveSpeed, ApMax, ApRegen, DetectionRange, Accuracy, Evasion, BlockChance, BlockReduction,
         Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit, HealReceived, CritResist, CritBonus, MagicPower,
-        AttackRange, CastSpeed, ControlResist, ShieldPower,
+        AttackRange, CastSpeed, ControlResist, ShieldPower, BaseDamage,
     };
 }
 

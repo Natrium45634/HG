@@ -74,13 +74,13 @@ public sealed class SpawnWarningSystem
     {
         var path = new List<HexCoord> { from };
         var times = new List<double> { 0 };
-        var route = string.IsNullOrEmpty(routeId) ? null : _sim.Map.Def.FindRoute(routeId);
-        if (route == null || route.Points.Count == 0) return (path, times);
+        var points = _sim.Scenario.RoutePoints(routeId);
+        if (points == null || points.Count == 0) return (path, times);
         var mc = MoveContext.For(_sim, def, faction);
         double speed = Math.Max(0.05, ExpectedSpeed(def)) * Math.Max(0.1, Rules.SpeedFactor);
         var cur = from;
         double t = 0;
-        foreach (var p in route.Points)
+        foreach (var p in points)
         {
             if (p == cur || !_sim.Map.Contains(p)) continue;
             var leg = _sim.Pathfinder.Find(_sim.Map, mc, cur, p, new PathOptions { IgnoreUnits = true, MaxExpanded = 8000 });
@@ -108,21 +108,22 @@ public sealed class SpawnWarningSystem
     }
 
     /// <summary>Seconds of warning needed before a spawn (the line must be able to travel its path), 0 if no warning.</summary>
-    public double LeadSeconds(WaveDef w, UnitDef def, string faction, HexCoord from, string marker)
+    public double LeadSeconds(WaveDef w, UnitDef def, string faction, HexCoord from, string marker, string? route = null)
     {
         if (!EnabledFor(w, def, marker)) return 0;
-        var (_, times) = PathOf(def, faction, from, w.Route);
+        var (_, times) = PathOf(def, faction, from, route ?? w.Route);
         return Math.Max(times[^1], MinSeconds(w)) + Rules.VanishBefore;
     }
 
     /// <summary>Plans (or re-plans) the warning of a spawn at a known tick.</summary>
-    public SpawnWarning? Plan(int spawnId, int wave, WaveDef w, UnitDef def, string faction, string marker, HexCoord from, long spawnTick)
+    public SpawnWarning? Plan(int spawnId, int wave, WaveDef w, UnitDef def, string faction, string marker, HexCoord from, long spawnTick, string? route = null)
     {
         Remove(spawnId);
-        var (path, times) = PathOf(def, faction, from, w.Route);
+        string routeId = string.IsNullOrEmpty(route) ? w.Route : route;
+        var (path, times) = PathOf(def, faction, from, routeId);
         var sw = new SpawnWarning
         {
-            Id = _nextId++, SpawnId = spawnId, Wave = wave, UnitDef = def.Id, Marker = marker, Route = w.Route, From = from,
+            Id = _nextId++, SpawnId = spawnId, Wave = wave, UnitDef = def.Id, Marker = marker, Route = routeId, From = from,
             Path = path, Times = times, SpawnTick = spawnTick, MapVersion = _sim.Map.Version, Enabled = EnabledFor(w, def, marker),
         };
         Retime(sw, w);

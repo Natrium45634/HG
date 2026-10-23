@@ -78,6 +78,11 @@ public enum SimEventType
     /// Value = stage index (≥ 0 — something was hit, −(index + 1) — missed), Cell = the stage's anchor.
     /// </summary>
     StageResolved,
+    // Part 4 (docs/DECISIONS_4.md §56).
+    /// <summary>A unit reached its target object (a base, a checkpoint): Target — the structure, if any.</summary>
+    GoalReached,
+    /// <summary>A structure of the scenario (a base, a tower) was destroyed.</summary>
+    StructureDestroyed,
 }
 
 public enum LogLevel

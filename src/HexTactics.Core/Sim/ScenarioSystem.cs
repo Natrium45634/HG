@@ -28,6 +28,12 @@ public sealed class PlannedSpawn
     public string AiProfile { get; init; } = "";
     public bool Postponed { get; set; }
     public bool Done { get; set; }
+    // Part 4 (docs/DECISIONS_4.md §58): appearance of a group from a spawn base along a scenario route.
+    public string Route { get; init; } = "";
+    public string Target { get; init; } = "";
+    public string Group { get; init; } = "";
+    public string SpawnBase { get; init; } = "";
+    public string Faction { get; init; } = "";
 }
 
 public sealed class WaveRuntime
@@ -137,6 +143,8 @@ public sealed class ScenarioSystem
     public void Load(ScenarioDef sc)
     {
         Def = sc;
+        // Structures first: their hexes are taken before units are placed (docs/DECISIONS_4.md §56).
+        _sim.Structures.Load(sc);
         foreach (var su in sc.Units)
         {
             var def = _sim.Content.Unit(su.Unit);
@@ -169,6 +177,57 @@ public sealed class ScenarioSystem
 
     // ------------------------------------------------------------------ waves
 
+    /// <summary>
+    /// Hexes (or waypoints) of a route by ID: a route of the scenario — its main line hex by hex; otherwise a route
+    /// of the map — its points (docs/DECISIONS_4.md §57). Null — no such route.
+    /// </summary>
+    public List<HexCoord>? RoutePoints(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        if (Def?.Route(id) is { } r)
+        {
+            var path = r.MainPath();
+            return path.Count > 0 ? path : null;
+        }
+        return _sim.Map.Def.FindRoute(id)?.Points;
+    }
+
+    /// <summary>One appearance before it is planned on the timeline.</summary>
+    private sealed record SpawnItem(UnitDef Def, string Tag, string AiProfile, HexCoord From, string Marker, string Route, string Target, string Group,
+        string Base, string Faction, double Offset);
+
+    /// <summary>Appearances of a wave: the old composition at spawn markers, then the groups at their spawn bases.</summary>
+    private List<SpawnItem> SpawnItems(WaveDef w, List<MapMarkerDef> markers)
+    {
+        var list = new List<SpawnItem>();
+        if (markers.Count > 0)
+        {
+            int i = 0;
+            foreach (var (wu, def) in WaveUnits(w))
+            {
+                var m = markers[i % markers.Count];
+                list.Add(new SpawnItem(def, wu.Tag, wu.AiProfile, m.C, m.Id, w.Route, "", "", "", w.Faction, w.Interval * i));
+                i++;
+            }
+        }
+        foreach (var g in w.Groups)
+        {
+            if (!g.Enabled) continue;
+            var def = _sim.Content.Unit(g.Unit);
+            var b = Def?.Object(g.SpawnBase);
+            if (def == null || b?.Spawn == null)
+            {
+                _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Name}», группа «{g.Id}»: {(def == null ? $"нет шаблона «{g.Unit}»" : $"нет базы спавна «{g.SpawnBase}»")} — пропущена");
+                continue;
+            }
+            string target = g.Target != "" ? g.Target : Def?.Route(g.Route)?.Target ?? "";
+            for (int k = 0; k < g.Count; k++)
+                list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, g.Route, target, g.Id, b.Id,
+                    g.Faction != "" ? g.Faction : w.Faction, b.Spawn.InitialDelay + g.Delay + g.Interval * k));
+        }
+        return list;
+    }
+
     private IEnumerable<(WaveUnitDef Unit, UnitDef Def)> WaveUnits(WaveDef w)
     {
         foreach (var wu in w.Units)
@@ -187,33 +246,30 @@ public sealed class ScenarioSystem
     {
         if (w.State is WaveState.Cancelled or WaveState.Cleared || w.Planned.Count > 0) return;
         var markers = w.Def.AllSpawnMarkers().Select(id => _sim.Map.Def.FindMarker(id)).Where(m => m != null).Select(m => m!).ToList();
-        if (markers.Count == 0)
+        if (markers.Count == 0 && w.Def.Groups.Count == 0)
         {
             _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Def.Name}»: нет точки появления");
             w.State = WaveState.Cancelled;
             return;
         }
-        var list = WaveUnits(w.Def).ToList();
+        var list = SpawnItems(w.Def, markers);
         if (lead && list.Count > 0)
         {
             double maxLead = 0;
-            for (int i = 0; i < list.Count; i++)
-            {
-                var m = markers[i % markers.Count];
-                maxLead = Math.Max(maxLead, Warnings.LeadSeconds(w.Def, list[i].Def, w.Def.Faction, m.C, m.Id));
-            }
+            foreach (var it in list)
+                maxLead = Math.Max(maxLead, Warnings.LeadSeconds(w.Def, it.Def, it.Faction, it.From, it.Marker, it.Route));
             baseTick += _sim.TicksFor(maxLead);
         }
-        for (int i = 0; i < list.Count; i++)
+        foreach (var it in list)
         {
-            var m = markers[i % markers.Count];
             var p = new PlannedSpawn
             {
-                Id = _nextSpawnId++, Wave = w.Index, Def = list[i].Def, Marker = m.Id, From = m.C,
-                Tick = baseTick + _sim.TicksFor(w.Def.Interval * i), Tag = list[i].Unit.Tag, AiProfile = list[i].Unit.AiProfile,
+                Id = _nextSpawnId++, Wave = w.Index, Def = it.Def, Marker = it.Marker, From = it.From,
+                Tick = baseTick + _sim.TicksFor(it.Offset), Tag = it.Tag, AiProfile = it.AiProfile,
+                Route = it.Route, Target = it.Target, Group = it.Group, SpawnBase = it.Base, Faction = it.Faction,
             };
             w.Planned.Add(p);
-            Warnings.Plan(p.Id, w.Index, w.Def, p.Def, w.Def.Faction, p.Marker, p.From, p.Tick);
+            Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
         }
         w.State = WaveState.Scheduled;
         _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Волна «{w.Def.Name}» запланирована: {list.Count} врагов через {(baseTick - _sim.Tick) * _sim.Dt:0.#} с");
@@ -272,21 +328,44 @@ public sealed class ScenarioSystem
 
     private void SpawnOne(WaveRuntime w, PlannedSpawn p)
     {
+        var b = p.SpawnBase != "" ? Def?.Object(p.SpawnBase) : null;
+        HexCoord? cell;
+        if (b?.Spawn != null)
+        {
+            // A spawn base: inactive — the appearance waits; a taken exit — the base's policy (docs/DECISIONS_4.md §58).
+            if (!SpawnBaseActive(b)) return;
+            cell = SpawnCell(b, p.Def);
+            if (cell == null)
+            {
+                switch (b.Spawn.Blocked)
+                {
+                    case SpawnBlockedPolicy.Wait:
+                    case SpawnBlockedPolicy.OtherInArea when b.Spawn.AreaRadius > 0:
+                        return; // retried next tick
+                    default:
+                        p.Done = true;
+                        Warnings.Remove(p.Id);
+                        _sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"«{b.DisplayName}»: выход занят — появление «{p.Def.DisplayName}» отменено");
+                        return;
+                }
+            }
+        }
+        else cell = FindFreeCell(p.From, p.Def, 4);
         p.Done = true;
         Warnings.Remove(p.Id);
-        var cell = FindFreeCell(p.From, p.Def, 4);
         if (cell == null)
         {
             _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Def.Name}»: нет свободной клетки у {p.From}");
             return;
         }
-        var route = string.IsNullOrEmpty(w.Def.Route) ? null : _sim.Map.Def.FindRoute(w.Def.Route);
-        var first = route != null && route.Points.Count > 0 ? route.Points[0] : MapCenter();
-        var facing = cell.Value.DirectionTo(first == cell.Value && route != null && route.Points.Count > 1 ? route.Points[1] : first) ?? HexDirection.W;
+        string routeId = p.Route != "" ? p.Route : p.Group == "" ? w.Def.Route : "";
+        var points = RoutePoints(routeId);
+        var first = points != null && points.Count > 0 ? points[0] : MapCenter();
+        var facing = cell.Value.DirectionTo(first == cell.Value && points != null && points.Count > 1 ? points[1] : first) ?? HexDirection.W;
         Unit u;
         try
         {
-            u = _sim.Spawn(p.Def, w.Def.Faction, cell.Value, facing, null, string.IsNullOrEmpty(p.Tag) ? null : p.Tag,
+            u = _sim.Spawn(p.Def, p.Faction != "" ? p.Faction : w.Def.Faction, cell.Value, facing, null, string.IsNullOrEmpty(p.Tag) ? null : p.Tag,
                 string.IsNullOrEmpty(p.AiProfile) ? null : p.AiProfile);
         }
         catch (InvalidOperationException e)
@@ -295,12 +374,18 @@ public sealed class ScenarioSystem
             return;
         }
         u.Wave = w.Index;
+        u.Group = p.Group;
+        u.RouteId = routeId;
+        u.TargetObject = p.Target;
         if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
-        if (route != null && route.Points.Count > 0)
+        if (points != null && points.Count > 0)
         {
-            u.Route = new List<HexCoord>(route.Points);
-            u.RouteIndex = route.Points[0] == u.Pos ? 1 : 0;
+            u.Route = new List<HexCoord>(points);
+            // Already on the route: continue from the nearest point ahead.
+            int at = u.Route.IndexOf(u.Pos);
+            u.RouteIndex = at >= 0 ? at + 1 : 0;
         }
+        if (b?.Spawn != null && b.Spawn.SpawnVfx != "") _sim.Emit(SimEventType.Vfx, LogLevel.Diagnostic, b.Spawn.SpawnVfx, u.Id, -1, u.Pos);
         w.UnitIds.Add(u.Id);
         if (w.StartedTick < 0)
         {
@@ -311,6 +396,37 @@ public sealed class ScenarioSystem
             if (_sim.Rules.Autopause.WaveStarted) _sim.RequestAutopause("началась волна");
             foreach (var a in w.Def.OnStart) Execute(a, w.Def.Name, null);
         }
+    }
+
+    /// <summary>A spawn base works now: active and not switched off by its conditions.</summary>
+    private bool SpawnBaseActive(ScenarioObjectDef b)
+    {
+        var sp = b.Spawn!;
+        if (!sp.Active) return false;
+        if (sp.DisableCondition != null && Evaluate(sp.DisableCondition)) return false;
+        return sp.EnableCondition == null || Evaluate(sp.EnableCondition);
+    }
+
+    /// <summary>A free hex of a spawn base: its own hexes and area; with «nearest free» — also around (bounded).</summary>
+    private HexCoord? SpawnCell(ScenarioObjectDef b, UnitDef def)
+    {
+        var sp = b.Spawn!;
+        var mc = MoveContext.For(_sim, def, null);
+        bool Free(HexCoord c)
+        {
+            var cell = _sim.Map.Get(c);
+            return cell != null && cell.AllowsPlacement && MovementRules.Check(mc, null, cell, false, out _) == StepCheck.Ok;
+        }
+        foreach (var c in ScenarioObjectsCheck.SpawnArea(b))
+        {
+            if (Free(c)) return c;
+            if (sp.Blocked == SpawnBlockedPolicy.Wait) return null; // only the base's own hex
+        }
+        if (sp.Blocked != SpawnBlockedPolicy.NearestFree) return null;
+        foreach (var c in HexCoord.Spiral(b.Anchor, sp.AreaRadius + Math.Max(1, sp.SearchRadius)))
+            if (Free(c))
+                return c;
+        return null;
     }
 
     private void UpdateWaves()
@@ -335,8 +451,8 @@ public sealed class ScenarioSystem
                         foreach (var p in w.Planned.Where(p => !p.Done && p.Postponed).Take(w.Def.MaxAlive - AliveOf(w)))
                         {
                             p.Postponed = false;
-                            p.Tick = _sim.Tick + _sim.TicksFor(Warnings.LeadSeconds(w.Def, p.Def, w.Def.Faction, p.From, p.Marker));
-                            Warnings.Plan(p.Id, w.Index, w.Def, p.Def, w.Def.Faction, p.Marker, p.From, p.Tick);
+                            p.Tick = _sim.Tick + _sim.TicksFor(Warnings.LeadSeconds(w.Def, p.Def, p.Faction, p.From, p.Marker, p.Route));
+                            Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
                         }
                     ProcessSpawns(w);
                     if (w.State == WaveState.Active && w.Planned.All(p => p.Done))
@@ -609,12 +725,14 @@ public sealed class ScenarioSystem
             }
             case TriggerActionType.SetRoute:
             {
-                var route = _sim.Map.Def.Routes.FirstOrDefault(r => r.Id == a.Route);
-                if (route == null) break;
+                var points = RoutePoints(a.Route);
+                if (points == null) break;
                 foreach (var u in Targets(a, actor))
                 {
-                    u.Route = new List<HexCoord>(route.Points);
+                    u.Route = new List<HexCoord>(points);
                     u.RouteIndex = 0;
+                    u.RouteId = a.Route;
+                    if (Def?.Route(a.Route) is { Target: not "" } r) u.TargetObject = r.Target;
                 }
                 break;
             }
@@ -1073,6 +1191,11 @@ public sealed class ScenarioSystem
                 SetOutcome(BattleOutcome.Defeat, c.Describe());
                 return;
             }
+        if (_sim.Structures.BaseDefeat(Def) is { } lost)
+        {
+            SetOutcome(BattleOutcome.Defeat, lost);
+            return;
+        }
         if (_objectives.Count > 0)
         {
             CheckObjectiveOutcome();

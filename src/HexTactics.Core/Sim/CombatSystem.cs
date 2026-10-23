@@ -441,6 +441,7 @@ public sealed class CombatSystem
         }
         var cell = _sim.Map.Get(u.Pos);
         cell?.Occupants.Remove(u);
+        if (u.IsStructure) _sim.Structures.OnKilled(u);
         _sim.Blocking.OnRemoved(u);
         u.Shields.Clear();
         _sim.Map.Touch(false);
@@ -591,11 +592,14 @@ public sealed class CombatSystem
             }
             case EffectType.SetRoute:
             {
-                var route = _sim.Map.Def.Routes.FirstOrDefault(r => r.Id == e.Route);
-                if (route == null) break;
-                target.Route = new List<HexCoord>(route.Points);
+                var points = _sim.Scenario.RoutePoints(e.Route);
+                if (points == null) break;
+                target.Route = new List<HexCoord>(points);
                 target.RouteIndex = 0;
-                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{target.Name}: новый маршрут «{route.Name}» — {cause}", source?.Id ?? -1, target.Id);
+                target.RouteId = e.Route;
+                if (_sim.Scenario.Def?.Route(e.Route) is { Target: not "" } sr) target.TargetObject = sr.Target;
+                string rname = _sim.Scenario.Def?.Route(e.Route)?.DisplayName ?? _sim.Map.Def.FindRoute(e.Route)?.Name ?? e.Route;
+                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{target.Name}: новый маршрут «{rname}» — {cause}", source?.Id ?? -1, target.Id);
                 break;
             }
             case EffectType.SetAiProfile:
@@ -643,6 +647,7 @@ public sealed class CombatSystem
     /// <summary>Push (away from origin) or pull (towards origin) a unit cell by cell; stops at obstacles.</summary>
     public void Displace(Unit target, HexCoord origin, bool push, int distance, Unit? source, string cause)
     {
+        if (target.IsStructure) return; // structures of the scenario do not move
         if (target.Pos == origin && !push) return;
         HexDirection? dir = push ? origin.DirectionTo(target.Pos) : target.Pos.DirectionTo(origin);
         if (dir == null) dir = push ? target.Facing.Opposite() : target.Facing;

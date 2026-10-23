@@ -1,0 +1,206 @@
+using System.Collections.Generic;
+using System.Linq;
+using HexTactics.Core.Hex;
+
+namespace HexTactics.Core.Content;
+
+/// <summary>A problem of a scenario object, route or group, with the hex it is about (the editor shows it on the map).</summary>
+public sealed record ScenarioProblem(IssueSeverity Severity, string Path, string Message, HexCoord? At = null, string Object = "");
+
+/// <summary>
+/// Checks of the TD part of a scenario (docs/DECISIONS_4.md §56–58): objects (IDs, occupied area, overlaps), routes
+/// (start at a spawn base, contiguous passable hexes for the groups' movement, end at the assigned target) and groups
+/// (template, base, route). Severity: error — the scenario does not start; warning — it starts but may behave not
+/// as intended; information — a hint. Used by the content validator and live by the editor while a route is drawn.
+/// </summary>
+public static class ScenarioObjectsCheck
+{
+    public static List<ScenarioProblem> All(ContentDatabase db, ScenarioDef sc, MapDef map)
+    {
+        var list = new List<ScenarioProblem>();
+        list.AddRange(Objects(db, sc, map));
+        foreach (var id in sc.Routes.GroupBy(r => r.Id).Where(g => g.Count() > 1).Select(g => g.Key))
+            list.Add(new(IssueSeverity.Error, "Routes", $"ID маршрута «{id}» повторяется"));
+        foreach (var r in sc.Routes) list.AddRange(Route(db, sc, map, r));
+        list.AddRange(Groups(db, sc));
+        return list;
+    }
+
+    private static Dictionary<HexCoord, MapCellDef> CellsOf(MapDef map)
+    {
+        var d = new Dictionary<HexCoord, MapCellDef>();
+        foreach (var c in map.Cells) d[c.C] = c;
+        return d;
+    }
+
+    public static List<ScenarioProblem> Objects(ContentDatabase db, ScenarioDef sc, MapDef map)
+    {
+        var list = new List<ScenarioProblem>();
+        var cells = CellsOf(map);
+        foreach (var g in sc.Objects.GroupBy(o => o.Id).Where(g => g.Count() > 1))
+            list.Add(new(IssueSeverity.Error, "Objects", $"ID объекта «{g.Key}» повторяется", g.First().Anchor, g.Key));
+        var taken = new Dictionary<HexCoord, ScenarioObjectDef>();
+        foreach (var o in sc.Objects)
+        {
+            if (string.IsNullOrWhiteSpace(o.Id)) list.Add(new(IssueSeverity.Error, "Objects", $"У объекта «{o.DisplayName}» нет ID", o.Anchor));
+            foreach (var c in o.Cells())
+            {
+                if (!cells.TryGetValue(c, out var cell))
+                {
+                    list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}»: гекс {c} вне карты", c, o.Id));
+                    continue;
+                }
+                var t = db.Terrain(cell.T);
+                if (o.Health != null && t != null && (!t.IsPassableFor("walk") || cell.Blocked == true))
+                    list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}» стоит на непроходимом гексе {c} ({t.DisplayName})", c, o.Id));
+                // Structures take their whole area; other objects (points, zones) may lie on it.
+                if (o.Health == null) continue;
+                if (taken.TryGetValue(c, out var other))
+                    list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}» и «{other.DisplayName}» занимают один гекс {c}", c, o.Id));
+                else taken[c] = o;
+                if (sc.Units.FirstOrDefault(u => u.C == c) is { } unit)
+                    list.Add(new(IssueSeverity.Error, "Objects", $"На гексе {c} объекта «{o.DisplayName}» стоит юнит «{unit.Unit}»", c, o.Id));
+            }
+            if (o.Type == ScenarioObjectType.SpawnBase && o.Spawn == null)
+                list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}»: база спавна без компонента «Спавн» — враги из неё не появятся", o.Anchor, o.Id));
+            if (o.Spawn != null && !sc.Waves.Any(w => w.Groups.Any(g => g.SpawnBase == o.Id)))
+                list.Add(new(IssueSeverity.Info, "Objects", $"Из «{o.DisplayName}» не появляется ни одна группа", o.Anchor, o.Id));
+        }
+        var bases = sc.Objects.Where(o => o.Type == ScenarioObjectType.PlayerBase && o.Health != null).ToList();
+        var bd = sc.BaseDefeat;
+        if (bd.Mode == BaseDefeatMode.MainBase && bases.Count > 0)
+        {
+            if (bd.MainBase != "" && bases.All(b => b.Id != bd.MainBase))
+                list.Add(new(IssueSeverity.Error, "BaseDefeat", $"Главная база «{bd.MainBase}» не найдена среди баз игрока"));
+            if (bd.MainBase == "" && bases.Count(b => b.Health!.Main) > 1)
+                list.Add(new(IssueSeverity.Warning, "BaseDefeat", "Отмечено несколько главных баз — учитывается первая"));
+        }
+        if (bd.Mode == BaseDefeatMode.LostCount && bases.Count > 0 && bd.Count > bases.Count)
+            list.Add(new(IssueSeverity.Warning, "BaseDefeat", $"Поражение при потере {bd.Count} баз недостижимо: баз {bases.Count}"));
+        return list;
+    }
+
+    /// <summary>Movement categories of the groups that use a route (walk if none).</summary>
+    public static List<string> CategoriesOf(ContentDatabase db, ScenarioDef sc, RouteDef r)
+    {
+        var cats = sc.Waves.SelectMany(w => w.Groups).Where(g => g.Route == r.Id).Select(g => db.Unit(g.Unit)?.MoveCategory ?? "walk").Distinct().ToList();
+        if (cats.Count == 0) cats.Add("walk");
+        return cats;
+    }
+
+    /// <summary>Hexes a spawn base lets enemies appear on (its cells and its area).</summary>
+    public static IEnumerable<HexCoord> SpawnArea(ScenarioObjectDef b)
+    {
+        var cells = b.Cells();
+        foreach (var c in cells) yield return c;
+        int r = b.Spawn?.AreaRadius ?? 0;
+        if (r > 0)
+            foreach (var c in HexCoord.Spiral(b.Anchor, r))
+                if (!cells.Contains(c))
+                    yield return c;
+    }
+
+    private static int DistanceTo(HexCoord c, ScenarioObjectDef o) => o.Cells().Min(x => HexCoord.Distance(c, x));
+
+    public static List<ScenarioProblem> Route(ContentDatabase db, ScenarioDef sc, MapDef map, RouteDef r, IReadOnlyList<string>? categories = null)
+    {
+        var list = new List<ScenarioProblem>();
+        var cells = CellsOf(map);
+        string name = $"Маршрут «{r.DisplayName}»";
+        var path = r.MainPath();
+        if (path.Count == 0)
+        {
+            list.Add(new(IssueSeverity.Error, "Routes", $"{name} пуст — проведите линию от базы спавна"));
+            return list;
+        }
+
+        // Start: a working spawn base, the line starting on its area or next to it.
+        var spawn = sc.Object(r.Spawn);
+        if (r.Spawn == "") list.Add(new(IssueSeverity.Error, "Routes", $"{name}: не указана база спавна", path[0], r.Id));
+        else if (spawn == null) list.Add(new(IssueSeverity.Error, "Routes", $"{name}: база спавна «{r.Spawn}» не найдена", path[0], r.Id));
+        else if (spawn.Spawn == null) list.Add(new(IssueSeverity.Error, "Routes", $"{name}: «{spawn.DisplayName}» не база спавна (нет компонента «Спавн»)", path[0], r.Id));
+        else if (!SpawnArea(spawn).Any(c => HexCoord.Distance(c, path[0]) <= 1))
+            list.Add(new(IssueSeverity.Error, "Routes", $"{name} начинается в {path[0]}, далеко от базы спавна «{spawn.DisplayName}» — начните линию у неё", path[0], r.Id));
+
+        // The hexes: contiguous, on the map, passable for every group that uses the route, not through structures.
+        var cats = categories ?? CategoriesOf(db, sc, r);
+        var structures = sc.Objects.Where(o => o.Health != null && o.Id != r.Target).ToList();
+        for (int i = 0; i < path.Count; i++)
+        {
+            var c = path[i];
+            if (i > 0 && HexCoord.Distance(path[i - 1], c) != 1)
+            {
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: разрыв между {path[i - 1]} и {c} — гексы маршрута должны быть соседними", c, r.Id));
+                continue;
+            }
+            if (!cells.TryGetValue(c, out var cell))
+            {
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: гекс {c} вне карты", c, r.Id));
+                continue;
+            }
+            foreach (var cat in cats)
+            {
+                bool ok = i == 0 ? MapAnalysis.IsWalkable(db, cell, cat) : cells.TryGetValue(path[i - 1], out var prev) && MapAnalysis.CanStep(db, prev, cell, cat);
+                if (!ok)
+                {
+                    string why = !MapAnalysis.IsWalkable(db, cell, cat) ? $"непроходим для «{cat}» ({db.Terrain(cell.T)?.DisplayName ?? cell.T})" : "слишком большой перепад высоты";
+                    list.Add(new(IssueSeverity.Error, "Routes", $"{name}: гекс {c} {why}", c, r.Id));
+                    break;
+                }
+            }
+            if (structures.FirstOrDefault(o => o.Occupies(c)) is { } s)
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name} проходит через «{s.DisplayName}» в {c}", c, r.Id));
+        }
+        foreach (var c in path.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key).Take(3))
+            list.Add(new(IssueSeverity.Warning, "Routes", $"{name} проходит гекс {c} дважды — для петли используйте граф маршрута (этап 3)", c, r.Id));
+
+        // End: the assigned target (or an explicit end rule).
+        if (r.End == RouteEndKind.Target)
+        {
+            var sev = r.AllowIncomplete ? IssueSeverity.Warning : IssueSeverity.Error;
+            var target = sc.Object(r.Target);
+            if (r.Target == "")
+                list.Add(new(sev, "Routes", $"{name} не завершён: не назначена цель (база игрока или другой объект)", path[^1], r.Id));
+            else if (target == null)
+                list.Add(new(IssueSeverity.Error, "Routes", $"{name}: цель «{r.Target}» не найдена", path[^1], r.Id));
+            else
+            {
+                int d = DistanceTo(path[^1], target);
+                if (d > 1)
+                    list.Add(new(sev, "Routes", $"{name} не доходит до цели «{target.DisplayName}»: от конца {path[^1]} ещё {d - 1} гекс(ов) — продлите линию до базы", path[^1], r.Id));
+            }
+        }
+        else list.Add(new(IssueSeverity.Info, "Routes", $"{name}: {(r.End == RouteEndKind.Patrol ? "бесконечный патруль" : "враги останавливаются в конце")} — цель не требуется", path[^1], r.Id));
+        if (!sc.Waves.Any(w => w.Groups.Any(g => g.Route == r.Id)))
+            list.Add(new(IssueSeverity.Info, "Routes", $"{name} не назначен ни одной группе", path[0], r.Id));
+        return list;
+    }
+
+    public static List<ScenarioProblem> Groups(ContentDatabase db, ScenarioDef sc)
+    {
+        var list = new List<ScenarioProblem>();
+        for (int wi = 0; wi < sc.Waves.Count; wi++)
+        {
+            var w = sc.Waves[wi];
+            foreach (var g in w.Groups)
+            {
+                string name = $"Волна «{w.Name}», группа «{(g.Name == "" ? g.Unit : g.Name)}»";
+                string path = $"Waves[{wi}].Groups";
+                if (db.Unit(g.Unit) == null) list.Add(new(IssueSeverity.Error, path, $"{name}: шаблон «{g.Unit}» не найден"));
+                var b = sc.Object(g.SpawnBase);
+                if (g.SpawnBase == "") list.Add(new(IssueSeverity.Error, path, $"{name}: не указана база спавна"));
+                else if (b == null) list.Add(new(IssueSeverity.Error, path, $"{name}: база спавна «{g.SpawnBase}» не найдена"));
+                else if (b.Spawn == null) list.Add(new(IssueSeverity.Error, path, $"{name}: «{b.DisplayName}» не база спавна", b.Anchor, b.Id));
+                var r = sc.Route(g.Route);
+                if (g.Route == "") list.Add(new(IssueSeverity.Warning, path, $"{name}: маршрут не назначен — враги пойдут по профилю ИИ", b?.Anchor));
+                else if (r == null) list.Add(new(IssueSeverity.Error, path, $"{name}: маршрут «{g.Route}» не найден", b?.Anchor));
+                else if (b != null && r.Spawn != "" && r.Spawn != b.Id)
+                    list.Add(new(IssueSeverity.Warning, path, $"{name}: маршрут «{r.DisplayName}» начинается у «{r.Spawn}», а группа — у «{b.Id}»", b.Anchor, b.Id));
+                if (g.Target != "" && sc.Object(g.Target) == null) list.Add(new(IssueSeverity.Error, path, $"{name}: цель «{g.Target}» не найдена"));
+            }
+            foreach (var id in w.Groups.GroupBy(g => g.Id).Where(x => x.Key != "" && x.Count() > 1).Select(x => x.Key))
+                list.Add(new(IssueSeverity.Error, $"Waves[{wi}].Groups", $"Волна «{w.Name}»: ID группы «{id}» повторяется"));
+        }
+        return list;
+    }
+}

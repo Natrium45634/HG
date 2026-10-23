@@ -186,7 +186,7 @@ public sealed class SkillSystem
                 if (t != u && !_sim.Vision.CanFactionSee(u.FactionId, t)) return new SkillCheck(FailureReason.TargetLost, "цель не видна", fromPos, facing);
                 if (!_sim.FilterAccepts(s.ValidTargets, u, t)) return none with { Message = "недопустимая цель" };
                 if (t != u && !LayerResolver.CanTarget(_sim.Rules, s, t)) return none with { Message = $"цель в слое «{t.LayerDef.DisplayName}» — навык её не поражает" };
-                return CheckRangeAndLos(u, s, fromPos, t.Pos, facing);
+                return CheckRangeAndLos(u, s, fromPos, StructureSystem.AimCell(t, fromPos), facing);
             }
             case TargetingMode.Cell:
             {
@@ -315,8 +315,8 @@ public sealed class SkillSystem
             var t = _sim.GetUnit(cast.TargetUnitId);
             if (t != null && t.Alive)
             {
-                cast.Anchor = t.Pos;
-                cast.Orientation = u.Pos.DirectionTo(t.Pos) ?? cast.Orientation;
+                cast.Anchor = StructureSystem.AimCell(t, u.Pos);
+                cast.Orientation = u.Pos.DirectionTo(cast.Anchor) ?? cast.Orientation;
             }
         }
         if (s.UsesChosenDirection) cast.Anchor = u.Pos;
@@ -541,8 +541,8 @@ public sealed class SkillSystem
             }
             else if (stageIndex > 0 || repeat > 0)
             {
-                cast.Anchor = target.Pos;
-                if (caster.Alive) cast.Orientation = caster.Pos.DirectionTo(target.Pos) ?? cast.Orientation;
+                cast.Anchor = StructureSystem.AimCell(target, caster.Pos);
+                if (caster.Alive) cast.Orientation = caster.Pos.DirectionTo(cast.Anchor) ?? cast.Orientation;
             }
         }
         else
@@ -581,8 +581,9 @@ public sealed class SkillSystem
         // A later hit on a unit that is now out of reach (pushed, fled) misses this time; the series goes on.
         if (skill.Targeting == TargetingMode.Unit && target != null && (stageIndex > 0 || repeat > 0) && stage.HasDamage)
         {
-            int d = HexCoord.Distance(origin, target.Pos);
-            if (d > skill.RangeMax + RangeBonus(skill, origin, target.Pos))
+            var aim = StructureSystem.AimCell(target, origin);
+            int d = HexCoord.Distance(origin, aim);
+            if (d > skill.RangeMax + RangeBonus(skill, origin, aim))
             {
                 series.LastHit = false;
                 series.LastEffect = false;

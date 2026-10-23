@@ -75,6 +75,7 @@ public sealed class Simulation
         Ai = new AiSystem(this);
         AutoAttacks = new AutoAttackSystem(this);
         Scenario = new ScenarioSystem(this);
+        Structures = new StructureSystem(this);
         Planner = new Planner(this);
         Targets = new TargetSelector(this);
         Defense = new DefenseSystem(this);
@@ -124,6 +125,8 @@ public sealed class Simulation
     /// <summary>Auto-attacks of allies and enemies (docs/DECISIONS_2.md §28).</summary>
     public AutoAttackSystem AutoAttacks { get; }
     public ScenarioSystem Scenario { get; }
+    /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
+    public StructureSystem Structures { get; }
     public Planner Planner { get; }
     /// <summary>Automatic target choice (docs/DECISIONS_3.md §43).</summary>
     public TargetSelector Targets { get; }
@@ -443,6 +446,7 @@ public sealed class Simulation
         p.End("Блокирование", t);
         t = p.Begin();
         Commands.Update();
+        Structures.Update();
         p.End("Команды", t);
         t = p.Begin();
         Skills.UpdatePendingStages();

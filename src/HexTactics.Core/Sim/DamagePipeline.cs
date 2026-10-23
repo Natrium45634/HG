@@ -415,6 +415,7 @@ public sealed class DamagePipeline
         r.HealthLost = Math.Min(remaining, Math.Max(0, target.Hp));
         r.Overkill = remaining - r.HealthLost;
         target.Hp -= remaining;
+        if (target.Indestructible && target.Hp < 1) target.Hp = 1;
         target.LastDamagedTick = _sim.Tick;
         if (r.HealthLost > 0) _sim.Passives.OnHealthLost(target, r.HealthLost, attacker);
         r.Step("потеря здоровья", remaining, r.Overkill > 0 ? $"избыток {r.Overkill:0}" : "");

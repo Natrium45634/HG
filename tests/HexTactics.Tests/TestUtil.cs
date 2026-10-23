@@ -78,6 +78,7 @@ public static class TestUtil
         Stats.DetectionRange => 8,
         Stats.CritMult => 1.5,
         Stats.BlockReduction => 0.5,
+        Stats.BaseDamage => 25,
         _ => 0,
     };
 

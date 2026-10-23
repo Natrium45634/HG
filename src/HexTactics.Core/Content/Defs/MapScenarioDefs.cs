@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using System.Collections.Generic;
+using System.Linq;
 using HexTactics.Core.Hex;
 
 namespace HexTactics.Core.Content;
@@ -146,6 +147,29 @@ public sealed class WaveUnitDef
     [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
 }
 
+/// <summary>
+/// A group of appearance (docs/DECISIONS_4.md §58): identical instances of one template on one schedule, from a spawn
+/// base along a route to a target. The wave stores groups, not every enemy.
+/// </summary>
+public sealed class SpawnGroupDef
+{
+    [Ed("ID")] public string Id { get; set; } = "";
+    [Ed("Название", "Пусто — по шаблону")] public string Name { get; set; } = "";
+    [Ed("Шаблон юнита"), EdRef(DefCategory.Unit, AllowEmpty = false)] public string Unit { get; set; } = "";
+    [Ed("Включена")] public bool Enabled { get; set; } = true;
+    [Ed("Количество"), EdRange(1, 10_000)] public int Count { get; set; } = 1;
+    [Ed("Задержка, с", "От начала волны"), EdRange(0, 3600)] public double Delay { get; set; }
+    [Ed("Интервал, с", "Между врагами группы (0 — сразу)"), EdRange(0, 600)] public double Interval { get; set; } = 1;
+    [Ed("База спавна", "ID объекта сценария")] public string SpawnBase { get; set; } = "";
+    [Ed("Маршрут", "ID маршрута сценария")] public string Route { get; set; } = "";
+    [Ed("Цель", "ID объекта; пусто — цель маршрута")] public string Target { get; set; } = "";
+    [Ed("Фракция", "Пусто — фракция волны"), EdRef(DefCategory.Faction)] public string Faction { get; set; } = "";
+    [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
+    [Ed("Метка-ID", "Для условий и целей")] public string Tag { get; set; } = "";
+
+    public override string ToString() => $"{(Name == "" ? Unit : Name)} ×{Count}";
+}
+
 public enum WaveStart
 {
     [Ed("По времени")] Time,
@@ -169,7 +193,8 @@ public sealed class WaveDef
     [Ed("Интервал появления, с", "Между врагами волны (0 — все сразу)"), EdRange(0, 600)] public double Interval { get; set; }
     [Ed("Лимит одновременно живых", "0 — без лимита; остальные ждут свободного места"), EdRange(0, 500)] public int MaxAlive { get; set; }
     [Ed("Фракция"), EdRef(DefCategory.Faction, AllowEmpty = false)] public string Faction { get; set; } = "enemy";
-    [Ed("Юниты")] public List<WaveUnitDef> Units { get; set; } = new();
+    [Ed("Юниты", "Состав без баз спавна (старый вид волны)")] public List<WaveUnitDef> Units { get; set; } = new();
+    [Ed("Группы", "Группы появления с баз спавна по маршрутам сценария")] public List<SpawnGroupDef> Groups { get; set; } = new();
     [Ed("Своё условие завершения", "Иначе — волна зачищена, когда все её враги появились и уничтожены")] public bool CustomEnd { get; set; }
     [Ed("Условие завершения"), EdShowIf(nameof(CustomEnd), true)] public ConditionDef EndCondition { get; set; } = new() { Type = ConditionType.TimeElapsed };
     [Ed("При начале")] public List<TriggerActionDef> OnStart { get; set; } = new();
@@ -440,6 +465,10 @@ public sealed class ScenarioDef : Def
         new ScenarioSideDef { Faction = "enemy", Controller = SideController.Ai },
     };
     [Ed("Юниты", Group = "Юниты"), EdHidden] public List<ScenarioUnitDef> Units { get; set; } = new();
+    // Part 4 (docs/DECISIONS_4.md §56–58): objects of the scenario, the route graph, the defeat by the bases.
+    [Ed("Объекты", "Базы игрока и спавна, точки, сооружения, цели, зоны", Group = "Объекты"), EdHidden] public List<ScenarioObjectDef> Objects { get; set; } = new();
+    [Ed("Маршруты", "Граф маршрутов врагов", Group = "Объекты"), EdHidden] public List<RouteDef> Routes { get; set; } = new();
+    [Ed("Поражение по базам", "Считается вместе с условиями поражения", Group = "Условия")] public BaseDefeatDef BaseDefeat { get; set; } = new();
     [Ed("Волны", Group = "Волны")] public List<WaveDef> Waves { get; set; } = new();
     [Ed("Условия победы", "Любое выполненное — победа", Group = "Условия")] public List<ConditionDef> Victory { get; set; } = new() { new ConditionDef() };
     [Ed("Условия поражения", "Любое выполненное — поражение", Group = "Условия")] public List<ConditionDef> Defeat { get; set; } = new() { new ConditionDef { Type = ConditionType.AllPlayerUnitsDead } };
@@ -451,6 +480,9 @@ public sealed class ScenarioDef : Def
     [Ed("Пассивы сценария", "Выдаются юнитам стороны или с тегом", Group = "Пассивы")] public List<ScenarioPassiveDef> Passives { get; set; } = new();
     [Ed("Отключить или заменить пассивы", "Например, талант расы в этом сценарии", Group = "Пассивы")] public List<PassiveOverrideDef> PassiveOverrides { get; set; } = new();
     [Ed("Переопределение правил", "Ограничения сценария", Group = "Ограничения")] public ScenarioLimitsDef Limits { get; set; } = new();
+
+    public ScenarioObjectDef? Object(string id) => Objects.FirstOrDefault(o => o.Id == id);
+    public RouteDef? Route(string id) => Routes.FirstOrDefault(r => r.Id == id);
 }
 
 public sealed class ScenarioLimitsDef

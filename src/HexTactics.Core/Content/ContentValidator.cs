@@ -635,6 +635,9 @@ public static class ContentValidator
     {
         var map = db.Get<MapDef>(s.Map);
         if (map == null) return; // reference error already reported
+        // Objects, routes and groups of the TD part (docs/DECISIONS_4.md §56–58).
+        foreach (var p in ScenarioObjectsCheck.All(db, s, map))
+            issues.Add(new ContentIssue(p.Severity, Src(s), p.Path, p.Message));
         var cells = map.Cells.ToDictionary(c => c.C);
         var occupied = new Dictionary<HexCoord, List<UnitDef>>();
         foreach (var u in s.Units)
@@ -658,18 +661,20 @@ public static class ContentValidator
             issues.Add(Err(s, "Sides", "Фракция указана в сторонах дважды"));
         if (!s.Sides.Any(x => x.Controller == SideController.Player))
             issues.Add(Warn(s, "Sides", "Нет стороны игрока — бой будет только наблюдаемым"));
-        var tags = new HashSet<string>(s.Units.Select(u => u.Tag).Concat(s.Waves.SelectMany(w => w.Units).Select(u => u.Tag)).Where(t => !string.IsNullOrEmpty(t)));
+        var tags = new HashSet<string>(s.Units.Select(u => u.Tag).Concat(s.Waves.SelectMany(w => w.Units).Select(u => u.Tag))
+            .Concat(s.Waves.SelectMany(w => w.Groups).Select(g => g.Tag)).Concat(s.Objects.Where(o => o.Health != null).Select(o => o.Id)).Where(t => !string.IsNullOrEmpty(t)));
         var objIds = new HashSet<string>();
         foreach (var o in s.Objectives)
             if (!objIds.Add(o.Id)) issues.Add(Err(s, "Objectives", $"ID цели '{o.Id}' повторяется"));
         for (int i = 0; i < s.Waves.Count; i++)
         {
             var w = s.Waves[i];
-            if (!w.AllSpawnMarkers().Any()) issues.Add(Err(s, $"Waves[{i}]", "Нет точки появления"));
+            // Groups come from spawn bases; the old composition needs a spawn marker.
+            if (!w.AllSpawnMarkers().Any() && (w.Units.Count > 0 || w.Groups.Count == 0)) issues.Add(Err(s, $"Waves[{i}]", "Нет точки появления"));
             foreach (var m in w.AllSpawnMarkers())
                 if (map.FindMarker(m) == null)
                     issues.Add(Err(s, $"Waves[{i}]", $"Метка появления '{m}' не найдена на карте"));
-            if (!string.IsNullOrEmpty(w.Route) && map.FindRoute(w.Route) == null)
+            if (!string.IsNullOrEmpty(w.Route) && map.FindRoute(w.Route) == null && s.Route(w.Route) == null)
                 issues.Add(Err(s, $"Waves[{i}].Route", $"Маршрут '{w.Route}' не найден на карте"));
             if (w.Start == WaveStart.AfterPrevious && i == 0) issues.Add(Warn(s, $"Waves[{i}]", "Первая волна «после предыдущей» начнётся сразу"));
         }

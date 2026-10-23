@@ -256,6 +256,18 @@ public sealed class Unit
     public int RouteIndex { get; set; }
     /// <summary>Wave index of a wave unit (-1 — placed by the scenario).</summary>
     public int Wave { get; set; } = -1;
+    // Part 4 (docs/DECISIONS_4.md §56–58).
+    /// <summary>Route of the scenario the unit follows, its group and the object it goes to.</summary>
+    public string RouteId { get; set; } = "";
+    public string Group { get; set; } = "";
+    public string TargetObject { get; set; } = "";
+    /// <summary>A structure of the scenario (a base, a tower): it does not move and occupies <see cref="Footprint"/>.</summary>
+    public bool IsStructure { get; internal set; }
+    public string ObjectId { get; internal set; } = "";
+    /// <summary>Every hex a structure occupies (the anchor first); null for ordinary units.</summary>
+    public List<HexCoord>? Footprint { get; internal set; }
+    /// <summary>Damage leaves at least 1 health (an indestructible object).</summary>
+    public bool Indestructible { get; internal set; }
     public long ExpiresAtTick { get; set; } = -1;
 
     public int Kills { get; internal set; }

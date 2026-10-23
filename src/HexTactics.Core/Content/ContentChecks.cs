@@ -122,8 +122,8 @@ public static class ContentChecks
         }
         foreach (var a in actions)
         {
-            if (a.Type == TriggerActionType.SetRoute && map.FindRoute(a.Route) == null)
-                issues.Add(Err(s, "Actions", $"«Сменить маршрут»: маршрута '{a.Route}' нет на карте"));
+            if (a.Type == TriggerActionType.SetRoute && map.FindRoute(a.Route) == null && s.Route(a.Route) == null)
+                issues.Add(Err(s, "Actions", $"«Сменить маршрут»: маршрута '{a.Route}' нет ни на карте, ни в сценарии"));
             if (a.Type == TriggerActionType.SetBossPhase && !hasBoss)
                 issues.Add(Err(s, "Actions", "«Сменить фазу босса»: в сценарии нет босса"));
             if (a.Type == TriggerActionType.ActivateTrigger && !names.Contains(a.Text))
