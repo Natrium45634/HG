@@ -2302,9 +2302,12 @@ public partial class UiTestRunner : Node
         search.EmitSignal(LineEdit.SignalName.TextChanged, "волк");
         await Frames(3);
         var cards = Find<Button>(panel).Where(b => b.Name.ToString().StartsWith("TdTpl_") && b.IsVisibleInTree()).ToList();
-        Check(cards.Count == 1 && cards[0].Name == "TdTpl_wolf" && cards[0].Text.Contains("угроза"), "поиск «волк» должен оставить карточку волка с угрозой: " + string.Join(", ", cards.Select(c => c.Name)));
+        // Only wolves stay (the wolf, the scout and the leader of part 4 stage 4), each card with its threat.
+        var wolfCard = cards.FirstOrDefault(c => c.Name == "TdTpl_wolf");
+        Check(wolfCard != null && cards.All(c => c.Name.ToString().StartsWith("TdTpl_wolf") && c.Text.Contains("угроза")),
+            "поиск «волк» должен оставить только карточки волков с угрозой: " + string.Join(", ", cards.Select(c => c.Name)));
         int groupsBefore = sc.Waves[1].Groups.Count;
-        await ClickInView(cards[0]);
+        await ClickInView(wolfCard!);
         var g = sc.Waves[1].Groups.Last();
         Check(sc.Waves[1].Groups.Count == groupsBefore + 1 && g.Unit == "wolf" && g.SpawnBase == "spawn_1" && g.Route == "route_1", $"карточка должна добавить группу волка у пещеры по её маршруту ({g.Unit}, {g.SpawnBase}, {g.Route})");
 
