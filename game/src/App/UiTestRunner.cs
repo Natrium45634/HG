@@ -76,6 +76,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_td_zones_preset_autotest_batch", EditorTdAutotest));
         _tests.Add(("editor_power_level_context_fit_threat", EditorPowerLevel));
         _tests.Add(("editor_undo_log_mass_overrides_reports_compare", EditorProjectTools));
+        _tests.Add(("editor_td_context_menus_route_group_base", EditorTdMenus));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2870,5 +2871,93 @@ public partial class UiTestRunner : Node
         Check(Find<Label>(cmp!).First(l => l.Name == "CompareDuel").Text.Contains("Итог:"), "пробные бои не показали итог");
         cmp!.EmitSignal(AcceptDialog.SignalName.Canceled);
         await Frames(2);
+    }
+    private async Task RightClickHex(BoardViewport vp, HexCoord c)
+    {
+        var cell = vp.Board.Map!.Get(c)!;
+        var local = vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(c, Render.Board.PickY(cell)));
+        await Click(vp.GetGlobalRect().Position + local, MouseButton.Right);
+    }
+
+    /// <summary>
+    /// TZ §17.3: the context menus of the TD scene — a route (by ПКМ on its hex): the goal, the reachability, assigned
+    /// to a group; a group of a wave (by ПКМ on it): disable, count, duplicate (undone by Ctrl+Z); a spawn base: add a
+    /// wave, a test from this base.
+    /// </summary>
+    private async Task EditorTdMenus()
+    {
+        await OpenEditor("td");
+        var ctx = Find<EditorScreen>(GetTree().Root).First().Context;
+        var td = Find<TdScenePanel>(GetTree().Root).First();
+        td.Select("td_pass");
+        await Frames(20);
+        td = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = td.Scene!;
+        await CameraSettled(td.View.Board.Rig);
+        var route = sc.Routes[0];
+        var hex = route.MainPath()[route.MainPath().Count / 2];
+
+        GD.Print("  · The route.");
+        // The route.
+        await RightClickHex(td.View, hex);
+        var rm = Find<PopupMenu>(td).First(m => m.Name == "TdRouteMenu");
+        Check(rm.Visible && rm.ItemCount >= 7, $"ПКМ по маршруту не открыл меню маршрута (гекс {hex}, под мышью {td.View.HoverHex}, пунктов {rm.ItemCount})");
+        rm.Hide();
+        td.RouteCommand(route.Id, 5);
+        Check(Find<PopupMenu>(td).First(m => m.Name == "TdPickMenu").Visible, "нет выбора цели");
+        td.PickFor("base_1");
+        Check(route.Target == "base_1", "цель маршрута не назначена");
+        td.RouteCommand(route.Id, 6);
+        Check(LabelVisible("достижима"), "проверка достижимости не показана");
+        GD.Print("  · назначить группе");
+        var g = sc.Waves[2].Groups[0];
+        g.Route = "";
+        td.RouteCommand(route.Id, 4);
+        td.PickFor(g.Id);
+        Check(g.Route == route.Id, "маршрут не назначен группе");
+        Find<PopupMenu>(td).First(m => m.Name == "TdPickMenu").Hide();
+
+        GD.Print("  · The group of a wave.");
+        // The group of a wave.
+        await Frames(2);
+        await Click(Find<Button>(td).First(b => b.Name == "TdMode_Waves").GetGlobalRect().GetCenter());
+        var w = sc.Waves[1];
+        var g1 = w.Groups[0];
+        var gb = Find<Button>(td).FirstOrDefault(b => b.Name == "TdGroup_" + g1.Id);
+        Check(gb != null, $"нет кнопки группы {g1.Id}; режим {td.Mode}; кнопки: " + string.Join(", ", Find<Button>(td).Where(b => b.Name.ToString().StartsWith("TdGroup")).Select(b => b.Name)));
+        await Click(gb!.GetGlobalRect().GetCenter(), MouseButton.Right);
+        var gm = Find<PopupMenu>(td).First(m => m.Name == "TdGroupMenu");
+        Check(gm.Visible && gm.ItemCount == 7, "ПКМ по группе не открыл меню группы");
+        gm.Hide();
+        td.GroupCommand(w, g1, 7);
+        Check(!g1.Enabled, "группа не отключена");
+        td.GroupCommand(w, g1, 7);
+        Check(g1.Enabled, "группа не включена");
+        td.GroupCommand(w, g1, 2);
+        var prompt = Dialog("Количество");
+        Check(prompt != null, "нет окна количества");
+        Find<LineEdit>(prompt!).First().Text = "7";
+        Confirm(prompt);
+        await Frames(2);
+        Check(g1.Count == 7, "количество не изменено");
+        ctx.Commit();
+        int groups = w.Groups.Count;
+        td.GroupCommand(w, g1, 6);
+        Check(w.Groups.Count == groups + 1, "группа не продублирована");
+        ctx.Commit();
+        await KeyCtrl(Godot.Key.Z);
+        td = Find<TdScenePanel>(GetTree().Root).First();
+        Check(td.Scene!.Waves[1].Groups.Count == groups, "Ctrl+Z не отменил дублирование группы");
+
+        GD.Print("  · The spawn base: a wave and a test from it.");
+        // The spawn base: a wave and a test from it.
+        int waves = td.Scene.Waves.Count;
+        td.MenuCommand("spawn_1", 8);
+        Check(td.Scene.Waves.Count == waves + 1 && td.Scene.Waves[^1].Groups.Count == 1, "«Добавить волну» не создал волну с группой базы");
+        td.MenuCommand("spawn_1", 10);
+        await Frames(3);
+        Check(td.Mode == TdScenePanel.TdMode.Test && td.TestResult.StartsWith("Тест с базы"), "«Тест с этой базы» не запустил автотест");
+        while (ctx.History.CanUndo) ctx.History.Undo();
+        ctx.MarkDirtyAfterHistory();
     }
 }

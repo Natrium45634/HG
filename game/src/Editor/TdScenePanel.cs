@@ -162,6 +162,7 @@ public partial class TdScenePanel : DefListPanel
         _menu = new PopupMenu { Name = "TdObjectMenu" };
         _menu.IdPressed += OnMenu;
         root.AddChild(_menu);
+        BuildMenus(root);
 
         AfterLayout(_view, () =>
         {
@@ -346,6 +347,7 @@ public partial class TdScenePanel : DefListPanel
                 return;
             }
             if (mb.Pressed && hex is { } rh && ObjectAt(rh) is { } ro) OpenMenu(ro, mb.GlobalPosition);
+            else if (mb.Pressed && hex is { } rh2 && RouteAt(rh2) is { } rr) OpenRouteMenu(rr, mb.GlobalPosition);
             return;
         }
         if (!mb.Pressed)
@@ -548,8 +550,11 @@ public partial class TdScenePanel : DefListPanel
         if (o.Spawn != null)
         {
             _menu.AddItem("Добавить группу", 2);
+            _menu.AddItem("Добавить волну", 8);
             _menu.AddItem("Создать маршрут", 3);
+            _menu.AddItem("Назначить цель…", 9);
             _menu.AddItem("Проверить маршруты", 5);
+            _menu.AddItem("Тест с этой базы", 10);
         }
         _menu.AddItem("Повернуть", 7);
         _menu.AddItem("Дублировать", 4);
@@ -602,6 +607,15 @@ public partial class TdScenePanel : DefListPanel
                 break;
             case 7:
                 Rotate(o, 1);
+                break;
+            case 8:
+                AddWaveAt(o);
+                break;
+            case 9:
+                Pick(Goals(), GetViewport().GetMousePosition(), t => AssignGoal(o, t));
+                break;
+            case 10:
+                TestFromBase(o);
                 break;
         }
     }
@@ -1028,7 +1042,12 @@ public partial class TdScenePanel : DefListPanel
                             SelectedGroup = gg;
                             RefreshLibrary();
                             RefreshProps();
-                        }, $"{g.Id}: маршрут {(g.Route == "" ? "—" : g.Route)}", "TdGroup_" + g.Id);
+                        }, $"{g.Id}: маршрут {(g.Route == "" ? "—" : g.Route)} · ПКМ — меню группы", "TdGroup_" + g.Id);
+                        gb.GuiInput += e =>
+                        {
+                            if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } m) OpenGroupMenu(ww, gg, m.GlobalPosition);
+                        };
+                        if (!g.Enabled) gb.AddThemeColorOverride("font_color", Ui.TextDim);
                         if (g == SelectedGroup) gb.AddThemeColorOverride("font_color", Ui.Accent);
                     }
                 }
