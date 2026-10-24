@@ -94,11 +94,16 @@ public partial class EditorScreen : Control
         root.OffsetBottom = -8;
         AddChild(root);
 
-        // Top bar.
-        var top = new HFlowContainer();
-        top.AddThemeConstantOverride("h_separation", 8);
+        // Top bar: one line whatever the state says — the state label takes the free width and is clipped (the full
+        // text is its tooltip), so a long message never moves the forms below.
+        var top = new HBoxContainer();
+        top.AddThemeConstantOverride("separation", 8);
         top.AddChild(Ui.Label("Административный режим", 18, Ui.Accent));
         _state = Ui.Label("", 14, Ui.TextDim);
+        _state.ClipText = true;
+        _state.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _state.CustomMinimumSize = new Vector2(60, 0);
+        _state.MouseFilter = MouseFilterEnum.Pass;
         top.AddChild(_state);
         _issues = Ui.Label("", 14, Ui.TextDim);
         top.AddChild(_issues);
@@ -162,7 +167,7 @@ public partial class EditorScreen : Control
             if (_ctx.Dirty)
             {
                 Main.Instance.Content.Autosave();
-                _state.Text = "● изменения не опубликованы (автосохранено " + DateTime.Now.ToString("HH:mm") + ")";
+                SetState("● изменения не опубликованы (автосохранено " + DateTime.Now.ToString("HH:mm") + ")");
             }
         }
         if (_current is DefListPanel p && p.Current != null) _lastDef = (p.Current.Category, p.Current.Id);
@@ -209,11 +214,11 @@ public partial class EditorScreen : Control
         var e = redo ? _ctx.Redo() : _ctx.Undo();
         if (e == null)
         {
-            _state.Text = redo ? "Нечего повторять" : "Нечего отменять";
+            SetState(redo ? "Нечего повторять" : "Нечего отменять");
             return;
         }
         RebuildAfterHistory();
-        _state.Text = (redo ? "↷ повторено: " : "↶ отменено: ") + e.Describe();
+        SetState((redo ? "↷ повторено: " : "↶ отменено: ") + e.Describe());
     }
 
     /// <summary>The objects are new instances after an undo: the open section is rebuilt on the same object and mode.</summary>
@@ -231,12 +236,14 @@ public partial class EditorScreen : Control
         UpdateState();
     }
 
+    private void SetState(string text) => _state.Text = _state.TooltipText = text;
+
     private void UpdateState()
     {
         if (_state == null) return;
-        _state.Text = _ctx.Dirty ? "● изменения не опубликованы" : "✓ всё опубликовано";
+        SetState(_ctx.Dirty ? "● изменения не опубликованы" : "✓ всё опубликовано");
         _state.AddThemeColorOverride("font_color", _ctx.Dirty ? Ui.Warn : Ui.Good);
-        _issues.Text = $"ошибок {_ctx.Errors} · предупреждений {_ctx.Warnings}";
+        _issues.Text = _issues.TooltipText = $"ошибок {_ctx.Errors} · предупреждений {_ctx.Warnings}";
         _issues.AddThemeColorOverride("font_color", _ctx.Errors > 0 ? Ui.Bad : Ui.TextDim);
     }
 
