@@ -1022,7 +1022,7 @@ public partial class TdScenePanel : DefListPanel
                         var gg = g;
                         bool bad = _problems.Any(p => p.Severity == IssueSeverity.Error && p.Path.Contains(g.Id));
                         string gname = g.Name != "" ? g.Name : Ctx.Db.Unit(g.Unit)?.DisplayName ?? g.Unit;
-                        var gb = Btn($"    {(bad ? "⛔" : g.FromBudget ? "≈" : "•")} {gname} ×{g.Count}{(g.Repeats > 0 ? $" ×{g.Repeats + 1} раз" : "")} · {Obj(g.SpawnBase)?.DisplayName ?? "?"}", () =>
+                        var gb = Btn($"    {(bad ? "⛔" : g.FromBudget ? "≈" : "•")} {gname} ×{g.Count}{(g.Repeats > 0 ? $" ×{g.Repeats + 1} раз" : "")} · {Obj(g.SpawnBase)?.DisplayName ?? "?"}{(GroupOverrides.Has(g) ? " ⚙" : "")}", () =>
                         {
                             SelectedWave = ww;
                             SelectedGroup = gg;
@@ -1253,6 +1253,7 @@ public partial class TdScenePanel : DefListPanel
             case TdMode.Routes when Route(SelectedRoute) is { } r:
                 _props.AddChild(Ui.Label($"Маршрут [{r.Id}] · гексов {Math.Max(0, r.MainPath().Count - 1)} · узлов {r.Nodes.Count} · рёбер {r.Edges.Count}", 15, Ui.Accent, wrap: true));
                 _props.AddChild(Ui.Label("Клик по узлу маршрута — его правило и выходы; протяжка от узла или линии — ветка; конец на маршруте — слияние или петля.", 12, Ui.TextDim, wrap: true));
+                AddRouteUsage(r);
                 _props.AddChild(Grid(r, RefreshLibrary));
                 return;
             case TdMode.Waves when SelectedGroup is { } g:
@@ -1261,7 +1262,12 @@ public partial class TdScenePanel : DefListPanel
                 var save = Ui.Button("⧉ Сохранить как пресет", () => SavePreset(g), "Шаблон, количество, интервалы, подгруппы, лимиты и модификаторы — без базы и маршрута");
                 save.Name = "TdSavePreset";
                 _props.AddChild(save);
-                _props.AddChild(Grid(g, RefreshLibrary));
+                AddGroupOverrides(g);
+                _props.AddChild(Grid(g, () =>
+                {
+                    RefreshLibrary();
+                    RefreshProps();
+                }));
                 return;
             }
             case TdMode.Waves when SelectedWave is { } w:
@@ -1301,6 +1307,9 @@ public partial class TdScenePanel : DefListPanel
                 budget.AddChild(unpin);
                 _props.AddChild(budget);
                 _props.AddChild(preview);
+                var report = Ui.Button("📊 Отчёт по волнам", () => ShowWaveReport(), "Все волны сцены: бюджет, стоимость, уровни, длительность, итоги прогонов, скачки сложности");
+                report.Name = "TdWaveReport";
+                _props.AddChild(report);
                 _props.AddChild(Grid(w, RefreshLibrary));
                 return;
             }
@@ -1328,7 +1337,8 @@ public partial class TdScenePanel : DefListPanel
     {
         if (_sc == null || !IsInstanceValid(_problemsBox)) return;
         _map = Ctx.Db.Get<MapDef>(_sc.Map);
-        _problems = _map == null ? new() : ScenarioObjectsCheck.All(Ctx.Db, _sc, _map);
+        // «Проверить сценарий» (docs/DECISIONS_4.md §70): the whole check on the press, the TD part live while editing.
+        _problems = _map == null ? new() : report ? ScenarioChecks.Run(Ctx.Db, _sc, Ctx.Issues) : ScenarioObjectsCheck.All(Ctx.Db, _sc, _map);
         Ui.ClearChildren(_problemsBox);
         int errors = _problems.Count(p => p.Severity == IssueSeverity.Error), warns = _problems.Count(p => p.Severity == IssueSeverity.Warning);
         var head = Ui.Label(_problems.Count == 0 ? "Проблем нет" : $"Ошибок: {errors} · предупреждений: {warns} · сведений: {_problems.Count - errors - warns}", 13,
@@ -1352,6 +1362,26 @@ public partial class TdScenePanel : DefListPanel
 
     private void GoTo(ScenarioProblem p)
     {
+        if (p.Object.StartsWith("unit:", StringComparison.Ordinal))
+        {
+            Ctx.Navigate(DefCategory.Unit, p.Object[5..]);
+            return;
+        }
+        if (p.Object.StartsWith("skill:", StringComparison.Ordinal))
+        {
+            Ctx.Navigate(DefCategory.Skill, p.Object[6..]);
+            return;
+        }
+        if (p.Object.StartsWith("wave:", StringComparison.Ordinal) && int.TryParse(p.Object[5..], out var wi) && wi < _sc!.Waves.Count)
+        {
+            SetMode(TdMode.Waves);
+            SelectedWave = _sc.Waves[wi];
+            SelectedGroup = null;
+            RefreshLibrary();
+            RefreshProps();
+            _status.Text = p.Message;
+            return;
+        }
         if (Route(p.Object) != null)
         {
             SetMode(TdMode.Routes);

@@ -24,7 +24,11 @@ public sealed class ContentManager
         string root = sandbox == null ? "user://" : $"user://{sandbox}/";
         UserRoot = ProjectSettings.GlobalizePath(root + "content");
         AutosaveRoot = ProjectSettings.GlobalizePath(root + "autosave");
+        DataRoot = ProjectSettings.GlobalizePath(root);
     }
+
+    /// <summary>The folder of user data (a sandbox in UI tests): the editor log, restore points.</summary>
+    public string DataRoot { get; }
 
     public string UserRoot { get; }
     public string AutosaveRoot { get; }

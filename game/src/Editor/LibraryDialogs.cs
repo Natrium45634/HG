@@ -82,6 +82,22 @@ public static class LibraryDialogs
             var diff = ContentDiff.Compare(prev, ctx.Db.Table(ch.Category).Get(ch.Id));
             if (diff.Count > 0)
                 v.AddChild(Ui.Label(string.Join("\n", diff.Take(6).Select(d => "   " + d.Describe())) + (diff.Count > 6 ? $"\n   … и ещё {diff.Count - 6}" : ""), 12, Ui.TextDim, wrap: true));
+            // A template: its level and threat before and after, and the groups of waves it reaches (docs/DECISIONS_4.md §71).
+            if (prev is UnitDef pu && ctx.Db.Unit(ch.Id) is { } nu)
+                try
+                {
+                    var lp = PowerModel.Evaluate(cm.Published, pu);
+                    var ln = PowerModel.Evaluate(ctx.Db, nu);
+                    int groups = ChangeImpact.OfTemplate(ctx.Db, ch.Id).Count;
+                    var lv = Ui.Label($"   уровень {lp.LevelText} → {ln.LevelText}; угроза {ThreatCost.Of(cm.Published, pu):0.#} → {ThreatCost.Of(ctx.Db, nu):0.#}; " +
+                                      $"использований в сценариях: {groups}", 12, Math.Abs(lp.Level - ln.Level) > 0.005 ? Ui.Warn : Ui.TextDim, wrap: true);
+                    lv.Name = "PublishLevel_" + ch.Id;
+                    v.AddChild(lv);
+                }
+                catch (Exception)
+                {
+                    // The published build may not evaluate against the current content: nothing to show.
+                }
             if (ch.Direct.Count == 0)
             {
                 v.AddChild(Ui.Label("   не используется другими объектами", 12, Ui.TextDim));
@@ -239,6 +255,11 @@ public static class LibraryDialogs
                 detail.Text = old == null ? "Файл версии не читается." : diff.Count == 0 ? $"v{n} совпадает с текущей." :
                     $"v{n} → текущая ({diff.Count}):\n" + string.Join("\n", diff.Take(40).Select(x => x.Describe())) + (diff.Count > 40 ? "\n…" : "");
             }, "Что изменилось с этой версии"));
+            if (d is UnitDef du)
+                h.AddChild(Ui.Button("Сравнить…", () =>
+                {
+                    if (cm.Library.LoadVersion(d.Category, d.Id, n) is UnitDef old) VersionCompareDialog.Show(parent, ctx, du, old, $"v{n}");
+                }, "Характеристики, уровень, угроза, навыки, пассивы, сопротивления, роль и пробные бои этой версии и черновика"));
             h.AddChild(Ui.Button("Вернуть в черновик", () =>
             {
                 var old = cm.Library.LoadVersion(d.Category, d.Id, n);

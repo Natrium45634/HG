@@ -151,6 +151,13 @@ public partial class OriginPanel : DefListPanel
         path.Name = "CategoryPath";
         _side.AddChild(path);
         foreach (var p in problems) _side.AddChild(Ui.Label("⛔ " + p, 12, Ui.Bad, wrap: true));
+        // What a change of this category touches (docs/DECISIONS_4.md §71).
+        var (below, touched) = ChangeImpact.OfCategory(Ctx.Db, o.Id);
+        var impact = Ui.Label($"Изменение затронет: дочерних категорий {below.Count}" + (below.Count > 0 ? $" ({string.Join(", ", below.Take(6).Select(c => c.DisplayName))}{(below.Count > 6 ? "…" : "")})" : "") +
+                              $", шаблонов {touched.Count}" + (touched.Count > 0 ? $" ({string.Join(", ", touched.Take(6).Select(u => u.DisplayName))}{(touched.Count > 6 ? "…" : "")})" : ""),
+            12, touched.Count > 0 ? Ui.Warn : Ui.TextDim, wrap: true);
+        impact.Name = "CategoryImpact";
+        _side.AddChild(impact);
         var children = Ctx.Db.All<OriginDef>().Where(c => c.Parent == o.Id).ToList();
         if (children.Count > 0)
         {

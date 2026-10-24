@@ -406,6 +406,18 @@
       },
       "roleScales": [],
       "referenceThreat": 2
+    },
+    "performance": {
+      "maxAliveUnits": 150,
+      "maxGroupsPerWave": 16,
+      "maxRouteNodes": 48,
+      "maxRouteEdges": 120,
+      "maxPassiveRules": 800,
+      "maxEffects": 400,
+      "maxAiDecisionsPerSecond": 300,
+      "minAiDecisionInterval": 0.2,
+      "parallelRuns": 0,
+      "waveJump": 1.5
     }
   }
 }

@@ -75,6 +75,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("battle_td_placement_breakpoint_logic_only_report", BattleTdPlacement));
         _tests.Add(("editor_td_zones_preset_autotest_batch", EditorTdAutotest));
         _tests.Add(("editor_power_level_context_fit_threat", EditorPowerLevel));
+        _tests.Add(("editor_undo_log_mass_overrides_reports_compare", EditorProjectTools));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2692,5 +2693,182 @@ public partial class UiTestRunner : Node
             draft.Table(DefCategory.Unit).Remove("wolf_leader_lv12");
             draft.Rules.Power.ReferenceUnit = refBackup;
         }
+    }
+    /// <summary>Scrolls the nearest scroll container to the control, then clicks its centre.</summary>
+    private async Task ClickVisible(Control c)
+    {
+        for (Node? n = c; n != null; n = n.GetParent())
+            if (n is ScrollContainer scroll)
+            {
+                scroll.EnsureControlVisible(c);
+                break;
+            }
+        await Frames(3);
+        await Click(c.GetGlobalRect().GetCenter());
+    }
+
+    private async Task KeyCtrl(Godot.Key k, bool shift = false)
+    {
+        Input.ParseInputEvent(new InputEventKey { Keycode = k, PhysicalKeycode = k, Pressed = true, CtrlPressed = true, ShiftPressed = shift });
+        Input.ParseInputEvent(new InputEventKey { Keycode = k, PhysicalKeycode = k, Pressed = false, CtrlPressed = true, ShiftPressed = shift });
+        await Frames(4);
+    }
+
+    /// <summary>Waits until the pending edits of the editor are committed to the history (0.7 s after the last one).</summary>
+    private async Task Committed(EditorContext ctx)
+    {
+        for (int i = 0; i < 200 && ctx.History.Pending; i++) await Frames(1);
+        Check(!ctx.History.Pending, "правка не попала в историю");
+    }
+
+    /// <summary>
+    /// Part 4 stage 7 (docs/DECISIONS_4.md §69–72): an edit of the form is undone by Ctrl+Z and redone by Ctrl+Y; a
+    /// mass change of three templates makes a restore point and is undone by one Ctrl+Z; the log returns to a point;
+    /// the overrides of a group become a template (and this is undone); the wave report and the performance of the
+    /// scene, after an autotest with its results; «Проверить» runs the whole check; the versions are compared with
+    /// trial battles.
+    /// </summary>
+    private async Task EditorProjectTools()
+    {
+        var ed = await OpenEditor("enemies");
+        var ctx = ed.Context;
+        var db = ctx.Db;
+        var units = Find<UnitEditorPanel>(GetTree().Root).First();
+        units.Select("wolf");
+        await Frames(8);
+        double hp0 = db.Unit("wolf")!.Stats[Stats.HpMax];
+
+        GD.Print("  · правка формы");
+        // Ctrl+Z / Ctrl+Y on an edit of the form.
+        var hp = Find<SpinBox>(units).First(b => b.IsVisibleInTree() && Math.Abs(b.Value - hp0) < 1e-6);
+        hp.Value = 99;
+        await Committed(ctx);
+        Check(Math.Abs(db.Unit("wolf")!.Stats[Stats.HpMax] - 99) < 1e-6 && ctx.History.CanUndo, "правка здоровья не записана");
+        await KeyCtrl(Godot.Key.Z);
+        Check(Math.Abs(ctx.Db.Unit("wolf")!.Stats[Stats.HpMax] - hp0) < 1e-6, "Ctrl+Z не вернул здоровье");
+        units = Find<UnitEditorPanel>(GetTree().Root).First();
+        Check(units.Current?.Id == "wolf" && Find<SpinBox>(units).Any(b => b.IsVisibleInTree() && Math.Abs(b.Value - hp0) < 1e-6), "форма после отмены не показывает прежнее значение");
+        await KeyCtrl(Godot.Key.Y);
+        Check(Math.Abs(ctx.Db.Unit("wolf")!.Stats[Stats.HpMax] - 99) < 1e-6, "Ctrl+Y не повторил правку");
+        await Click(Find<Button>(GetTree().Root).First(b => b.Name == "EdUndo").GetGlobalRect().GetCenter());
+        Check(Math.Abs(ctx.Db.Unit("wolf")!.Stats[Stats.HpMax] - hp0) < 1e-6, "кнопка ↶ не отменила");
+
+        GD.Print("  · массовое изменение");
+        // A mass change of three templates: a restore point, one operation of the history.
+        units = Find<UnitEditorPanel>(GetTree().Root).First();
+        var list = Find<ItemList>(units).First();
+        var ids = new[] { "wolf", "wolf_scout", "wolf_leader" };
+        var before = ids.ToDictionary(id => id, id => ctx.Db.Unit(id)!.Stats[Stats.HpMax]);
+        list.DeselectAll();
+        foreach (var id in ids) list.Select(Enumerable.Range(0, list.ItemCount).First(i => list.GetItemText(i).Contains($"[{id}]")), false);
+        int points = RestorePoints.List().Count;
+        Find<MenuButton>(units).First(m => m.Text.StartsWith("Массово")).GetPopup().EmitSignal(PopupMenu.SignalName.IdPressed, 20L);
+        await Frames(3);
+        var mass = Dialog(DefListPanel.MassTitle);
+        Check(mass != null, "нет окна массового изменения");
+        Check(Find<OptionButton>(mass!).First(o => o.Name == "MassStat").GetItemText(Find<OptionButton>(mass!).First(o => o.Name == "MassStat").Selected).Contains("hp_max"), "по умолчанию — здоровье");
+        Find<SpinBox>(mass!).First(b => b.Name == "MassValue").Value = 1.5;
+        Confirm(mass);
+        await Frames(4);
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+        Check(ids.All(id => Math.Abs(ctx.Db.Unit(id)!.Stats[Stats.HpMax] - before[id] * 1.5) < 0.01), "массовое умножение здоровья не применилось");
+        Check(RestorePoints.List().Count == points + 1, "точка восстановления перед массовым изменением не создана");
+        Check(ctx.History.UndoStack[^1].Label.StartsWith("Массово") && ctx.History.UndoStack[^1].Changes.Count == 3, "массовое изменение — не одна запись истории");
+        await KeyCtrl(Godot.Key.Z);
+        Check(ids.All(id => Math.Abs(ctx.Db.Unit(id)!.Stats[Stats.HpMax] - before[id]) < 1e-6), "одно Ctrl+Z не отменило массовое изменение целиком");
+        await KeyCtrl(Godot.Key.Y);
+
+        GD.Print("  · журнал");
+        // The log: «Вернуть к этой точке» undoes everything after (one more edit of the form after the mass change).
+        units = Find<UnitEditorPanel>(GetTree().Root).First();
+        units.Select("wolf");
+        await Frames(6);
+        Find<SpinBox>(units).First(b => b.IsVisibleInTree() && Math.Abs(b.Value - before["wolf"] * 1.5) < 0.01).Value = 77;
+        await Committed(ctx);
+        await Click(Find<Button>(GetTree().Root).First(b => b.Name == "EdLog").GetGlobalRect().GetCenter());
+        await Frames(3);
+        var log = Dialog(HistoryDialog.Title);
+        Check(log != null && Find<HBoxContainer>(log).Any(h => h.Name.ToString().StartsWith("LogEntry_")), "журнал не показывает операции");
+        var first = ctx.History.UndoStack[0];
+        Find<Button>(log!).First(b => b.Name == "LogBack_" + first.Number).EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames(4);
+        foreach (var d in Find<AcceptDialog>(GetTree().Root).Where(d => d.Visible).ToList()) d.QueueFree();
+        Check(ctx.History.UndoStack.Count == 1 && ids.All(id => Math.Abs(ctx.Db.Unit(id)!.Stats[Stats.HpMax] - before[id] * 1.5) < 0.01), "«Вернуть к этой точке» не отменил последующие операции");
+        await KeyCtrl(Godot.Key.Z);
+        Check(!ctx.History.CanUndo && Math.Abs(ctx.Db.Unit("wolf")!.Stats[Stats.HpMax] - hp0) < 1e-6, "черновик не вернулся к исходному");
+
+        GD.Print("  · переопределения");
+        // TD scene: the overrides of a group become a template; undone by Ctrl+Z.
+        await OpenEditor("td");
+        ctx = Find<EditorScreen>(GetTree().Root).First().Context;
+        var td = Find<TdScenePanel>(GetTree().Root).First();
+        td.Select("td_pass");
+        await Frames(20);
+        td = Find<TdScenePanel>(GetTree().Root).First();
+        await Click(Find<Button>(td).First(b => b.Name == "TdMode_Waves").GetGlobalRect().GetCenter());
+        var g = td.Scene!.Waves[1].Groups[0];
+        g.StatMods.Add(new StatModDef { Stat = Stats.MoveSpeed, Mul = 0.1 });
+        ctx.MarkDirty(td.Scene);
+        ctx.Commit("тест: переопределение");
+        await Click(Find<Button>(td).First(b => b.Name == "TdGroup_" + g.Id).GetGlobalRect().GetCenter());
+        Check(Find<Label>(td).Any(l => l.Name == "TdOverrides" && l.IsVisibleInTree() && l.Text.Contains("+10%")), "значок переопределений группы не показан");
+        Check(Find<Button>(td).Any(b => b.Name == "TdGroup_" + g.Id && b.Text.Contains("⚙")), "в списке волн нет отметки ⚙");
+        await Click(Find<Button>(td).First(b => b.Name == "TdToTemplate").GetGlobalRect().GetCenter());
+        string made = td.Scene.Waves[1].Groups[0].Unit;
+        Check(made != "wolf" && ctx.Db.Unit(made) is { } mu && Math.Abs(mu.Stats[Stats.MoveSpeed] - ctx.Db.Unit("wolf")!.Stats[Stats.MoveSpeed] * 1.1) < 1e-6 && td.Scene.Waves[1].Groups[0].StatMods.Count == 0,
+            "«Превратить в шаблон» не создал шаблон или не переключил группу");
+        await KeyCtrl(Godot.Key.Z);
+        td = Find<TdScenePanel>(GetTree().Root).First();
+        Check(ctx.Db.Unit(made) == null && td.Scene!.Waves[1].Groups[0].Unit == "wolf" && td.Scene.Waves[1].Groups[0].StatMods.Count == 1, "Ctrl+Z не отменил превращение в шаблон");
+        await KeyCtrl(Godot.Key.Z);
+        td = Find<TdScenePanel>(GetTree().Root).First();
+        Check(td.Scene!.Waves[1].Groups[0].StatMods.Count == 0, "переопределение теста не отменено");
+
+        GD.Print("  · отчёт по волнам");
+        // The wave report: the plan; after an autotest — what the waves did.
+        await Click(Find<Button>(td).First(b => b.Name == "TdMode_Waves").GetGlobalRect().GetCenter());
+        await Click(Find<Button>(td).First(b => b.Text.StartsWith("▾ Стая")).GetGlobalRect().GetCenter());
+        await ClickVisible(Find<Button>(td).First(b => b.Name == "TdWaveReport"));
+        var wr = Dialog(TdScenePanel.WaveReportTitle);
+        Check(wr != null && Find<Label>(wr).Count(l => l.Name.ToString().StartsWith("WaveJump_")) == 3, "отчёт по волнам: нет трёх волн");
+        Check(LabelVisible("Только план"), "без прогонов отчёт должен сказать, что это план");
+        wr!.EmitSignal(AcceptDialog.SignalName.Canceled);
+        await Frames(2);
+        await Click(Find<Button>(td).First(b => b.Name == "TdMode_Test").GetGlobalRect().GetCenter());
+        await Click(Find<Button>(td).First(b => b.Name == "TdAutoTest").GetGlobalRect().GetCenter());
+        await Frames(4);
+        Check(td.LastReports.Count == 1 && td.LastReports[0].WaveStats.Count == 3, "автотест не сохранил итоги волн");
+        Check(Find<Label>(td).Any(l => l.Name == "TdPerfText" && l.IsVisibleInTree() && l.Text.Contains("Живых юнитов одновременно")), "нет оценки производительности");
+        await ClickVisible(Find<Button>(td).First(b => b.Name == "TdWaveReport"));
+        wr = Dialog(TdScenePanel.WaveReportTitle);
+        Check(wr != null && Find<Label>(wr).Any(l => l.Text.Contains("последним прогонам")), "отчёт по волнам не взял итоги автотеста: " +
+            (wr == null ? "нет окна" : string.Join(" | ", Find<Label>(wr).Take(3).Select(l => l.Text))) + " · волны: " + string.Join(", ", td.LastReports[0].WaveStats.Select(w => $"{w.Spawned}/{w.Started}")));
+        wr!.EmitSignal(AcceptDialog.SignalName.Canceled);
+        await Frames(2);
+        await ClickVisible(Find<Button>(td).First(b => b.Name == "TdPerfProfile"));
+        for (int i = 0; i < 600 && td.LastProfile == null; i++) await Frames(1);
+        Check(td.LastProfile is { Profile.Count: > 0 }, "профиль прогона не получен");
+        Check(Find<Label>(td).Any(l => l.Name == "TdPerfText" && l.Text.Contains("Нагрузка подсистем")), "доли подсистем не показаны");
+
+        GD.Print("  · проверка");
+        // «Проверить» — the whole check, without errors on the shipped scene.
+        await Click(Find<Button>(td).First(b => b.Name == "TdCheck").GetGlobalRect().GetCenter());
+        string head = Find<Label>(td).First(l => l.Name == "TdProblemsHead").Text;
+        Check(head == "Проблем нет" || head.StartsWith("Ошибок: 0"), "проверка нашла ошибки: " + head);
+
+        GD.Print("  · сравнение версий");
+        // Versions: the comparison with trial battles.
+        await OpenEditor("enemies");
+        units = Find<UnitEditorPanel>(GetTree().Root).First();
+        units.Select("orc_brute");
+        await Frames(8);
+        await ClickVisible(Find<Button>(units).First(b => b.Name == "PowerCompare"));
+        var cmp = Dialog(VersionCompareDialog.Title);
+        Check(cmp != null && Find<Label>(cmp).Any(l => l.Name.ToString().StartsWith("CompareLine_")), "окно сравнения версий не открыто");
+        Find<Button>(cmp!).First(b => b.Name == "CompareRun").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames(3);
+        Check(Find<Label>(cmp!).First(l => l.Name == "CompareDuel").Text.Contains("Итог:"), "пробные бои не показали итог");
+        cmp!.EmitSignal(AcceptDialog.SignalName.Canceled);
+        await Frames(2);
     }
 }

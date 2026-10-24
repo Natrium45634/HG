@@ -93,7 +93,7 @@ public static class PerformanceBudget
         if (sc.Limits.MaxCreatedEnemies > 0) created = Math.Min(created, sc.Limits.MaxCreatedEnemies);
         int peakAll = peakEnemies + defenders + structures;
         rep.Lines.Add(new BudgetLine("alive", "Живых юнитов одновременно (оценка)", peakAll, lim.MaxAliveUnits,
-            $"врагов до {peakEnemies}" + (peak > peakEnemies ? $" (без лимитов было бы {peak})" : "") + $", защитников {defenders}, сооружений {structures}"));
+            $"врагов волн до {peakEnemies}" + (peak > peakEnemies ? $" (без лимитов было бы {peak})" : "") + $", юнитов сценария и расстановки {defenders}, сооружений {structures}"));
         rep.Lines.Add(new BudgetLine("created", "Будет создано врагов", created, 0, $"{plan.Count} волн"));
         var groups = plan.Select(p => (Name: p.Def.Name, N: p.Def.Groups.Count + (p.ByBudget ? 1 : 0))).DefaultIfEmpty((Name: "", N: 0)).MaxBy(x => x.N);
         rep.Lines.Add(new BudgetLine("groups", "Групп в волне (наибольшее)", groups.N, lim.MaxGroupsPerWave, groups.N > 0 ? $"«{groups.Name}»" : ""));
@@ -156,7 +156,9 @@ public static class PerformanceBudget
             int cond = r.Edges.Count(e => e.Condition != null);
             if (cond > 0) why.Add($"{cond} рёбер с условием");
             var cells = r.AllCells().ToHashSet();
-            var near = changing.Where(o => o.Cells().Any(c => cells.Contains(c) || c.Neighbors().Any(cells.Contains))).Select(o => o.DisplayName).ToList();
+            // The start and the goal of the route do not move it; a destructible object beside the way does.
+            var near = changing.Where(o => o.Id != r.Target && o.Id != r.Spawn && o.Cells().Any(c => cells.Contains(c) || c.Neighbors().Any(cells.Contains)))
+                .Select(o => o.DisplayName).ToList();
             if (near.Count > 0) why.Add("рядом разрушаемые объекты: " + string.Join(", ", near.Take(3)));
             if (r.Fallback != "") why.Add($"запасной маршрут «{r.Fallback}»");
             if (why.Count > 0) rep.Routes.Add($"«{r.DisplayName}» — {string.Join("; ", why)}");

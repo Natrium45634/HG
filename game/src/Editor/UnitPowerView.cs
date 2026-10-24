@@ -43,6 +43,10 @@ public partial class UnitPowerView : VBoxContainer
             "Подбор характеристик под целевой уровень по профилю масштабирования: три варианта, исходный шаблон не меняется");
         fit.Name = "PowerFit";
         AddChild(fit);
+        var cmp = Ui.Button("Сравнить с опубликованной…", () => VersionCompareDialog.Show(this, _ctx, _unit),
+            "Характеристики, уровень, угроза, навыки, пассивы, сопротивления, роль и пробные бои опубликованной версии и черновика");
+        cmp.Name = "PowerCompare";
+        AddChild(cmp);
         FillContexts();
         _context.ItemSelected += _ => Refresh();
         Refresh();
@@ -200,6 +204,8 @@ public static class UnitFitDialog
         var root = Ui.VBox(6);
         root.AddChild(Ui.Label($"«{unit.DisplayName}»: уровень {before.LevelText}, роль {EdUtil.EnumLabel(before.Role)}. " +
                                "Исходный шаблон не меняется: результат применяется как копия или как новая версия (прежняя остаётся в истории версий).", 13, Ui.TextDim, wrap: true).MinSize(720));
+        if (unit.Id == db.Rules.Power.ReferenceUnit)
+            root.AddChild(Ui.Label("⚠ Это эталон уровня 1 (правила → «Оценка силы»): его уровень всегда 1. Подгонка как новой версии изменит уровни всех шаблонов — подгоняйте копию.", 13, Ui.Warn, wrap: true).MinSize(720));
         var row = Ui.HBox(8);
         row.AddChild(Ui.Label("Целевой уровень", 13));
         var target = new SpinBox { Name = "FitTarget", MinValue = 1, MaxValue = 500, Step = 0.5, Value = targetLevel ?? Math.Max(1, Math.Round(before.Level) + 5), CustomMinimumSize = new Vector2(110, 0) };
@@ -269,6 +275,7 @@ public static class UnitFitDialog
                 return false;
             }
             var chosen = ContentJson.Clone(current[idx].Unit);
+            ctx.Commit();
             if (mode.Selected == 0)
             {
                 chosen.Id = ContentIO.UniqueId(db, DefCategory.Unit, $"{unit.Id}_lv{(int)Math.Round(current[idx].TargetLevel)}");
@@ -278,6 +285,7 @@ public static class UnitFitDialog
             }
             else db.Table(DefCategory.Unit).Replace(chosen);
             ctx.MarkDirty();
+            ctx.Commit($"Подогнать под уровень {current[idx].TargetLevel:0.#}: «{unit.DisplayName}»" + (mode.Selected == 0 ? $" → копия [{chosen.Id}]" : " (новая версия)"));
             applied(chosen);
             return true;
         }, new Vector2I(780, 640));

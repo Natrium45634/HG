@@ -172,7 +172,7 @@ public partial class TdScenePanel
         }
         Spin("TdBatchRuns", "прогонов", 1, 1000, _runs, v => _runs = (int)v);
         Spin("TdBatchSeed", "seed от", 1, 1_000_000_000, _seed, v => _seed = (ulong)v);
-        Spin("TdBatchThreads", "потоков (0 — все)", 0, 64, _threads, v => _threads = (int)v);
+        Spin("TdBatchThreads", "потоков (0 — из правил)", 0, 64, _threads, v => _threads = (int)v);
         Spin("TdTestMaxSeconds", "не дольше, с", 10, 7200, _maxSeconds, v => _maxSeconds = v);
         var ai = new CheckBox { Text = "Защитники по профилям ИИ", ButtonPressed = _autoPlayer, Name = "TdTestAutoPlayer" };
         ai.Toggled += on => _autoPlayer = on;
@@ -194,6 +194,7 @@ public partial class TdScenePanel
         _resultText.AddThemeFontSizeOverride("normal_font_size", 13);
         _props.AddChild(_resultText);
         if (TestSaved != "") _props.AddChild(Ui.Label("Сохранено: " + TestSaved, 12, Ui.TextDim, wrap: true));
+        AddPerformance();
     }
 
     private bool CanTest()
@@ -219,6 +220,7 @@ public partial class TdScenePanel
         var sc = db.Get<ScenarioDef>(_sc!.Id) ?? ContentJson.Clone(_sc);
         var started = Time.GetTicksMsec();
         var r = AutoBattle.Run(db, sc, _seed, TestOptions());
+        LastReports = new List<BattleReport> { r };
         TestResult = r.ToText(db);
         TestSaved = AutoBattle.Save(ReportsDir, r, db);
         _status.Text = $"Автотест: {r.Outcome}, волн {r.WavesCompleted}/{r.WavesTotal}, {r.Seconds:0.#} с боя за {Time.GetTicksMsec() - started} мс";
@@ -235,7 +237,7 @@ public partial class TdScenePanel
         _batchTotal = _runs;
         _batchCancel = new CancellationTokenSource();
         var token = _batchCancel.Token;
-        int runs = _runs, threads = _threads;
+        int runs = _runs, threads = _threads > 0 ? _threads : Ctx.Db.Rules.Performance.ParallelRuns;
         ulong seed = _seed;
         var opts = TestOptions();
         _batch = Task.Run(() => AutoBattle.Batch(db, sc, runs, seed, opts, threads, n => Interlocked.Exchange(ref _batchDone, n), token));
@@ -245,6 +247,7 @@ public partial class TdScenePanel
 
     private void PollTest()
     {
+        PollProfile();
         if (_batch == null) return;
         if (!_batch.IsCompleted)
         {
@@ -261,7 +264,8 @@ public partial class TdScenePanel
         else
         {
             var (summary, reports) = t.Result;
-            TestResult = summary.ToText();
+            LastReports = reports;
+            TestResult = summary.ToText() + CompareBatches(summary);
             TestSaved = AutoBattle.Save(ReportsDir, summary, reports);
             _status.Text = $"Пакет: {summary.RunsCount} прогонов, побед {summary.WinRate:P0}, волн в среднем {summary.MeanWaves:0.#}";
         }

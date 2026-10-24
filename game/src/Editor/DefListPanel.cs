@@ -109,6 +109,16 @@ public partial class DefListPanel : HSplitContainer
         pm.AddItem("Экспорт выбранных в папку…", 7);
         pm.AddItem("Экспорт выбранных в пакет…", 9);
         pm.AddItem("Выбрать все показанные", 8);
+        if (Category == DefCategory.Unit)
+        {
+            // Part 4 stage 7 (docs/DECISIONS_4.md §69): mass changes of templates — a restore point first, one undo.
+            pm.AddSeparator("Шаблоны");
+            pm.AddItem("Характеристика: задать / умножить / прибавить…", 20);
+            pm.AddItem("Назначить категорию существа…", 21);
+            pm.AddItem("Ранг…", 22);
+            pm.AddItem("Профиль ИИ…", 23);
+            pm.AddItem("Подогнать под уровень…", 24);
+        }
         pm.IdPressed += id => MassOperation((int)id);
         left.AddChild(grid);
         left.AddChild(mass.Expand());
@@ -317,8 +327,13 @@ public partial class DefListPanel : HSplitContainer
     protected void OnEdited(Def d)
     {
         var table = Ctx.Db.Table(Category);
-        if (table.Get(d.Id) != d) table.Reindex();
-        Ctx.MarkDirty();
+        if (table.Get(d.Id) != d)
+        {
+            // The ID was edited in place: the history compares everything (the old ID is gone).
+            table.Reindex();
+            Ctx.MarkDirty();
+        }
+        else Ctx.MarkDirty(d);
         _header.Text = $"{ContentValidator.CatName(Category)}: {d.DisplayName} [{d.Id}]";
         int idx = _shown.IndexOf(d);
         if (idx >= 0) _list.SetItemText(idx, ItemText(d));
@@ -470,8 +485,11 @@ public partial class DefListPanel : HSplitContainer
                     string.Join("\n", refs.Take(10).Select(r => $" • {r.OwnerLabel} → {r.Path}")));
                 Dialogs.Confirm(this, "Массовое удаление", text, () =>
                 {
+                    RestorePoints.Create(Ctx, $"перед удалением {sel.Count} объектов");
+                    Ctx.Commit();
                     foreach (var d in sel) Ctx.Db.Table(Category).Remove(d.Id);
                     Ctx.MarkDirty();
+                    Ctx.Commit($"Массовое удаление ({sel.Count})");
                     Current = null;
                     RefreshList();
                     SelectFirst();
@@ -529,6 +547,9 @@ public partial class DefListPanel : HSplitContainer
                         Dialogs.Info(this, "Ошибка экспорта", e.Message);
                     }
                 });
+                break;
+            default:
+                if (op >= 20) UnitMass(op, sel.OfType<UnitDef>().ToList());
                 break;
         }
     }

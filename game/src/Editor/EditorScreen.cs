@@ -24,6 +24,11 @@ public partial class EditorScreen : Control
     private Control _content = null!;
     private Label _state = null!;
     private Label _issues = null!;
+    private Button _undo = null!;
+
+    /// <summary>The editor's context (UI tests).</summary>
+    public EditorContext Context => _ctx;
+    private Button _redo = null!;
     private readonly Dictionary<string, Button> _sectionButtons = new();
     private Control? _current;
     private string _currentKey = "";
@@ -79,6 +84,7 @@ public partial class EditorScreen : Control
         _ctx.DirtyChanged += UpdateState;
         _ctx.Validated += UpdateState;
         _ctx.NavigateRequested += Navigate;
+        _ctx.HistoryChanged += UpdateHistoryButtons;
 
         var root = Ui.VBox(6);
         root.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -91,18 +97,26 @@ public partial class EditorScreen : Control
         // Top bar.
         var top = new HFlowContainer();
         top.AddThemeConstantOverride("h_separation", 8);
-        top.AddChild(Ui.Label("Административный режим", 20, Ui.Accent));
+        top.AddChild(Ui.Label("Административный режим", 18, Ui.Accent));
         _state = Ui.Label("", 14, Ui.TextDim);
         top.AddChild(_state);
         _issues = Ui.Label("", 14, Ui.TextDim);
         top.AddChild(_issues);
-        top.AddChild(Ui.Spacer(20));
+        _undo = Ui.Button("↶", () => UndoRedo(false), "Отменить действие (Ctrl+Z)");
+        _undo.Name = "EdUndo";
+        top.AddChild(_undo);
+        _redo = Ui.Button("↷", () => UndoRedo(true), "Повторить действие (Ctrl+Y, Ctrl+Shift+Z)");
+        _redo.Name = "EdRedo";
+        top.AddChild(_redo);
+        var log = Ui.Button("Журнал…", () => HistoryDialog.Show(this, _ctx, RebuildAfterHistory), "Журнал последних изменений, возврат к точке, точки восстановления");
+        log.Name = "EdLog";
+        top.AddChild(log);
         top.AddChild(Ui.Button("Сохранить", Publish, "Опубликовать: записать черновик в пользовательский пакет контента (версии, история, резервная копия)"));
         top.AddChild(Ui.Button("Библиотека…", () => LibraryDialogs.PackState(this, ReloadAfterRestore), "Целостность пакета, резервные копии, история версий"));
         top.AddChild(Ui.Button("Импорт…", () => PackageDialogs.Import(this, _ctx, _ => ShowSection(_currentKey)), "Импорт пакета .hexpack или объекта .json в черновик"));
         top.AddChild(Ui.Button("Отменить", Revert, "Отменить неопубликованные изменения и вернуть опубликованную версию"));
-        top.AddChild(Ui.Button("Автосохранение", RestoreAutosave, "Восстановить автосохранённый черновик (сохраняется раз в минуту)"));
-        top.AddChild(Ui.Button("К встроенному", ResetBuiltIn, "Удалить пользовательский пакет (с копией) и вернуться к встроенному контенту"));
+        top.AddChild(Ui.Button("Автосохр.", RestoreAutosave, "Восстановить автосохранённый черновик (сохраняется раз в минуту)"));
+        top.AddChild(Ui.Button("Встроенный", ResetBuiltIn, "Удалить пользовательский пакет (с копией) и вернуться к встроенному контенту"));
         top.AddChild(Ui.Button("В меню", Exit));
         root.AddChild(top);
 
@@ -130,6 +144,9 @@ public partial class EditorScreen : Control
         if (_lastDef is { } ld && app.Args.Count == 0) Navigate(ld.Item1, ld.Item2);
         if (app.Args.TryGetValue("select", out var sel) && _current is DefListPanel dl) dl.Select(sel);
         UpdateState();
+        UpdateHistoryButtons();
+        // Screenshots: --dialog=history|wavereport|compare|mass.
+        if (app.Args.TryGetValue("dialog", out var dialog)) Callable.From(() => OpenDialogForShot(dialog)).CallDeferred();
 
         if (app.Content.HasAutosave && !app.Content.DraftDirty && !app.Args.ContainsKey("auto") && !app.Args.ContainsKey("uitest"))
             Dialogs.Confirm(this, "Автосохранение", "Найден автоматически сохранённый черновик с несохранёнными изменениями. Восстановить его?", RestoreAutosave, "Восстановить", "Нет");
@@ -151,6 +168,69 @@ public partial class EditorScreen : Control
         if (_current is DefListPanel p && p.Current != null) _lastDef = (p.Current.Category, p.Current.Id);
     }
 
+    private void OpenDialogForShot(string which)
+    {
+        switch (which)
+        {
+            case "history":
+                HistoryDialog.Show(this, _ctx, RebuildAfterHistory);
+                break;
+            case "wavereport" when _current is TdScenePanel td && td.Scene != null:
+                td.ShowWaveReport();
+                break;
+            case "compare" when _current is UnitEditorPanel up && up.Current is UnitDef u:
+                var other = ContentJson.Clone(u);
+                other.Stats[Stats.HpMax] = Math.Round(u.Stats.GetValueOrDefault(Stats.HpMax, 100) / 2);
+                VersionCompareDialog.Show(this, _ctx, u, other, "условная v0 (половина здоровья)");
+                break;
+        }
+    }
+
+    private void UpdateHistoryButtons()
+    {
+        if (!IsInstanceValid(_undo)) return;
+        _undo.Disabled = !_ctx.History.CanUndo && !_ctx.History.Pending;
+        _redo.Disabled = !_ctx.History.CanRedo;
+        _undo.TooltipText = "Отменить (Ctrl+Z)" + (_ctx.History.UndoStack.Count > 0 ? ": " + _ctx.History.UndoStack[^1].Describe() : "");
+    }
+
+    /// <summary>Ctrl+Z / Ctrl+Y in the editor only (in a battle Z is the speed). A focused text field keeps its own undo.</summary>
+    public override void _UnhandledKeyInput(InputEvent e)
+    {
+        if (e is not InputEventKey { Pressed: true, CtrlPressed: true } k) return;
+        if (k.Keycode == Key.Z && !k.ShiftPressed) UndoRedo(false);
+        else if (k.Keycode == Key.Y || k.Keycode == Key.Z && k.ShiftPressed) UndoRedo(true);
+        else return;
+        GetViewport().SetInputAsHandled();
+    }
+
+    public void UndoRedo(bool redo)
+    {
+        var e = redo ? _ctx.Redo() : _ctx.Undo();
+        if (e == null)
+        {
+            _state.Text = redo ? "Нечего повторять" : "Нечего отменять";
+            return;
+        }
+        RebuildAfterHistory();
+        _state.Text = (redo ? "↷ повторено: " : "↶ отменено: ") + e.Describe();
+    }
+
+    /// <summary>The objects are new instances after an undo: the open section is rebuilt on the same object and mode.</summary>
+    private void RebuildAfterHistory()
+    {
+        var sel = (_current as DefListPanel)?.Current;
+        var mode = (_current as TdScenePanel)?.Mode;
+        ShowSection(_currentKey);
+        if (_current is DefListPanel p && sel != null && _ctx.Db.Exists(sel.Category, sel.Id))
+        {
+            p.Select(sel.Id);
+            if (mode != null && _current is TdScenePanel td) Callable.From(() => td.SetMode(mode.Value)).CallDeferred();
+        }
+        UpdateHistoryButtons();
+        UpdateState();
+    }
+
     private void UpdateState()
     {
         if (_state == null) return;
@@ -162,6 +242,8 @@ public partial class EditorScreen : Control
 
     private void ShowSection(string key)
     {
+        // The edits of the section left behind are their own operation of the history.
+        _ctx.Commit();
         if (!Sections.Any(s => s.Key == key)) key = "maps";
         foreach (var kv in _sectionButtons) kv.Value.ButtonPressed = kv.Key == key;
         if (_current != null)
