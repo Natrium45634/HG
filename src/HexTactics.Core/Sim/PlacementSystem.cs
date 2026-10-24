@@ -88,21 +88,27 @@ public sealed class PlacementSystem
         return null;
     }
 
+    /// <summary>Why another one of a template cannot be placed (availability, limits, budget); null — it can.</summary>
+    public string? CanAfford(string template)
+    {
+        var e = Entry(template);
+        var def = _sim.Content.Unit(template);
+        if (def == null) return $"шаблон «{template}» не найден";
+        if (e == null) return $"«{def.DisplayName}» недоступен для расстановки";
+        if (e.MaxCount > 0 && CountOf(template) >= e.MaxCount) return $"не более {e.MaxCount} «{def.DisplayName}»";
+        if (Def!.MaxUnits > 0 && _placed.Count(p => _sim.GetUnit(p.Unit)?.Alive == true) >= Def.MaxUnits) return $"не более {Def.MaxUnits} юнитов";
+        double cost = CostOf(e);
+        if (Budget > 0 && cost > Left + 1e-9) return $"не хватает бюджета: нужно {cost:0.#}, осталось {Left:0.#}";
+        return null;
+    }
+
     /// <summary>Why a template cannot be placed on a hex now (null — it can).</summary>
     public string? CanPlace(string template, HexCoord c, bool free = false)
     {
         if (!Active && !free) return "подготовка завершена";
-        var e = Entry(template);
         var def = _sim.Content.Unit(template);
         if (def == null) return $"шаблон «{template}» не найден";
-        if (!free)
-        {
-            if (e == null) return $"«{def.DisplayName}» недоступен для расстановки";
-            if (e.MaxCount > 0 && CountOf(template) >= e.MaxCount) return $"не более {e.MaxCount} «{def.DisplayName}»";
-            if (Def!.MaxUnits > 0 && _placed.Count(p => _sim.GetUnit(p.Unit)?.Alive == true) >= Def.MaxUnits) return $"не более {Def.MaxUnits} юнитов";
-            double cost = CostOf(e);
-            if (Budget > 0 && cost > Left + 1e-9) return $"не хватает бюджета: нужно {cost:0.#}, осталось {Left:0.#}";
-        }
+        if (!free && CanAfford(template) is { } no) return no;
         var cell = _sim.Map.Get(c);
         if (free && cell != null && cell.Occupants.Any(o => o.Alive)) return "гекс занят";
         return free ? null : CellProblem(def, c);

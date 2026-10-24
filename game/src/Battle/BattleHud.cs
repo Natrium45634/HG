@@ -109,6 +109,13 @@ public partial class BattleHud : Control
         BuildPopup();
         _groupPanel = Track(new GroupPanel(_bs));
         AddChild(_groupPanel);
+        // Part 4, stage 5 (docs/DECISIONS_4.md §64): preparation, report, breakpoints.
+        Placement = Track(new PlacementPanel(_bs));
+        AddChild(Placement);
+        Report = Track(new ReportPanel(_bs));
+        AddChild(Report);
+        Breakpoints = Track(new BreakpointsPanel(_bs));
+        AddChild(Breakpoints);
         _boxRect = new Panel { MouseFilter = MouseFilterEnum.Ignore, Visible = false, Name = "SelectionBox" };
         _boxRect.AddThemeStyleboxOverride("panel", Ui.Box(new Color(0.5f, 1f, 0.7f, 0.12f), new Color(0.5f, 1f, 0.7f, 0.9f), 2, 2, 0));
         AddChild(_boxRect);
@@ -136,6 +143,8 @@ public partial class BattleHud : Control
         if (left + right > size.X * 0.5f) left = right = size.X * 0.25f;
         var formula = HexTactics.Core.Geometry.ScreenInsets.BattleHud(size.X, size.Y);
         if (top <= 0 || top > size.Y * 0.25f) top = formula.Top;
+        // The preparation panel lies under the top bar: the board fits below it while it is open.
+        if (Placement != null && Placement.Visible) top = Math.Max(top, Math.Min(size.Y * 0.4f, Placement.GetGlobalRect().End.Y + 6));
         if (bottom <= 0 || bottom > size.Y * 0.4f) bottom = formula.Bottom;
         return new HexTactics.Core.Geometry.ScreenInsets(Math.Max(0, left), Math.Max(0, top), Math.Max(0, right), Math.Max(0, bottom));
     }
@@ -276,6 +285,34 @@ public partial class BattleHud : Control
     private GroupPanel _groupPanel = null!;
     private Panel _boxRect = null!;
     public GroupPanel GroupPanel => _groupPanel;
+    public PlacementPanel Placement { get; private set; } = null!;
+    public ReportPanel Report { get; private set; } = null!;
+    public BreakpointsPanel Breakpoints { get; private set; } = null!;
+    public PopupMenu TestMenu { get; private set; } = null!;
+
+    /// <summary>Items of the «Тест» menu (docs/DECISIONS_4.md §64).</summary>
+    public const int TestReport = 1, TestLogicOnly = 2, TestNoEffects = 3, TestBreakpoints = 4;
+
+    private void OnTestMenu(long id)
+    {
+        switch (id)
+        {
+            case TestReport:
+                Report.Open();
+                break;
+            case TestLogicOnly:
+                _bs.RunLogicOnly();
+                break;
+            case TestNoEffects:
+                _bs.NoEffects = !_bs.NoEffects;
+                TestMenu.SetItemChecked(TestMenu.GetItemIndex(TestNoEffects), _bs.NoEffects);
+                ShowBanner(_bs.NoEffects ? "Без визуальных эффектов: события только в журнале" : "Визуальные эффекты включены", Ui.Text, 2);
+                break;
+            case TestBreakpoints:
+                Breakpoints.Visible = !Breakpoints.Visible;
+                break;
+        }
+    }
 
     /// <summary>The radial skill menu (docs/DECISIONS_3.md §42).</summary>
     public RadialMenu Radial { get; } = new() { Name = "RadialMenu" };
@@ -330,6 +367,14 @@ public partial class BattleHud : Control
         bar.AddChild(Ui.Button("⤢", () => _bs.FitMap(), "Вписать карту в экран (V)", 38));
         bar.AddChild(Ui.Button("1:1", () => _bs.Board.Rig.ResetStandardZoom(), "Стандартный масштаб (Ctrl+0)", 44));
         bar.AddChild(Ui.Button("Журнал", ToggleLog, "Показать/скрыть журнал (L)"));
+        var test = new MenuButton { Text = "Тест ▾", Flat = false, Name = "TestMenu", TooltipText = "Отчёт прогона, только логика, без эффектов, остановка на событии" };
+        TestMenu = test.GetPopup();
+        TestMenu.AddItem("Отчёт прогона", TestReport);
+        TestMenu.AddItem("Только логика: до конца боя", TestLogicOnly);
+        TestMenu.AddCheckItem("Без визуальных эффектов", TestNoEffects);
+        TestMenu.AddItem("Остановка на событии…", TestBreakpoints);
+        TestMenu.IdPressed += OnTestMenu;
+        bar.AddChild(test);
         bar.AddChild(Ui.Button("?", ToggleHelp, "Справка (F1)", 34));
         bar.AddChild(Ui.Button("Меню", ToggleMenu, "Меню (Esc)"));
         var panel = Track(Ui.PanelBox(bar, null, 6));
@@ -507,6 +552,13 @@ public partial class BattleHud : Control
         h.AddChild(Ui.Button("Заново", () => _bs.Restart()).MinSize(140, 40));
         h.AddChild(Ui.Button("Выйти", () => _bs.ExitBattle()).MinSize(140, 40));
         h.AddChild(Ui.Button("Осмотреться", () => _outcome!.Visible = false).MinSize(140, 40));
+        var rep = Ui.Button("Отчёт", () =>
+        {
+            _outcome!.Visible = false;
+            Report.Open();
+        }).MinSize(140, 40);
+        rep.Name = "OutcomeReport";
+        h.AddChild(rep);
         v.AddChild(h);
         _outcome = Track(Ui.PanelBox(v, Ui.PanelLight, 24));
         _outcome.Visible = false;
@@ -808,6 +860,10 @@ public partial class BattleHud : Control
         _banner.Position = new Vector2(vp.X * 0.2f, 64);
         _banner.Size = new Vector2(vp.X * 0.6f, 40);
         _outcome.Position = (vp - _outcome.Size) / 2;
+        Placement.Refresh();
+        Placement.Position = new Vector2((vp.X - Placement.Size.X) / 2, 112);
+        Report.Position = (vp - Report.Size) / 2;
+        Breakpoints.Position = new Vector2(vp.X - Breakpoints.Size.X - 10, 64);
         _help.Position = (vp - _help.Size) / 2;
         _menu.Position = (vp - _menu.Size) / 2;
         _diagPanel.Position = new Vector2(vp.X - _diagPanel.Size.X - 10, vp.Y - _diagPanel.Size.Y - _actionPanel.Size.Y - 24);

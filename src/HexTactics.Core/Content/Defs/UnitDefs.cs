@@ -343,7 +343,7 @@ public sealed class AiProfileDef : Def
     [JsonIgnore] public override DefCategory Category => DefCategory.AiProfile;
 
     [Ed("Агрессивность", "0 — осторожный, 1 — всегда атакует"), EdRange(0, 1)] public double Aggression { get; set; } = 0.8;
-    [Ed("Правила поведения", "Условие → действия из каталога, для каждого юнита с этим профилем (например, «здоровье ниже 30 % → профиль «отступление»»)")]
+    [Ed("Правила поведения", "«Если — то — иначе» с приоритетом: поведение (отступить, удерживать, атаковать слабейшего…) и действия из каталога; поведение задаёт первое по приоритету сработавшее правило")]
     public List<AiRuleDef> Rules { get; set; } = new();
     [Ed("Приоритет целей")] public AiTargetPriority TargetPriority { get; set; } = AiTargetPriority.Nearest;
     [Ed("Предпочитаемая дистанция", "0 = ближний бой"), EdRange(0, 30)] public int PreferredRange { get; set; } = 1;

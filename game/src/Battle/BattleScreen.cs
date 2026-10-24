@@ -94,6 +94,7 @@ public partial class BattleScreen : Node
             Driver.SetSpeedIndex(si);
             Driver.Paused = false;
         }
+        InitAutobattle();
         Board = new BoardView();
         AddChild(Board);
         Board.ApplySettings(Settings);
@@ -387,6 +388,8 @@ public partial class BattleScreen : Node
         float dt = (float)delta;
         if (_initialCameraFrames > 0 && --_initialCameraFrames == 0) InitialCamera(_initialCameraUnit);
         Driver.Advance(delta);
+        // A breakpoint already paused the driver (its reason is in the autopause banner); it may fire again.
+        Breaks.Consume();
         _clock += delta;
         var batch = Sim.DrainEvents();
         var lag = ProjectileLag(batch);
@@ -490,6 +493,7 @@ public partial class BattleScreen : Node
 
     private void PresentEvent(SimEvent e)
     {
+        if (NoEffects) return;
         PlayEventVisuals(e);
         if (!Settings.FloatingNumbers) return;
         var target = Sim.GetUnit(e.TargetUnit);
@@ -832,6 +836,7 @@ public partial class BattleScreen : Node
         DrawBlocking(o);
         DrawSpawnWarnings(o);
         DrawObjectives(o);
+        DrawPlacement(o, pulse);
         // Enemy routes of the scenario (docs/DECISIONS_4.md §57): faint, so the board stays readable.
         if (_scenario.Routes.Count > 0) Render.ScenarioObjectsView.DrawRoutes(o, _scenario, "", 0.55f);
 
@@ -1204,6 +1209,7 @@ public partial class BattleScreen : Node
 
     private void OnLeftClick(InputEventMouseButton mb)
     {
+        if (TryPlacementClick()) return;
         var u = Selected;
         switch (Mode)
         {
@@ -1325,6 +1331,7 @@ public partial class BattleScreen : Node
 
     private void OnRightClick()
     {
+        if (TryPlacementRightClick()) return;
         // During a gesture or planning: cancel / one step back (docs/DECISIONS_3.md §39); otherwise the quick order of part 1.
         if (_gesture != null)
         {

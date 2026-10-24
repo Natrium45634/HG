@@ -30,6 +30,7 @@ public sealed class SkillStat
 public sealed class BattleReport
 {
     [JsonIgnore] private Simulation? _sim;
+    private readonly List<string> _destroyed = new();
 
     public string Scenario { get; set; } = "";
     public ulong Seed { get; set; }
@@ -147,7 +148,7 @@ public sealed class BattleReport
                 break;
             }
             case SimEventType.StructureDestroyed:
-                FailureReasons.Add(e.Text);
+                _destroyed.Add(e.Text);
                 break;
         }
     }
@@ -178,11 +179,18 @@ public sealed class BattleReport
         RouteBlockedSeconds += blocked * sim.Dt;
     }
 
-    /// <summary>Fixes the final values (outcome, waves, bases) — call when the run stops.</summary>
+    /// <summary>Fixes the final values (outcome, waves, bases) and stops watching — call when the run stops.</summary>
     public BattleReport Finish(string stopReason = "")
     {
-        var sim = _sim!;
+        Fill(stopReason);
         Detach();
+        return this;
+    }
+
+    /// <summary>The values so far (the battle may go on; a later call refreshes them).</summary>
+    public BattleReport Fill(string stopReason = "")
+    {
+        var sim = _sim!;
         Outcome = sim.Outcome switch { BattleOutcome.Victory => "победа", BattleOutcome.Defeat => "поражение", _ => "не завершён" };
         Reason = sim.OutcomeText;
         StopReason = stopReason != "" ? stopReason : sim.Outcome != BattleOutcome.None ? "бой завершён" : "";
@@ -193,6 +201,8 @@ public sealed class BattleReport
         Seconds = Math.Round(sim.Scenario.BattleTime, 2);
         Ticks = sim.Tick;
         EventChainCuts = sim.Scenario.EventChainCuts + sim.Scenario.TriggerCycleCuts;
+        Bases.Clear();
+        FailureReasons = new List<string>(_destroyed);
         if (sim.Scenario.Def is { } sc)
             foreach (var o in sc.Objects.Where(o => o.Type == ScenarioObjectType.PlayerBase && o.Health != null))
             {

@@ -72,6 +72,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_td_waves_library_presets_budget_battle", EditorTdWaves));
         _tests.Add(("editor_td_route_graph_fork_merge_battle", EditorTdRouteGraph));
         _tests.Add(("editor_category_tree_rules_and_pack_battle", EditorCategoryTree));
+        _tests.Add(("battle_td_placement_breakpoint_logic_only_report", BattleTdPlacement));
+        _tests.Add(("editor_td_zones_preset_autotest_batch", EditorTdAutotest));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2413,6 +2415,119 @@ public partial class UiTestRunner : Node
         ContentValidator.Validate(draft);
         Check(nodes == 2, "в исходном маршруте два узла");
     }
+    /// <summary>
+    /// Part 4, stage 5 through the UI: «Перевал: оборона с расстановкой» opens in its preparation (paused, enemies
+    /// held); a card and a click on a hex of the zone place a defender, a hex outside the zone is refused, ПКМ takes
+    /// the defender back (the budget returns); «Расставить как в тесте» fills the placement, «Начать бой» starts the
+    /// waves; «Остановка на событии» pauses at the first wave; «Только логика» plays the rest and opens the report,
+    /// which is saved to user://reports.
+    /// </summary>
+    private async Task BattleTdPlacement()
+    {
+        var bs = await OpenBattle("td_pass_defense");
+        await CameraSettled(bs.Board.Rig);
+        await Frames(5);
+        var hud = bs.Hud;
+        var sim = bs.Sim;
+        Check(hud.Placement.Visible && sim.Scenario.Preparing && bs.Driver.Paused, "бой должен открыться в подготовке, на паузе");
+        await Click(Find<Button>(hud).First(b => b.Name == "PlaceCard_knight").GetGlobalRect().GetCenter());
+        Check(bs.PlaceTemplate == "knight", "карточка рыцаря должна выбраться");
+        await Click(HexScreen(bs, new HexCoord(11, 2)));
+        var knight = sim.Units.FirstOrDefault(u => u.Def.Id == "knight" && u.Alive);
+        Check(knight != null && knight.Pos == new HexCoord(11, 2), "клик по гексу зоны должен поставить рыцаря");
+        Check(Math.Abs(sim.Placement.Left - 22) < 1e-6, $"бюджет должен уменьшиться до 22, сейчас {sim.Placement.Left}");
+        await Click(HexScreen(bs, new HexCoord(1, 1)));
+        Check(sim.Units.Count(u => u.Def.Id == "knight" && u.Alive) == 1, "вне зоны ставить нельзя");
+        Check(hud.Placement.Visible && sim.Scenario.Waves.All(w => w.Spawned == 0), "до подтверждения враги не появляются");
+        // ПКМ: first cancels the pick, then takes the defender back.
+        await Click(HexScreen(bs, knight!.Pos), MouseButton.Right);
+        await Click(HexScreen(bs, knight.Pos), MouseButton.Right);
+        Check(!sim.Units.Contains(knight) && Math.Abs(sim.Placement.Left - 30) < 1e-6, "ПКМ по защитнику должен снять его и вернуть бюджет");
+        await Frames(2);
+        await Click(Find<Button>(hud).First(b => b.Name == "PlacePreset").GetGlobalRect().GetCenter());
+        Check(sim.Placement.Placed.Count == 4, $"«Расставить как в тесте» должна поставить четверых, поставлено {sim.Placement.Placed.Count}");
+        // An upgrade the budget cannot pay is shown disabled.
+        var archer = sim.Units.First(u => u.Def.Id == "archer");
+        bs.Select(archer);
+        await Frames(3);
+        var up = Find<Button>(hud).FirstOrDefault(b => b.Name == "PlaceUpgrade");
+        Check(up != null && up.Disabled && up.Text.Contains("Эльфийка"), "улучшение лучницы должно быть видно и недоступно по бюджету");
+
+        // «Остановка на событии»: the first wave pauses the battle.
+        hud.TestMenu.EmitSignal(PopupMenu.SignalName.IdPressed, (long)BattleHud.TestBreakpoints);
+        await Frames(2);
+        Check(hud.Breakpoints.Visible, "окно «Остановка на событии» должно открыться");
+        await Click(Find<CheckBox>(hud.Breakpoints).First(c => c.Name == "Break_WaveStarted").GetGlobalRect().GetCenter());
+        Check(bs.Breaks.List.Any(b => b.Kind == BreakpointKind.WaveStarted), "остановка на начале волны должна включиться");
+        hud.Breakpoints.Visible = false;
+        await Click(Find<Button>(hud).First(b => b.Name == "PlaceConfirm").GetGlobalRect().GetCenter());
+        Check(!sim.Scenario.Preparing && !bs.Driver.Paused, "«Начать бой» должна завершить подготовку и снять паузу");
+        bs.Driver.SetSpeedIndex(bs.Driver.Speeds.IndexOf(16));
+        for (int i = 0; i < 600 && !bs.Driver.Paused; i++) await Frames(1);
+        Check(bs.Driver.Paused && sim.Scenario.Waves[0].StartedTick >= 0, "бой должен встать на паузу в начале первой волны");
+        hud.Breakpoints.Set(BreakpointKind.WaveStarted, false);
+
+        // «Только логика»: the rest of the battle at once, then the report.
+        hud.TestMenu.EmitSignal(PopupMenu.SignalName.IdPressed, (long)BattleHud.TestLogicOnly);
+        await Frames(5);
+        Check(sim.Outcome != BattleOutcome.None || bs.StopReason != "", "«Только логика» должна доиграть бой");
+        Check(hud.Report.Visible && hud.Report.Text.Contains("Результат:") && hud.Report.Text.Contains("Навыки (запуски/попадания)"), "отчёт должен открыться: " + hud.Report.Text);
+        await Click(Find<Button>(hud.Report).First(b => b.Name == "ReportSave").GetGlobalRect().GetCenter());
+        Check(hud.Report.SavedPath != "" && System.IO.File.Exists(hud.Report.SavedPath + ".json") && System.IO.File.Exists(hud.Report.SavedPath + ".txt"),
+            "отчёт должен сохраниться в user://reports: " + hud.Report.SavedPath);
+    }
+
+    /// <summary>
+    /// Part 4, stage 5 in the editor: «Расстановка и зоны» — a click adds a hex to the zone, a template card and a
+    /// click put a defender into the preset placement (ПКМ removes it), the battle mode is chosen in the list;
+    /// «Тестирование» — the autotest reports its result, a batch of 4 runs in the background and saves its summary;
+    /// the published content is left as it was.
+    /// </summary>
+    private async Task EditorTdAutotest()
+    {
+        await OpenEditor("td");
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass_defense");
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = panel.Scene!;
+        await CameraSettled(panel.View.Board.Rig);
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Placement").GetGlobalRect().GetCenter());
+        await Frames(3);
+        Check(Find<OptionButton>(panel).Any(o => o.Name == "TdBattleMode" && o.Selected == (int)BattleMode.TdPlacement), "режим боя сцены — «TD с расстановкой»");
+        var hex = new HexCoord(9, 6);
+        await ClickHex(panel.View, hex);
+        Check(sc.Placement.ZoneCells.Contains(hex), "клик в режиме зон должен добавить гекс зоны");
+        await ClickHex(panel.View, hex);
+        Check(!sc.Placement.ZoneCells.Contains(hex), "повторный клик должен убрать гекс зоны");
+        int before = sc.Placement.Preset.Count;
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdPresetPick_knight"));
+        Check(panel.PresetUnit == "knight", "карточка рыцаря должна выбраться для расстановки");
+        var spot = new HexCoord(12, 6);
+        await ClickHex(panel.View, spot);
+        Check(sc.Placement.Preset.Count == before + 1 && sc.Placement.Preset.Last().C == spot && sc.Placement.Preset.Last().Unit == "knight", "клик должен добавить рыцаря в расстановку");
+        await Frames(2);
+        var cell = panel.View.Board.Map!.Get(spot)!;
+        var local = panel.View.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(spot, Render.Board.PickY(cell)));
+        await Click(panel.View.GetGlobalRect().Position + local, MouseButton.Right);
+        Check(sc.Placement.Preset.Count == before, "ПКМ должен убрать защитника из расстановки");
+
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Test").GetGlobalRect().GetCenter());
+        await Frames(3);
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdAutoTest"));
+        Check(panel.TestResult.Contains("Результат:") && panel.TestSaved != "" && System.IO.File.Exists(panel.TestSaved + ".json"),
+            "автотест должен показать и сохранить отчёт: " + panel.TestResult);
+        Find<SpinBox>(panel).First(x => x.Name == "TdBatchRuns").Value = 4;
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdBatch"));
+        for (int i = 0; i < 1200 && (panel.TestRunning || !panel.TestResult.Contains("Пакетный")); i++) await Frames(2);
+        Check(panel.TestResult.Contains("Пакетный прогон") && panel.TestResult.Contains("Побед:") && panel.TestResult.Contains("#4 seed"),
+            "пакет из 4 прогонов должен показать сводку: " + panel.TestResult);
+        Check(System.IO.File.Exists(panel.TestSaved + ".json") && System.IO.File.Exists(panel.TestSaved + ".txt"), "сводка пакета должна сохраниться");
+        // The published scene did not change by the tests.
+        var published = Main.Instance.Content.Published.Get<ScenarioDef>("td_pass_defense")!;
+        Check(published.Placement.Preset.Count == 4, "опубликованный сценарий не должен меняться тестами");
+    }
+
     /// <summary>
     /// Part 4, stage 4 through the UI: «Категории существ» shows the tree path of «Волк-вожак»; the unit editor lists
     /// the rules of the categories with their sources and states («Слизь-мимик» inherits the forbidden standard attack,

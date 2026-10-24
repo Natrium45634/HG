@@ -18,7 +18,7 @@ namespace HexTactics.Game.Editor;
 /// </summary>
 public partial class TdScenePanel : DefListPanel
 {
-    public enum TdMode { Objects, Routes, Waves }
+    public enum TdMode { Objects, Routes, Waves, Placement, Test }
 
     private static readonly ScenarioObjectType[] PlaceTypes =
     {
@@ -70,7 +70,7 @@ public partial class TdScenePanel : DefListPanel
         _test = test;
         // «--tdmode=routes|waves» opens the workspace in that mode (screenshots, tests).
         if (App.Main.Instance.Args.TryGetValue("tdmode", out var m))
-            Mode = m switch { "routes" => TdMode.Routes, "waves" => TdMode.Waves, _ => TdMode.Objects };
+            Mode = m switch { "routes" => TdMode.Routes, "waves" => TdMode.Waves, "placement" => TdMode.Placement, "test" => TdMode.Test, _ => TdMode.Objects };
     }
 
     protected override bool UseScroll => false;
@@ -105,6 +105,8 @@ public partial class TdScenePanel : DefListPanel
                      (TdMode.Objects, "Объекты и базы", "Поставить, передвинуть, повернуть базы и объекты; Shift+ЛКМ — добавить/убрать гекс базы"),
                      (TdMode.Routes, "Маршруты", "Протяжка ЛКМ от базы спавна до цели рисует маршрут"),
                      (TdMode.Waves, "Волны", "Группы волн: шаблон, количество, база спавна, маршрут"),
+                     (TdMode.Placement, "Расстановка и зоны", "Режим боя, зоны расстановки (ЛКМ по гексу), расстановка по умолчанию для автотеста"),
+                     (TdMode.Test, "Тестирование", "Автотест и пакетные прогоны без игрока; отчёты — в user://reports"),
                  })
         {
             var mode = m;
@@ -201,6 +203,9 @@ public partial class TdScenePanel : DefListPanel
             TdMode.Routes when Route(SelectedRoute) is { Nodes.Count: 0 } r => $"Маршрут «{r.DisplayName}»: протяните ЛКМ от базы спавна до цели.",
             TdMode.Routes when Route(SelectedRoute) is { } r => $"«{r.DisplayName}»: протяжка от узла или линии — ветка (конец на маршруте — слияние или петля), от конца — продление; клик по узлу — его правило и выходы.",
             TdMode.Routes => "Выберите базу спавна (ЛКМ) и нажмите «Создать маршрут» — или сразу протяните ЛКМ от базы спавна.",
+            TdMode.Placement when PresetUnit is { } pu => $"ЛКМ по гексу — поставить «{Ctx.Db.Unit(pu)?.DisplayName ?? pu}» в расстановку по умолчанию, по занятому — убрать; ПКМ — убрать.",
+            TdMode.Placement => "ЛКМ по гексу — добавить/убрать гекс зоны расстановки (вместе с зонами объектов). Справа — режим боя и настройки подготовки.",
+            TdMode.Test => "Автотест — один прогон без игрока; пакет — N прогонов с seed = база + i. Отчёты сохраняются в user://reports, контент не меняется.",
             _ => "Выберите волну и группу; «Добавить группу» привязывает её к выбранной базе спавна и её маршруту.",
         };
     }
@@ -268,6 +273,7 @@ public partial class TdScenePanel : DefListPanel
 
     public override void _Process(double delta)
     {
+        PollTest();
         if (_preview == null || _sc == null || !IsInstanceValid(_view)) return;
         _view.Board.SyncUnits(_preview, 0, _ => true, _ => false, (float)delta);
         foreach (var v in _view.Board.Views.Values) v.Selected = v.Unit.ObjectId != "" && v.Unit.ObjectId == SelectedObject;
@@ -321,6 +327,7 @@ public partial class TdScenePanel : DefListPanel
             o.DashedRing(p.At!.Value, new Color(1f, 0.3f, 0.25f, 0.6f + 0.4f * pulse), 0.07f);
         if (_moving != null)
             foreach (var c in _moving.Cells()) o.FillHex(c, new Color(1f, 1f, 1f, 0.25f));
+        DrawPlacement(o);
         if (_view.HoverHex is HexCoord h) o.RingHex(h, new Color(1, 1, 1, 0.8f), 0.06f);
         o.Commit();
         _view.Labels.End();
@@ -333,6 +340,11 @@ public partial class TdScenePanel : DefListPanel
         if (_sc == null) return;
         if (mb.ButtonIndex == MouseButton.Right)
         {
+            if (mb.Pressed && Mode == TdMode.Placement && hex is { } ph && _sc.Placement.Preset.Any(p => p.C == ph))
+            {
+                TogglePreset(ph, null);
+                return;
+            }
             if (mb.Pressed && hex is { } rh && ObjectAt(rh) is { } ro) OpenMenu(ro, mb.GlobalPosition);
             return;
         }
@@ -375,6 +387,13 @@ public partial class TdScenePanel : DefListPanel
             case TdMode.Waves:
                 if (at != null) SelectObject(at.Id);
                 RefreshLibrary();
+                return;
+            case TdMode.Placement:
+                if (PresetUnit != null) TogglePreset(hex.Value, PresetUnit);
+                else ToggleZone(hex.Value);
+                return;
+            case TdMode.Test:
+                if (at != null) SelectObject(at.Id);
                 return;
         }
     }
@@ -1018,6 +1037,12 @@ public partial class TdScenePanel : DefListPanel
                 BuildSchedule();
                 break;
             }
+            case TdMode.Placement:
+                BuildPlacementLibrary((t, a, tip, name) => Btn(t, a, tip, name));
+                break;
+            case TdMode.Test:
+                BuildTestLibrary((t, a, tip, name) => Btn(t, a, tip, name));
+                break;
         }
     }
 
@@ -1174,6 +1199,7 @@ public partial class TdScenePanel : DefListPanel
         grid.Choices[nameof(RouteDef.Spawn)] = () => ObjectChoices(o => o.Spawn != null);
         grid.Choices[nameof(RouteDef.Fallback)] = RouteChoices;
         grid.Choices[nameof(BaseDefeatDef.MainBase)] = () => ObjectChoices(o => o.Type == ScenarioObjectType.PlayerBase);
+        grid.Choices[nameof(TriggerActionDef.Object)] = () => ObjectChoices(_ => true);
         grid.SetTarget(target, Ctx.Db);
         grid.Changed += () =>
         {
@@ -1276,6 +1302,16 @@ public partial class TdScenePanel : DefListPanel
                 _props.AddChild(Grid(w, RefreshLibrary));
                 return;
             }
+        }
+        if (Mode == TdMode.Placement)
+        {
+            BuildPlacementProps();
+            return;
+        }
+        if (Mode == TdMode.Test)
+        {
+            BuildTestProps();
+            return;
         }
         _props.AddChild(Ui.Label("Сцена", 15, Ui.Accent));
         _props.AddChild(Grid(_sc, null, p =>
