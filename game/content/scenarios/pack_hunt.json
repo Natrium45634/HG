@@ -14,9 +14,36 @@
     "intro": "Ночь. Стая во главе с вожаком выходит на охоту. Осторожно с ящиками.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [
-      { "unit": "knight", "faction": "", "c": [-6, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "archer", "faction": "", "c": [-5, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "mage", "faction": "", "c": [-6, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [-6, 3],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [-5, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [-6, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "wolf_leader",
         "faction": "",
@@ -24,11 +51,39 @@
         "facing": "W",
         "tag": "leader",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "wolf", "faction": "", "c": [5, -3], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "wolf", "faction": "", "c": [6, -2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "wolf", "faction": "", "c": [5, -2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [5, -3],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [6, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [5, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "wolf_scout",
         "faction": "",
@@ -36,7 +91,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "slime_mimic",
@@ -45,7 +101,8 @@
         "facing": "NE",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       }
     ],
     "objects": [],

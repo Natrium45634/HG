@@ -14,9 +14,36 @@
     "intro": "Песочница: мишени не атакуют. Попробуйте огонь по ядовитому облаку и искру по воде.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [
-      { "unit": "mage", "faction": "", "c": [1, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "knight", "faction": "", "c": [2, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "scout", "faction": "", "c": [1, 5], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [1, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [2, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "scout",
+        "faction": "",
+        "c": [1, 5],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "priestess",
         "faction": "",
@@ -24,7 +51,8 @@
         "facing": "E",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "sentinel",
@@ -33,7 +61,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "skittish",
-        "name": "Мишень в воде"
+        "name": "Мишень в воде",
+        "level": 0
       },
       {
         "unit": "goblin",
@@ -42,7 +71,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "skittish",
-        "name": "Мишень-гоблин"
+        "name": "Мишень-гоблин",
+        "level": 0
       },
       {
         "unit": "orc_brute",
@@ -51,7 +81,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "hold",
-        "name": "Мишень-орк"
+        "name": "Мишень-орк",
+        "level": 0
       }
     ],
     "objects": [],

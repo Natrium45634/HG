@@ -288,6 +288,8 @@ public sealed class Unit
     /// shown with their source, the template is not changed.
     /// </summary>
     public List<(StatModDef Mod, string Source)> InstanceMods { get; } = new();
+    /// <summary>The level of this instance (0 — the template's own): its stats are fitted to it (docs/DECISIONS_4.md §65).</summary>
+    public int InstanceLevel { get; set; }
     /// <summary>A structure of the scenario (a base, a tower): it does not move and occupies <see cref="Footprint"/>.</summary>
     public bool IsStructure { get; internal set; }
     public string ObjectId { get; internal set; } = "";

@@ -166,6 +166,7 @@ public static class ContentValidator
         DefCategory.Formation => "формация",
         DefCategory.Origin => "происхождение",
         DefCategory.GroupPreset => "пресет группы",
+        DefCategory.ScalingProfile => "профиль масштабирования",
         _ => c.ToString(),
     };
 

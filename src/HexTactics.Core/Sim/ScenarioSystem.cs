@@ -204,6 +204,7 @@ public sealed partial class ScenarioSystem
             var u = _sim.Spawn(def, string.IsNullOrEmpty(su.Faction) ? null : su.Faction, su.C, su.Facing,
                 string.IsNullOrEmpty(su.Name) ? null : su.Name, su.Tag, string.IsNullOrEmpty(su.AiProfile) ? null : su.AiProfile);
             if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
+            if (su.Level > 0) ApplyLevel(u, su.Level);
         }
         _hadPlayerUnits = _sim.Units.Any(u => _sim.IsPlayerFaction(u.FactionId));
         for (int i = 0; i < sc.Waves.Count; i++) _waves.Add(new WaveRuntime { Index = i, Def = sc.Waves[i] });
@@ -269,7 +270,7 @@ public sealed partial class ScenarioSystem
         var b = w.Def.Budget;
         if (b.Enabled && !b.Pinned && Def != null)
         {
-            w.Budget = WaveBudget.Compose(_sim.Content, w.Def, b, WaveBudget.SeedOf(b, Def.Seed != 0 ? Def.Seed : _sim.Options.Seed, w.Index));
+            w.Budget = WaveBudget.Compose(_sim.Content, w.Def, b, WaveBudget.SeedOf(b, Def.Seed != 0 ? Def.Seed : _sim.Options.Seed, w.Index), Def);
             groups.AddRange(WaveBudget.ToGroups(w.Budget, b, w.Def.Id != "" ? w.Def.Id : $"w{w.Index + 1}"));
             _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Волна «{w.Def.Name}» по бюджету: {w.Budget}");
             foreach (var pr in w.Budget.Problems) _sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"Волна «{w.Def.Name}»: {pr}");
@@ -527,6 +528,9 @@ public sealed partial class ScenarioSystem
             _sim.Statuses.RecalculateModifiers(u);
             u.Hp = u.HpMax;
         }
+        // The level of the instances of a group (docs/DECISIONS_4.md §65): a fixed one or a range by the seed.
+        if (p.Group != "" && w.Def.Groups.FirstOrDefault(g => g.Id == p.Group) is { Level: > 0 } lg)
+            ApplyLevel(u, lg.LevelMax > lg.Level ? _sim.Rng.NextInt(lg.Level, lg.LevelMax + 1) : lg.Level);
         _createdTotal++;
         if (p.SpawnBase != "") _createdByBase[p.SpawnBase] = CreatedBy(p.SpawnBase) + 1;
         if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
@@ -1047,6 +1051,25 @@ public sealed partial class ScenarioSystem
                 _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Сценарий [{source}]: {(a.Text != "" ? a.Text : "отметка")}", actor?.Id ?? -1, -1, actor?.Pos);
                 break;
         }
+    }
+
+    private readonly Dictionary<(string Unit, int Level), Dictionary<string, double>> _levelMults = new();
+
+    /// <summary>
+    /// Fits an instance to a level: the stat multipliers of «Подогнать под уровень» (statistics only) become the
+    /// instance's modifiers; the template does not change. Computed once per template and level.
+    /// </summary>
+    public void ApplyLevel(Unit u, int level)
+    {
+        if (level <= 0 || u.IsStructure) return;
+        var key = (u.Def.Id, level);
+        if (!_levelMults.TryGetValue(key, out var mults)) _levelMults[key] = mults = LevelFit.InstanceMultipliers(_sim.Content, u.Def, level);
+        foreach (var (stat, m) in mults)
+            if (Math.Abs(m - 1) > 1e-9)
+                u.InstanceMods.Add((new StatModDef { Stat = stat, Mul = m - 1 }, $"уровень {level}"));
+        u.InstanceLevel = level;
+        _sim.Statuses.RecalculateModifiers(u);
+        u.Hp = u.HpMax;
     }
 
     /// <summary>A wave was cleared (between waves: restore, relocation — the placement system listens).</summary>

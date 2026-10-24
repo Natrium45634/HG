@@ -14,9 +14,36 @@
     "intro": "Враги делятся у нижнего прохода и останавливаются на посту перед заставой.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [
-      { "unit": "knight", "faction": "", "c": [11, 1], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "archer", "faction": "", "c": [12, 2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "mage", "faction": "", "c": [10, 6], "facing": "W", "tag": "", "aiProfile": "", "name": "" }
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [11, 1],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [12, 2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [10, 6],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      }
     ],
     "objects": [
       {
@@ -229,6 +256,8 @@
             "count": 4,
             "delay": 0,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_1",
             "route": "route_1",
             "target": "",
@@ -340,6 +369,8 @@
             "count": 4,
             "delay": 0,
             "interval": 1,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_1",
             "route": "route_1",
             "target": "",
@@ -451,6 +482,8 @@
             "count": 2,
             "delay": 0,
             "interval": 3,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_1",
             "route": "route_1",
             "target": "",

@@ -137,6 +137,7 @@ public sealed class ScenarioUnitDef
     [Ed("Метка-ID", "Для условий сценария")] public string Tag { get; set; } = "";
     [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
     [Ed("Имя", "Пусто — из шаблона")] public string Name { get; set; } = "";
+    [Ed("Уровень", "0 — уровень шаблона; иначе характеристики экземпляра подгоняются")] public int Level { get; set; }
 }
 
 public sealed class WaveUnitDef
@@ -168,6 +169,8 @@ public sealed class SpawnGroupDef
     [Ed("Количество"), EdRange(1, 10_000)] public int Count { get; set; } = 1;
     [Ed("Задержка, с", "От начала волны"), EdRange(0, 3600)] public double Delay { get; set; }
     [Ed("Интервал, с", "Между врагами группы (0 — сразу)"), EdRange(0, 600)] public double Interval { get; set; } = 1;
+    [Ed("Уровень экземпляров", "0 — уровень шаблона; иначе характеристики экземпляров подгоняются (шаблон не меняется)"), EdRange(0, 1000)] public int Level { get; set; }
+    [Ed("Уровень до", "Больше «уровня» — случайно в диапазоне (по seed)"), EdRange(0, 1000)] public int LevelMax { get; set; }
     [Ed("База спавна", "ID объекта сценария")] public string SpawnBase { get; set; } = "";
     [Ed("Маршрут", "ID маршрута сценария")] public string Route { get; set; } = "";
     [Ed("Цель", "ID объекта; пусто — цель маршрута")] public string Target { get; set; } = "";

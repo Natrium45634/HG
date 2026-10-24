@@ -166,6 +166,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -313,6 +317,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -419,6 +427,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -518,6 +530,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -628,6 +644,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -727,6 +747,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -866,6 +890,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -984,6 +1012,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Elite",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -1083,6 +1115,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -1190,6 +1226,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "wolf_cat",
       "moveTypes": []
     },
@@ -1342,6 +1382,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Elite",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "constructs",
       "moveTypes": []
     },
@@ -1441,6 +1485,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -1558,6 +1606,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "constructs",
       "moveTypes": []
     },
@@ -1657,6 +1709,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "beasts",
       "moveTypes": []
     },
@@ -2044,6 +2100,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Boss",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "constructs",
       "moveTypes": []
     },
@@ -2151,6 +2211,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "constructs",
       "moveTypes": []
     },
@@ -2301,6 +2365,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "",
       "moveTypes": []
     },
@@ -2400,6 +2468,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "slime_kind",
       "moveTypes": []
     },
@@ -2507,6 +2579,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "scale_assassin",
       "mainCategory": "wolf_scout_cat",
       "moveTypes": []
     },
@@ -2615,6 +2691,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Leader",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "scale_fighter",
       "mainCategory": "wolf_leader_cat",
       "moveTypes": []
     },
@@ -2714,6 +2794,10 @@
         "hitVfx": ""
       },
       "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
       "mainCategory": "slime_mimic_cat",
       "moveTypes": []
     }

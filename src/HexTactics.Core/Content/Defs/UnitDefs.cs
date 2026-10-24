@@ -216,8 +216,14 @@ public sealed class UnitDef : Def
     [Ed("Босс", "Фазы, смена навыков, особые условия", Group = "Босс")] public BossDef Boss { get; set; } = new();
     [Ed("Маркер предупреждения", "Показывать линию пути перед появлением этого типа", Group = "Вид")] public bool SpawnWarning { get; set; } = true;
     [Ed("Внешний вид", Group = "Вид")] public UnitVisualDef Visual { get; set; } = new();
-    [Ed("Стоимость угрозы", "Для подбора волн по бюджету; 0 — оценка по характеристикам (docs/DECISIONS_4.md §58)", Group = "Баланс"), EdRange(0, 100_000)]
+    [Ed("Стоимость угрозы", "Для подбора волн по бюджету; 0 — модель угрозы (docs/DECISIONS_4.md §67)", Group = "Баланс"), EdRange(0, 100_000)]
     public double ThreatCost { get; set; }
+    // Part 4, stage 6 (docs/DECISIONS_4.md §65–66).
+    [Ed("Ранг", "Не влияет на уровень: появление, награды, вид, подбор волн", Group = "Баланс")] public UnitRank Rank { get; set; } = UnitRank.Normal;
+    [Ed("Свой ранг", Group = "Баланс"), EdShowIf(nameof(Rank), UnitRank.Custom)] public string CustomRank { get; set; } = "";
+    [Ed("Роль в оценке силы", "Веса оценки силы и профиль масштабирования; «авто» — по вкладам", Group = "Баланс")] public PowerRole PowerRole { get; set; } = PowerRole.Auto;
+    [Ed("Профиль масштабирования", "Для «Подогнать под уровень» и уровня экземпляра; пусто — по роли", Group = "Баланс"), EdRef(DefCategory.ScalingProfile)]
+    public string ScalingProfile { get; set; } = "";
     // Part 4 (docs/DECISIONS_4.md §60–61).
     [Ed("Основная категория", "Для показа и библиотеки; правила дерева наследуются вместе с дополнительными (происхождения)", Group = "Навыки"), EdRef(DefCategory.Origin)]
     public string MainCategory { get; set; } = "";

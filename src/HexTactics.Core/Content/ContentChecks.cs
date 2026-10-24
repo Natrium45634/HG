@@ -54,6 +54,8 @@ public static class ContentChecks
         foreach (var p in db.All<PassiveDef>()) CheckPassive(p, issues);
         foreach (var a in db.All<AiProfileDef>()) CheckAiProfile(a, issues);
         CheckSynergyCycles(db, issues);
+        // Part 4, stage 6 (docs/DECISIONS_4.md §70): warnings about too strong templates.
+        BalanceChecks.Run(db, issues);
         CheckAssets(db, issues);
         foreach (var d in db.AllDefs()) CheckOperations(d, issues);
     }

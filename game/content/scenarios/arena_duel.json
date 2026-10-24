@@ -21,10 +21,29 @@
         "facing": "E",
         "tag": "hero",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "mage", "faction": "", "c": [-6, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "archer", "faction": "", "c": [-5, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [-6, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [-5, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "sentinel",
         "faction": "",
@@ -32,7 +51,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "sentinel",
@@ -41,7 +61,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "wolf",
@@ -50,7 +71,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "hunter",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "goblin_archer",
@@ -59,7 +81,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "hunter",
-        "name": ""
+        "name": "",
+        "level": 0
       }
     ],
     "objects": [],

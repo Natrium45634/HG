@@ -21,10 +21,29 @@
         "facing": "E",
         "tag": "hero",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "archer", "faction": "", "c": [-4, 1], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "mage", "faction": "", "c": [-5, 1], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [-4, 1],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [-5, 1],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "priestess",
         "faction": "",
@@ -32,9 +51,19 @@
         "facing": "E",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "scout", "faction": "", "c": [-5, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "scout",
+        "faction": "",
+        "c": [-5, 3],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "titan",
         "faction": "",
@@ -42,7 +71,8 @@
         "facing": "W",
         "tag": "boss",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "pylon",
@@ -51,7 +81,8 @@
         "facing": "W",
         "tag": "pylon",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "pylon",
@@ -60,7 +91,8 @@
         "facing": "W",
         "tag": "pylon",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       }
     ],
     "objects": [],

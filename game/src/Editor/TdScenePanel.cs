@@ -1270,7 +1270,7 @@ public partial class TdScenePanel : DefListPanel
                 preview.Name = "TdBudgetPreview";
                 var pick = Ui.Button("Подобрать", () =>
                 {
-                    var r = WaveBudget.Compose(Ctx.Db, w, w.Budget, WaveBudget.SeedOf(w.Budget, _sc!.Seed, _sc.Waves.IndexOf(w)));
+                    var r = WaveBudget.Compose(Ctx.Db, w, w.Budget, WaveBudget.SeedOf(w.Budget, _sc!.Seed, _sc.Waves.IndexOf(w)), _sc);
                     preview.Text = r + (r.Problems.Count > 0 ? "\n⚠ " + string.Join("\n⚠ ", r.Problems) : "");
                 }, "Показать состав, который даст бюджет (seed сцены и номер волны)");
                 pick.Name = "TdBudgetPick";

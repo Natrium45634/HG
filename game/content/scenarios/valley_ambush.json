@@ -25,10 +25,29 @@
         "facing": "E",
         "tag": "hero",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "archer", "faction": "", "c": [-2, 6], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "mage", "faction": "", "c": [-3, 8], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [-2, 6],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [-3, 8],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "priestess",
         "faction": "",
@@ -36,11 +55,39 @@
         "facing": "E",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "scout", "faction": "", "c": [-1, 9], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "goblin", "faction": "", "c": [14, 5], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "goblin", "faction": "", "c": [13, 7], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "scout",
+        "faction": "",
+        "c": [-1, 9],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "goblin",
+        "faction": "",
+        "c": [14, 5],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "goblin",
+        "faction": "",
+        "c": [13, 7],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "goblin_archer",
         "faction": "",
@@ -48,7 +95,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "orc_brute",
@@ -57,11 +105,39 @@
         "facing": "W",
         "tag": "boss",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "shaman", "faction": "", "c": [16, 8], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "wolf", "faction": "", "c": [1, 13], "facing": "NE", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "wolf", "faction": "", "c": [1, 14], "facing": "NW", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "shaman",
+        "faction": "",
+        "c": [16, 8],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [1, 13],
+        "facing": "NE",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "wolf",
+        "faction": "",
+        "c": [1, 14],
+        "facing": "NW",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "deer",
         "faction": "neutral",
@@ -69,7 +145,8 @@
         "facing": "SW",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "deer",
@@ -78,7 +155,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       }
     ],
     "objects": [
@@ -180,6 +258,8 @@
             "count": 3,
             "delay": 0,
             "interval": 0,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_east_gate",
             "route": "",
             "target": "",
@@ -206,6 +286,8 @@
             "count": 1,
             "delay": 0,
             "interval": 0,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_east_gate",
             "route": "",
             "target": "",
@@ -317,6 +399,8 @@
             "count": 3,
             "delay": 0,
             "interval": 0,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_south",
             "route": "",
             "target": "",

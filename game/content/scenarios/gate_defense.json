@@ -21,10 +21,29 @@
         "facing": "E",
         "tag": "hero",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "archer", "faction": "", "c": [0, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "mage", "faction": "", "c": [0, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [0, 3],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [0, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "priestess",
         "faction": "",
@@ -32,9 +51,19 @@
         "facing": "E",
         "tag": "priestess",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "scout", "faction": "", "c": [1, 2], "facing": "E", "tag": "", "aiProfile": "", "name": "" }
+      {
+        "unit": "scout",
+        "faction": "",
+        "c": [1, 2],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      }
     ],
     "objects": [
       {
@@ -109,6 +138,8 @@
             "count": 4,
             "delay": 0,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_gate",
             "route": "main",
             "target": "",
@@ -220,6 +251,8 @@
             "count": 3,
             "delay": 0,
             "interval": 1.2,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_gate",
             "route": "main",
             "target": "",
@@ -246,6 +279,8 @@
             "count": 2,
             "delay": 3.6,
             "interval": 1.2,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_gate",
             "route": "main",
             "target": "",
@@ -357,6 +392,8 @@
             "count": 1,
             "delay": 0,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_gate",
             "route": "main",
             "target": "",
@@ -383,6 +420,8 @@
             "count": 2,
             "delay": 1.5,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_gate",
             "route": "main",
             "target": "",
@@ -409,6 +448,8 @@
             "count": 2,
             "delay": 4.5,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_gate",
             "route": "main",
             "target": "",

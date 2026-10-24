@@ -14,8 +14,26 @@
     "intro": "Свободный бой: маршрутов нет, враги ищут вас сами.",
     "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
     "units": [
-      { "unit": "knight", "faction": "", "c": [-6, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "archer", "faction": "", "c": [-5, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "knight",
+        "faction": "",
+        "c": [-6, 3],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "archer",
+        "faction": "",
+        "c": [-5, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "priestess",
         "faction": "",
@@ -23,7 +41,8 @@
         "facing": "E",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "goblin",
@@ -32,7 +51,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "ai_hunter",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "goblin",
@@ -41,7 +61,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "ai_assassin",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "goblin_archer",
@@ -50,7 +71,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "ai_shooter",
-        "name": ""
+        "name": "",
+        "level": 0
       },
       {
         "unit": "wolf_leader",
@@ -59,7 +81,8 @@
         "facing": "W",
         "tag": "leader",
         "aiProfile": "ai_leader",
-        "name": ""
+        "name": "",
+        "level": 0
       }
     ],
     "objects": [],

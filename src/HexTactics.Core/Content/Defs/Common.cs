@@ -33,6 +33,8 @@ public enum DefCategory
     Origin,
     /// <summary>Saved wave groups to reuse in scenarios (docs/DECISIONS_4.md §58).</summary>
     GroupPreset,
+    /// <summary>Scaling profiles of «Подогнать под уровень» and of the level of instances (docs/DECISIONS_4.md §66).</summary>
+    ScalingProfile,
 }
 
 /// <summary>Base class of every content definition.</summary>

@@ -282,6 +282,8 @@
             "count": 4,
             "delay": 0,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_1",
             "route": "route_1",
             "target": "",
@@ -393,6 +395,8 @@
             "count": 4,
             "delay": 0,
             "interval": 1,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_1",
             "route": "route_1",
             "target": "",
@@ -504,6 +508,8 @@
             "count": 2,
             "delay": 0,
             "interval": 3,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_1",
             "route": "route_1",
             "target": "",
@@ -615,6 +621,8 @@
             "count": 3,
             "delay": 0,
             "interval": 1.5,
+            "level": 0,
+            "levelMax": 0,
             "spawnBase": "spawn_2",
             "route": "route_2",
             "target": "",
@@ -1099,7 +1107,8 @@
           "facing": "W",
           "tag": "",
           "aiProfile": "",
-          "name": ""
+          "name": "",
+          "level": 0
         },
         {
           "unit": "archer",
@@ -1108,9 +1117,19 @@
           "facing": "W",
           "tag": "",
           "aiProfile": "",
-          "name": ""
+          "name": "",
+          "level": 0
         },
-        { "unit": "mage", "faction": "", "c": [10, 6], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+        {
+          "unit": "mage",
+          "faction": "",
+          "c": [10, 6],
+          "facing": "W",
+          "tag": "",
+          "aiProfile": "",
+          "name": "",
+          "level": 0
+        },
         {
           "unit": "priestess",
           "faction": "",
@@ -1118,7 +1137,8 @@
           "facing": "W",
           "tag": "",
           "aiProfile": "",
-          "name": ""
+          "name": "",
+          "level": 0
         }
       ],
       "defenderProfile": "ai_base_defender"

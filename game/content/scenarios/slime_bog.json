@@ -21,9 +21,19 @@
         "facing": "E",
         "tag": "hero",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "mage", "faction": "", "c": [-6, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "mage",
+        "faction": "",
+        "c": [-6, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "elf_ranger",
         "faction": "",
@@ -31,11 +41,39 @@
         "facing": "E",
         "tag": "",
         "aiProfile": "",
-        "name": ""
+        "name": "",
+        "level": 0
       },
-      { "unit": "slime", "faction": "", "c": [5, -3], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "slime", "faction": "", "c": [6, -4], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
-      { "unit": "slime", "faction": "", "c": [5, -2], "facing": "W", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "slime",
+        "faction": "",
+        "c": [5, -3],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "slime",
+        "faction": "",
+        "c": [6, -4],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
+      {
+        "unit": "slime",
+        "faction": "",
+        "c": [5, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "",
+        "name": "",
+        "level": 0
+      },
       {
         "unit": "wolf",
         "faction": "",
@@ -43,7 +81,8 @@
         "facing": "W",
         "tag": "",
         "aiProfile": "hunter",
-        "name": ""
+        "name": "",
+        "level": 0
       }
     ],
     "objects": [],

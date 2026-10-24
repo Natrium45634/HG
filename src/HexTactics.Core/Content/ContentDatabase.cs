@@ -107,6 +107,7 @@ public sealed class ContentDatabase
         (DefCategory.Origin, typeof(OriginDef), "origins.json"),
         (DefCategory.Unit, typeof(UnitDef), "units.json"),
         (DefCategory.GroupPreset, typeof(GroupPresetDef), "group_presets.json"),
+        (DefCategory.ScalingProfile, typeof(ScalingProfileDef), "scaling_profiles.json"),
         (DefCategory.RulesPreset, typeof(RulesPresetDef), "rules_presets.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),
         (DefCategory.Map, typeof(MapDef), "maps"),
