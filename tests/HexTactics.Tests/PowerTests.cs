@@ -156,6 +156,22 @@ public class PowerTests
     }
 
     [Fact]
+    public void ScenarioGroup_TakesTheWaveOrTheUnitsOfTheSide()
+    {
+        var db = TestUtil.Shipped();
+        // A unit of the scenario: its allies are the units of its side (three goblins of the enemy in the skirmish).
+        var skirmish = PowerContext.InScenario(db, db.Unit("wolf_leader")!, db.Get<ScenarioDef>("free_skirmish")!);
+        Assert.Equal(new[] { "goblin", "goblin", "goblin_archer" }, skirmish.AllyDefs.Select(u => u.Id).OrderBy(x => x));
+        // A group of a wave: the rest of that wave.
+        var sc = db.All<ScenarioDef>().First(s => s.Waves.Any(w => w.Groups.Count > 1));
+        var wave = sc.Waves.First(w => w.Groups.Count > 1);
+        var unit = db.Unit(wave.Groups[0].Unit)!;
+        var ctx = PowerContext.InScenario(db, unit, sc);
+        Assert.Equal(PowerContextKind.ScenarioGroup, ctx.Kind);
+        Assert.True(ctx.Allies > 0 && ctx.AllyDefs.Count == ctx.Allies);
+    }
+
+    [Fact]
     public void RankDoesNotChangeTheLevel_TheBossScaleIsSeparate_AndScalesInvert()
     {
         var db = Db();

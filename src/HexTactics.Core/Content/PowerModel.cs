@@ -31,16 +31,29 @@ public sealed class PowerContext
 
     public static PowerContext Typical(ContentDatabase db) => new() { Kind = PowerContextKind.TypicalGroup, Allies = db.Rules.Power.TypicalAllies };
 
-    /// <summary>The largest group of the template in the waves of a scenario: the others of that wave are its allies.</summary>
+    /// <summary>
+    /// The largest group of the template in the waves of a scenario: the others of that wave are its allies; a
+    /// template placed as a unit of the scenario — the units of its side.
+    /// </summary>
     public static PowerContext InScenario(ContentDatabase db, UnitDef def, ScenarioDef sc)
     {
-        var wave = sc.Waves.Where(w => w.Groups.Any(g => g.Unit == def.Id)).OrderByDescending(w => w.Groups.Sum(g => g.Count)).FirstOrDefault();
+        var wave = sc.Waves.Where(w => w.Groups.Any(g => ContentRef.IdOf(g.Unit) == def.Id)).OrderByDescending(w => w.Groups.Sum(g => g.Count)).FirstOrDefault();
         var allies = new List<UnitDef>();
         if (wave != null)
+        {
             foreach (var g in wave.Groups)
                 if (db.Unit(g.Unit) is { } u)
                     for (int i = 0; i < Math.Min(g.Count, 12); i++)
                         allies.Add(u);
+        }
+        else
+        {
+            // Not in the waves: the units of the scenario on its side.
+            string faction = sc.Units.FirstOrDefault(su => ContentRef.IdOf(su.Unit) == def.Id) is { } own && own.Faction != "" ? own.Faction : def.Faction;
+            foreach (var su in sc.Units)
+                if (db.Unit(su.Unit) is { } ud && (su.Faction != "" ? su.Faction : ud.Faction) == faction)
+                    allies.Add(ud);
+        }
         if (allies.Contains(def)) allies.Remove(def);
         return new PowerContext { Kind = PowerContextKind.ScenarioGroup, Allies = Math.Min(12, allies.Count), AllyDefs = allies.Take(12).ToList(), Scenario = sc };
     }
@@ -292,7 +305,7 @@ public static class PowerModel
             report.Lines.Add(new PowerLine("range", "Дальность и мобильность", k * b.rm, $"дальность {rawBase.Range:0.##}, скорость {rawBase.Speed:0.#}" + (full.MoveCats.Count > 1 ? $", перемещение {string.Join("/", full.MoveCats)}" : "")));
             report.Lines.Add(new PowerLine("passives", "Пассивные способности", k * passives, report.Passives.Count == 0 ? "нет" : string.Join(", ", report.Passives.Select(p => $"{p.Name} {p.Share:P0}"))));
             report.Lines.Add(new PowerLine("control", "Контроль", k * control, $"{raw.Control:0.##} с контроля в секунду"));
-            report.Lines.Add(new PowerLine("synergy", "Синергия и поддержка", k * support, _ctx.Allies > 0 ? $"союзников рядом: {_ctx.Allies}" : "союзники не предполагаются (контекст «один»)"));
+            report.Lines.Add(new PowerLine("synergy", "Синергия и поддержка", k * support, _ctx.Allies > 0 ? $"союзников рядом: {_ctx.Allies}" : $"союзники не предполагаются (контекст: {_ctx})"));
             if (bonus != 0) report.Lines.Add(new PowerLine("manual", "Ручной вклад категорий", k * manual, $"{bonus:+0;−0} %"));
             report.Power = Math.Max(0, k * (sum + manual));
             report.Lines.Add(new PowerLine("total", "Итог", report.Power, ""));

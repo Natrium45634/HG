@@ -74,6 +74,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_category_tree_rules_and_pack_battle", EditorCategoryTree));
         _tests.Add(("battle_td_placement_breakpoint_logic_only_report", BattleTdPlacement));
         _tests.Add(("editor_td_zones_preset_autotest_batch", EditorTdAutotest));
+        _tests.Add(("editor_power_level_context_fit_threat", EditorPowerLevel));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2575,5 +2576,121 @@ public partial class UiTestRunner : Node
         sim.RunSeconds(0.6);
         await Frames(5);
         Check(wolf.Stat(Stats.MoveSpeed) < nightSpeed - 1e-6 && LabelVisible("Время суток: день"), $"днём волки медленнее ({nightSpeed} → {wolf.Stat(Stats.MoveSpeed)})");
+    }
+    /// <summary>
+    /// Part 4 stage 6 (docs/DECISIONS_4.md §65–67): the template editor shows the level with its exact value and the
+    /// table of contributions; the context «типичная группа» raises the pack leader; a stat edited in the form changes
+    /// the exact level at once; the threat is shown; «Подогнать под уровень» gives three variants and applies the
+    /// chosen one as a copy (the source is not changed); the scaling profiles have their section; a change of the
+    /// reference in the rules warns how many templates change level; the TD library cards show the level.
+    /// </summary>
+    private async Task EditorPowerLevel()
+    {
+        await OpenEditor("enemies");
+        var draft = Main.Instance.Content.Draft!;
+        var leaderBackup = ContentJson.Clone(draft.Unit("wolf_leader")!);
+        string refBackup = draft.Rules.Power.ReferenceUnit;
+        try
+        {
+            var units = Find<UnitEditorPanel>(GetTree().Root).First();
+            units.Select("wolf_leader");
+            await Frames(8);
+            var view = Find<UnitPowerView>(units).First();
+            static double Exact(string text) => double.Parse(text[(text.IndexOf('(') + 1)..text.IndexOf(')')], System.Globalization.CultureInfo.InvariantCulture);
+            string LevelText() => Find<Label>(units).First(l => l.Name == "PowerLevel" && l.IsVisibleInTree()).Text;
+            Check(System.Text.RegularExpressions.Regex.IsMatch(LevelText(), @"^Уровень \d+ \(\d+\.\d\d\)$"), "уровень с точным значением: " + LevelText());
+            foreach (var key in new[] { "health", "damage", "range", "passives", "control", "synergy", "total" })
+                Check(Find<HBoxContainer>(units).Any(h => h.Name == "PowerLine_" + key && h.IsVisibleInTree()), "нет строки вклада " + key);
+            Check(LabelVisible("Пассив «Сила стаи»"), "пассив вожака с долей не показан");
+            double solo = Exact(LevelText());
+
+            // The context: in a typical group the pack bonuses count.
+            var ctx = Find<OptionButton>(units).First(o => o.Name == "PowerContext");
+            Check(view.ContextLabels.Any(l => l.StartsWith("Группа сценария «")) && view.ContextLabels.Any(l => l.StartsWith("Против «")), "контексты: " + string.Join(" | ", view.ContextLabels));
+            ctx.Select(1);
+            ctx.EmitSignal(OptionButton.SignalName.ItemSelected, 1L);
+            await Frames(3);
+            double typical = Exact(LevelText());
+            Check(typical > solo + 0.05, $"в типичной группе вожак сильнее: {solo:0.00} → {typical:0.00}");
+            ctx.Select(0);
+            ctx.EmitSignal(OptionButton.SignalName.ItemSelected, 0L);
+            await Frames(3);
+
+            // An edit of the form changes the exact level at once.
+            var hp = Find<SpinBox>(units).First(b => b.IsVisibleInTree() && Math.Abs(b.Value - 110) < 1e-6);
+            hp.Value = 330;
+            await Frames(3);
+            double tougher = Exact(LevelText());
+            Check(tougher > solo + 0.3, $"больше здоровья — выше уровень: {solo:0.00} → {tougher:0.00}");
+            Check(LabelVisible("Опубликованная версия v"), "нет сравнения с опубликованной версией");
+            Check(Find<Label>(units).Any(l => l.Name == "ThreatText" && l.IsVisibleInTree() && l.Text.Contains("базовая") && l.Text.Contains("Живучесть против защитников")), "угроза не показана");
+
+            // «Подогнать под уровень»: three variants, the combined one applied as a copy.
+            var fitButton = Find<Button>(units).First(b => b.Name == "PowerFit");
+            for (Node? n = fitButton; n != null; n = n.GetParent())
+                if (n is ScrollContainer scroll)
+                {
+                    scroll.EnsureControlVisible(fitButton);
+                    break;
+                }
+            await Frames(3);
+            await Click(fitButton.GetGlobalRect().GetCenter());
+            await Frames(3);
+            var dlg = Dialog(UnitFitDialog.Title);
+            Check(dlg != null, "окно «Подогнать под уровень» не открыто");
+            var target = Find<SpinBox>(dlg!).First(b => b.Name == "FitTarget");
+            target.Value = 12;
+            Find<Button>(dlg!).First(b => b.Name == "FitRun").EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames(3);
+            var variants = Find<CheckBox>(dlg!).Where(c => c.Name.ToString().StartsWith("FitVariant_")).ToList();
+            Check(variants.Count == 3 && variants[2].ButtonPressed, "три варианта, по умолчанию комбинированный: " + string.Join(" | ", variants.Select(v => v.Text)));
+            Check(variants.Any(v => v.Text.Contains("→ 12.0") || v.Text.Contains("→ 11.") || v.Text.Contains("→ 12.")), "вариант не достиг цели: " + string.Join(" | ", variants.Select(v => v.Text)));
+            int before = draft.Table(DefCategory.Unit).Count;
+            dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+            await Frames(6);
+            Check(draft.Table(DefCategory.Unit).Count == before + 1, "копия не создана");
+            var copy = draft.Unit("wolf_leader_lv12");
+            Check(copy != null, "копия wolf_leader_lv12 не найдена");
+            var fitted = PowerModel.Evaluate(draft, copy!);
+            Check(Math.Abs(fitted.Level - 12) <= 0.6, $"уровень копии {fitted.Level:0.00} вместо 12");
+            Check(Math.Abs(draft.Unit("wolf_leader")!.Stats[Stats.HpMax] - 330) < 1e-6, "исходный шаблон изменился");
+            units = Find<UnitEditorPanel>(GetTree().Root).First();
+            Check(units.Current?.Id == "wolf_leader_lv12", "после применения не выбрана копия");
+            draft.Table(DefCategory.Unit).Remove("wolf_leader_lv12");
+
+            // The section of scaling profiles.
+            await OpenEditor("scaling_profiles");
+            var profiles = Find<DefListPanel>(GetTree().Root).First();
+            Check(Find<ItemList>(profiles).First().ItemCount >= 10, "профилей масштабирования меньше 10");
+
+            // A change of the reference warns how many templates change level.
+            await OpenEditor("rules");
+            var rules = Find<RulesPanel>(GetTree().Root).First();
+            var refOpt = Find<OptionButton>(rules).First(o => Enumerable.Range(0, o.ItemCount).Any(i => o.GetItemText(i).Contains("[orc_brute]")) && o.GetItemText(o.Selected).Contains("[goblin]"));
+            int orc = Enumerable.Range(0, refOpt.ItemCount).First(i => refOpt.GetItemText(i).Contains("[orc_brute]"));
+            refOpt.Select(orc);
+            refOpt.EmitSignal(OptionButton.SignalName.ItemSelected, (long)orc);
+            await Frames(3);
+            var warn = Find<Label>(rules).First(l => l.Name == "PowerRulesWarn");
+            Check(warn.IsVisibleInTree() && System.Text.RegularExpressions.Regex.IsMatch(warn.Text, @"уровень изменится у \d+ из \d+ шаблонов"), "нет предупреждения об изменении эталона: " + warn.Text);
+            draft.Rules.Power.ReferenceUnit = refBackup;
+
+            // The TD library cards: level next to the threat.
+            await OpenEditor("td");
+            var td = Find<TdScenePanel>(GetTree().Root).First();
+            td.Select("td_pass");
+            await Frames(20);
+            td = Find<TdScenePanel>(GetTree().Root).First();
+            await Click(Find<Button>(td).First(b => b.Name == "TdMode_Waves").GetGlobalRect().GetCenter());
+            await Frames(3);
+            var cards = Find<Button>(td).Where(b => b.Name.ToString().StartsWith("TdTpl_") && b.IsVisibleInTree()).ToList();
+            Check(cards.Count > 0 && cards.All(c => System.Text.RegularExpressions.Regex.IsMatch(c.Text, @"ур\. \d+ · угроза")), "карточки без уровня: " + string.Join(" | ", cards.Select(c => c.Text.Replace("\n", " "))));
+        }
+        finally
+        {
+            draft.Table(DefCategory.Unit).Replace(leaderBackup);
+            draft.Table(DefCategory.Unit).Remove("wolf_leader_lv12");
+            draft.Rules.Power.ReferenceUnit = refBackup;
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
@@ -28,10 +29,19 @@ public partial class RulesPanel : ScrollContainer
         v.AddChild(Ui.Label("Правила боя", 18, Ui.Accent));
         v.AddChild(Ui.Label("Все параметры по умолчанию описаны в docs/DECISIONS.md. Формулы вводятся из белого списка переменных и функций — " +
                             "произвольный код не выполняется. Пустая формула — встроенный расчёт.", 13, Ui.TextDim, wrap: true));
+        _powerWarn = Ui.Label("", 13, Ui.Warn, wrap: true);
+        _powerWarn.Name = "PowerRulesWarn";
+        _powerWarn.Visible = false;
+        v.AddChild(_powerWarn);
         var grid = new PropertyGrid { LabelWidth = 300 };
         grid.SetTarget(_ctx.Db.Rules, _ctx.Db);
-        grid.Changed += () => _ctx.MarkDirty();
+        grid.Changed += () =>
+        {
+            _ctx.MarkDirty();
+            CheckPowerRules();
+        };
         v.AddChild(grid);
+        SnapshotLevels();
         var pad = new MarginContainer();
         pad.AddThemeConstantOverride("margin_right", 14);
         pad.AddChild(v);
@@ -41,8 +51,60 @@ public partial class RulesPanel : ScrollContainer
     }
 
     private PropertyGrid? _grid;
+    private Label _powerWarn = null!;
+    private string _powerJson = "";
+    private Dictionary<string, double> _levels = new();
 
-    private void OnContentReplaced() => _grid?.SetTarget(_ctx.Db.Rules, _ctx.Db);
+    private void OnContentReplaced()
+    {
+        _grid?.SetTarget(_ctx.Db.Rules, _ctx.Db);
+        SnapshotLevels();
+    }
+
+    /// <summary>The levels of every template under the rules as they were when the section was opened.</summary>
+    private void SnapshotLevels()
+    {
+        _powerJson = ContentJson.Serialize(_ctx.Db.Rules.Power);
+        _levels = Levels();
+        _powerWarn.Visible = false;
+    }
+
+    private Dictionary<string, double> Levels()
+    {
+        var map = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var u in _ctx.Db.All<UnitDef>())
+            try
+            {
+                map[u.Id] = PowerModel.Evaluate(_ctx.Db, u).Level;
+            }
+            catch (Exception)
+            {
+                // An unfinished template: no level to compare.
+            }
+        return map;
+    }
+
+    /// <summary>
+    /// A change of the profile «Оценка силы» (the reference above all) changes every level: the warning says how
+    /// many templates get another level (docs/DECISIONS_4.md §65).
+    /// </summary>
+    private void CheckPowerRules()
+    {
+        if (ContentJson.Serialize(_ctx.Db.Rules.Power) == _powerJson)
+        {
+            _powerWarn.Visible = false;
+            return;
+        }
+        var now = Levels();
+        var changed = now.Where(kv => _levels.TryGetValue(kv.Key, out var was) && Math.Abs(was - kv.Value) >= 0.005)
+            .Select(kv => (Def: _ctx.Db.Unit(kv.Key)!, Was: _levels[kv.Key], Now: kv.Value)).ToList();
+        _powerWarn.Visible = true;
+        _powerWarn.Text = changed.Count == 0
+            ? "Профиль «Оценка силы» изменён — уровни шаблонов не изменились."
+            : $"⚠ Профиль «Оценка силы» изменён: уровень изменится у {changed.Count} из {now.Count} шаблонов — " +
+              string.Join(", ", changed.Take(8).Select(c => $"{c.Def.DisplayName} {c.Was:0.0} → {c.Now:0.0}")) + (changed.Count > 8 ? "…" : "") +
+              ". Подбор волн по бюджету и уровни экземпляров считаются заново.";
+    }
 
     public override void _ExitTree() => _ctx.ContentReplaced -= OnContentReplaced;
 }
@@ -185,26 +247,59 @@ public partial class UnitEditorPanel : DefListPanel
             RebuildPreview(u);
         };
         root.AddChild(grid.Expand());
-        var side = Ui.VBox(6);
+        var side = Ui.VBox(6).MinSize(340);
         var container = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(260, 260) };
         _vp = new SubViewport { OwnWorld3D = true, TransparentBg = false, Msaa3D = Viewport.Msaa.Msaa4X };
         container.AddChild(_vp);
         side.AddChild(container);
         side.AddChild(Ui.Label("Предпросмотр фишки (поворачивается)", 12, Ui.TextDim));
         side.AddChild(Ui.Label("Тестовый просмотр на карте — в разделе «Тест» или кнопкой ниже.", 12, Ui.TextDim, wrap: true).MinSize(260));
+        _power = new UnitPowerView(Ctx, u, applied =>
+        {
+            RefreshList();
+            Select(applied);
+        });
+        side.AddChild(_power);
+        side.AddChild(Ui.Sep());
+        // Screenshots: --powerctx=N (context), --scroll=PX (the form), --fit=LEVEL (the dialog).
+        var args = App.Main.Instance.Args;
+        if (args.TryGetValue("powerctx", out var pc) && int.TryParse(pc, out var pci)) _power.SetContext(pci);
+        if (args.TryGetValue("scroll", out var sc) && int.TryParse(sc, out var px))
+            AfterLayout(root, () => Callable.From(() =>
+            {
+                for (Node? n = root; n != null; n = n.GetParent())
+                    if (n is ScrollContainer s)
+                    {
+                        s.ScrollVertical = px;
+                        break;
+                    }
+            }).CallDeferred());
+        if (args.TryGetValue("fit", out var fit) && double.TryParse(fit, System.Globalization.CultureInfo.InvariantCulture, out var lv) && !_fitShown)
+            AfterLayout(root, () =>
+            {
+                if (_fitShown || Current != u) return;
+                _fitShown = true;
+                UnitFitDialog.Show(this, Ctx, u, a => { }, lv);
+            });
         var catScroll = new ScrollContainer { CustomMinimumSize = new Vector2(300, 260), SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _cats = Ui.VBox(3).Expand();
         _cats.Name = "UnitCategories";
         catScroll.AddChild(_cats);
         side.AddChild(catScroll);
         root.AddChild(side);
-        grid.Changed += () => Categories(u);
+        grid.Changed += () =>
+        {
+            Categories(u);
+            if (_power != null && IsInstanceValid(_power)) _power.Refresh();
+        };
         RebuildPreview(u);
         Categories(u);
         return root;
     }
 
     private VBoxContainer? _cats;
+    private UnitPowerView? _power;
+    private static bool _fitShown;
 
     /// <summary>
     /// The categories of the template (docs/DECISIONS_4.md §61): the chain of each one, every rule with its source and

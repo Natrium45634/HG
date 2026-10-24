@@ -1121,8 +1121,10 @@ public partial class TdScenePanel : DefListPanel
             if (++shown > 40) break;
             var uu = u;
             double hp = u.Stats.GetValueOrDefault(Stats.HpMax, Ctx.Db.Stat(Stats.HpMax)?.Default ?? 0);
-            var b = Ui.Button($"{u.DisplayName}\nугроза {ThreatCost.Of(Ctx.Db, u):0.#} · HP {hp:0} · {u.CreatureCategory}/{u.MoveCategory}", () => AddGroup(null, uu.Id),
-                $"{u.Id} · {u.Faction}" + (u.Tags.Count > 0 ? " · теги: " + string.Join(", ", u.Tags) : "") + (u.ThreatCost > 0 ? " · стоимость задана автором" : " · стоимость — оценка по характеристикам"));
+            var power = PowerModel.Evaluate(Ctx.Db, u);
+            var b = Ui.Button($"{u.DisplayName}\nур. {power.DisplayLevel} · угроза {ThreatCost.Of(Ctx.Db, u, _sc):0.#} · HP {hp:0} · {u.CreatureCategory}/{u.MoveCategory}", () => AddGroup(null, uu.Id),
+                $"{u.Id} · {u.Faction} · уровень {power.LevelText}, ранг {EdUtil.EnumLabel(u.Rank)}" + (u.Tags.Count > 0 ? " · теги: " + string.Join(", ", u.Tags) : "") +
+                (u.ThreatCost > 0 ? " · стоимость задана автором" : _sc != null && ThreatModel.HasContext(_sc) ? " · стоимость — в контексте сцены (маршруты, защитники)" : " · стоимость — оценка по характеристикам"));
             b.Name = "TdTpl_" + u.Id;
             b.Alignment = HorizontalAlignment.Left;
             b.ClipText = true;
