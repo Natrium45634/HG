@@ -28,6 +28,10 @@ public sealed class SimOptions
     public bool AdminMode { get; init; }
     /// <summary>Rules of a preset chosen by the scenario (null = the global rules of the content).</summary>
     public RulesDef? Rules { get; init; }
+    /// <summary>«Автотест» (docs/DECISIONS_4.md §64): the player's units are driven by AI profiles too.</summary>
+    public bool AutoPlayer { get; init; }
+    /// <summary>The profile of AI-driven player units without their own.</summary>
+    public string DefaultPlayerProfile { get; init; } = "";
 }
 
 /// <summary>
@@ -75,6 +79,7 @@ public sealed class Simulation
         Ai = new AiSystem(this);
         AutoAttacks = new AutoAttackSystem(this);
         Scenario = new ScenarioSystem(this);
+        Placement = new PlacementSystem(this);
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
         Categories = new CategoryCache(Content);
@@ -129,6 +134,8 @@ public sealed class Simulation
     /// <summary>Auto-attacks of allies and enemies (docs/DECISIONS_2.md §28).</summary>
     public AutoAttackSystem AutoAttacks { get; }
     public ScenarioSystem Scenario { get; }
+    /// <summary>The preparation phase: placing defenders (docs/DECISIONS_4.md §64).</summary>
+    public PlacementSystem Placement { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }
@@ -231,10 +238,13 @@ public sealed class Simulation
             if (rd == null) continue;
             u.Resources[rd.Id] = new ResourceState { Def = rd, Max = r.Max, Current = Math.Min(r.Start, r.Max), Regen = r.Regen, BaseMax = r.Max, BaseRegen = r.Regen, BaseCaptured = true };
         }
-        u.AiControlled = Options.AiFactions.Contains(u.FactionId) && !Options.PlayerFactions.Contains(u.FactionId);
+        u.AiControlled = Options.AiFactions.Contains(u.FactionId) && !Options.PlayerFactions.Contains(u.FactionId)
+                         || Options.AutoPlayer && Options.PlayerFactions.Contains(u.FactionId);
         var cats = ApplyCategories(u);
         // An empty profile of the template takes the profile of its categories (docs/DECISIONS_4.md §61).
-        var profileId = !string.IsNullOrEmpty(aiProfile) ? aiProfile : def.AiProfile != "" ? def.AiProfile : cats.AiProfile;
+        // «Автотест»: the defenders take the defenders' profile unless the placement names one (docs/DECISIONS_4.md §64).
+        bool autoDefender = Options.AutoPlayer && IsPlayerFaction(u.FactionId) && Options.DefaultPlayerProfile != "";
+        var profileId = !string.IsNullOrEmpty(aiProfile) ? aiProfile : autoDefender ? Options.DefaultPlayerProfile : def.AiProfile != "" ? def.AiProfile : cats.AiProfile;
         u.AiProfile = Content.Get<AiProfileDef>(profileId) ?? Content.All<AiProfileDef>().FirstOrDefault();
         u.Ai.HoldCenter = pos;
         u.Ai.NextDecisionTick = Tick + 1 + (u.Id % 5);
@@ -384,6 +394,9 @@ public sealed class Simulation
             DamageType = damageType,
             PlayerVisible = visible,
         };
+        // Observers (battle report, breakpoints) see every event, the scenario turns some into its events (§68).
+        Observed?.Invoke(e);
+        Scenario.OnSimEvent(e);
         _eventsThisTick++;
         if (_eventsThisTick > Rules.Limits.MaxEventsPerTick)
         {
@@ -406,6 +419,12 @@ public sealed class Simulation
     }
 
     public bool EventLimitReached => _eventsThisTick > Rules.Limits.MaxEventsPerTick;
+
+    /// <summary>
+    /// Every event as it is emitted (docs/DECISIONS_4.md §64): the battle report and «остановка на событии» watch the
+    /// simulation without changing it.
+    /// </summary>
+    public event Action<SimEvent>? Observed;
 
     private bool IsEventVisibleToPlayer(int source, int target, HexCoord? cell)
     {
@@ -439,6 +458,13 @@ public sealed class Simulation
     {
         if (AutopauseReason == null) AutopauseReason = reason;
         Emit(SimEventType.Autopause, LogLevel.Detail, "Автопауза: " + reason);
+    }
+
+    /// <summary>«Остановка на событии»: a pause whose reason wins over an ordinary autopause of the same tick.</summary>
+    public void RequestBreak(string reason)
+    {
+        AutopauseReason = reason;
+        Emit(SimEventType.Autopause, LogLevel.Normal, "Остановка: " + reason);
     }
 
     public string? ConsumeAutopause()
@@ -516,7 +542,11 @@ public sealed class Simulation
         Scenario.CheckOutcome();
         p.End("Сценарий", t);
         p.TickDone();
+        Stepped?.Invoke();
     }
+
+    /// <summary>After every tick (observers read the state: the battle report, breakpoints with a condition).</summary>
+    public event Action? Stepped;
 
     public void Run(int ticks)
     {

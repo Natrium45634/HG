@@ -34,7 +34,7 @@ public sealed class RulesDef
 public sealed class TimeRules
 {
     [Ed("Тиков в секунду", "Фиксированный шаг симуляции"), EdRange(5, 120)] public int TicksPerSecond { get; set; } = 20;
-    [Ed("Скорости", "Множители времени для кнопок скорости")] public List<double> SpeedPresets { get; set; } = new() { 0.25, 0.5, 1, 2, 4 };
+    [Ed("Скорости", "Множители времени для кнопок скорости")] public List<double> SpeedPresets { get; set; } = new() { 0.25, 0.5, 1, 2, 4, 8, 16 };
     [Ed("Скорость по умолчанию", "Индекс в списке скоростей"), EdRange(0, 20)] public int DefaultSpeedIndex { get; set; } = 2;
     [Ed("Макс. тиков за кадр", "Если кадр не успевает — игра замедляется, тики не пропускаются"), EdRange(1, 1000)]
     public int MaxTicksPerFrame { get; set; } = 40;

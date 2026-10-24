@@ -551,6 +551,12 @@
     "triggers": [
       {
         "name": "Тревога",
+        "event": "None",
+        "eventObject": "",
+        "eventWave": 0,
+        "eventGroup": "",
+        "eventUnit": "",
+        "interval": 10,
         "condition": {
           "type": "FlagSet",
           "children": [],
@@ -576,6 +582,11 @@
           {
             "type": "Message",
             "text": "Тревога: враги у поста перед заставой!",
+            "object": "",
+            "group": "",
+            "targetTag": "",
+            "objectState": "Activate",
+            "win": true,
             "wave": 0,
             "cellEffect": "",
             "marker": "",
@@ -599,7 +610,9 @@
             "aiProfile": ""
           }
         ],
-        "once": true
+        "once": true,
+        "cooldown": 0,
+        "maxFires": 0
       }
     ],
     "passives": [],
@@ -611,6 +624,28 @@
       "timeLimit": 0,
       "maxAliveEnemies": 0,
       "maxCreatedEnemies": 0
-    }
+    },
+    "mode": "Normal",
+    "placement": {
+      "end": "Confirm",
+      "duration": 30,
+      "budget": 30,
+      "maxUnits": 0,
+      "units": [],
+      "zoneObjects": [],
+      "zoneRadius": 2,
+      "zoneCells": [],
+      "relocateBetweenWaves": true,
+      "restoreHealth": 0.25,
+      "restoreResources": true,
+      "enemiesDuringPreparation": false,
+      "preset": [],
+      "defenderProfile": ""
+    },
+    "altTargets": [
+      { "kind": "OtherBase", "object": "", "flag": "" },
+      { "kind": "AttackDefenders", "object": "", "flag": "" }
+    ],
+    "altAfterBlocked": 15
   }
 }

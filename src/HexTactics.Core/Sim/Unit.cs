@@ -256,6 +256,9 @@ public sealed class Unit
     public int RouteIndex { get; set; }
     /// <summary>Wave index of a wave unit (-1 — placed by the scenario).</summary>
     public int Wave { get; set; } = -1;
+    /// <summary>The last unit that dealt damage to this one, and when.</summary>
+    public int LastAttackerId { get; set; } = -1;
+    public long LastAttackedTick { get; set; } = -1;
     // Part 4 (docs/DECISIONS_4.md §56–58).
     /// <summary>Route of the scenario the unit follows, its group and the object it goes to.</summary>
     public string RouteId { get; set; } = "";
@@ -390,4 +393,28 @@ public sealed class AiState
     public HexCoord? HoldCenter { get; set; }
     public Dictionary<int, (HexCoord Pos, long Tick)> KnownEnemies { get; } = new();
     public HexCoord? MoveGoal { get; set; }
+    // Part 4 (docs/DECISIONS_4.md §59, §64).
+    /// <summary>The behaviour set by the AI rules this tick, and the rule that set it.</summary>
+    public AiDirective Directive { get; set; }
+    public string DirectiveRule { get; set; } = "";
+    /// <summary>«Установить цель» on units: attack those with this tag/type first.</summary>
+    public string ForcedTargetTag { get; set; } = "";
+    /// <summary>The target of the leader («вести союзников») and until when it is followed.</summary>
+    public int SharedTarget { get; set; } = -1;
+    public long SharedUntil { get; set; }
+    /// <summary>A route enemy left its route for a fight: since when and where (−1 — on the route).</summary>
+    public long OffRouteSince { get; set; } = -1;
+    public HexCoord? RouteAnchor { get; set; }
+    /// <summary>Back on the route: no new chase before this tick (only direct threats are answered).</summary>
+    public long NoChaseUntil { get; set; } = -1;
+    /// <summary>The route has been blocked since (no exit, no path).</summary>
+    public long BlockedSince { get; set; } = -1;
+    /// <summary>The alternative target chosen when the base is gone or unreachable (null — none yet).</summary>
+    public AltTargetKind? Alternative { get; set; }
+    public HexCoord? AltCell { get; set; }
+    public int PatrolIndex { get; set; }
+    /// <summary>Last reported AI problems by kind (one report per kind per few seconds).</summary>
+    public Dictionary<string, long> Problems { get; } = new(StringComparer.Ordinal);
+    public HexCoord LastPos { get; set; }
+    public long LastMovedTick { get; set; }
 }

@@ -4,7 +4,7 @@
   "rules": {
     "time": {
       "ticksPerSecond": 20,
-      "speedPresets": [0.25, 0.5, 1, 2, 4],
+      "speedPresets": [0.25, 0.5, 1, 2, 4, 8, 16],
       "defaultSpeedIndex": 2,
       "maxTicksPerFrame": 40,
       "startPaused": true

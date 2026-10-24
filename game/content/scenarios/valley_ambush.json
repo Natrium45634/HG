@@ -460,6 +460,12 @@
     "triggers": [
       {
         "name": "Совет",
+        "event": "None",
+        "eventObject": "",
+        "eventWave": 0,
+        "eventGroup": "",
+        "eventUnit": "",
+        "interval": 10,
         "condition": {
           "type": "TimeElapsed",
           "children": [],
@@ -485,6 +491,11 @@
           {
             "type": "Message",
             "text": "Совет: огонь взрывает ядовитые облака, а искра по воде бьёт всех, кто в ней стоит.",
+            "object": "",
+            "group": "",
+            "targetTag": "",
+            "objectState": "Activate",
+            "win": true,
             "wave": 0,
             "cellEffect": "",
             "marker": "",
@@ -508,10 +519,18 @@
             "aiProfile": ""
           }
         ],
-        "once": true
+        "once": true,
+        "cooldown": 0,
+        "maxFires": 0
       },
       {
         "name": "Босс пал",
+        "event": "None",
+        "eventObject": "",
+        "eventWave": 0,
+        "eventGroup": "",
+        "eventUnit": "",
+        "interval": 10,
         "condition": {
           "type": "UnitDead",
           "children": [],
@@ -537,6 +556,11 @@
           {
             "type": "Message",
             "text": "Орк-громила повержен! Гоблины дрогнули.",
+            "object": "",
+            "group": "",
+            "targetTag": "",
+            "objectState": "Activate",
+            "win": true,
             "wave": 0,
             "cellEffect": "",
             "marker": "",
@@ -560,7 +584,9 @@
             "aiProfile": ""
           }
         ],
-        "once": true
+        "once": true,
+        "cooldown": 0,
+        "maxFires": 0
       }
     ],
     "passives": [],
@@ -572,6 +598,28 @@
       "timeLimit": 0,
       "maxAliveEnemies": 0,
       "maxCreatedEnemies": 0
-    }
+    },
+    "mode": "Normal",
+    "placement": {
+      "end": "Confirm",
+      "duration": 30,
+      "budget": 30,
+      "maxUnits": 0,
+      "units": [],
+      "zoneObjects": [],
+      "zoneRadius": 2,
+      "zoneCells": [],
+      "relocateBetweenWaves": true,
+      "restoreHealth": 0.25,
+      "restoreResources": true,
+      "enemiesDuringPreparation": false,
+      "preset": [],
+      "defenderProfile": ""
+    },
+    "altTargets": [
+      { "kind": "OtherBase", "object": "", "flag": "" },
+      { "kind": "AttackDefenders", "object": "", "flag": "" }
+    ],
+    "altAfterBlocked": 15
   }
 }

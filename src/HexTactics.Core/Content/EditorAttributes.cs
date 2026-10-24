@@ -142,6 +142,12 @@ public static class EdUtil
     public static T? Attr<T>(System.Reflection.PropertyInfo prop) where T : Attribute =>
         (T?)AttrCache.GetOrAdd((prop, typeof(T)), k => Attribute.GetCustomAttribute(k.Item1, k.Item2));
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Enum, string> EnumLabels = new();
+
+    /// <summary>The [Ed] label of an enum value (its name without one).</summary>
+    public static string EnumLabel(Enum value) => EnumLabels.GetOrAdd(value, v =>
+        v.GetType().GetField(v.ToString())?.GetCustomAttributes(typeof(EdAttribute), false) is [EdAttribute ed, ..] ? ed.Label : v.ToString());
+
     public static bool IsShown(object obj, System.Reflection.PropertyInfo prop)
     {
         var a = Attr<EdShowIfAttribute>(prop);

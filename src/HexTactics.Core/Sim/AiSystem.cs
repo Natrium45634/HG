@@ -80,6 +80,9 @@ public sealed class AiSystem
             return;
         }
         UpdateMemory(u, p);
+        TrackStuck(u);
+        var dir = u.Ai.Directive;
+        string rule = u.Ai.DirectiveRule != "" ? $" (правило «{u.Ai.DirectiveRule}»)" : "";
 
         // Blocked (docs/DECISIONS_2.md §27): attack the blocker, wait, or look for a detour (handled by the move command).
         if (_sim.Blocking.BlockerOf(u) is { } blocker)
@@ -87,7 +90,7 @@ public sealed class AiSystem
             switch (u.Def.Blockable.WhenBlocked)
             {
                 case BlockedBehavior.AttackBlocker:
-                    u.Ai.TargetUnitId = blocker.Id;
+                    SetTarget(u, blocker);
                     if (TryAttack(u, blocker, p, "заблокирован — атакует блокирующего")) return;
                     FaceTowards(u, blocker.Pos);
                     Explain(u, $"заблокирован {blocker.Name} — нечем атаковать, ждёт");
@@ -98,29 +101,62 @@ public sealed class AiSystem
             }
         }
 
+        // The target base is gone or the route stays closed: an alternative target (docs/DECISIONS_4.md §59).
+        if (u.Ai.Alternative == null && NeedsAlternative(u)) ChooseAlternative(u, p);
+
+        if (dir == AiDirective.Wait)
+        {
+            Explain(u, "ждёт" + rule);
+            return;
+        }
+
         // Wave enemies with «идти по маршруту, не отвлекаясь» walk on (only blockers stop them, handled above).
-        if ((p.RouteFocus || u.Nav?.Focus == true) && u.Route != null && FollowRoute(u)) return;
+        bool focus = p.RouteFocus || u.Nav?.Focus == true || dir == AiDirective.Advance;
+        if (focus && u.Route != null && FollowRoute(u)) return;
+        if (focus && u.Route == null && u.TargetObject != "" && GoToObject(u)) return;
 
         var visible = _sim.Units.Where(e => e.Alive && _sim.IsHostile(u, e) && _sim.Vision.CanFactionSee(u.FactionId, e)).ToList();
         var cur = u.Queue.Current;
         bool busyMoving = cur != null && cur.Type == CommandType.Move && cur.Status != CommandStatus.Pending;
 
-        // Fear or low HP: retreat.
-        if (visible.Count > 0 && (u.Flags.Fear || (p.RetreatHpFraction > 0 && u.HpFraction < p.RetreatHpFraction)))
+        // Fear, low HP or a rule: retreat.
+        if (visible.Count > 0 && (dir == AiDirective.Retreat || u.Flags.Fear || (p.RetreatHpFraction > 0 && u.HpFraction < p.RetreatHpFraction)))
         {
-            if (Retreat(u, visible, p, u.Flags.Fear ? "страх" : $"HP {u.HpFraction:P0} < {p.RetreatHpFraction:P0}")) return;
+            if (Retreat(u, visible, p, dir == AiDirective.Retreat ? "отход" + rule : u.Flags.Fear ? "страх" : $"HP {u.HpFraction:P0} < {p.RetreatHpFraction:P0}")) return;
         }
 
         // Support allies.
-        if (p.Support && TrySupport(u, p)) return;
+        if ((p.Support || dir == AiDirective.Support) && TrySupport(u, p)) return;
+
+        // The centre a guard keeps: its position, its base (§64 «защитник базы»).
+        if (p.GuardBase && GuardedBase(u) is { } guarded) u.Ai.HoldCenter = guarded;
+        bool hold = p.HoldPosition || dir == AiDirective.Hold || p.GuardBase;
 
         // Only enemies some own skill can reach (layers: a melee brute ignores a high flyer it cannot hit).
         var attackable = visible.Where(e => CanHitLayer(u, e)).ToList();
         if (attackable.Count == 0 && visible.Count > 0) Explain(u, "видит врагов, но не может их поразить (слой)");
+        // A patrol reacts only inside its zone.
+        if (p.Patrol && u.Ai.HoldCenter is HexCoord pc) attackable = attackable.Where(e => HexCoord.Distance(e.Pos, pc) <= p.PatrolRadius + 2).ToList();
+        // A route enemy: whom it may leave its route for, and when it comes back (docs/DECISIONS_4.md §59).
+        bool onRoute = u.Route != null && (u.Nav != null || u.RouteId != "");
+        if (onRoute && p.Encounter != null)
+        {
+            attackable = EncounterTargets(u, p, p.Encounter, attackable, out var giveUp);
+            if (giveUp != "" && u.Ai.OffRouteSince >= 0)
+            {
+                if (ReturnToRoute(u, giveUp)) return;
+            }
+        }
         if (attackable.Count > 0)
         {
-            var target = ChooseTarget(u, attackable, p, out var why);
-            u.Ai.TargetUnitId = target.Id;
+            var target = ChooseTarget(u, attackable, p, dir, out var why);
+            SetTarget(u, target);
+            if (onRoute && u.Ai.OffRouteSince < 0)
+            {
+                u.Ai.OffRouteSince = _sim.Tick;
+                u.Ai.RouteAnchor = u.Pos;
+            }
+            if (p.LeadAllies) ShareTarget(u, target);
             if (TryAttack(u, target, p, why)) return;
             if (p.KeepDistance && TryKeepDistance(u, visible, p)) return;
             bool defensive = p.Aggression < 0.5 && HexCoord.Distance(u.Pos, target.Pos) > p.PreferredRange + 3;
@@ -130,20 +166,28 @@ public sealed class AiSystem
                 FaceTowards(u, target.Pos);
                 return;
             }
-            if (Approach(u, target, p, why)) return;
+            if (Approach(u, target, p, why, hold)) return;
             FaceTowards(u, target.Pos);
             Explain(u, $"цель {target.Name} ({why}) недостижима — держит позицию");
+            // Out of reach of every own attack and no way to get closer: a real «цель недостижима».
+            if (StructureSystem.DistanceTo(u.Pos, target) > MaxReach(u) && !hold) Problem(u, "unreachable", $"цель {target.Name} недостижима");
             return;
         }
 
         u.Ai.TargetUnitId = -1;
         if (busyMoving) return;
 
+        // Back to the route after a fight: the nearest valid point ahead, not the place it left.
+        if (onRoute && u.Ai.OffRouteSince >= 0 && ReturnToRoute(u, "врагов рядом нет")) return;
+        if (dir == AiDirective.ReturnToRoute && onRoute && ReturnToRoute(u, "правило" + rule)) return;
+
         // A wave route: go point by point when no enemy is in reach.
         if (u.Route != null && FollowRoute(u)) return;
+        if (u.Route == null && u.TargetObject != "" && GoToObject(u)) return;
+        if (u.Ai.Alternative != null && FollowAlternative(u, p)) return;
 
         // Pursue last known enemy position.
-        if (p.Pursue && u.Ai.KnownEnemies.Count > 0 && !p.HoldPosition)
+        if (p.Pursue && u.Ai.KnownEnemies.Count > 0 && !hold)
         {
             var last = u.Ai.KnownEnemies.OrderByDescending(k => k.Value.Tick).ThenBy(k => HexCoord.Distance(u.Pos, k.Value.Pos)).First();
             if (HexCoord.Distance(u.Pos, last.Value.Pos) <= 1)
@@ -156,13 +200,22 @@ public sealed class AiSystem
             }
         }
 
-        // Hold position.
-        if (u.Ai.HoldCenter is HexCoord center && p.HoldPosition && HexCoord.Distance(u.Pos, center) > p.HoldRadius)
+        // Hold position (its own hex, its base).
+        if (u.Ai.HoldCenter is HexCoord center && hold && !p.Patrol && HexCoord.Distance(u.Pos, center) > p.HoldRadius)
         {
-            if (MoveTo(u, center, 0, "возвращается на позицию")) return;
+            if (MoveTo(u, center, 0, p.GuardBase ? "возвращается к охраняемой базе" : "возвращается на позицию")) return;
         }
 
-        if (p.AdvanceWhenIdle && !p.HoldPosition && (cur == null || cur.Type == CommandType.Defend))
+        // Stay with the pack.
+        if ((p.StayWithAllies || dir == AiDirective.Guard) && KeepWithAllies(u, p)) return;
+
+        // Patrol around the position.
+        if (p.Patrol && Patrol(u, p)) return;
+
+        // «Свободный бой» and autotests: look for the other side (docs/DECISIONS_4.md §64).
+        if (!hold && (_sim.Scenario.Mode is BattleMode.FreeBattle || (_sim.Scenario.Mode is BattleMode.AutoTest && u.Route == null && u.Wave < 0)) && Seek(u)) return;
+
+        if (p.AdvanceWhenIdle && !hold && (cur == null || cur.Type == CommandType.Defend))
         {
             var start = _sim.Map.Def.Markers.Where(m => m.Type == MarkerType.PlayerStart).Select(m => (HexCoord?)m.C).FirstOrDefault();
             var goal = start ?? MapCenter();
@@ -176,6 +229,377 @@ public sealed class AiSystem
         }
         if (cur == null) Explain(u, "врагов не видно — ожидание");
     }
+
+    // ------------------------------------------------------------------ part 4: encounters, return, alternatives
+
+    /// <summary>The longest range of the unit's attacks.</summary>
+    private int MaxReach(Unit u) => AttackOptions(u).Select(s => s.Targeting is TargetingMode.Unit or TargetingMode.Cell ? s.RangeMax : Math.Max(1, s.Stages.FirstOrDefault()?.Area.Size ?? 1))
+        .DefaultIfEmpty(1).Max();
+
+    /// <summary>A new target is logged (the report counts target changes).</summary>
+    private void SetTarget(Unit u, Unit target)
+    {
+        int before = u.Ai.TargetUnitId;
+        u.Ai.TargetUnitId = target.Id;
+        if (before >= 0 && before != target.Id && _sim.GetUnit(before)?.Alive == true)
+            _sim.Emit(SimEventType.TargetChanged, LogLevel.Diagnostic, $"ИИ {u.Name}: смена цели → {target.Name}", u.Id, target.Id);
+    }
+
+    /// <summary>An AI problem for the diagnostics and the report: once per kind per few seconds.</summary>
+    private void Problem(Unit u, string kind, string text)
+    {
+        if (u.Ai.Problems.TryGetValue(kind, out var at) && _sim.Tick - at < _sim.TicksFor(5)) return;
+        u.Ai.Problems[kind] = _sim.Tick;
+        _sim.Emit(SimEventType.AiProblem, LogLevel.Diagnostic, $"ИИ {u.Name}: {text}", u.Id, -1, u.Pos, damageType: kind);
+    }
+
+    /// <summary>A unit with a move order that has not moved for a while is stuck.</summary>
+    private void TrackStuck(Unit u)
+    {
+        if (u.Pos != u.Ai.LastPos)
+        {
+            u.Ai.LastPos = u.Pos;
+            u.Ai.LastMovedTick = _sim.Tick;
+            return;
+        }
+        var cur = u.Queue.Current;
+        if (cur == null || cur.Type != CommandType.Move || u.Flags.BlocksMovement || _sim.Blocking.BlockerOf(u) != null) return;
+        // Waiting for AP or for a hex to free is not being stuck: only a full AP pool that does not move for long is.
+        if (u.Ap < u.ApMax - 1e-6 || cur.Status == CommandStatus.Waiting) return;
+        if (_sim.Tick - u.Ai.LastMovedTick > _sim.TicksFor(10)) Problem(u, "stuck", "застрял: приказ на движение, но позиция не меняется");
+    }
+
+    /// <summary>«Непосредственно угрожает»: next to the unit and attacking it (its target, or it hit the unit just now).</summary>
+    private bool ThreatensMe(Unit u, Unit e) =>
+        e.Ai.TargetUnitId == u.Id || e.Queue.Items.Any(q => q.TargetUnitId == u.Id)
+        || u.LastAttackerId == e.Id && _sim.Tick - u.LastAttackedTick <= _sim.TicksFor(3);
+
+    private bool IsMoving(Unit e) => e.StepTo.HasValue || e.Queue.Current is { Type: CommandType.Move, Status: not CommandStatus.Pending };
+
+    private bool TypeMatches(Unit e, string t) => e.Tag == t || _sim.Conditions.TypeMatches(e, t);
+
+    /// <summary>
+    /// The defenders a route enemy may fight now: allowed types, a moving target only if allowed, within the pursuit
+    /// range of its route (less with a higher «приоритет базы»); a runner or a tank — only those next to it.
+    /// <paramref name="giveUp"/> says why it must go back (time off the route, the return condition).
+    /// </summary>
+    private List<Unit> EncounterTargets(Unit u, AiProfileDef p, EncounterDef enc, List<Unit> attackable, out string giveUp)
+    {
+        giveUp = "";
+        if (u.Ai.OffRouteSince >= 0)
+        {
+            if (enc.DistractionSeconds > 0 && _sim.Tick - u.Ai.OffRouteSince > _sim.TicksFor(enc.DistractionSeconds))
+                giveUp = $"вне маршрута дольше {enc.DistractionSeconds:0.#} с";
+            else if (enc.ReturnCondition != null && _sim.Conditions.Evaluate(enc.ReturnCondition, new ConditionContext(u, _sim.GetUnit(u.Ai.TargetUnitId), u.Pos, null)))
+                giveUp = "выполнено условие возврата";
+            // Going back it fights nobody (a blocker is answered before this).
+            if (giveUp != "") return new List<Unit>();
+        }
+        // Just back on the route: no new chase for a while, only a direct threat is answered.
+        bool resting = _sim.Tick < u.Ai.NoChaseUntil;
+        int range = enc.PursuitRange >= 0 ? enc.PursuitRange : (int)Math.Round(u.Stat(Stats.PursuitRange));
+        range = (int)Math.Floor(range * (1 - Math.Clamp(enc.BasePriority, 0, 1)) + 1e-9);
+        if (enc.BasePriority >= 1 || enc.Mode is EncounterMode.Runner or EncounterMode.Tank) range = 0;
+        var anchor = u.Ai.RouteAnchor ?? u.Pos;
+        var list = attackable.Where(e =>
+        {
+            int d = StructureSystem.DistanceTo(u.Pos, e);
+            if (d <= 1 && ThreatensMe(u, e)) return true; // a direct threat is always answered
+            if (resting) return false;
+            if (enc.AllowedTargets.Count > 0 && !enc.AllowedTargets.Any(t => TypeMatches(e, t))) return false;
+            if (!enc.AttackMoving && IsMoving(e)) return false;
+            return StructureSystem.DistanceTo(anchor, e) <= range;
+        }).ToList();
+        if (enc.Mode == EncounterMode.PackGuard)
+        {
+            // Those who attack the pack first.
+            var attackers = list.Where(e => _sim.GetUnit(e.Ai.TargetUnitId) is { } t && t != u && t.FactionId == u.FactionId).ToList();
+            if (attackers.Count > 0) list = attackers;
+        }
+        if (!enc.ThroughObstacles && list.Count > 0)
+        {
+            // A target behind obstacles (the path is much longer than the line) is not pursued.
+            list = list.Where(e =>
+            {
+                int d = StructureSystem.DistanceTo(u.Pos, e);
+                if (d <= 2) return true;
+                var path = _sim.Pathfinder.Find(_sim, u, u.Pos, StructureSystem.AimCell(e, u.Pos), new PathOptions { GoalTolerance = 1, MaxExpanded = 800 });
+                return path.Found && path.Path.Count <= d * 2 + 2;
+            }).ToList();
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// Back to the route (docs/DECISIONS_4.md §59): the nearest valid point by path cost — a node ahead on the graph
+    /// or a hex left on the current edge; none reachable — the block is reported.
+    /// </summary>
+    private bool ReturnToRoute(Unit u, string why)
+    {
+        if (u.AiProfile?.Encounter is { } enc) u.Ai.NoChaseUntil = _sim.Tick + _sim.TicksFor(Math.Max(3, enc.DistractionSeconds));
+        u.Ai.OffRouteSince = -1;
+        u.Ai.RouteAnchor = null;
+        u.Ai.TargetUnitId = -1;
+        if (u.Route == null) return false;
+        var candidates = new List<(HexCoord C, string Node, int Index)>();
+        for (int i = Math.Max(0, u.RouteIndex - 1); i < u.Route.Count; i += 2) candidates.Add((u.Route[i], "", i));
+        if (u.Route.Count > 0) candidates.Add((u.Route[^1], "", u.Route.Count - 1));
+        if (u.Nav != null)
+            foreach (var n in _sim.Routes.AheadNodes(u).OrderBy(n => HexCoord.Distance(u.Pos, n.C)).Take(8))
+                candidates.Add((n.C, n.Id, -1));
+        var best = candidates.Distinct().OrderBy(c => HexCoord.Distance(u.Pos, c.C)).Take(12)
+            .Select(c => (c, path: c.C == u.Pos ? null : _sim.Pathfinder.Find(_sim, u, u.Pos, c.C, new PathOptions { MaxExpanded = 1500 })))
+            .Where(x => x.path == null || x.path.Found)
+            .OrderBy(x => x.path?.Cost ?? 0).ThenBy(x => x.c.Index < 0 ? 1 : 0).Select(x => ((HexCoord C, string Node, int Index)?)x.c).FirstOrDefault();
+        if (best == null)
+        {
+            Problem(u, "route_blocked", "нет пути ни к одной точке своего маршрута — блокировка");
+            if (u.Ai.BlockedSince < 0) u.Ai.BlockedSince = _sim.Tick;
+            return false;
+        }
+        var b = best.Value;
+        if (b.Node != "")
+        {
+            _sim.Routes.Rejoin(u, b.Node);
+            Explain(u, $"возвращается на маршрут ({why}): ближайший узел «{b.Node}»");
+        }
+        else
+        {
+            u.RouteIndex = b.Index;
+            Explain(u, $"возвращается на маршрут ({why}): гекс {b.C}");
+        }
+        return FollowRoute(u);
+    }
+
+    /// <summary>The enemy's base is destroyed, or its route stays closed longer than the scenario allows.</summary>
+    private bool NeedsAlternative(Unit u)
+    {
+        if (u.Wave < 0 && u.RouteId == "") return false;
+        if (u.TargetObject != "" && _sim.Structures.Of(u.TargetObject) is { Alive: false }) return true;
+        double after = _sim.Scenario.Def?.AltAfterBlocked ?? 0;
+        return after > 0 && u.Ai.BlockedSince >= 0 && _sim.Tick - u.Ai.BlockedSince > _sim.TicksFor(after);
+    }
+
+    /// <summary>The first alternative of the profile (or the scenario) that can be done now.</summary>
+    private void ChooseAlternative(Unit u, AiProfileDef p)
+    {
+        var sc = _sim.Scenario.Def;
+        var list = p.AltTargets.Count > 0 ? p.AltTargets : sc?.AltTargets ?? new List<AltTargetDef>();
+        string lost = u.TargetObject != "" && sc?.Object(u.TargetObject) is { } o ? $"«{o.DisplayName}» {(_sim.Structures.Of(o.Id)?.Alive == false ? "уничтожена" : "недоступна")}" : "маршрут закрыт";
+        foreach (var a in list)
+        {
+            switch (a.Kind)
+            {
+                case AltTargetKind.OtherBase:
+                {
+                    var other = sc?.Objects.Where(b => b.Type == ScenarioObjectType.PlayerBase && b.Id != u.TargetObject && _sim.Structures.Of(b.Id) is { Alive: true } s && _sim.IsHostile(u, s))
+                        .OrderByDescending(b => b.Health?.Importance ?? 0).ThenBy(b => b.Cells().Min(c => HexCoord.Distance(u.Pos, c))).FirstOrDefault();
+                    if (other == null) continue;
+                    Switch(u, AltTargetKind.OtherBase, $"{lost} — идёт к базе «{other.DisplayName}»");
+                    u.TargetObject = other.Id;
+                    return;
+                }
+                case AltTargetKind.AttackDefenders:
+                    if (!_sim.Units.Any(e => e.Alive && !e.IsStructure && _sim.IsHostile(u, e))) continue;
+                    Switch(u, AltTargetKind.AttackDefenders, $"{lost} — атакует защитников");
+                    u.TargetObject = "";
+                    return;
+                case AltTargetKind.CaptureObject:
+                {
+                    var obj = a.Object != "" ? sc?.Object(a.Object)
+                        : sc?.Objects.Where(b => b.Type is ScenarioObjectType.Goal or ScenarioObjectType.Checkpoint or ScenarioObjectType.Interaction)
+                            .OrderBy(b => b.Cells().Min(c => HexCoord.Distance(u.Pos, c))).FirstOrDefault();
+                    if (obj == null) continue;
+                    Switch(u, AltTargetKind.CaptureObject, $"{lost} — идёт захватить «{obj.DisplayName}»");
+                    u.TargetObject = obj.Id;
+                    return;
+                }
+                case AltTargetKind.BreakObstacle:
+                {
+                    var cell = _sim.Map.Cells.Where(c => c.Terrain.DestructibleHp > 0).OrderBy(c => HexCoord.Distance(u.Pos, c.Coord)).FirstOrDefault();
+                    if (cell == null) continue;
+                    Switch(u, AltTargetKind.BreakObstacle, $"{lost} — ломает препятствие {cell.Coord}");
+                    u.Ai.AltCell = cell.Coord;
+                    u.TargetObject = "";
+                    return;
+                }
+                case AltTargetKind.Stop:
+                    Switch(u, AltTargetKind.Stop, $"{lost} — останавливается");
+                    u.TargetObject = "";
+                    u.Ai.HoldCenter = u.Pos;
+                    return;
+                case AltTargetKind.Retreat:
+                {
+                    var home = u.SpawnBase != "" ? sc?.Object(u.SpawnBase) : null;
+                    if (home == null) continue;
+                    Switch(u, AltTargetKind.Retreat, $"{lost} — отступает к «{home.DisplayName}»");
+                    u.TargetObject = "";
+                    u.Ai.AltCell = home.Anchor;
+                    return;
+                }
+                case AltTargetKind.Event:
+                    Switch(u, AltTargetKind.Event, $"{lost} — событие «{a.Flag}»");
+                    _sim.Scenario.SetFlag(a.Flag);
+                    u.TargetObject = "";
+                    u.Ai.HoldCenter = u.Pos;
+                    return;
+            }
+        }
+        Switch(u, AltTargetKind.Stop, $"{lost} — альтернативной цели нет, останавливается");
+        u.TargetObject = "";
+    }
+
+    private void Switch(Unit u, AltTargetKind kind, string text)
+    {
+        u.Ai.Alternative = kind;
+        u.Ai.BlockedSince = -1;
+        u.Route = null;
+        u.Nav = null;
+        u.Ai.OffRouteSince = -1;
+        _sim.Emit(SimEventType.AiDecision, LogLevel.Normal, $"{u.Name}: {text}", u.Id, -1, u.Pos);
+        Explain(u, text);
+    }
+
+    private bool FollowAlternative(Unit u, AiProfileDef p)
+    {
+        switch (u.Ai.Alternative)
+        {
+            case AltTargetKind.AttackDefenders:
+                return Seek(u);
+            case AltTargetKind.BreakObstacle when u.Ai.AltCell is HexCoord c:
+            {
+                var cell = _sim.Map.Get(c);
+                if (cell == null || cell.Terrain.DestructibleHp <= 0)
+                {
+                    u.Ai.Alternative = null;
+                    return false;
+                }
+                return BreakObstacle(u, cell);
+            }
+            case AltTargetKind.Retreat when u.Ai.AltCell is HexCoord home:
+                if (HexCoord.Distance(u.Pos, home) <= 1)
+                {
+                    Explain(u, "отступил к своей базе");
+                    return true;
+                }
+                return MoveTo(u, home, 1, "отступает к своей базе");
+            case AltTargetKind.Stop:
+            case AltTargetKind.Event:
+                Explain(u, "остановился (альтернативная цель)");
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Goes to its target object (no route): the object's nearest hex.</summary>
+    private bool GoToObject(Unit u)
+    {
+        var o = _sim.Scenario.Def?.Object(u.TargetObject);
+        if (o == null) return false;
+        var cell = o.Cells().OrderBy(c => HexCoord.Distance(u.Pos, c)).First();
+        if (HexCoord.Distance(u.Pos, cell) <= 1) return false;
+        if (MoveTo(u, cell, 1, $"идёт к «{o.DisplayName}»")) return true;
+        Problem(u, "no_path", $"нет пути к «{o.DisplayName}»");
+        if (u.Ai.BlockedSince < 0) u.Ai.BlockedSince = _sim.Tick;
+        return false;
+    }
+
+    /// <summary>Attacks a destructible obstacle with its basic attack (or a skill that hits cells).</summary>
+    private bool BreakObstacle(Unit u, Cell cell)
+    {
+        var skill = new[] { u.BasicAttack }.Concat(u.Skills).FirstOrDefault(s => s != null && Affordable(u, s) && s.Targeting == TargetingMode.Cell
+            && s.Stages.Any(st => st.Effects.Any(e => e.Type is EffectType.DestroyObstacle or EffectType.Damage)));
+        if (skill != null)
+        {
+            var chk = _sim.Skills.Validate(u, skill, cell.Coord, -1, null, u.Pos, u.Facing, checkCosts: false);
+            if (chk.Ok)
+            {
+                if (u.Queue.Current is { IsAttackLike: true }) return true;
+                Issue(u, Command.Skill(skill.Id, cell.Coord), $"ломает препятствие {cell.Coord} навыком «{skill.DisplayName}»");
+                return true;
+            }
+        }
+        if (HexCoord.Distance(u.Pos, cell.Coord) <= 1)
+        {
+            // Without a skill for cells it hits the obstacle by its base damage (the same rules as an obstacle hit).
+            _sim.CellEffects.DamageObstacle(cell, (int)Math.Max(1, Math.Round(u.Stat(Stats.Power) + 5)), u, "ломает препятствие");
+            u.BusyUntil = _sim.Tick + _sim.TicksFor(1);
+            Explain(u, $"ломает препятствие {cell.Coord}");
+            return true;
+        }
+        return MoveTo(u, cell.Coord, 1, $"идёт ломать препятствие {cell.Coord}");
+    }
+
+    /// <summary>«Свободный бой»: goes to the nearest unit of the other side it knows nothing better about.</summary>
+    private bool Seek(Unit u)
+    {
+        var e = _sim.Units.Where(x => x.Alive && !x.IsStructure && _sim.IsHostile(u, x)).OrderBy(x => HexCoord.Distance(u.Pos, x.Pos)).ThenBy(x => x.Id).FirstOrDefault()
+                ?? _sim.Units.Where(x => x.Alive && _sim.IsHostile(u, x)).OrderBy(x => HexCoord.Distance(u.Pos, x.Pos)).ThenBy(x => x.Id).FirstOrDefault();
+        if (e == null) return false;
+        if (StructureSystem.DistanceTo(u.Pos, e) <= 1) return false;
+        if (MoveTo(u, StructureSystem.AimCell(e, u.Pos), 1, $"ищет противника: идёт к {e.Name}")) return true;
+        Problem(u, "no_path", $"нет пути к противнику {e.Name}");
+        return false;
+    }
+
+    /// <summary>The own base a «защитник базы» keeps: the highest defence priority, then the nearest.</summary>
+    private HexCoord? GuardedBase(Unit u)
+    {
+        var sc = _sim.Scenario.Def;
+        if (sc == null) return null;
+        var b = sc.Objects.Where(o => o.Type == ScenarioObjectType.PlayerBase && _sim.Structures.Of(o.Id) is { Alive: true } s && s.FactionId == u.FactionId)
+            .OrderByDescending(o => o.Health?.DefensePriority ?? 0).ThenBy(o => o.Cells().Min(c => HexCoord.Distance(u.Pos, c))).FirstOrDefault();
+        return b?.Cells().OrderBy(c => HexCoord.Distance(u.Pos, c)).First();
+    }
+
+    /// <summary>«Вести союзников»: nearby allies of the leader attack its target for a while.</summary>
+    private void ShareTarget(Unit leader, Unit target)
+    {
+        foreach (var a in _sim.Units)
+        {
+            if (a == leader || !a.Alive || !a.AiControlled || a.FactionId != leader.FactionId || a.IsStructure) continue;
+            if (HexCoord.Distance(a.Pos, leader.Pos) > 6) continue;
+            a.Ai.SharedTarget = target.Id;
+            a.Ai.SharedUntil = _sim.Tick + _sim.TicksFor(3);
+        }
+    }
+
+    /// <summary>«Держаться союзников»: back towards the nearest ally when too far from every one.</summary>
+    private bool KeepWithAllies(Unit u, AiProfileDef p)
+    {
+        var allies = _sim.Units.Where(a => a != u && a.Alive && !a.IsStructure && a.FactionId == u.FactionId).ToList();
+        if (allies.Count == 0) return false;
+        var near = allies.OrderBy(a => HexCoord.Distance(u.Pos, a.Pos)).First();
+        if (HexCoord.Distance(u.Pos, near.Pos) <= Math.Max(1, p.HoldRadius)) return false;
+        return MoveTo(u, near.Pos, 1, $"держится союзников: к {near.Name}");
+    }
+
+    /// <summary>Walks around its position: the six corners of a ring of the patrol radius.</summary>
+    private bool Patrol(Unit u, AiProfileDef p)
+    {
+        if (u.Ai.HoldCenter is not HexCoord c) return false;
+        var points = new List<HexCoord>();
+        for (int i = 0; i < 6; i++)
+        {
+            var pt = c;
+            for (int k = 0; k < p.PatrolRadius; k++) pt = pt.Neighbor((HexDirection)i);
+            if (_sim.Map.Get(pt) is { } cell && MovementRules.CanPassTerrain(_sim, u, cell.Terrain)) points.Add(pt);
+        }
+        if (points.Count == 0) return false;
+        for (int guard = 0; guard < points.Count; guard++)
+        {
+            var goal = points[u.Ai.PatrolIndex % points.Count];
+            if (HexCoord.Distance(u.Pos, goal) <= 0)
+            {
+                u.Ai.PatrolIndex++;
+                continue;
+            }
+            if (MoveTo(u, goal, 0, $"патрулирует: точка {u.Ai.PatrolIndex % points.Count + 1}/{points.Count}")) return true;
+            u.Ai.PatrolIndex++;
+        }
+        return false;
+    }
+
 
     /// <summary>Moves to the next point of the unit's route; false when the route is finished.</summary>
     private bool FollowRoute(Unit u)
@@ -194,18 +618,37 @@ public sealed class AiSystem
                 else break;
             }
             if (u.RouteIndex < route.Count)
-                return MoveTo(u, route[u.RouteIndex], 0, u.Nav != null
+            {
+                bool moving = MoveTo(u, route[u.RouteIndex], 0, u.Nav != null
                     ? $"идёт по маршруту «{u.Nav.Route}»: ребро {u.Nav.Edge}, гекс {u.RouteIndex + 1}/{route.Count}"
                     : $"идёт по маршруту: точка {u.RouteIndex + 1}/{route.Count}");
+                if (moving) u.Ai.BlockedSince = -1;
+                else if (HexCoord.Distance(u.Pos, route[u.RouteIndex]) > 1
+                         && !_sim.Pathfinder.Find(_sim, u, u.Pos, route[u.RouteIndex], new PathOptions { IgnoreUnits = true, MaxExpanded = 3000 }).Found)
+                {
+                    // No path to the next hex of the route even past the units: the route is blocked (an alternative
+                    // after a while). A crowd on the way is only waiting.
+                    if (u.Ai.BlockedSince < 0) u.Ai.BlockedSince = _sim.Tick;
+                    Problem(u, "no_path", $"нет пути к точке маршрута {route[u.RouteIndex]}");
+                }
+                return moving;
+            }
             if (u.Nav == null) return false;
             switch (_sim.Routes.Advance(u, out var why))
             {
                 case RouteStep.Wait:
                     Explain(u, why);
+                    // A closed exit (not a dwell) counts as a blocked route.
+                    if (why.StartsWith("нет доступного выхода", StringComparison.Ordinal))
+                    {
+                        if (u.Ai.BlockedSince < 0) u.Ai.BlockedSince = _sim.Tick;
+                        Problem(u, "route_blocked", why);
+                    }
                     return true;
                 case RouteStep.Finished:
                     return false;
             }
+            u.Ai.BlockedSince = -1;
         }
         return false;
     }
@@ -231,9 +674,57 @@ public sealed class AiSystem
         return false;
     }
 
-    private Unit ChooseTarget(Unit u, List<Unit> visible, AiProfileDef p, out string why)
+    private Unit ChooseTarget(Unit u, List<Unit> visible, AiProfileDef p, AiDirective dir, out string why)
     {
-        switch (p.TargetPriority)
+        // «Установить цель» by an event, then the leader's target, before the profile's priority.
+        if (u.Ai.ForcedTargetTag != "" && visible.Where(e => TypeMatches(e, u.Ai.ForcedTargetTag)).OrderBy(e => HexCoord.Distance(u.Pos, e.Pos)).ThenBy(e => e.Id).FirstOrDefault() is { } forced)
+        {
+            why = "цель задана событием";
+            return forced;
+        }
+        if (u.Ai.SharedTarget >= 0 && _sim.Tick < u.Ai.SharedUntil && visible.FirstOrDefault(e => e.Id == u.Ai.SharedTarget) is { } shared)
+        {
+            why = "цель вожака";
+            return shared;
+        }
+        var priority = dir switch
+        {
+            AiDirective.AttackWeakest => AiTargetPriority.Weakest,
+            AiDirective.AttackDangerous => AiTargetPriority.MostDangerous,
+            AiDirective.DefendBase => AiTargetPriority.ThreatToBase,
+            _ => p.TargetPriority,
+        };
+        switch (priority)
+        {
+            case AiTargetPriority.Isolated:
+            {
+                why = "изолированная";
+                double Alone(Unit e) => _sim.Units.Where(a => a != e && a.Alive && !a.IsStructure && a.FactionId == e.FactionId).Select(a => (double)HexCoord.Distance(a.Pos, e.Pos)).DefaultIfEmpty(99).Min();
+                return visible.OrderByDescending(Alone).ThenBy(e => e.HpFraction).ThenBy(e => HexCoord.Distance(u.Pos, e.Pos)).ThenBy(e => e.Id).First();
+            }
+            case AiTargetPriority.ThreatToBase:
+            {
+                var bases = _sim.Units.Where(b => b.Alive && b.IsStructure && b.FactionId == u.FactionId).ToList();
+                if (bases.Count > 0)
+                {
+                    why = "угрожает базе";
+                    return visible.Where(e => !e.IsStructure).DefaultIfEmpty(visible[0])
+                        .OrderBy(e => bases.Min(b => StructureSystem.DistanceTo(e.Pos, b))).ThenBy(e => HexCoord.Distance(u.Pos, e.Pos)).ThenBy(e => e.Id).First()!;
+                }
+                break;
+            }
+            case AiTargetPriority.ByTypes when p.TargetTypes.Count > 0:
+            {
+                var preferred = visible.Where(e => p.TargetTypes.Any(t => TypeMatches(e, t))).ToList();
+                if (preferred.Count > 0)
+                {
+                    why = "предпочитаемая цель";
+                    return preferred.OrderBy(e => HexCoord.Distance(u.Pos, e.Pos)).ThenBy(e => e.Id).First();
+                }
+                break;
+            }
+        }
+        switch (priority)
         {
             case AiTargetPriority.Weakest:
                 why = "самая слабая";
@@ -333,6 +824,8 @@ public sealed class AiSystem
             var chk = _sim.Skills.Validate(u, s, target.Pos, target.Id, u.Pos.DirectionTo(target.Pos), u.Pos, u.Facing, checkCosts: false);
             if (!chk.Ok) continue;
             double score = ExpectedValue(u, s, target, u.Pos);
+            // «Предпочитать контроль»: stuns, roots and slows first.
+            if (p.PreferControl && IsControl(s)) score = Math.Max(score, 0) + 50;
             if (score > bestScore)
             {
                 bestScore = score;
@@ -340,6 +833,7 @@ public sealed class AiSystem
             }
         }
         if (best == null || bestScore <= 0 && best != u.BasicAttack) return false;
+        if (p.PreferControl && IsControl(best)) why += ", контроль";
 
         foreach (var q in u.Queue.Items)
             if (q.IsAttackLike && q.TargetUnitId == target.Id && (q.Status != CommandStatus.Pending || u.Queue.Current == q))
@@ -349,6 +843,10 @@ public sealed class AiSystem
         Issue(u, cmd, $"атакует {target.Name} ({why}) навыком «{best.DisplayName}»");
         return true;
     }
+
+    /// <summary>A skill that controls: it applies a status that stops moving or acting, or slows.</summary>
+    private bool IsControl(SkillDef s) => s.Stages.Any(st => st.Effects.Any(e => e.Type == EffectType.ApplyStatus && _sim.Content.Status(e.Status) is { } sd
+        && (sd.Tags.Contains("control") || sd.Levels.Any(l => l.Flags.BlocksMovement || l.Flags.BlocksActions || l.Flags.BlocksSkills))));
 
     private Command MakeSkillCommand(Unit u, SkillDef s, Unit target)
     {
@@ -361,7 +859,7 @@ public sealed class AiSystem
         };
     }
 
-    private bool Approach(Unit u, Unit target, AiProfileDef p, string why)
+    private bool Approach(Unit u, Unit target, AiProfileDef p, string why, bool hold)
     {
         var options = AttackOptions(u).Where(s => Affordable(u, s)).ToList();
         if (options.Count == 0 && u.BasicAttack != null) options.Add(u.BasicAttack);
@@ -380,7 +878,7 @@ public sealed class AiSystem
             return true;
 
         // Melee: A* to any cell next to the target (cheap). Ranged: bounded flood + range/LoS filter.
-        if (maxRange <= 1 && !p.HoldPosition)
+        if (maxRange <= 1 && !hold)
         {
             var path = _sim.Pathfinder.Find(_sim, u, u.Pos, aim, new PathOptions { GoalTolerance = 1, HazardPenalty = p.HazardAvoidance, MaxExpanded = 3000 });
             var dest = path.Found ? path.End : path.Nearest;
@@ -402,7 +900,7 @@ public sealed class AiSystem
             int d = HexCoord.Distance(c, at);
             int bonus = _sim.Skills.RangeBonus(skill, c, at);
             if (d < minRange || d > maxRange + bonus) continue;
-            if (p.HoldPosition && u.Ai.HoldCenter is HexCoord hc && HexCoord.Distance(c, hc) > p.HoldRadius) continue;
+            if (hold && u.Ai.HoldCenter is HexCoord hc && HexCoord.Distance(c, hc) > p.HoldRadius) continue;
             if (skill.RequiresLoS && !_sim.Los.Has(_sim.Map, _sim.Rules, c, at)) continue;
             var cell = _sim.Map.Get(c)!;
             double score = kv.Value + Math.Abs(d - desired) * 0.7 + (cell.IsHazard ? p.HazardAvoidance : 0);
@@ -415,7 +913,7 @@ public sealed class AiSystem
         if (best == null)
         {
             // Get closer even if no attack cell is reachable now.
-            if (p.HoldPosition) return false;
+            if (hold) return false;
             return MoveTo(u, aim, Math.Max(1, minRange), $"сближается с {target.Name} ({why})");
         }
         if (best.Value == u.Pos) return false;

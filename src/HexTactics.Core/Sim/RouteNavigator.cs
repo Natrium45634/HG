@@ -87,6 +87,35 @@ public sealed class RouteNavigator
         }
     }
 
+    /// <summary>
+    /// Back on the route after a fight (docs/DECISIONS_4.md §59): from a node of the graph — the enemy walks to it and
+    /// goes on along the graph from there.
+    /// </summary>
+    public void Rejoin(Unit u, string nodeId)
+    {
+        var nav = u.Nav;
+        var r = nav == null ? null : _sim.Scenario.Def?.Route(nav.Route);
+        var node = r?.Node(nodeId);
+        if (nav == null || node == null) return;
+        nav.Node = node.Id;
+        nav.Edge = "";
+        nav.DwellUntil = -1;
+        nav.Finished = false;
+        u.Route = new List<HexCoord> { node.C };
+        u.RouteIndex = u.Pos == node.C ? 1 : 0;
+    }
+
+    /// <summary>Nodes the enemy may still go to: the next node of its edge (or its node) and every node reachable from it.</summary>
+    public List<RouteNodeDef> AheadNodes(Unit u)
+    {
+        var nav = u.Nav;
+        var r = nav == null ? null : _sim.Scenario.Def?.Route(nav.Route);
+        if (nav == null || r == null) return new List<RouteNodeDef>();
+        string from = nav.Edge != "" ? r.Edge(nav.Edge)?.To ?? nav.Node : nav.Node;
+        var ids = new HashSet<string>(r.Reachable(from), StringComparer.Ordinal) { from };
+        return r.Nodes.Where(n => ids.Contains(n.Id)).ToList();
+    }
+
     /// <summary>The node nearest to a hex (ties — the earlier one), the start when the route has a single node.</summary>
     private static RouteNodeDef Nearest(RouteDef r, HexCoord at) =>
         r.Nodes.OrderBy(n => HexCoord.Distance(at, n.C)).ThenBy(n => r.Nodes.IndexOf(n)).First();
@@ -107,6 +136,12 @@ public sealed class RouteNavigator
             nav.Edge = "";
             nav.Passed.Add(node.Id);
             if (node.Event != "") _sim.Scenario.SetFlag(node.Event);
+            if (node.Kind == RouteNodeKind.Checkpoint)
+            {
+                _sim.Emit(SimEventType.CheckpointReached, LogLevel.Detail, $"{u.Name}: контрольная точка «{(node.Name != "" ? node.Name : node.Id)}» маршрута «{r.DisplayName}»",
+                    u.Id, -1, node.C, damageType: node.Id);
+                _sim.Scenario.Raise(ScenarioEventType.CheckpointReached, u, node.Id);
+            }
             if (node.DwellSeconds > 0) nav.DwellUntil = _sim.Tick + _sim.TicksFor(node.DwellSeconds);
         }
         if (nav.DwellUntil >= 0)

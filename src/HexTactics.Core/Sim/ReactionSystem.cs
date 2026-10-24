@@ -178,6 +178,7 @@ public sealed class ReactionSystem
         if (!fired) return;
         Processed++;
         owner.PassiveFired[p.Id] = owner.PassiveFired.GetValueOrDefault(p.Id) + 1;
+        _sim.Emit(SimEventType.PassiveTriggered, LogLevel.Diagnostic, $"{owner.Name}: сработал пассив «{p.DisplayName}»", owner.Id, source?.Id ?? -1, damageType: p.Id);
         if (p.ApCost > 0)
         {
             owner.Ap = Math.Max(0, owner.Ap - p.ApCost);

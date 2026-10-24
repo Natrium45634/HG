@@ -95,6 +95,28 @@
       "timeLimit": 0,
       "maxAliveEnemies": 0,
       "maxCreatedEnemies": 0
-    }
+    },
+    "mode": "Normal",
+    "placement": {
+      "end": "Confirm",
+      "duration": 30,
+      "budget": 30,
+      "maxUnits": 0,
+      "units": [],
+      "zoneObjects": [],
+      "zoneRadius": 2,
+      "zoneCells": [],
+      "relocateBetweenWaves": true,
+      "restoreHealth": 0.25,
+      "restoreResources": true,
+      "enemiesDuringPreparation": false,
+      "preset": [],
+      "defenderProfile": ""
+    },
+    "altTargets": [
+      { "kind": "OtherBase", "object": "", "flag": "" },
+      { "kind": "AttackDefenders", "object": "", "flag": "" }
+    ],
+    "altAfterBlocked": 15
   }
 }

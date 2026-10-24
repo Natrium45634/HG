@@ -312,20 +312,30 @@ public sealed class PassiveDef : Def
 
 public enum AiTargetPriority
 {
-    Nearest,
-    Weakest,
-    MostDangerous,
-    LowestHpFraction,
+    [Ed("Ближайшая")] Nearest,
+    [Ed("Самая слабая")] Weakest,
+    [Ed("Самая опасная")] MostDangerous,
+    [Ed("Наименьший % здоровья")] LowestHpFraction,
+    // Part 4 (docs/DECISIONS_4.md §64).
+    [Ed("Изолированная", "Дальше всех от своих союзников")] Isolated,
+    [Ed("Угрожающая базе", "Ближе всех к своей базе")] ThreatToBase,
+    [Ed("По тегам и типам", "Сначала «предпочитаемые цели» профиля")] ByTypes,
 }
 
 /// <summary>A behaviour rule of an AI profile: a condition (self = the unit) and actions (actor = the unit).</summary>
 public sealed class AiRuleDef
 {
     [Ed("Название")] public string Name { get; set; } = "Правило";
-    [Ed("Условие")] public ConditionDef When { get; set; } = new() { Type = ConditionType.HpBelow, Fraction = 0.3 };
-    [Ed("Действия")] public List<TriggerActionDef> Actions { get; set; } = new();
+    [Ed("Приоритет", "Правила проверяются от большего приоритета; поведение задаёт первое сработавшее"), EdRange(-100, 100)] public int Priority { get; set; }
+    [Ed("Если")] public ConditionDef When { get; set; } = new() { Type = ConditionType.HpBelow, Fraction = 0.3 };
+    [Ed("То: поведение")] public AiDirective Directive { get; set; } = AiDirective.None;
+    [Ed("То: действия")] public List<TriggerActionDef> Actions { get; set; } = new();
+    [Ed("Иначе: поведение")] public AiDirective ElseDirective { get; set; } = AiDirective.None;
+    [Ed("Иначе: действия")] public List<TriggerActionDef> ElseActions { get; set; } = new();
     [Ed("Однократно", "Иначе — повторно с перезарядкой")] public bool Once { get; set; } = true;
     [Ed("Перезарядка, с"), EdRange(0, 3600), EdShowIf(nameof(Once), false)] public double Cooldown { get; set; } = 5;
+
+    public override string ToString() => $"[{Priority}] если {When.Type} → {Directive}" + (ElseDirective != AiDirective.None || ElseActions.Count > 0 ? $", иначе {ElseDirective}" : "");
 }
 
 public sealed class AiProfileDef : Def
@@ -350,4 +360,15 @@ public sealed class AiProfileDef : Def
     [Ed("Поднимать тревогу", "Сообщать союзникам о замеченном враге")] public bool Alert { get; set; } = true;
     [Ed("Наступать без обзора", "Если врагов не видно — идти к стартовой зоне игрока (или центру карты)")] public bool AdvanceWhenIdle { get; set; }
     [Ed("Идти по маршруту, не отвлекаясь", "Враг волны идёт к цели маршрута и атакует только тех, кто его блокирует")] public bool RouteFocus { get; set; }
+    // Part 4 (docs/DECISIONS_4.md §59, §64): profiles of the autobattle.
+    [Ed("Предпочитаемые цели", "Теги («tag:x»), категории, ID шаблонов — для приоритета «по тегам и типам»")] public List<string> TargetTypes { get; set; } = new();
+    [Ed("Предпочитать контроль", "Сначала навыки с оглушением, замедлением, обездвиживанием")] public bool PreferControl { get; set; }
+    [Ed("Охранять базу", "Центр удержания — своя база с наибольшим приоритетом защиты")] public bool GuardBase { get; set; }
+    [Ed("Вести союзников", "Союзники рядом атакуют цель вожака")] public bool LeadAllies { get; set; }
+    [Ed("Держаться союзников", "Не отходит от своих дальше радиуса удержания")] public bool StayWithAllies { get; set; }
+    [Ed("Ломать препятствия", "Путь закрыт разрушаемым препятствием — атакует его")] public bool BreakObstacles { get; set; }
+    [Ed("Патрулировать", "Обходит точки вокруг позиции (или маршрут-патруль) и реагирует в зоне")] public bool Patrol { get; set; }
+    [Ed("Радиус патруля"), EdRange(1, 30), EdShowIf(nameof(Patrol), true)] public int PatrolRadius { get; set; } = 3;
+    [Ed("Встреча с защитниками", "Для врагов на маршруте: преследование, отвлечение, возврат")] public EncounterDef? Encounter { get; set; }
+    [Ed("Альтернативные цели", "База уничтожена или недоступна; пусто — из сценария")] public List<AltTargetDef> AltTargets { get; set; } = new();
 }

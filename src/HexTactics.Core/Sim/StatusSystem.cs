@@ -146,7 +146,7 @@ public sealed class StatusSystem
             target.Statuses.Add(inst);
             UpdateLevel(target, inst, announce: false);
             _sim.Emit(SimEventType.StatusApplied, LogLevel.Normal,
-                $"{target.Name}: «{inst.LevelName}»{(ticks > 0 ? $" на {dur:0.#} с" : "")}", source, target.Id);
+                $"{target.Name}: «{inst.LevelName}»{(ticks > 0 ? $" на {dur:0.#} с" : "")}", source, target.Id, damageType: def.Id);
             OnLevelEntered(target, inst);
             return true;
         }

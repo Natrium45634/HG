@@ -89,7 +89,7 @@ public sealed class ObjectiveRuntime
 /// (and/or/not/in order and leaves); actions; objectives of every scenario type with dependencies,
 /// timers and logic; boss phases through the same conditions and actions.
 /// </summary>
-public sealed class ScenarioSystem
+public sealed partial class ScenarioSystem
 {
     private readonly Simulation _sim;
     private readonly List<WaveRuntime> _waves = new();
@@ -152,8 +152,11 @@ public sealed class ScenarioSystem
     public ObjectiveRuntime? Objective(string id) => _objectives.FirstOrDefault(o => o.Def.Id == id);
 
     /// <summary>Creates a simulation for a scenario (sides → player/AI factions, units placed).</summary>
-    public static Simulation Create(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false)
+    public static Simulation Create(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false)
     {
+        // «Автотест» (docs/DECISIONS_4.md §64): the player's side is driven by AI profiles as well.
+        autoPlayer |= sc.Mode == BattleMode.AutoTest;
+        string defender = sc.Placement.DefenderProfile != "" ? sc.Placement.DefenderProfile : db.Get<AiProfileDef>("ai_guard") != null ? "ai_guard" : "";
         var map = db.Get<MapDef>(sc.Map) ?? throw new InvalidOperationException($"Карта '{sc.Map}' не найдена");
         var player = new HashSet<string>(sc.Sides.Where(s => s.Controller == SideController.Player).Select(s => s.Faction));
         var ai = new HashSet<string>(sc.Sides.Where(s => s.Controller == SideController.Ai).Select(s => s.Faction));
@@ -168,6 +171,8 @@ public sealed class ScenarioSystem
             Stacking = sc.Limits.Stacking,
             FogOfWar = sc.Limits.FogOfWar && rules.Vision.FogOfWar,
             AdminMode = admin,
+            AutoPlayer = autoPlayer,
+            DefaultPlayerProfile = defender,
         });
         sim.Scenario.Load(sc);
         return sim;
@@ -204,10 +209,15 @@ public sealed class ScenarioSystem
         for (int i = 0; i < sc.Waves.Count; i++) _waves.Add(new WaveRuntime { Index = i, Def = sc.Waves[i] });
         foreach (var o in sc.Objectives.Select((d, i) => (d, i)).OrderBy(x => x.d.Priority).ThenBy(x => x.i))
             _objectives.Add(new ObjectiveRuntime { Def = o.d });
-        // Waves by time are known in advance: their warning lines start before the first enemy appears.
-        foreach (var w in _waves)
-            if (w.Def.Start == WaveStart.Time)
-                Schedule(w, _sim.TicksFor(w.Def.Time), lead: false);
+        LoadEvents(sc);
+        // «Автотест»: the defenders stand as the scenario's preset placement says.
+        if (sc.Mode == BattleMode.AutoTest) _sim.Placement.PlacePreset(free: true);
+        // Waves by time are known in advance: their warning lines start before the first enemy appears (after the
+        // preparation of «TD с расстановкой» — from its end).
+        if (!WavesHeld)
+            foreach (var w in _waves)
+                if (w.Def.Start == WaveStart.Time)
+                    Schedule(w, _sim.TicksFor(w.Def.Time), lead: false);
         if (!string.IsNullOrWhiteSpace(sc.Intro)) _sim.Emit(SimEventType.Message, LogLevel.Normal, sc.Intro);
         _sim.Vision.Recompute();
     }
@@ -387,6 +397,8 @@ public sealed class ScenarioSystem
         Warnings.RemoveWave(index);
         w.State = WaveState.Cancelled;
         _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Волна «{w.Def.Name}» отменена");
+        _sim.Emit(SimEventType.WaveEnded, LogLevel.Diagnostic, $"Волна «{w.Def.Name}» завершена: отменена", value: index);
+        Raise(ScenarioEventType.WaveEnded, null, "", index);
     }
 
     private int AliveOf(WaveRuntime w) => w.UnitIds.Count(id => _sim.GetUnit(id)?.Alive == true);
@@ -414,6 +426,7 @@ public sealed class ScenarioSystem
                 }
                 if (p.WaitReason != reason)
                 {
+                    if (p.WaitReason == "") Raise(ScenarioEventType.AliveLimitExceeded, null, p.SpawnBase, w.Index, p.Group);
                     p.WaitReason = reason;
                     _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Def.Name}»: «{p.Def.DisplayName}» ждёт — {reason}");
                 }
@@ -486,7 +499,9 @@ public sealed class ScenarioSystem
             _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Волна «{w.Def.Name}»: нет свободной клетки у {p.From}");
             return;
         }
-        string routeId = p.Route != "" ? p.Route : p.Group == "" ? w.Def.Route : "";
+        string routeId = p.Group != "" && GroupRoute(p.Group) is { Length: > 0 } switched ? switched : p.Route != "" ? p.Route : p.Group == "" ? w.Def.Route : "";
+        // «Свободный бой»: no routes — enemies look for the defenders by their AI profiles (docs/DECISIONS_4.md §64).
+        if (Mode == BattleMode.FreeBattle) routeId = "";
         var points = RoutePoints(routeId);
         var first = points != null && points.Count > 0 ? points[0] : MapCenter();
         var facing = cell.Value.DirectionTo(first == cell.Value && points != null && points.Count > 1 ? points[1] : first) ?? HexDirection.W;
@@ -531,8 +546,9 @@ public sealed class ScenarioSystem
             w.StartedTick = _sim.Tick;
             w.State = WaveState.Active;
             string msg = string.IsNullOrWhiteSpace(w.Def.Message) ? $"Волна «{w.Def.Name}»: {w.Total} противников" : w.Def.Message;
-            _sim.Emit(SimEventType.WaveStarted, LogLevel.Normal, msg, cell: p.From);
+            _sim.Emit(SimEventType.WaveStarted, LogLevel.Normal, msg, cell: p.From, value: w.Index);
             if (_sim.Rules.Autopause.WaveStarted) _sim.RequestAutopause("началась волна");
+            Raise(ScenarioEventType.WaveStarted, null, "", w.Index);
             foreach (var a in w.Def.OnStart) Execute(a, w.Def.Name, null);
         }
     }
@@ -541,6 +557,8 @@ public sealed class ScenarioSystem
     private bool SpawnBaseActive(ScenarioObjectDef b)
     {
         var sp = b.Spawn!;
+        // Switched by an event («активировать / отключить базу») — the event wins over the setting.
+        if (ObjectActive(b.Id) is { } forced) return forced;
         if (!sp.Active) return false;
         if (sp.DisableCondition != null && Evaluate(sp.DisableCondition)) return false;
         return sp.EnableCondition == null || Evaluate(sp.EnableCondition);
@@ -631,6 +649,9 @@ public sealed class ScenarioSystem
                             w.State = WaveState.Cleared;
                             w.ClearedTick = _sim.Tick;
                             _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Волна «{w.Def.Name}» отражена");
+                            _sim.Emit(SimEventType.WaveEnded, LogLevel.Diagnostic, $"Волна «{w.Def.Name}» завершена: отражена", value: w.Index);
+                            Raise(ScenarioEventType.WaveEnded, null, "", w.Index);
+                            BetweenWaves?.Invoke(w);
                             foreach (var a in w.Def.OnEnd) Execute(a, w.Def.Name, null);
                         }
                     }
@@ -688,21 +709,24 @@ public sealed class ScenarioSystem
     public void Update()
     {
         if (Def == null) return;
-        UpdateWaves();
-        Warnings.Update();
-        for (int i = 0; i < Def.Triggers.Count; i++)
+        if (!_started)
         {
-            var tr = Def.Triggers[i];
-            if (tr.Once && _firedTriggers.Contains(i)) continue;
-            if (!Evaluate(tr.Condition)) continue;
-            _firedTriggers.Add(i);
-            foreach (var a in tr.Actions) Execute(a, tr.Name, null);
-            if (!tr.Once) _firedTriggers.Remove(i);
+            _started = true;
+            Raise(ScenarioEventType.ScenarioStart);
         }
-        UpdateLeaks();
-        UpdateObjectives();
-        UpdateBosses();
+        if (Preparing) UpdatePreparation();
+        if (!WavesHeld) UpdateWaves();
+        Warnings.Update();
+        UpdateTriggers();
+        ProcessEvents();
+        if (!WavesHeld)
+        {
+            UpdateLeaks();
+            UpdateObjectives();
+            UpdateBosses();
+        }
         UpdateAiRules();
+        ProcessEvents();
     }
 
     /// <summary>Sets a scenario flag (event); flags remember when they were set (for «через N с после события»).</summary>
@@ -748,25 +772,49 @@ public sealed class ScenarioSystem
     }
 
     /// <summary>Behaviour rules of AI profiles: condition (self = the unit) → actions (actor = the unit).</summary>
+    /// <summary>
+    /// Rules of AI profiles «если — то — иначе» (docs/DECISIONS_4.md §64): from the highest priority; the first rule
+    /// whose branch sets a behaviour decides the behaviour of this tick; the actions of every branch run with the
+    /// rule's once/cooldown (each branch separately). A rule without «иначе» acts as in part 2.
+    /// </summary>
     private void UpdateAiRules()
     {
         foreach (var u in _sim.Units.ToList())
         {
             var p = u.AiProfile;
-            if (!u.Alive || p == null || p.Rules.Count == 0) continue;
-            for (int i = 0; i < p.Rules.Count; i++)
+            if (!u.Alive || p == null) continue;
+            if (p.Rules.Count == 0)
             {
-                var r = p.Rules[i];
-                var key = (u.Id, p, i);
+                u.Ai.Directive = AiDirective.None;
+                continue;
+            }
+            var directive = AiDirective.None;
+            string by = "";
+            foreach (var (r, i) in OrderedRules(p))
+            {
+                bool holds = Evaluate(r.When, u);
+                var dir = holds ? r.Directive : r.ElseDirective;
+                var acts = holds ? r.Actions : r.ElseActions;
+                if (directive == AiDirective.None && dir != AiDirective.None)
+                {
+                    directive = dir;
+                    by = holds ? r.Name : r.Name + " (иначе)";
+                }
+                if (acts.Count == 0) continue;
+                var key = (u.Id, p, holds ? i : -(i + 1));
                 if (_aiRules.TryGetValue(key, out var next) && next > _sim.Tick) continue;
-                if (!Evaluate(r.When, u)) continue;
                 _aiRules[key] = r.Once ? long.MaxValue : _sim.Tick + Math.Max(1, _sim.TicksFor(r.Cooldown));
-                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{u.Name}: правило «{r.Name}»", u.Id);
-                foreach (var a in r.Actions) Execute(a, $"{u.Name}: {r.Name}", u);
+                _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{u.Name}: правило «{r.Name}»{(holds ? "" : " — иначе")}", u.Id);
+                foreach (var a in acts) Execute(a, $"{u.Name}: {r.Name}", u);
                 if (!u.Alive || u.AiProfile != p) break;
             }
+            u.Ai.Directive = directive;
+            u.Ai.DirectiveRule = by;
         }
     }
+
+    private static IEnumerable<(AiRuleDef Rule, int Index)> OrderedRules(AiProfileDef p) =>
+        p.Rules.Select((r, i) => (r, i)).OrderByDescending(x => x.r.Priority).ThenBy(x => x.i);
 
     // ------------------------------------------------------------------ actions
 
@@ -942,8 +990,67 @@ public sealed class ScenarioSystem
                 _sim.Emit(a.Type == TriggerActionType.PlayVfx ? SimEventType.Vfx : SimEventType.Sound, LogLevel.Diagnostic, a.Text, actor?.Id ?? -1, cell: at);
                 break;
             }
+            // Part 4, stage 5 (docs/DECISIONS_4.md §68).
+            case TriggerActionType.ActivateBase:
+                SetObjectActive(a.Object, true, source);
+                break;
+            case TriggerActionType.DeactivateBase:
+                SetObjectActive(a.Object, false, source);
+                break;
+            case TriggerActionType.SetGroupRoute:
+                SetGroupRoute(a.Group, a.Route, source);
+                break;
+            case TriggerActionType.SetTarget:
+                foreach (var u in Targets(a, actor))
+                {
+                    if (a.TargetTag != "")
+                    {
+                        u.Ai.ForcedTargetTag = a.TargetTag;
+                        continue;
+                    }
+                    if (Def?.Object(a.Object) == null) break;
+                    // A new target object: the enemy leaves its route and goes straight there.
+                    u.TargetObject = a.Object;
+                    u.Route = null;
+                    u.Nav = null;
+                    u.Ai.Alternative = null;
+                }
+                _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{source}: {a.Describe()}");
+                break;
+            case TriggerActionType.SetObjectState:
+            {
+                var o = Def?.Object(a.Object);
+                if (o == null) break;
+                switch (a.ObjectState)
+                {
+                    case ObjectStateChange.Activate:
+                    case ObjectStateChange.Deactivate:
+                        SetObjectActive(o.Id, a.ObjectState == ObjectStateChange.Activate, source);
+                        break;
+                    case ObjectStateChange.Destroy:
+                        if (_sim.Structures.Of(o.Id) is { Alive: true } s) _sim.Structures.DamageStructure(s, s.Hp + s.HpMax, null, source, force: true);
+                        break;
+                    case ObjectStateChange.Repair:
+                        if (_sim.Structures.Of(o.Id) is { Alive: true } r)
+                        {
+                            r.Hp = r.HpMax;
+                            _sim.Emit(SimEventType.Heal, LogLevel.Normal, $"«{o.DisplayName}» восстановлена ({source})", -1, r.Id, r.Pos);
+                        }
+                        break;
+                }
+                break;
+            }
+            case TriggerActionType.EndScenario:
+                SetOutcome(a.Win ? BattleOutcome.Victory : BattleOutcome.Defeat, a.Text != "" ? a.Text : $"сценарий завершён: {source}");
+                break;
+            case TriggerActionType.LogDiagnostic:
+                _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"Сценарий [{source}]: {(a.Text != "" ? a.Text : "отметка")}", actor?.Id ?? -1, -1, actor?.Pos);
+                break;
         }
     }
+
+    /// <summary>A wave was cleared (between waves: restore, relocation — the placement system listens).</summary>
+    public event Action<WaveRuntime>? BetweenWaves;
 
     /// <summary>«Сменить фазу босса»: the phase starts now (its actions run once), regardless of its condition.</summary>
     private void ForcePhase(Unit u, int index, string source)
@@ -1035,7 +1142,7 @@ public sealed class ScenarioSystem
                 return _hadPlayerUnits && !_sim.Units.Any(u => u.Alive && _sim.IsPlayerFaction(u.FactionId));
             case ConditionType.SurviveTime:
             case ConditionType.TimeElapsed:
-                return _sim.Time >= c.Seconds;
+                return BattleTime >= c.Seconds;
             case ConditionType.ReachMarker:
             {
                 var m = _sim.Map.Def.FindMarker(c.Marker);
@@ -1369,8 +1476,8 @@ public sealed class ScenarioSystem
 
     public void CheckOutcome()
     {
-        if (Def == null || _sim.Outcome != BattleOutcome.None) return;
-        if (Def.Limits.TimeLimit > 0 && _sim.Time >= Def.Limits.TimeLimit)
+        if (Def == null || _sim.Outcome != BattleOutcome.None || WavesHeld) return;
+        if (Def.Limits.TimeLimit > 0 && BattleTime >= Def.Limits.TimeLimit)
         {
             SetOutcome(BattleOutcome.Defeat, "Время вышло");
             return;
@@ -1436,5 +1543,8 @@ public sealed class ScenarioSystem
         _sim.Emit(o == BattleOutcome.Victory ? SimEventType.Victory : SimEventType.Defeat, LogLevel.Normal,
             (o == BattleOutcome.Victory ? "ПОБЕДА: " : "ПОРАЖЕНИЕ: ") + text);
         _sim.RequestAutopause(o == BattleOutcome.Victory ? "победа" : "поражение");
+        // «Завершение боя»: the last events are processed at once (the simulation stops after this tick).
+        Raise(ScenarioEventType.BattleEnded);
+        ProcessEvents();
     }
 }

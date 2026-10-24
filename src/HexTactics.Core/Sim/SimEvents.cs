@@ -83,6 +83,19 @@ public enum SimEventType
     GoalReached,
     /// <summary>A structure of the scenario (a base, a tower) was destroyed.</summary>
     StructureDestroyed,
+    // Part 4, stage 5 (docs/DECISIONS_4.md §64): what the battle report and the breakpoints count.
+    /// <summary>A passive with a trigger fired: DamageType = passive ID.</summary>
+    PassiveTriggered,
+    /// <summary>An AI unit switched its target: Target — the new one.</summary>
+    TargetChanged,
+    /// <summary>An AI problem (stuck, no path, target unreachable, route blocked): DamageType = the kind.</summary>
+    AiProblem,
+    /// <summary>A wave is over (cleared, cancelled, expired): Value = wave index.</summary>
+    WaveEnded,
+    /// <summary>The preparation (placement) phase is over.</summary>
+    PreparationDone,
+    /// <summary>A unit passed a checkpoint node of its route: DamageType = node ID, Text names the route.</summary>
+    CheckpointReached,
 }
 
 public enum LogLevel

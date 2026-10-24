@@ -1,0 +1,173 @@
+{
+  "formatVersion": 5,
+  "kind": "scenario",
+  "scenario": {
+    "id": "free_skirmish",
+    "name": "Свободная схватка",
+    "description": "Свободный бой без маршрутов: враги ищут противника по профилям ИИ (охотник, убийца, стрелок, вожак).",
+    "tags": [],
+    "group": "",
+    "version": 1,
+    "map": "arena",
+    "seed": 2024,
+    "rulesPreset": "",
+    "intro": "Свободный бой: маршрутов нет, враги ищут вас сами.",
+    "sides": [{ "faction": "player", "controller": "Player" }, { "faction": "enemy", "controller": "Ai" }],
+    "units": [
+      { "unit": "knight", "faction": "", "c": [-6, 3], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      { "unit": "archer", "faction": "", "c": [-5, 4], "facing": "E", "tag": "", "aiProfile": "", "name": "" },
+      {
+        "unit": "priestess",
+        "faction": "",
+        "c": [-6, 4],
+        "facing": "E",
+        "tag": "",
+        "aiProfile": "",
+        "name": ""
+      },
+      {
+        "unit": "goblin",
+        "faction": "",
+        "c": [6, -3],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "ai_hunter",
+        "name": ""
+      },
+      {
+        "unit": "goblin",
+        "faction": "",
+        "c": [6, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "ai_assassin",
+        "name": ""
+      },
+      {
+        "unit": "goblin_archer",
+        "faction": "",
+        "c": [5, -2],
+        "facing": "W",
+        "tag": "",
+        "aiProfile": "ai_shooter",
+        "name": ""
+      },
+      {
+        "unit": "wolf_leader",
+        "faction": "",
+        "c": [5, -3],
+        "facing": "W",
+        "tag": "leader",
+        "aiProfile": "ai_leader",
+        "name": ""
+      }
+    ],
+    "objects": [],
+    "routes": [],
+    "baseDefeat": { "mode": "MainBase", "mainBase": "", "count": 2 },
+    "waves": [],
+    "victory": [
+      {
+        "type": "AllEnemiesDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "resource": "",
+        "value": 0,
+        "compare": "AtLeast",
+        "status": "",
+        "synergy": "",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "variable": "",
+        "variableValue": "",
+        "fraction": 0.5
+      },
+      {
+        "type": "AllEnemiesDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "resource": "",
+        "value": 0,
+        "compare": "AtLeast",
+        "status": "",
+        "synergy": "",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "variable": "",
+        "variableValue": "",
+        "fraction": 0.5
+      }
+    ],
+    "defeat": [
+      {
+        "type": "AllPlayerUnitsDead",
+        "children": [],
+        "seconds": 60,
+        "marker": "",
+        "unitTag": "",
+        "side": "Player",
+        "resource": "",
+        "value": 0,
+        "compare": "AtLeast",
+        "status": "",
+        "synergy": "",
+        "count": 5,
+        "categories": [],
+        "wave": 0,
+        "objective": "",
+        "flag": "",
+        "variable": "",
+        "variableValue": "",
+        "fraction": 0.5
+      }
+    ],
+    "objectives": [],
+    "objectiveLogic": "AllRequired",
+    "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "AfterScouting" },
+    "triggers": [],
+    "passives": [],
+    "environment": [],
+    "passiveOverrides": [],
+    "limits": {
+      "stacking": "ByUnitType",
+      "fogOfWar": true,
+      "timeLimit": 0,
+      "maxAliveEnemies": 0,
+      "maxCreatedEnemies": 0
+    },
+    "mode": "FreeBattle",
+    "placement": {
+      "end": "Confirm",
+      "duration": 30,
+      "budget": 30,
+      "maxUnits": 0,
+      "units": [],
+      "zoneObjects": [],
+      "zoneRadius": 2,
+      "zoneCells": [],
+      "relocateBetweenWaves": true,
+      "restoreHealth": 0.25,
+      "restoreResources": true,
+      "enemiesDuringPreparation": false,
+      "preset": [],
+      "defenderProfile": ""
+    },
+    "altTargets": [
+      { "kind": "OtherBase", "object": "", "flag": "" },
+      { "kind": "AttackDefenders", "object": "", "flag": "" }
+    ],
+    "altAfterBlocked": 15
+  }
+}

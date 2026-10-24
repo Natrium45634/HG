@@ -126,7 +126,8 @@ public sealed class StructureSystem
     {
         u.TargetObject = "";
         _reached[o.Id] = (_reached.TryGetValue(o.Id, out var n) ? n : 0) + 1;
-        _sim.Emit(SimEventType.GoalReached, LogLevel.Normal, $"{u.Name} достигает «{o.DisplayName}»", u.Id, Of(o.Id)?.Id ?? -1, u.Pos);
+        _sim.Emit(SimEventType.GoalReached, LogLevel.Normal, $"{u.Name} достигает «{o.DisplayName}»", u.Id, Of(o.Id)?.Id ?? -1, u.Pos, damageType: o.Id);
+        _sim.Scenario.Raise(ScenarioEventType.GoalReached, u, o.Id);
         var s = Of(o.Id);
         if (s != null && s.Alive && _sim.IsHostile(u, s))
         {
@@ -141,11 +142,11 @@ public sealed class StructureSystem
     }
 
     /// <summary>Damage to a structure outside the skill pipeline (a leak): logged, kills unless indestructible.</summary>
-    public void DamageStructure(Unit s, double amount, Unit? by, string cause)
+    public void DamageStructure(Unit s, double amount, Unit? by, string cause, bool force = false)
     {
         if (!s.Alive || amount <= 0) return;
         double before = s.Hp;
-        s.Hp = Math.Max(s.Indestructible ? 1 : 0, s.Hp - amount);
+        s.Hp = Math.Max(s.Indestructible && !force ? 1 : 0, s.Hp - amount);
         s.LastDamagedTick = _sim.Tick;
         _sim.Emit(SimEventType.Damage, LogLevel.Normal, $"«{s.Name}»: −{before - s.Hp:0} ({cause}{(by != null ? $": {by.Name}" : "")})", by?.Id ?? -1, s.Id, s.Pos, before - s.Hp, "true");
         if (s.Hp <= 0) _sim.Combat.Kill(s, by, cause);
@@ -158,7 +159,10 @@ public sealed class StructureSystem
         foreach (var c in s.Footprint) _sim.Map.Get(c)?.Occupants.Remove(s);
         var o = _sim.Scenario.Def?.Object(s.ObjectId);
         if (o != null)
+        {
             _sim.Emit(SimEventType.StructureDestroyed, LogLevel.Normal, $"«{o.DisplayName}» разрушена", -1, s.Id, s.Pos);
+            _sim.Scenario.Raise(ScenarioEventType.BaseDestroyed, s, o.Id);
+        }
     }
 
     /// <summary>Bases of the player side (objects of type «база игрока» with health).</summary>

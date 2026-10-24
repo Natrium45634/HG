@@ -16,6 +16,7 @@ public static class ContentChecks
     private static string Src(Def d) => $"{d.Category}:{d.Id}";
     private static ContentIssue Err(Def d, string path, string msg) => new(IssueSeverity.Error, Src(d), path, msg);
     private static ContentIssue Warn(Def d, string path, string msg) => new(IssueSeverity.Warning, Src(d), path, msg);
+    private static ContentIssue Info(Def d, string path, string msg) => new(IssueSeverity.Info, Src(d), path, msg);
 
     public static IEnumerable<ConditionDef> Flatten(ConditionDef? c) =>
         c == null ? Enumerable.Empty<ConditionDef>() : new[] { c }.Concat(c.Children.SelectMany(Flatten));
@@ -85,8 +86,39 @@ public static class ContentChecks
             issues.Add(Err(s, "Triggers", "Циклические триггеры: " + string.Join(" → ", cycle.Append(cycle[0]).Select(i => $"«{s.Triggers[i].Name}»")) +
                                           " — запуск друг друга по кругу (в бою цепочка обрывается на глубине " + 8 + ")"));
 
+        // Scenario events (docs/DECISIONS_4.md §68): «action raises an event that starts a rule» cycles, filters.
+        foreach (var cyc in ScenarioEvents.Cycles(s))
+        {
+            if (cyc.Limited) issues.Add(Warn(s, "Triggers", "Намеренный цикл событий (с пределом): " + cyc.Text));
+            else issues.Add(Err(s, "Triggers", "Бесконечный цикл событий: " + cyc.Text + " — задайте «однократный», «не чаще» или «не более срабатываний»"));
+        }
+        var groups = s.Waves.SelectMany(w => w.Groups).Select(g => g.Id).Where(id => id != "").ToHashSet();
+        foreach (var tr in s.Triggers.Where(t => t.Event != ScenarioEventType.None))
+        {
+            string at = $"Triggers[{tr.Name}]";
+            if (tr.Event == ScenarioEventType.Timer && !tr.Once && tr.MaxFires == 0 && tr.Actions.SelectMany(ScenarioEvents.Produces).Contains(ScenarioEventType.UnitSpawned)
+                && tr.Condition.Type is ConditionType.Always or ConditionType.TimeElapsed)
+                issues.Add(Warn(s, at, $"Таймер «{tr.Name}» каждые {tr.Interval:0.#} с создаёт юнитов без предела — задайте «не более срабатываний» или условие завершения"));
+            if (tr.EventObject != "")
+            {
+                bool known = tr.Event switch
+                {
+                    ScenarioEventType.CheckpointReached => s.Routes.Any(r => r.Nodes.Any(n => n.Id == tr.EventObject)) || s.Object(tr.EventObject) != null,
+                    ScenarioEventType.StatusApplied => db.Status(tr.EventObject) != null,
+                    ScenarioEventType.SkillUsed => db.Skill(tr.EventObject) != null,
+                    ScenarioEventType.PassiveTriggered => db.Get<PassiveDef>(tr.EventObject) != null,
+                    _ => s.Object(tr.EventObject) != null,
+                };
+                if (!known) issues.Add(Warn(s, at, $"Фильтр события «{tr.EventObject}» не найден — триггер «{tr.Name}» не сработает"));
+            }
+            if (tr.EventGroup != "" && !groups.Contains(tr.EventGroup))
+                issues.Add(Warn(s, at, $"Группы «{tr.EventGroup}» нет ни в одной волне — триггер «{tr.Name}» не сработает"));
+            if (tr.EventWave > s.Waves.Count) issues.Add(Warn(s, at, $"Волны {tr.EventWave} нет (волн {s.Waves.Count})"));
+        }
+        CheckPlacement(db, s, issues);
+
         // Repeating triggers that keep themselves alive: condition always true, or they set the flag they wait for.
-        foreach (var tr in s.Triggers.Where(t => !t.Once))
+        foreach (var tr in s.Triggers.Where(t => !t.Once && t.Event == ScenarioEventType.None && t.Cooldown <= 0 && t.MaxFires <= 0))
         {
             var leaves = Flatten(tr.Condition).ToList();
             bool always = tr.Condition.Type == ConditionType.Always || (tr.Condition.Type == ConditionType.All && tr.Condition.Children.Count == 0);
@@ -128,6 +160,19 @@ public static class ContentChecks
                 issues.Add(Err(s, "Actions", $"«Сменить маршрут»: маршрута '{a.Route}' нет ни на карте, ни в сценарии"));
             if (a.Type == TriggerActionType.SetBossPhase && !hasBoss)
                 issues.Add(Err(s, "Actions", "«Сменить фазу босса»: в сценарии нет босса"));
+            if (a.Type is TriggerActionType.ActivateBase or TriggerActionType.DeactivateBase && s.Object(a.Object)?.Spawn == null)
+                issues.Add(Err(s, "Actions", $"«{a.Describe()}»: базы спавна «{a.Object}» нет"));
+            if (a.Type == TriggerActionType.SetObjectState && s.Object(a.Object) == null)
+                issues.Add(Err(s, "Actions", $"«{a.Describe()}»: объекта «{a.Object}» нет"));
+            if (a.Type == TriggerActionType.SetTarget && a.TargetTag == "" && s.Object(a.Object) == null)
+                issues.Add(Err(s, "Actions", $"«Установить цель»: объекта «{a.Object}» нет"));
+            if (a.Type == TriggerActionType.SetGroupRoute)
+            {
+                if (map.FindRoute(a.Route) == null && s.Route(a.Route) == null)
+                    issues.Add(Err(s, "Actions", $"«Изменить маршрут группы»: маршрута '{a.Route}' нет ни на карте, ни в сценарии"));
+                if (!s.Waves.SelectMany(w => w.Groups).Any(g => g.Id == a.Group))
+                    issues.Add(Warn(s, "Actions", $"«Изменить маршрут группы»: группы «{a.Group}» нет"));
+            }
             if (a.Type == TriggerActionType.ActivateTrigger && !names.Contains(a.Text))
                 issues.Add(Err(s, "Actions", $"«Запустить триггер»: триггер «{a.Text}» не найден"));
             if (a.Target == ActionTarget.UnitTag && !string.IsNullOrEmpty(a.UnitTag) && !tags.Contains(a.UnitTag) && UsesTarget(a))
@@ -135,6 +180,31 @@ public static class ContentChecks
         }
 
         CheckReachability(db, s, map, issues);
+    }
+
+    /// <summary>The preparation of «TD с расстановкой» and the defenders of «автотест» (docs/DECISIONS_4.md §64).</summary>
+    private static void CheckPlacement(ContentDatabase db, ScenarioDef s, List<ContentIssue> issues)
+    {
+        var pl = s.Placement;
+        if (s.Mode == BattleMode.TdPlacement && pl.Units.Count == 0)
+            issues.Add(Err(s, "Placement.Units", "TD с расстановкой: нет доступных для расстановки юнитов"));
+        foreach (var id in pl.ZoneObjects.Where(id => s.Object(id) == null))
+            issues.Add(Err(s, "Placement.ZoneObjects", $"Зона расстановки: объекта «{id}» нет"));
+        if (s.Mode == BattleMode.TdPlacement && pl.Budget > 0 && pl.Units.Count > 0)
+        {
+            double cheapest = pl.Units.Select(e => e.Cost > 0 ? e.Cost : db.Unit(e.Unit) is { } u ? ThreatCost.Of(db, u) : double.MaxValue).Min();
+            if (cheapest > pl.Budget) issues.Add(Warn(s, "Placement.Budget", $"Бюджета {pl.Budget:0.#} не хватает ни на один юнит (самый дешёвый {cheapest:0.#})"));
+        }
+        if (pl.End == PreparationEnd.Condition && pl.StartCondition == null)
+            issues.Add(Err(s, "Placement.StartCondition", "Подготовка заканчивается по условию, но условие не задано"));
+        var zone = pl.ZoneHexes(s);
+        foreach (var su in pl.Preset)
+        {
+            if (db.Unit(su.Unit) == null) issues.Add(Err(s, "Placement.Preset", $"Расстановка по умолчанию: шаблона «{su.Unit}» нет"));
+            if (zone.Count > 0 && !zone.Contains(su.C)) issues.Add(Info(s, "Placement.Preset", $"Расстановка по умолчанию: «{su.Unit}» в {su.C} вне зоны расстановки (автотест ставит его всё равно)"));
+        }
+        if (s.Mode == BattleMode.AutoTest && pl.Preset.Count == 0 && !s.Units.Any(u => u.Faction == "" ? db.Unit(u.Unit)?.Faction == "player" : u.Faction == "player"))
+            issues.Add(Warn(s, "Placement.Preset", "Автотест без защитников: нет ни расстановки по умолчанию, ни юнитов игрока"));
     }
 
     private static bool UsesTarget(TriggerActionDef a) => a.Type is TriggerActionType.ApplyStatus or TriggerActionType.RemoveStatus or TriggerActionType.AddSkill

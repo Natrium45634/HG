@@ -470,6 +470,14 @@ public enum TriggerActionType
     [Ed("Звук")] PlaySound,
     // Part 4 (docs/DECISIONS_4.md §62): variables of the scenario (time of day, weather).
     [Ed("Изменить переменную сценария")] SetEnvironment,
+    // Part 4, stage 5 (docs/DECISIONS_4.md §68): bases, groups, targets, objects, the end, diagnostics.
+    [Ed("Активировать базу спавна")] ActivateBase,
+    [Ed("Отключить базу спавна")] DeactivateBase,
+    [Ed("Изменить маршрут группы")] SetGroupRoute,
+    [Ed("Установить цель")] SetTarget,
+    [Ed("Изменить состояние объекта")] SetObjectState,
+    [Ed("Завершить сценарий")] EndScenario,
+    [Ed("Записать диагностическое событие")] LogDiagnostic,
 }
 
 public enum ActionTarget
@@ -485,8 +493,15 @@ public sealed class TriggerActionDef
     [Ed("Действие")] public TriggerActionType Type { get; set; } = TriggerActionType.Message;
     [Ed("Текст / ID", "Сообщение; имя триггера; ID визуального или звукового эффекта"),
      EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat, TriggerActionType.Autopause,
-         TriggerActionType.ActivateTrigger, TriggerActionType.PlayVfx, TriggerActionType.PlaySound)]
+         TriggerActionType.ActivateTrigger, TriggerActionType.PlayVfx, TriggerActionType.PlaySound, TriggerActionType.EndScenario, TriggerActionType.LogDiagnostic)]
     public string Text { get; set; } = "";
+    [Ed("Объект", "ID базы или объекта сценария"),
+     EdShowIf(nameof(Type), TriggerActionType.ActivateBase, TriggerActionType.DeactivateBase, TriggerActionType.SetTarget, TriggerActionType.SetObjectState)]
+    public string Object { get; set; } = "";
+    [Ed("Группа волны", "ID группы"), EdShowIf(nameof(Type), TriggerActionType.SetGroupRoute)] public string Group { get; set; } = "";
+    [Ed("Цель-юниты", "Метка или тег юнитов, которых атаковать (вместо объекта)"), EdShowIf(nameof(Type), TriggerActionType.SetTarget)] public string TargetTag { get; set; } = "";
+    [Ed("Новое состояние"), EdShowIf(nameof(Type), TriggerActionType.SetObjectState)] public ObjectStateChange ObjectState { get; set; } = ObjectStateChange.Activate;
+    [Ed("Итог"), EdShowIf(nameof(Type), TriggerActionType.EndScenario)] public bool Win { get; set; } = true;
     [Ed("Волна (индекс)"), EdRange(0, 1000), EdShowIf(nameof(Type), TriggerActionType.SpawnWave, TriggerActionType.CancelWave)] public int Wave { get; set; }
     [Ed("Эффект клетки"), EdRef(DefCategory.CellEffect), EdShowIf(nameof(Type), TriggerActionType.AddCellEffect)] public string CellEffect { get; set; } = "";
     [Ed("Метка карты", "Пусто — вокруг владельца"),
@@ -495,7 +510,7 @@ public sealed class TriggerActionDef
     public string Marker { get; set; } = "";
     [Ed("Радиус"), EdRange(0, 20), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain, TriggerActionType.SummonUnits, TriggerActionType.DestroyObstacle)]
     public int Radius { get; set; } = 1;
-    [Ed("Маршрут карты"), EdShowIf(nameof(Type), TriggerActionType.SetRoute)] public string Route { get; set; } = "";
+    [Ed("Маршрут", "Маршрут сценария или карты"), EdShowIf(nameof(Type), TriggerActionType.SetRoute, TriggerActionType.SetGroupRoute)] public string Route { get; set; } = "";
     [Ed("Фаза босса (номер)", "1 — первая фаза из списка босса"), EdRange(1, 50), EdShowIf(nameof(Type), TriggerActionType.SetBossPhase)] public int Phase { get; set; } = 1;
     [Ed("Операции", "Каталог операций навыков: применяются к выбранным юнитам"), EdShowIf(nameof(Type), TriggerActionType.Effects)]
     public List<SkillEffectDef> Effects { get; set; } = new();
@@ -509,7 +524,7 @@ public sealed class TriggerActionDef
     [Ed("На кого"),
      EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus, TriggerActionType.AddSkill, TriggerActionType.RemoveSkill,
          TriggerActionType.SetAutoAttackSkill, TriggerActionType.SetAiProfile, TriggerActionType.HealPercent, TriggerActionType.Effects, TriggerActionType.SetRoute,
-         TriggerActionType.SetBossPhase)]
+         TriggerActionType.SetBossPhase, TriggerActionType.SetTarget)]
     public ActionTarget Target { get; set; } = ActionTarget.Self;
     [Ed("Метка юнита"), EdShowIf(nameof(Target), ActionTarget.UnitTag)] public string UnitTag { get; set; } = "";
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus)] public string Status { get; set; } = "";
@@ -548,6 +563,13 @@ public sealed class TriggerActionDef
         TriggerActionType.SetBossPhase => $"Фаза босса {Phase}",
         TriggerActionType.PlayVfx => $"Визуальный эффект {Text}",
         TriggerActionType.PlaySound => $"Звук {Text}",
+        TriggerActionType.ActivateBase => $"Включить базу «{Object}»",
+        TriggerActionType.DeactivateBase => $"Отключить базу «{Object}»",
+        TriggerActionType.SetGroupRoute => $"Группа «{Group}» → маршрут «{Route}»",
+        TriggerActionType.SetTarget => TargetTag != "" ? $"Цель → юниты «{TargetTag}»" : $"Цель → «{Object}»",
+        TriggerActionType.SetObjectState => $"Объект «{Object}»: {ObjectState}",
+        TriggerActionType.EndScenario => (Win ? "Завершить победой" : "Завершить поражением") + (Text != "" ? $" «{Text}»" : ""),
+        TriggerActionType.LogDiagnostic => $"Диагностика «{Text}»",
         _ => Type.ToString(),
     };
 }
@@ -555,9 +577,31 @@ public sealed class TriggerActionDef
 public sealed class TriggerDef
 {
     [Ed("Название")] public string Name { get; set; } = "Триггер";
+    // Part 4 (docs/DECISIONS_4.md §68): event → conditions → actions; without an event — the condition every tick.
+    [Ed("Событие", "Нет — условие проверяется каждый тик (как раньше)")] public ScenarioEventType Event { get; set; } = ScenarioEventType.None;
+    [Ed("Фильтр: объект или ID", "База, объект, узел-контрольная точка, состояние, навык, пассив; пусто — любой"),
+     EdShowIf(nameof(Event), ScenarioEventType.UnitSpawned, ScenarioEventType.UnitDied, ScenarioEventType.GoalReached, ScenarioEventType.BaseDestroyed,
+         ScenarioEventType.ObjectActivated, ScenarioEventType.CheckpointReached, ScenarioEventType.StatusApplied, ScenarioEventType.SkillUsed,
+         ScenarioEventType.PassiveTriggered)]
+    public string EventObject { get; set; } = "";
+    [Ed("Фильтр: волна", "Номер волны с 1; 0 — любая"), EdRange(0, 1000),
+     EdShowIf(nameof(Event), ScenarioEventType.WaveStarted, ScenarioEventType.WaveEnded, ScenarioEventType.UnitSpawned, ScenarioEventType.UnitDied,
+         ScenarioEventType.GoalReached, ScenarioEventType.AliveLimitExceeded)]
+    public int EventWave { get; set; }
+    [Ed("Фильтр: группа", "ID группы волны; пусто — любая"),
+     EdShowIf(nameof(Event), ScenarioEventType.UnitSpawned, ScenarioEventType.UnitDied, ScenarioEventType.GoalReached, ScenarioEventType.CheckpointReached)]
+    public string EventGroup { get; set; } = "";
+    [Ed("Фильтр: юнит", "Метка, «tag:x», категория или ID шаблона; пусто — любой"),
+     EdShowIf(nameof(Event), ScenarioEventType.UnitSpawned, ScenarioEventType.UnitDied, ScenarioEventType.GoalReached, ScenarioEventType.CheckpointReached,
+         ScenarioEventType.StatusApplied, ScenarioEventType.SkillUsed, ScenarioEventType.PassiveTriggered)]
+    public string EventUnit { get; set; } = "";
+    [Ed("Таймер, с", "С начала боя (после подготовки); повторяемый — каждые N с"), EdRange(0.1, 36000), EdShowIf(nameof(Event), ScenarioEventType.Timer)]
+    public double Interval { get; set; } = 10;
     [Ed("Условие")] public ConditionDef Condition { get; set; } = new() { Type = ConditionType.TimeElapsed };
     [Ed("Действия")] public List<TriggerActionDef> Actions { get; set; } = new();
     [Ed("Однократный")] public bool Once { get; set; } = true;
+    [Ed("Не чаще, с", "Предел частоты повторяемого триггера; 0 — без предела"), EdRange(0, 3600), EdShowIf(nameof(Once), false)] public double Cooldown { get; set; }
+    [Ed("Не более срабатываний", "0 — без предела"), EdRange(0, 100_000), EdShowIf(nameof(Once), false)] public int MaxFires { get; set; }
 }
 
 public sealed class ScenarioDef : Def
@@ -591,6 +635,13 @@ public sealed class ScenarioDef : Def
     public List<EnvironmentVarDef> Environment { get; set; } = new();
     [Ed("Отключить или заменить пассивы", "Например, талант расы в этом сценарии", Group = "Пассивы")] public List<PassiveOverrideDef> PassiveOverrides { get; set; } = new();
     [Ed("Переопределение правил", "Ограничения сценария", Group = "Ограничения")] public ScenarioLimitsDef Limits { get; set; } = new();
+    // Part 4, stage 5 (docs/DECISIONS_4.md §64): modes, preparation, alternative targets of the enemies.
+    [Ed("Режим боя", Group = "Автобой")] public BattleMode Mode { get; set; } = BattleMode.Normal;
+    [Ed("Подготовка и расстановка", "TD с расстановкой и автотест", Group = "Автобой")] public PlacementDef Placement { get; set; } = new();
+    [Ed("Альтернативные цели врагов", "Если база уничтожена или недоступна и в профиле ИИ ничего не задано", Group = "Автобой")]
+    public List<AltTargetDef> AltTargets { get; set; } = new() { new AltTargetDef { Kind = AltTargetKind.OtherBase }, new AltTargetDef { Kind = AltTargetKind.AttackDefenders } };
+    [Ed("База недоступна через, с", "Маршрут закрыт дольше — враг выбирает альтернативную цель; 0 — никогда", Group = "Автобой"), EdRange(0, 3600)]
+    public double AltAfterBlocked { get; set; } = 15;
 
     public ScenarioObjectDef? Object(string id) => Objects.FirstOrDefault(o => o.Id == id);
     public RouteDef? Route(string id) => Routes.FirstOrDefault(r => r.Id == id);

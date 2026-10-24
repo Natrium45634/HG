@@ -648,7 +648,17 @@ public sealed class DamagePipeline
     {
         Recent.Add((_sim.Tick, q.Attacker?.Id ?? -1, q.Target.Id, r));
         if (Recent.Count > 64) Recent.RemoveAt(0);
+        if (q.Attacker != null && q.Attacker != q.Target && r.Dealt > 0)
+        {
+            // Who hit the unit last: «непосредственно угрожает» of the encounter (docs/DECISIONS_4.md §59).
+            q.Target.LastAttackerId = q.Attacker.Id;
+            q.Target.LastAttackedTick = _sim.Tick;
+        }
+        Resolved?.Invoke(q, r);
     }
+
+    /// <summary>Every resolved hit with its breakdown (shields, absorption) — for the battle report (docs/DECISIONS_4.md §64).</summary>
+    public event Action<DamageRequest, DamageResult>? Resolved;
 
     // ------------------------------------------------------------------ shields
 

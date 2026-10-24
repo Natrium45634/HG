@@ -145,6 +145,14 @@ public static class OperationCatalog
         Act("autopause", "Автопауза", "Сообщения и эффекты", "", TriggerActionType.Autopause),
         Act("vfx", "Визуальный эффект", "Сообщения и эффекты", "", TriggerActionType.PlayVfx, null, "визуальные эффекты"),
         Act("sound", "Звук", "Сообщения и эффекты", "", TriggerActionType.PlaySound, null, "звуковые эффекты"),
+        // Part 4, stage 5 (docs/DECISIONS_4.md §68).
+        Act("base_on", "Активировать базу спавна", "Базы и объекты", "Включает базу спавна (вместо её настройки «активна»).", TriggerActionType.ActivateBase, null, "активировать базу"),
+        Act("base_off", "Отключить базу спавна", "Базы и объекты", "", TriggerActionType.DeactivateBase, null, "отключить базу"),
+        Act("object_state", "Изменить состояние объекта", "Базы и объекты", "Включить, отключить, разрушить, восстановить.", TriggerActionType.SetObjectState, null, "состояние объекта"),
+        Act("group_route", "Изменить маршрут группы", "ИИ и маршруты", "Живые враги группы и её будущие появления идут по новому маршруту.", TriggerActionType.SetGroupRoute, null, "маршрут группы"),
+        Act("set_target", "Установить цель", "ИИ и маршруты", "Объект, к которому идут, или юниты (метка, тег), которых атакуют.", TriggerActionType.SetTarget, null, "установить цель"),
+        Act("end", "Завершить сценарий", "Волны и цели", "Победой или поражением, с текстом.", TriggerActionType.EndScenario, null, "завершить сценарий"),
+        Act("diagnostic", "Записать диагностическое событие", "Сообщения и эффекты", "Строка в журнале диагностики и отчёте автобоя.", TriggerActionType.LogDiagnostic, null, "диагностика"),
     };
 
     /// <summary>Conditions (combined with И / ИЛИ / НЕ).</summary>
