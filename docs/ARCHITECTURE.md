@@ -240,8 +240,9 @@ HG/
 | `Content/CategoryTree`, `Sim/CategoryCache` | дерево категорий, режимы наследования правил, конфликты и их объяснение |
 | `Sim/AutoBattle`, `Sim/BattleReport`, `Sim/PlacementSystem`, `Content/Defs/AutoBattleDefs` | режимы автобоя (расстановка, свободный бой, автотест), отчёт прогона (наблюдатель событий), пакетные прогоны по seed, остановка на событии, расстановка защитников |
 | `Content/PowerModel`, `Content/LevelFit`, `Content/ThreatModel`, `Content/Defs/PowerDefs`, `game/Editor/UnitPowerView` | оценка силы и уровня с объяснением вкладов и контекстом, подгонка под уровень по профилям масштабирования, уровень экземпляра, стоимость угрозы (базовая и в сцене); блок «Оценка силы» и окно подгонки в редакторе |
-| `Content/ScenarioChecks`, `Content/BalanceChecks` | «Проверить сценарий», анализ чрезмерно сильных, отчёт по волнам |
-| `game/Editor/TdScenePanel`, `game/Editor/UndoStack` | рабочее место «TD-сцена» (режимы, контекстные меню, рисование маршрутов), отмена и повтор |
+| `Content/ScenarioChecks`, `Content/BalanceChecks`, `Content/WavePlan`, `Content/WaveReport`, `Content/PerformanceBudget`, `Content/Defs/PerformanceDefs` | «Проверить сценарий», анализ чрезмерно сильных, план и отчёт по волнам, бюджет производительности и профиль подсистем |
+| `Content/EditHistory`, `Content/MassEdit` (+ `GroupOverrides`), `Content/ChangeImpact`, `Content/VersionCompare` | отмена и повтор снимками изменённых объектов, массовые изменения, переопределения группы → шаблон, что затронет изменение, сравнение версий с пробными боями |
+| `game/Editor/TdScenePanel` (+ `TdSceneTest`, `TdSceneTools`, `TdSceneMenus`), `game/Editor/HistoryDialog`, `game/Editor/VersionCompareDialog`, `game/Editor/DefListPanelMass` | рабочее место «TD-сцена» (режимы, контекстные меню объекта, маршрута и группы, рисование маршрутов, тестирование, отчёт по волнам, производительность), журнал и точки восстановления, сравнение версий, массовые изменения |
 
 ### 11.2 Новые категории контента
 
