@@ -98,6 +98,7 @@ public sealed class ModifierDef
     public ModifierMode Mode { get; set; } = ModifierMode.Percent;
     [Ed("Приоритет", "Для «приоритетного источника»: действует только наибольший"), EdShowIf(nameof(Mode), ModifierMode.Priority)] public int Priority { get; set; }
     [Ed("Категория", "Из одной категории действует только один (наибольший по модулю)"), EdShowIf(nameof(Mode), ModifierMode.Exclusive)] public string Category { get; set; } = "";
+    [Ed("За каждого", "Величина умножается на число учитываемых юнитов (с пределом)")] public PerEachDef? PerEach { get; set; }
 
     [JsonIgnore] public bool IsPercentLike => Mode is ModifierMode.Percent or ModifierMode.Max or ModifierMode.Min or ModifierMode.Priority or ModifierMode.Exclusive;
 
@@ -207,6 +208,9 @@ public sealed class OriginDef : Def
     [Ed("Назначать по тегам", "Юнит с любым из этих тегов получает происхождение автоматически")] public List<string> AutoTags { get; set; } = new();
     [Ed("Значок", "1–2 символа")] public string Icon { get; set; } = "";
     [Ed("Цвет"), EdColor] public string Color { get; set; } = "#a0c070";
+    // Part 4 (docs/DECISIONS_4.md §61): the tree and its rules.
+    [Ed("Родительская категория", "Дерево любой глубины: правила родителя наследуются"), EdRef(DefCategory.Origin)] public string Parent { get; set; } = "";
+    [Ed("Правила", "Пассивы, теги, перемещение, запреты, профиль ИИ — с режимом наследования")] public List<CategoryRuleDef> Rules { get; set; } = new();
 }
 
 /// <summary>A passive given by the scenario to the units of a side or with a tag.</summary>
@@ -232,6 +236,9 @@ public enum PassiveStacking
 {
     [Ed("Один экземпляр (из любого числа источников)")] Unique,
     [Ed("Складывается до максимума стаков")] Stack,
+    // Part 4 (docs/DECISIONS_4.md §62).
+    [Ed("По экземпляру от каждого источника", "Две ауры разных владельцев действуют обе, одна и та же — один раз")] BySource,
+    [Ed("Запрещать дубликаты", "Действует только первый источник, остальные отмечены как неактивные")] NoDuplicates,
 }
 
 public enum AuraAffects

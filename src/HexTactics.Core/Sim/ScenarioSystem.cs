@@ -96,6 +96,7 @@ public sealed class ScenarioSystem
     private readonly List<ObjectiveRuntime> _objectives = new();
     private readonly HashSet<int> _firedTriggers = new();
     private readonly HashSet<string> _flags = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _vars = new(StringComparer.Ordinal);
     private readonly Dictionary<ConditionDef, long> _areaSince = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ConditionDef, int> _orderProgress = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<int, HashSet<int>> _bossPhases = new();
@@ -131,6 +132,20 @@ public sealed class ScenarioSystem
     public IReadOnlyList<ObjectiveRuntime> Objectives => _objectives;
     public IReadOnlyCollection<string> Flags => _flags;
 
+    /// <summary>Variables of the scenario: time of day, weather… (docs/DECISIONS_4.md §62); "" — not set.</summary>
+    public IReadOnlyDictionary<string, string> Variables => _vars;
+
+    public string Variable(string name) => _vars.GetValueOrDefault(name, "");
+
+    /// <summary>Changes a variable (logged); conditions read it on their next check.</summary>
+    public void SetVariable(string name, string value)
+    {
+        if (string.IsNullOrEmpty(name) || _vars.GetValueOrDefault(name) == value) return;
+        _vars[name] = value;
+        var caption = Def?.Environment.FirstOrDefault(v => v.Name == name)?.Caption;
+        _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{(string.IsNullOrEmpty(caption) ? name : caption)}: {value}");
+    }
+
     /// <summary>Waves that have started (at least one enemy appeared).</summary>
     public IReadOnlyCollection<int> SpawnedWaves => _waves.Where(w => w.StartedTick >= 0).Select(w => w.Index).ToList();
 
@@ -161,6 +176,9 @@ public sealed class ScenarioSystem
     public void Load(ScenarioDef sc)
     {
         Def = sc;
+        foreach (var v in sc.Environment)
+            if (v.Name != "")
+                _vars[v.Name] = v.Value;
         ScenarioObjects.ResolveMarkers(sc, _sim.Map.Def);
         // Structures first: their hexes are taken before units are placed (docs/DECISIONS_4.md §56).
         _sim.Structures.Load(sc);
@@ -814,6 +832,9 @@ public sealed class ScenarioSystem
             case TriggerActionType.SetFlag:
                 SetFlag(a.Flag);
                 break;
+            case TriggerActionType.SetEnvironment:
+                SetVariable(a.Variable, a.VariableValue);
+                break;
             case TriggerActionType.CompleteObjective:
                 Finish(Objective(a.Objective), ObjectiveState.Completed, source);
                 break;
@@ -977,7 +998,7 @@ public sealed class ScenarioSystem
         foreach (var c in cats)
         {
             if (c == u.Def.CreatureCategory || c == u.Def.Id || c == u.Tag) return true;
-            if (c.StartsWith("tag:", StringComparison.Ordinal) && (u.Def.Tags.Contains(c[4..]) || u.Tag == c[4..])) return true;
+            if (c.StartsWith("tag:", StringComparison.Ordinal) && u.HasTag(c[4..])) return true;
         }
         return false;
     }
@@ -1061,6 +1082,8 @@ public sealed class ScenarioSystem
                 return Objective(c.Objective)?.State == ObjectiveState.Failed;
             case ConditionType.FlagSet:
                 return _flags.Contains(c.Flag);
+            case ConditionType.Environment:
+                return Variable(c.Variable) == c.VariableValue;
             case ConditionType.HpBelow:
             {
                 if (string.IsNullOrEmpty(c.UnitTag)) return self != null && self.Alive && self.HpFraction < c.Fraction;

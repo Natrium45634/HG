@@ -165,7 +165,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "archer",
@@ -310,7 +312,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "mage",
@@ -414,7 +418,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "priestess",
@@ -511,7 +517,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "scout",
@@ -619,7 +627,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "goblin",
@@ -716,7 +726,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "goblin_archer",
@@ -853,7 +865,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "orc_brute",
@@ -969,7 +983,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "shaman",
@@ -1066,7 +1082,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "wolf",
@@ -1171,7 +1189,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "wolf_cat",
+      "moveTypes": []
     },
     {
       "id": "sentinel",
@@ -1321,7 +1341,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "constructs",
+      "moveTypes": []
     },
     {
       "id": "deer",
@@ -1418,7 +1440,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "drone",
@@ -1533,7 +1557,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "constructs",
+      "moveTypes": []
     },
     {
       "id": "burrower",
@@ -1630,7 +1656,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "beasts",
+      "moveTypes": []
     },
     {
       "id": "titan",
@@ -1779,6 +1807,8 @@
               "wave": 0,
               "objective": "",
               "flag": "",
+              "variable": "",
+              "variableValue": "",
               "fraction": 0.7
             },
             "actions": [
@@ -1793,6 +1823,8 @@
                 "phase": 1,
                 "effects": [],
                 "flag": "",
+                "variable": "",
+                "variableValue": "",
                 "objective": "",
                 "terrain": "",
                 "unit": "drone",
@@ -1816,6 +1848,8 @@
                 "phase": 1,
                 "effects": [],
                 "flag": "titan_awake",
+                "variable": "",
+                "variableValue": "",
                 "objective": "",
                 "terrain": "",
                 "unit": "",
@@ -1850,6 +1884,8 @@
               "wave": 0,
               "objective": "",
               "flag": "",
+              "variable": "",
+              "variableValue": "",
               "fraction": 0.4
             },
             "actions": [
@@ -1864,6 +1900,8 @@
                 "phase": 1,
                 "effects": [],
                 "flag": "",
+                "variable": "",
+                "variableValue": "",
                 "objective": "",
                 "terrain": "",
                 "unit": "",
@@ -1887,6 +1925,8 @@
                 "phase": 1,
                 "effects": [],
                 "flag": "",
+                "variable": "",
+                "variableValue": "",
                 "objective": "",
                 "terrain": "",
                 "unit": "",
@@ -1910,6 +1950,8 @@
                 "phase": 1,
                 "effects": [],
                 "flag": "",
+                "variable": "",
+                "variableValue": "",
                 "objective": "",
                 "terrain": "",
                 "unit": "",
@@ -1933,6 +1975,8 @@
                 "phase": 1,
                 "effects": [],
                 "flag": "",
+                "variable": "",
+                "variableValue": "",
                 "objective": "",
                 "terrain": "",
                 "unit": "",
@@ -1969,7 +2013,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "constructs",
+      "moveTypes": []
     },
     {
       "id": "pylon",
@@ -2074,7 +2120,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "constructs",
+      "moveTypes": []
     },
     {
       "id": "elf_ranger",
@@ -2222,7 +2270,9 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "",
+      "moveTypes": []
     },
     {
       "id": "slime",
@@ -2319,7 +2369,323 @@
         "selectionVfx": "",
         "hitVfx": ""
       },
-      "threatCost": 0
+      "threatCost": 0,
+      "mainCategory": "slime_kind",
+      "moveTypes": []
+    },
+    {
+      "id": "wolf_scout",
+      "name": "Волк-разведчик",
+      "description": "Разведчик стаи: быстрее и зорче, слабее.",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "beast",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 40,
+        "move_speed": 2.8,
+        "ap_max": 8,
+        "ap_regen": 1.2,
+        "detection_range": 8,
+        "evasion": 0.2,
+        "base_damage": 20
+      },
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "bite",
+      "skills": [],
+      "defenseSkill": "",
+      "passives": ["pack_howl"],
+      "origins": [],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "pursuer",
+      "role": "Auto",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "FindDetour"
+      },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Beast",
+        "color": "",
+        "scale": 0.9,
+        "symbol": "в",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
+      },
+      "threatCost": 0,
+      "mainCategory": "wolf_scout_cat",
+      "moveTypes": []
+    },
+    {
+      "id": "wolf_leader",
+      "name": "Волк-вожак",
+      "description": "Вожак: «Вой вожака» усиливает стаю на 15 %, «Сила стаи» — +5 % за каждого волка рядом (не более +50 %).",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "beast",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 110,
+        "move_speed": 2.4,
+        "ap_max": 8,
+        "ap_regen": 1.2,
+        "detection_range": 8,
+        "evasion": 0.2,
+        "base_damage": 20,
+        "weight": 160
+      },
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "bite",
+      "skills": [],
+      "defenseSkill": "",
+      "passives": [],
+      "origins": [],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "pursuer",
+      "role": "Auto",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "FindDetour"
+      },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Beast",
+        "color": "#7a6a5a",
+        "scale": 1.25,
+        "symbol": "в",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
+      },
+      "threatCost": 0,
+      "mainCategory": "wolf_leader_cat",
+      "moveTypes": []
+    },
+    {
+      "id": "slime_mimic",
+      "name": "Слизь-мимик",
+      "description": "Притворяется ящиком. Стандартной атаки нет (запрет категории «Слизи»), бьёт из засады, когда к ней подходят.",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "slime",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": true,
+        "maxPerHex": 3,
+        "shareWith": ["goblin", "goblin_archer"],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": { "hp_max": 70, "move_speed": 1.2, "ap_max": 8, "ap_regen": 1, "detection_range": 7, "evasion": 0.15 },
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": { "bonuses": [], "conversions": [] },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "strike",
+      "skills": ["ambush_lash"],
+      "defenseSkill": "",
+      "passives": [],
+      "origins": [],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "hold",
+      "role": "Auto",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [3],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": true,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterObserved",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": { "zone": "AllAdjacent", "categories": [], "layers": [], "abilities": [], "whileMoving": false },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
+      "boss": { "isBoss": false, "title": "", "phases": [] },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Pawn",
+        "color": "#8a7a50",
+        "scale": 1,
+        "symbol": "г",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
+      },
+      "threatCost": 0,
+      "mainCategory": "slime_mimic_cat",
+      "moveTypes": []
     }
   ]
 }

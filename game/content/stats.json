@@ -526,6 +526,51 @@
       "showInPanel": false,
       "calcOrder": "Standard",
       "rounding": "None"
+    },
+    {
+      "id": "weight",
+      "name": "Масса",
+      "description": "Отбрасывание: дистанция × эталон (100) / масса",
+      "tags": [],
+      "group": "Тело",
+      "version": 1,
+      "default": 100,
+      "min": 1,
+      "max": 100000,
+      "format": "Number",
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
+    },
+    {
+      "id": "size",
+      "name": "Размер",
+      "description": "2 и больше — не проходит узкие места (гекс между двумя преградами)",
+      "tags": [],
+      "group": "Тело",
+      "version": 1,
+      "default": 1,
+      "min": 1,
+      "max": 10,
+      "format": "Number",
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
+    },
+    {
+      "id": "pursuit_range",
+      "name": "Дальность преследования",
+      "description": "Как далеко враг отходит от маршрута за целью (этап 5)",
+      "tags": [],
+      "group": "Поведение",
+      "version": 1,
+      "default": 6,
+      "min": 0,
+      "max": 100,
+      "format": "Number",
+      "showInPanel": false,
+      "calcOrder": "Standard",
+      "rounding": "None"
     }
   ]
 }

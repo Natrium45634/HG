@@ -160,6 +160,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -241,6 +243,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -293,6 +297,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -348,6 +354,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -397,6 +405,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       }
     ],
@@ -418,6 +428,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       },
       {
@@ -437,6 +449,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       }
     ],
@@ -463,6 +477,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "actions": [
@@ -477,6 +493,8 @@
             "phase": 1,
             "effects": [],
             "flag": "",
+            "variable": "",
+            "variableValue": "",
             "objective": "",
             "terrain": "",
             "unit": "",
@@ -511,6 +529,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "actions": [
@@ -525,6 +545,8 @@
             "phase": 1,
             "effects": [],
             "flag": "",
+            "variable": "",
+            "variableValue": "",
             "objective": "",
             "terrain": "",
             "unit": "",
@@ -542,6 +564,7 @@
       }
     ],
     "passives": [],
+    "environment": [],
     "passiveOverrides": [],
     "limits": {
       "stacking": "ByUnitType",

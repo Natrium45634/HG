@@ -118,18 +118,30 @@ public sealed class UnitConditions
                 return who != null && Compare(_sim.Scenario.PhaseNumberOf(who), c.Compare, c.Value);
             case UnitConditionType.Scenario:
                 return c.ScenarioCondition != null && _sim.Scenario.Evaluate(c.ScenarioCondition, ctx.Self);
+            case UnitConditionType.Category:
+                return who != null && c.Categories.Any(t => TypeMatches(who, t));
+            case UnitConditionType.Layer:
+                return who != null && who.Layer == c.Layer;
+            case UnitConditionType.Distance:
+                return ctx.Target != null && Compare(StructureSystem.DistanceTo(ctx.Self.Pos, ctx.Target), c.Compare, c.Radius);
+            case UnitConditionType.Environment:
+                return _sim.Scenario.Variable(c.Variable) == c.VariableValue;
         }
         return false;
     }
 
     private static bool Compare(double v, CompareMode mode, double x) => mode == CompareMode.AtLeast ? v + 1e-9 >= x : v <= x + 1e-9;
 
-    /// <summary>Creature category, unit ID, «tag:x» (unit or definition tag) or «role:x».</summary>
+    /// <summary>
+    /// Creature category, unit ID, a category of the tree (its ancestors included; «cat:x» too), «tag:x» (the
+    /// scenario tag, the template's and its categories' tags) or «role:x».
+    /// </summary>
     public bool TypeMatches(Unit u, string t)
     {
         if (string.IsNullOrEmpty(t)) return false;
-        if (t == u.Def.CreatureCategory || t == u.Def.Id || t == u.Tag) return true;
-        if (t.StartsWith("tag:", StringComparison.Ordinal)) return u.Def.Tags.Contains(t[4..]) || u.Tag == t[4..];
+        if (t == u.Def.CreatureCategory || t == u.Def.Id || t == u.Tag || u.InCategory(t)) return true;
+        if (t.StartsWith("tag:", StringComparison.Ordinal)) return u.HasTag(t[4..]);
+        if (t.StartsWith("cat:", StringComparison.Ordinal)) return u.InCategory(t[4..]);
         if (t.StartsWith("role:", StringComparison.Ordinal)) return string.Equals(_sim.Groups.RoleOf(u).ToString(), t[5..], StringComparison.OrdinalIgnoreCase);
         return false;
     }

@@ -165,6 +165,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -220,6 +222,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -272,6 +276,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -327,6 +333,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -379,6 +387,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -434,6 +444,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -483,6 +495,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       }
     ],
@@ -492,6 +506,7 @@
     "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "AfterScouting" },
     "triggers": [],
     "passives": [],
+    "environment": [],
     "passiveOverrides": [],
     "limits": {
       "stacking": "ByUnitType",

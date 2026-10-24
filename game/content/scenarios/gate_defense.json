@@ -89,6 +89,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -144,6 +146,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -196,6 +200,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -277,6 +283,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -329,6 +337,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "spawnMarker": "",
@@ -436,6 +446,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "onStart": [],
@@ -486,6 +498,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       }
     ],
@@ -527,6 +541,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "fail": {
@@ -549,6 +565,8 @@
               "wave": 0,
               "objective": "",
               "flag": "",
+              "variable": "",
+              "variableValue": "",
               "fraction": 0.5
             }
           ],
@@ -566,6 +584,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "showOnMap": true,
@@ -608,6 +628,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "fail": {
@@ -630,6 +652,8 @@
               "wave": 0,
               "objective": "",
               "flag": "",
+              "variable": "",
+              "variableValue": "",
               "fraction": 0.5
             }
           ],
@@ -647,6 +671,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "showOnMap": true,
@@ -689,6 +715,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "fail": {
@@ -711,6 +739,8 @@
               "wave": 0,
               "objective": "",
               "flag": "",
+              "variable": "",
+              "variableValue": "",
               "fraction": 0.5
             }
           ],
@@ -728,6 +758,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "showOnMap": true,
@@ -770,6 +802,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "fail": {
@@ -789,6 +823,8 @@
           "wave": 0,
           "objective": "",
           "flag": "",
+          "variable": "",
+          "variableValue": "",
           "fraction": 0.5
         },
         "showOnMap": true,
@@ -799,6 +835,7 @@
     "spawnWarnings": { "enabled": true, "overrideFog": true, "fog": "Show" },
     "triggers": [],
     "passives": [],
+    "environment": [],
     "passiveOverrides": [],
     "limits": {
       "stacking": "ByUnitType",

@@ -346,6 +346,8 @@ public enum ConditionType
     [Ed("Препятствие разрушено")] ObstacleDestroyed,
     [Ed("Босс сменил фазу")] BossPhase,
     [Ed("Произошла комбинация эффектов")] SynergyOccurred,
+    // Part 4.
+    [Ed("Переменная сценария равна")] Environment,
 }
 
 public enum CompareMode
@@ -392,10 +394,13 @@ public sealed class ConditionDef
     [Ed("Цель (ID)"), EdShowIf(nameof(Type), ConditionType.ObjectiveCompleted, ConditionType.ObjectiveFailed, ConditionType.EnemiesLeaked)]
     public string Objective { get; set; } = "";
     [Ed("Флаг"), EdShowIf(nameof(Type), ConditionType.FlagSet, ConditionType.FlagTimer)] public string Flag { get; set; } = "";
+    [Ed("Переменная"), EdShowIf(nameof(Type), ConditionType.Environment)] public string Variable { get; set; } = "";
+    [Ed("Значение", "Равно ли значение переменной этому"), EdShowIf(nameof(Type), ConditionType.Environment)] public string VariableValue { get; set; } = "";
     [Ed("Доля здоровья"), EdRange(0, 1), EdShowIf(nameof(Type), ConditionType.HpBelow)] public double Fraction { get; set; } = 0.5;
 
     public string Describe() => Type switch
     {
+        ConditionType.Environment => $"{Variable} = {VariableValue}",
         ConditionType.AllEnemiesDead => "Уничтожить всех врагов",
         ConditionType.AllPlayerUnitsDead => "Все юниты игрока погибли",
         ConditionType.SurviveTime => $"Продержаться {Seconds:0} с",
@@ -463,6 +468,8 @@ public enum TriggerActionType
     [Ed("Сменить фазу босса")] SetBossPhase,
     [Ed("Визуальный эффект")] PlayVfx,
     [Ed("Звук")] PlaySound,
+    // Part 4 (docs/DECISIONS_4.md §62): variables of the scenario (time of day, weather).
+    [Ed("Изменить переменную сценария")] SetEnvironment,
 }
 
 public enum ActionTarget
@@ -493,6 +500,8 @@ public sealed class TriggerActionDef
     [Ed("Операции", "Каталог операций навыков: применяются к выбранным юнитам"), EdShowIf(nameof(Type), TriggerActionType.Effects)]
     public List<SkillEffectDef> Effects { get; set; } = new();
     [Ed("Флаг"), EdShowIf(nameof(Type), TriggerActionType.SetFlag)] public string Flag { get; set; } = "";
+    [Ed("Переменная"), EdShowIf(nameof(Type), TriggerActionType.SetEnvironment)] public string Variable { get; set; } = "";
+    [Ed("Значение переменной"), EdShowIf(nameof(Type), TriggerActionType.SetEnvironment)] public string VariableValue { get; set; } = "";
     [Ed("Цель (ID)"), EdShowIf(nameof(Type), TriggerActionType.CompleteObjective, TriggerActionType.FailObjective)] public string Objective { get; set; } = "";
     [Ed("Местность"), EdRef(DefCategory.Terrain), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain)] public string Terrain { get; set; } = "";
     [Ed("Юнит"), EdRef(DefCategory.Unit), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)] public string Unit { get; set; } = "";
@@ -516,6 +525,7 @@ public sealed class TriggerActionDef
         TriggerActionType.SpawnWave => $"Волна {Wave + 1}",
         TriggerActionType.CancelWave => $"Отменить волну {Wave + 1}",
         TriggerActionType.SetFlag => $"Флаг «{Flag}»",
+        TriggerActionType.SetEnvironment => $"{Variable} = {VariableValue}",
         TriggerActionType.CompleteObjective => $"Выполнить цель «{Objective}»",
         TriggerActionType.FailObjective => $"Провалить цель «{Objective}»",
         TriggerActionType.ChangeTerrain => $"Местность → {Terrain}",
@@ -577,6 +587,8 @@ public sealed class ScenarioDef : Def
     [Ed("Маркеры появления", Group = "Волны")] public ScenarioWarningsDef SpawnWarnings { get; set; } = new();
     [Ed("Триггеры", Group = "Триггеры")] public List<TriggerDef> Triggers { get; set; } = new();
     [Ed("Пассивы сценария", "Выдаются юнитам стороны или с тегом", Group = "Пассивы")] public List<ScenarioPassiveDef> Passives { get; set; } = new();
+    [Ed("Переменные сценария", "Время суток, погода…: меняются действием триггера, проверяются условиями (docs/DECISIONS_4.md §62)", Group = "Пассивы")]
+    public List<EnvironmentVarDef> Environment { get; set; } = new();
     [Ed("Отключить или заменить пассивы", "Например, талант расы в этом сценарии", Group = "Пассивы")] public List<PassiveOverrideDef> PassiveOverrides { get; set; } = new();
     [Ed("Переопределение правил", "Ограничения сценария", Group = "Ограничения")] public ScenarioLimitsDef Limits { get; set; } = new();
 

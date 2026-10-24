@@ -79,6 +79,10 @@ public sealed class MoveRules
     public bool AllowSwap { get; set; } = true;
     [Ed("Стоящие союзники пропускают", "Союзник без приказа меняется местами с проходящим и возвращается на своё место — узкий проход не запирается теми, кто уже пришёл")]
     public bool YieldToAllies { get; set; } = true;
+    // Part 4 (docs/DECISIONS_4.md §60).
+    [Ed("Эталонная масса", "Отбрасывание: дистанция × эталон / масса цели (вниз), не меньше 0"), EdRange(1, 100_000)] public double ReferenceWeight { get; set; } = 100;
+    [Ed("Размер для узких мест", "Существа такого размера и больше не проходят гекс между двумя непроходимыми соседями напротив друг друга"), EdRange(2, 100)]
+    public double NarrowSize { get; set; } = 2;
     [Ed("Разрыв ничьих маршрута", "При равной стоимости маршрута игрока: по порядку критериев")]
     public List<RouteTieBreak> TieBreak { get; set; } = new() { RouteTieBreak.Turns, RouteTieBreak.Steps };
 }

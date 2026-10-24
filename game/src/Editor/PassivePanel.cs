@@ -111,12 +111,15 @@ public partial class PassivePanel : DefListPanel
     }
 }
 
-/// <summary>«Происхождения»: races, species, classes, roles — sets of passives and talents.</summary>
+/// <summary>
+/// «Категории существ» (docs/DECISIONS_4.md §61): the origins of part 3 with a parent and rules — the tree, the
+/// rules with their modes, the children and the templates under the category.
+/// </summary>
 public partial class OriginPanel : DefListPanel
 {
     private VBoxContainer? _side;
 
-    public OriginPanel(EditorContext ctx) : base(ctx, DefCategory.Origin, "Происхождения", null, () => new OriginDef { Name = "Новое происхождение" })
+    public OriginPanel(EditorContext ctx) : base(ctx, DefCategory.Origin, "Категории существ", null, () => new OriginDef { Name = "Новая категория" })
     {
     }
 
@@ -142,6 +145,24 @@ public partial class OriginPanel : DefListPanel
     {
         if (_side == null || !IsInstanceValid(_side)) return;
         Ui.ClearChildren(_side);
+        var problems = new List<string>();
+        var chain = CategoryTree.Chain(Ctx.Db, o, problems);
+        var path = Ui.Label("Дерево: " + string.Join(" → ", chain.Select(c => c.DisplayName)), 14, Ui.Text, wrap: true);
+        path.Name = "CategoryPath";
+        _side.AddChild(path);
+        foreach (var p in problems) _side.AddChild(Ui.Label("⛔ " + p, 12, Ui.Bad, wrap: true));
+        var children = Ctx.Db.All<OriginDef>().Where(c => c.Parent == o.Id).ToList();
+        if (children.Count > 0)
+        {
+            _side.AddChild(Ui.Label("Потомки:", 13, Ui.TextDim));
+            foreach (var c in children) _side.AddChild(Ui.Button("↳ " + c.DisplayName, () => Ctx.Navigate(DefCategory.Origin, c.Id)));
+        }
+        if (o.Rules.Count > 0)
+        {
+            _side.AddChild(Ui.Label("Правила:", 13, Ui.TextDim));
+            foreach (var r in o.Rules) _side.AddChild(Ui.Label($"• {r.Describe(Ctx.Db)} — {r.Mode}{(r.Priority != 0 ? $", приоритет {r.Priority}" : "")}", 12, Ui.Text, wrap: true));
+        }
+        _side.AddChild(Ui.Sep());
         _side.AddChild(Ui.Label("Что получают юниты", 15, Ui.Accent));
         foreach (var id in o.Passives)
         {
@@ -153,11 +174,14 @@ public partial class OriginPanel : DefListPanel
             _side.AddChild(b);
         }
         _side.AddChild(Ui.Sep());
-        _side.AddChild(Ui.Label("Юниты с этим происхождением", 15, Ui.Accent));
-        var units = Ctx.Db.All<UnitDef>().Where(u => u.Origins.Contains(o.Id) || o.AutoTags.Any(t => u.Tags.Contains(t))).ToList();
-        if (units.Count == 0) _side.AddChild(Ui.Label("Нет (укажите происхождение у юнита или тег автоназначения).", 13, Ui.TextDim, wrap: true));
+        _side.AddChild(Ui.Label("Шаблоны в этой категории (и в потомках)", 15, Ui.Accent));
+        var units = Ctx.Db.All<UnitDef>().Where(u => CategoryTree.Resolve(Ctx.Db, u).Ids.Contains(o.Id)).ToList();
+        if (units.Count == 0) _side.AddChild(Ui.Label("Нет (укажите категорию у юнита или тег автоназначения).", 13, Ui.TextDim, wrap: true));
         foreach (var u in units)
-            _side.AddChild(Ui.Button($"{u.DisplayName}{(u.Origins.Contains(o.Id) ? "" : " (по тегу)")}", () => Ctx.Navigate(DefCategory.Unit, u.Id)));
+        {
+            string how = u.MainCategory == o.Id ? " (основная)" : u.Origins.Contains(o.Id) ? "" : o.AutoTags.Any(t => u.Tags.Contains(t)) ? " (по тегу)" : " (через потомка)";
+            _side.AddChild(Ui.Button($"{u.DisplayName}{how}", () => Ctx.Navigate(DefCategory.Unit, u.Id)));
+        }
         var scen = Ctx.Db.All<ScenarioDef>().Where(s => s.PassiveOverrides.Any(x => o.Passives.Contains(x.Passive))).ToList();
         if (scen.Count > 0)
         {

@@ -21,6 +21,13 @@ public sealed class PassiveInstance
     public bool Active { get; set; }
     /// <summary>Why it does not act now (shown greyed out).</summary>
     public string Inactive { get; set; } = "";
+    /// <summary>«За каждого»: modifiers with their value multiplied by the count (and capped) — docs/DECISIONS_4.md §62.</summary>
+    public Dictionary<ModifierDef, ModifierDef> Scaled { get; } = new(ReferenceEqualityComparer.Instance);
+    /// <summary>Sources ignored by «запрещать дубликаты».</summary>
+    public List<string> Duplicates { get; } = new();
+
+    /// <summary>The modifier as it acts now (scaled by «за каждого»).</summary>
+    public ModifierDef Effective(ModifierDef m) => Scaled.TryGetValue(m, out var s) ? s : m;
 }
 
 /// <summary>
@@ -60,10 +67,18 @@ public sealed class PassiveSystem
                     source += " (заменено сценарием)";
                     break;
                 }
-            // The owner's radiating copy of an aura and a copy received from another owner stay separate.
-            var same = list.FirstOrDefault(x => x.Def == p && (x.AuraOwner >= 0) == (auraOwner >= 0));
+            // The owner's radiating copy of an aura and a copy received from another owner stay separate;
+            // «по экземпляру от каждого источника» keeps one instance per source.
+            var same = list.FirstOrDefault(x => x.Def == p && (x.AuraOwner >= 0) == (auraOwner >= 0)
+                                                && (p.Stacking != PassiveStacking.BySource || (auraOwner >= 0 ? x.AuraOwner == auraOwner : x.AllSources.Contains(source))));
             if (same != null)
             {
+                if (p.Stacking == PassiveStacking.NoDuplicates)
+                {
+                    // Another source (another aura owner even with the same name) is ignored and listed.
+                    if (same.AuraOwner != auraOwner || !same.AllSources.Contains(source)) same.Duplicates.Add(source);
+                    return;
+                }
                 same.AllSources.Add(source);
                 if (p.Stacking == PassiveStacking.Stack) same.Stacks = Math.Min(Math.Max(1, p.MaxStacks), same.Stacks + 1);
                 return;
@@ -74,15 +89,20 @@ public sealed class PassiveSystem
         }
 
         foreach (var id in u.Def.Passives) Add(id, PassiveSource.Unit, "юнит");
-        foreach (var o in OriginsOf(u))
-            foreach (var id in o.Passives)
-                Add(id, o.Kind switch
-                {
-                    OriginKind.Race => PassiveSource.Race,
-                    OriginKind.Species => PassiveSource.Species,
-                    OriginKind.Custom => PassiveSource.CustomTag,
-                    _ => PassiveSource.ClassRole,
-                }, $"{Names(o.Kind)} «{o.DisplayName}»");
+        // Passives of the category tree: inherited, overridden, excluded or conditional (docs/DECISIONS_4.md §61).
+        var cats = u.CategoryInfo ?? _sim.Categories.Of(u.Def, u.Tag);
+        foreach (var r in cats.Of(CategoryRuleKind.Passive))
+        {
+            var rule = r.Rule.Mode == CategoryInherit.Conditional && !_sim.Conditions.Evaluate(r.Rule.Condition, new ConditionContext(u, null, u.Pos, null)) ? r.Otherwise : r.Rule;
+            if (rule is not { Kind: CategoryRuleKind.Passive } || rule.Passive == "") continue;
+            Add(rule.Passive, r.From.Kind switch
+            {
+                OriginKind.Race => PassiveSource.Race,
+                OriginKind.Species => PassiveSource.Species,
+                OriginKind.Custom => PassiveSource.CustomTag,
+                _ => PassiveSource.ClassRole,
+            }, $"{Names(r.From.Kind)} «{r.From.DisplayName}»" + (rule != r.Rule ? " (условие не выполнено — правило родителя)" : ""));
+        }
         foreach (var s in u.Statuses)
             if (s.Level != null)
                 foreach (var id in s.Level.Passives)
@@ -98,7 +118,7 @@ public sealed class PassiveSystem
         foreach (var sp in _sim.Scenario.Def?.Passives ?? Enumerable.Empty<ScenarioPassiveDef>())
         {
             if (!string.IsNullOrEmpty(sp.Faction) && sp.Faction != u.FactionId) continue;
-            if (!string.IsNullOrEmpty(sp.Tag) && u.Tag != sp.Tag && !u.Def.Tags.Contains(sp.Tag)) continue;
+            if (!string.IsNullOrEmpty(sp.Tag) && !u.HasTag(sp.Tag)) continue;
             Add(sp.Passive, PassiveSource.Scenario, "правило сценария");
         }
         // Auras of other units (and the owner's own, if it includes itself).
@@ -111,6 +131,7 @@ public sealed class PassiveSystem
                 if (p.AuraRadius <= 0 || pi.AuraOwner >= 0 || !pi.Active) continue;
                 if (o == u && !p.AuraIncludesSelf) continue;
                 if (HexCoord.Distance(o.Pos, u.Pos) > p.AuraRadius) continue;
+                if (p.AuraTypes.Count > 0 && o != u && !p.AuraTypes.Any(t => _sim.Conditions.TypeMatches(u, t))) continue;
                 bool ok = p.AuraAffects switch
                 {
                     AuraAffects.Allies => o == u || _sim.RelationOf(o, u) == Relation.Ally,
@@ -126,9 +147,14 @@ public sealed class PassiveSystem
         return list;
     }
 
-    /// <summary>Origins of a unit: its list and those assigned by tags.</summary>
+    /// <summary>Categories of a unit with their ancestors: the main one, the additional ones, those assigned by tags.</summary>
     public IEnumerable<OriginDef> OriginsOf(Unit u)
     {
+        if (u.CategoryInfo != null)
+        {
+            foreach (var o in u.CategoryInfo.All) yield return o;
+            yield break;
+        }
         var seen = new HashSet<string>();
         foreach (var id in u.Def.Origins)
             if (_sim.Content.Get<OriginDef>(id) is { } o && seen.Add(o.Id))
@@ -164,6 +190,19 @@ public sealed class PassiveSystem
     {
         var p = pi.Def;
         pi.Inactive = "";
+        // «За каждого»: the owner of the passive counts (an aura's copy — its owner).
+        var counter = pi.AuraOwner >= 0 ? _sim.GetUnit(pi.AuraOwner) ?? u : u;
+        foreach (var m in p.Modifiers)
+            if (m.PerEach is { } pe)
+            {
+                int n = CountFor(counter, pe);
+                double v = m.Value * n;
+                if (pe.MaxValue > 0) v = Math.Clamp(v, -pe.MaxValue, pe.MaxValue);
+                var sm = ContentJson.Clone(m);
+                sm.Value = v;
+                sm.PerEach = null;
+                pi.Scaled[m] = sm;
+            }
         if (p.Trigger != PassiveTrigger.Always && p.ActiveSeconds > 0)
         {
             // A triggered passive with modifiers acts for its time after the trigger.
@@ -196,7 +235,7 @@ public sealed class PassiveSystem
             if (!u.Alive) continue;
             var list = Collect(u);
             foreach (var pi in list) Evaluate(u, pi);
-            string sig = string.Join(";", list.Select(x => $"{x.Def.Id}:{x.Stacks}:{(x.Active ? 1 : 0)}:{x.AuraOwner}"));
+            string sig = string.Join(";", list.Select(x => $"{x.Def.Id}:{x.Stacks}:{(x.Active ? 1 : 0)}:{x.AuraOwner}:{string.Join(",", x.Scaled.Values.Select(v => v.Value))}"));
             if (_signature.TryGetValue(u.Id, out var old) && old == sig) continue;
             _signature[u.Id] = sig;
             _sim.Statuses.RecalculateModifiers(u);
@@ -278,7 +317,7 @@ public sealed class PassiveSystem
         ModifierMath.Combine(Modifiers(u, target).Where(x => x.M.Resource == resource)
             .Select(x => new Contribution(x.M.Mode, x.M.Mode == ModifierMode.Multiplier ? x.M.Value : x.M.Value * x.Stacks, x.M.Priority, x.M.Category, x.Source, x.Stacks)));
 
-    /// <summary>Modifiers of the acting passives of the unit, with their stacks and sources.</summary>
+    /// <summary>Modifiers of the acting passives of the unit, with their stacks and sources («за каждого» applied).</summary>
     public IEnumerable<(ModifierDef M, int Stacks, string Source)> Modifiers(Unit u, ModifierTarget target)
     {
         foreach (var pi in u.PassiveInstances)
@@ -286,8 +325,34 @@ public sealed class PassiveSystem
             if (!ModifiersAct(pi)) continue;
             foreach (var m in pi.Def.Modifiers)
                 if (m.Target == target)
-                    yield return (m, pi.Stacks, $"{pi.Def.DisplayName} — {pi.Source}");
+                    yield return (pi.Effective(m), pi.Stacks, $"{pi.Def.DisplayName} — {pi.Source}");
         }
+    }
+
+    /// <summary>
+    /// The units «за каждого» counts for its owner: by types (tags, categories, templates), side, radius; summoned,
+    /// dead and outside-the-radius ones only when allowed; capped by «предел количества».
+    /// </summary>
+    public int CountFor(Unit owner, PerEachDef pe)
+    {
+        int n = 0;
+        foreach (var o in _sim.Units)
+        {
+            if (o.IsStructure || o == owner && !pe.IncludeSelf) continue;
+            if (!o.Alive && !pe.IncludeDead) continue;
+            if (o.SummonerId >= 0 && !pe.IncludeSummoned) continue;
+            bool side = pe.Side switch
+            {
+                CountSide.Allies => o == owner || _sim.RelationOf(owner, o) == Relation.Ally,
+                CountSide.Enemies => _sim.IsHostile(owner, o),
+                _ => true,
+            };
+            if (!side) continue;
+            if (o.Alive && pe.Radius > 0 && !pe.IncludeOutside && HexCoord.Distance(o.Pos, owner.Pos) > pe.Radius) continue;
+            if (pe.Types.Count > 0 && !pe.Types.Any(t => _sim.Conditions.TypeMatches(o, t))) continue;
+            n++;
+        }
+        return pe.MaxCount > 0 ? Math.Min(n, pe.MaxCount) : n;
     }
 
     /// <summary>

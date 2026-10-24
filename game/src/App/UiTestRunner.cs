@@ -71,6 +71,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_td_scene_bases_route_group_battle", EditorTdScene));
         _tests.Add(("editor_td_waves_library_presets_budget_battle", EditorTdWaves));
         _tests.Add(("editor_td_route_graph_fork_merge_battle", EditorTdRouteGraph));
+        _tests.Add(("editor_category_tree_rules_and_pack_battle", EditorCategoryTree));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2408,5 +2409,53 @@ public partial class UiTestRunner : Node
         draft.Add(ContentJson.Clone(Main.Instance.Content.Published.Get<ScenarioDef>("td_pass")!));
         ContentValidator.Validate(draft);
         Check(nodes == 2, "в исходном маршруте два узла");
+    }
+    /// <summary>
+    /// Part 4, stage 4 through the UI: «Категории существ» shows the tree path of «Волк-вожак»; the unit editor lists
+    /// the rules of the categories with their sources and states («Слизь-мимик» inherits the forbidden standard attack,
+    /// «Кислотная слизь» excludes it); in «Ночная охота стаи» the leader's aura reaches the pack, «Сила стаи» counts the
+    /// wolves, the night speeds the wolves up and the panel shows the time of day until dawn.
+    /// </summary>
+    private async Task EditorCategoryTree()
+    {
+        await OpenEditor("origins");
+        var origins = Find<OriginPanel>(GetTree().Root).First();
+        origins.Select("wolf_leader_cat");
+        await Frames(6);
+        Check(LabelVisible("Дерево: Сущность → Живые → Звери → Волк → Волк-вожак"), "путь в дереве категорий не показан");
+        Check(Find<Button>(origins).Any(b => b.IsVisibleInTree() && b.Text == "Волк-вожак (основная)"), "шаблон вожака не показан в своей категории");
+
+        await OpenEditor("enemies");
+        var units = Find<UnitEditorPanel>(GetTree().Root).First();
+        units.Select("slime_mimic");
+        await Frames(8);
+        string Rules() => string.Join("\n", Find<Label>(units).Where(l => l.Name.ToString().Contains("CatRule") && l.IsVisibleInTree()).Select(l => l.Text));
+        Check(Rules().Contains("✓ запрет: стандартная атака — «Слизи»"), "у мимика должен действовать унаследованный запрет:\n" + Rules());
+        units.Select("slime");
+        await Frames(8);
+        Check(Rules().Contains("✗ запрет: стандартная атака — «Слизи» (исключено в «Кислотная слизь»)"), "у кислотной слизи запрет должен быть исключён:\n" + Rules());
+        units.Select("wolf_leader");
+        await Frames(8);
+        Check(Rules().Contains("✓ пассив «Вой вожака» — «Волк-вожак»") && Rules().Contains("«Ночной охотник» — «Волк» (условно"), "правила вожака:\n" + Rules());
+        Check(LabelVisible("Теги от категорий: creature, living, beast, pack"), "теги категорий не показаны");
+
+        var bs = await OpenBattle("pack_hunt");
+        await Frames(10);
+        var sim = bs.Sim;
+        var leader = sim.Units.First(u => u.Def.Id == "wolf_leader");
+        var wolf = sim.Units.First(u => u.Def.Id == "wolf");
+        var mimic = sim.Units.First(u => u.Def.Id == "slime_mimic");
+        sim.RunSeconds(0.6);
+        Check(wolf.PassiveInstances.Any(p => p.Def.Id == "leader_howl" && p.AuraOwner == leader.Id), "аура вожака не дошла до волка");
+        var strength = leader.PassiveInstances.First(p => p.Def.Id == "pack_strength");
+        Check(strength.Scaled.Values.Single().Value >= 10, $"«Сила стаи» должна считать волков рядом (+{strength.Scaled.Values.Single().Value} %)");
+        Check(mimic.BasicAttack == null && mimic.Skills.Any(s => s.Id == "ambush_lash"), "мимик: без стандартной атаки, с ударом из засады");
+        double nightSpeed = wolf.Stat(Stats.MoveSpeed);
+        await Frames(5);
+        Check(LabelVisible("Время суток: ночь"), "панель должна показать время суток");
+        sim.Scenario.SetVariable("time_of_day", "day");
+        sim.RunSeconds(0.6);
+        await Frames(5);
+        Check(wolf.Stat(Stats.MoveSpeed) < nightSpeed - 1e-6 && LabelVisible("Время суток: день"), $"днём волки медленнее ({nightSpeed} → {wolf.Stat(Stats.MoveSpeed)})");
     }
 }

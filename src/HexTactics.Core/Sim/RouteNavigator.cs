@@ -177,7 +177,7 @@ public sealed class RouteNavigator
         foreach (var c in e.Cells)
         {
             var cell = _sim.Map.Get(c);
-            if (cell == null || !cell.Terrain.IsPassableFor(u.Def.MoveCategory)) return false;
+            if (cell == null || !MovementRules.CanPassTerrain(_sim, u, cell.Terrain)) return false;
         }
         return true;
     }
@@ -223,8 +223,8 @@ public sealed class RouteNavigator
             }
             case RouteForkRule.Tags:
             {
-                var tags = new HashSet<string>(u.Def.Tags) { u.Def.CreatureCategory, u.Tag, u.Group, u.Def.Id };
-                return usable.FirstOrDefault(e => e.Tags.Any(tags.Contains)) ?? usable.FirstOrDefault(e => e.Tags.Count == 0) ?? usable[0];
+                bool Fits(string t) => t == u.Group || u.HasTag(t) || _sim.Conditions.TypeMatches(u, t);
+                return usable.FirstOrDefault(e => e.Tags.Any(Fits)) ?? usable.FirstOrDefault(e => e.Tags.Count == 0) ?? usable[0];
             }
             case RouteForkRule.Condition:
                 return usable.FirstOrDefault(e => e.Condition != null) ?? usable[0];

@@ -92,7 +92,7 @@ public class PassiveTests
         Assert.Contains("на 75 % меньше урона", text);
         Assert.Contains("Получает", text);
         Assert.DoesNotContain("-75", text);
-        Assert.Contains(slime.PassiveInstances, x => x.Def.Id == "water_amorphous" && x.Source.Contains("Слизь"));
+        Assert.Contains(slime.PassiveInstances, x => x.Def.Id == "water_amorphous" && x.Source.Contains("Кислотная слизь"));
     }
 
     [Fact]

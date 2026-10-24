@@ -73,7 +73,7 @@ public sealed class BlockingSystem
         foreach (var x in list)
         {
             if (x == e.Def.CreatureCategory || x == e.Def.Id) return true;
-            if (x.StartsWith("tag:", StringComparison.Ordinal) && e.Def.Tags.Contains(x.Substring(4))) return true;
+            if (x.StartsWith("tag:", StringComparison.Ordinal) && e.HasTag(x.Substring(4))) return true;
         }
         return false;
     }

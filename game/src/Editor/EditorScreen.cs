@@ -43,7 +43,7 @@ public partial class EditorScreen : Control
         ("synergies", "Синергии", DefCategory.Synergy),
         ("passives", "Пассивные умения", DefCategory.Passive),
         ("talents", "Таланты", DefCategory.Passive),
-        ("origins", "Происхождения", DefCategory.Origin),
+        ("origins", "Категории существ", DefCategory.Origin),
         ("resources", "Ресурсы", DefCategory.Resource),
         ("stats", "Характеристики", DefCategory.Stat),
         ("elements", "Элементы", DefCategory.Element),

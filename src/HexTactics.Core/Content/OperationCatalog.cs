@@ -137,6 +137,8 @@ public static class OperationCatalog
         Act("victory", "Победа", "Волны и цели", "", TriggerActionType.Victory),
         Act("defeat", "Поражение", "Волны и цели", "", TriggerActionType.Defeat),
         Act("flag", "Событие (флаг)", "События", "", TriggerActionType.SetFlag, null, "триггеры"),
+        Act("environment", "Время суток / погода", "События", "Меняет переменную сценария (например time_of_day = night).", TriggerActionType.SetEnvironment,
+            a => { a.Variable = "time_of_day"; a.VariableValue = "night"; }, "переменные сценария"),
         Act("trigger", "Запустить триггер", "События", "Выполняет действия другого триггера (циклы обнаруживает проверка).", TriggerActionType.ActivateTrigger, null, "триггеры"),
         Act("boss_phase", "Сменить фазу босса", "Боссы", "", TriggerActionType.SetBossPhase, null, "фаза босса"),
         Act("message", "Сообщение", "Сообщения и эффекты", "", TriggerActionType.Message, null, "сообщения"),
@@ -178,6 +180,8 @@ public static class OperationCatalog
         Cond("objective", "Цель выполнена", "Сценарий", "", ConditionType.ObjectiveCompleted, null, "цель выполнена"),
         Cond("objective_failed", "Цель провалена", "Сценарий", "", ConditionType.ObjectiveFailed),
         Cond("flag", "Событие (флаг)", "Сценарий", "", ConditionType.FlagSet),
+        Cond("environment", "Время суток / погода", "Сценарий", "Переменная сценария равна значению.", ConditionType.Environment,
+            c => { c.Variable = "time_of_day"; c.VariableValue = "night"; }, "переменные сценария"),
         Cond("leaks", "Пропущено N врагов", "Сценарий", "", ConditionType.EnemiesLeaked),
     };
 

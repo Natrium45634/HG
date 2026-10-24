@@ -42,7 +42,7 @@ public sealed class TargetSelector
             case AutoTargetRule.NearestToProtected:
             {
                 var tag = _sim.Rules.AutoAttacks.ProtectedTag;
-                var prot = _sim.Units.Where(x => x.Alive && !_sim.IsHostile(u, x) && (x.Tag == tag || x.Def.Tags.Contains(tag))).ToList();
+                var prot = _sim.Units.Where(x => x.Alive && !_sim.IsHostile(u, x) && x.HasTag(tag)).ToList();
                 return prot.Count == 0 ? 0 : prot.Min(p => HexCoord.Distance(p.Pos, t.Pos));
             }
             case AutoTargetRule.Boss:
@@ -77,7 +77,7 @@ public sealed class TargetSelector
         }
     }
 
-    private static bool HasTag(Unit t, string tag) => !string.IsNullOrEmpty(tag) && (t.Tag == tag || t.Def.Tags.Contains(tag));
+    private static bool HasTag(Unit t, string tag) => t.HasTag(tag);
 
     private static string? DamageTypeOf(Unit u, SkillDef? s)
     {

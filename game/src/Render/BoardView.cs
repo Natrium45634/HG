@@ -110,6 +110,22 @@ public partial class BoardView : Node3D
         });
     }
 
+    private float _night = -1;
+
+    /// <summary>
+    /// Night of the scenario (docs/DECISIONS_4.md §62): the sun dims and the ambient light turns blue — the look
+    /// only; vision rules do not change.
+    /// </summary>
+    public void SetNight(bool night)
+    {
+        float target = night ? 1f : 0f;
+        if (Math.Abs(_night - target) < 0.001f || _sun == null || _env == null) return;
+        _night = target;
+        _sun.LightEnergy = night ? 0.45f : 1.25f;
+        _sun.LightColor = night ? new Color(0.62f, 0.7f, 1f) : new Color(1f, 0.95f, 0.88f);
+        _env.Environment.AmbientLightColor = night ? new Color(0.42f, 0.5f, 0.75f) : new Color(0.62f, 0.68f, 0.78f);
+    }
+
     public void ApplySettings(App.Settings s)
     {
         Rig.TiltDeg = (float)s.CameraTilt;

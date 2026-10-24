@@ -192,9 +192,52 @@ public partial class UnitEditorPanel : DefListPanel
         side.AddChild(container);
         side.AddChild(Ui.Label("Предпросмотр фишки (поворачивается)", 12, Ui.TextDim));
         side.AddChild(Ui.Label("Тестовый просмотр на карте — в разделе «Тест» или кнопкой ниже.", 12, Ui.TextDim, wrap: true).MinSize(260));
+        var catScroll = new ScrollContainer { CustomMinimumSize = new Vector2(300, 260), SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _cats = Ui.VBox(3).Expand();
+        _cats.Name = "UnitCategories";
+        catScroll.AddChild(_cats);
+        side.AddChild(catScroll);
         root.AddChild(side);
+        grid.Changed += () => Categories(u);
         RebuildPreview(u);
+        Categories(u);
         return root;
+    }
+
+    private VBoxContainer? _cats;
+
+    /// <summary>
+    /// The categories of the template (docs/DECISIONS_4.md §61): the chain of each one, every rule with its source and
+    /// whether it acts (overridden, excluded, conditional, yields to…), the conflicts.
+    /// </summary>
+    private void Categories(UnitDef u)
+    {
+        if (_cats == null || !IsInstanceValid(_cats)) return;
+        Ui.ClearChildren(_cats);
+        var res = CategoryTree.Resolve(Ctx.Db, u);
+        _cats.AddChild(Ui.Label("Категории и правила", 15, Ui.Accent));
+        if (res.Assigned.Count == 0)
+        {
+            _cats.AddChild(Ui.Label("Нет категорий: задайте «Основная категория» или «Дополнительные категории».", 12, Ui.TextDim, wrap: true));
+            return;
+        }
+        foreach (var a in res.Assigned)
+        {
+            var chain = CategoryTree.Chain(Ctx.Db, a);
+            var b = Ui.Button(string.Join(" → ", chain.Select(c => c.DisplayName)) + (a.Id == u.MainCategory ? " (основная)" : ""), () => Ctx.Navigate(DefCategory.Origin, a.Id));
+            b.Alignment = HorizontalAlignment.Left;
+            b.ClipText = true;
+            _cats.AddChild(b);
+        }
+        int n = 0;
+        foreach (var r in res.Rules.Where(r => r.Note != "исключает правило родителя"))
+        {
+            var l = Ui.Label($"{(r.Active ? "✓" : "✗")} {r.Rule.Describe(Ctx.Db)} — «{r.From.DisplayName}»" + (r.Note != "" ? $" ({r.Note})" : ""), 12, r.Active ? Ui.Text : Ui.TextDim, wrap: true);
+            l.Name = "CatRule_" + n++;
+            _cats.AddChild(l);
+        }
+        if (res.Tags.Any()) _cats.AddChild(Ui.Label("Теги от категорий: " + string.Join(", ", res.Tags), 12, Ui.TextDim, wrap: true));
+        foreach (var p in res.Problems.Distinct()) _cats.AddChild(Ui.Label("⚠ " + p, 12, Ui.Warn, wrap: true));
     }
 
     private void RebuildPreview(UnitDef u)

@@ -652,6 +652,9 @@ public sealed class CombatSystem
         var start = target.Pos;
         var cur = target.Pos;
         var mc = MoveContext.For(_sim, target);
+        // Mass (docs/DECISIONS_4.md §60): distance × reference / weight, rounded down — the heavy move less.
+        double weight = target.Stat(Stats.Weight);
+        if (weight > 0) distance = Math.Max(0, (int)Math.Floor(distance * _sim.Rules.Move.ReferenceWeight / weight + 1e-9));
         for (int i = 0; i < distance; i++)
         {
             var next = cur.Neighbor(dir.Value);

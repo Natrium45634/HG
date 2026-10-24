@@ -32,6 +32,8 @@
       "hazardPenalty": 0.01,
       "allowSwap": true,
       "yieldToAllies": true,
+      "referenceWeight": 100,
+      "narrowSize": 2,
       "tieBreak": ["Turns", "Steps"]
     },
     "layers": {

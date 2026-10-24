@@ -6,6 +6,20 @@ namespace HexTactics.Game.UI;
 /// <summary>Russian display names of enum values used by the editor and HUD.</summary>
 public static class Names
 {
+    /// <summary>Readable values of the usual scenario variables (others as they are).</summary>
+    public static string EnvValue(string v) => v switch
+    {
+        "night" => "ночь",
+        "day" => "день",
+        "dawn" => "рассвет",
+        "dusk" => "сумерки",
+        "rain" => "дождь",
+        "snow" => "снег",
+        "fog" => "туман",
+        "clear" => "ясно",
+        _ => v,
+    };
+
     private static readonly Dictionary<string, string> Map = new()
     {
         ["TerrainVisual.Ground"] = "Земля", ["TerrainVisual.Grass"] = "Трава", ["TerrainVisual.Sand"] = "Песок", ["TerrainVisual.Stone"] = "Камень",

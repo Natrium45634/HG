@@ -192,10 +192,13 @@ public partial class BattleHud : Control
         var obs = Sim.Scenario.Objectives;
         // Waves of the dispatcher (docs/DECISIONS_4.md §58): the current ones with progress and why they wait.
         var waves = Sim.Scenario.Waves.Where(w => w.State is WaveState.Scheduled or WaveState.Active).ToList();
-        _objPanel.Visible = obs.Count > 0 || waves.Count > 0;
+        // Variables of the scenario with a caption (docs/DECISIONS_4.md §62): «Время суток: night».
+        var vars = (Sim.Scenario.Def?.Environment ?? new()).Where(v => v.Caption != "").ToList();
+        _objPanel.Visible = obs.Count > 0 || waves.Count > 0 || vars.Count > 0;
         if (!_objPanel.Visible) return;
         string WaitOf(WaveRuntime w) => w.Planned.FirstOrDefault(p => !p.Done && p.WaitReason != "")?.WaitReason ?? "";
-        string key = string.Join("|", obs.Select(o => $"{o.State}:{o.Progress}")) + "#" + string.Join("|", waves.Select(w => $"{w.Index}:{w.Spawned}/{w.Total}:{WaitOf(w)}"));
+        string key = string.Join("|", obs.Select(o => $"{o.State}:{o.Progress}")) + "#" + string.Join("|", waves.Select(w => $"{w.Index}:{w.Spawned}/{w.Total}:{WaitOf(w)}"))
+                     + "#" + string.Join("|", vars.Select(v => Sim.Scenario.Variable(v.Name)));
         if (key == _objKey) return;
         _objKey = key;
         Ui.ClearChildren(_objList);
@@ -223,6 +226,12 @@ public partial class BattleHud : Control
                 _ => o.Progress,
             };
             if (sub.Length > 0) _objList.AddChild(Ui.Label("   " + sub, 12, Ui.TextDim, wrap: true));
+        }
+        foreach (var v in vars)
+        {
+            var vl = Ui.Label($"◐ {v.Caption}: {Names.EnvValue(Sim.Scenario.Variable(v.Name))}", 13, Ui.Text);
+            vl.Name = "EnvVar_" + v.Name;
+            _objList.AddChild(vl);
         }
         foreach (var w in waves)
         {

@@ -72,7 +72,7 @@ public sealed class GroupOrders
 
     public GroupPlanner Planner => _sim.Groups;
 
-    private static bool Excluded(Unit u, GroupOrder o) => o.ExcludeTags.Any(t => u.Tag == t || u.Def.Tags.Contains(t));
+    private static bool Excluded(Unit u, GroupOrder o) => o.ExcludeTags.Any(u.HasTag);
 
     /// <summary>The skill a unit uses in a group attack: the most effective usable skill of a caster (if allowed), otherwise the basic attack.</summary>
     public SkillDef? AttackSkillOf(Unit u, Unit target, GroupOrder o)

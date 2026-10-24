@@ -30,6 +30,9 @@ public static class ThreatCost
 
     /// <summary>An elite enemy: tag «elite» or a boss (limited by «макс. доля элитных»).</summary>
     public static bool IsElite(UnitDef u) => u.Boss.IsBoss || u.Tags.Contains("elite") || u.Tags.Contains("boss");
+
+    /// <summary>Elite with the tags of its categories too.</summary>
+    public static bool IsElite(ContentDatabase db, UnitDef u) => IsElite(u) || CategoryTree.TagsOf(db, u) is var t && (t.Contains("elite") || t.Contains("boss"));
 }
 
 /// <summary>The composition picked by a budget: rows in order of the first pick, the leader first.</summary>
@@ -55,9 +58,9 @@ public static class WaveBudget
     public static List<UnitDef> Candidates(ContentDatabase db, WaveDef w, WaveBudgetDef b) =>
         db.All<UnitDef>().Where(u =>
             u.Faction == w.Faction
-            && (b.Categories.Count == 0 || b.Categories.Contains(u.CreatureCategory))
-            && b.RequiredTags.All(t => u.Tags.Contains(t))
-            && !b.ForbiddenTags.Any(t => u.Tags.Contains(t))
+            && (b.Categories.Count == 0 || b.Categories.Any(c => CategoryTree.Matches(db, u, c)))
+            && b.RequiredTags.All(t => CategoryTree.TagsOf(db, u).Contains(t))
+            && !b.ForbiddenTags.Any(t => CategoryTree.TagsOf(db, u).Contains(t))
             && (b.MoveCategories.Count == 0 || b.MoveCategories.Contains(u.MoveCategory))
             && (b.MaxUnitCost <= 0 || ThreatCost.Of(db, u) <= b.MaxUnitCost)
             && u.Stats.GetValueOrDefault(Stats.MoveSpeed, db.Stat(Stats.MoveSpeed)?.Default ?? 1) > 0).ToList();
@@ -79,7 +82,7 @@ public static class WaveBudget
                 if (c > left) r.Problems.Add($"лидер «{leader.DisplayName}» ({c:0.#}) дороже бюджета {b.Budget:0.#}");
                 picks.Add(leader);
                 left -= c;
-                if (ThreatCost.IsElite(leader)) elites++;
+                if (ThreatCost.IsElite(db, leader)) elites++;
             }
         }
         if (candidates.Count == 0) r.Problems.Add("нет шаблонов под ограничения бюджета (фракция, категории, теги, типы перемещения, предел стоимости)");
@@ -88,12 +91,12 @@ public static class WaveBudget
         {
             int n = picks.Count + 1;
             var affordable = candidates.Where(u => ThreatCost.Of(db, u) <= left + 1e-9
-                                                   && (!ThreatCost.IsElite(u) || elites + 1 <= Math.Floor(b.MaxEliteShare * Math.Max(n, b.MinUnits) + 1e-9))).ToList();
+                                                   && (!ThreatCost.IsElite(db, u) || elites + 1 <= Math.Floor(b.MaxEliteShare * Math.Max(n, b.MinUnits) + 1e-9))).ToList();
             if (affordable.Count == 0) break;
             var u = affordable[rng.NextInt(0, affordable.Count)];
             picks.Add(u);
             left -= ThreatCost.Of(db, u);
-            if (ThreatCost.IsElite(u)) elites++;
+            if (ThreatCost.IsElite(db, u)) elites++;
         }
         if (picks.Count < b.MinUnits)
             r.Problems.Add($"бюджета {b.Budget:0.#} хватает на {picks.Count} врагов из минимума {b.MinUnits}");

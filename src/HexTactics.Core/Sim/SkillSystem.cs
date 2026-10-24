@@ -993,7 +993,7 @@ public sealed class SkillSystem
                 var t = _sim.Content.Terrain(e.Terrain);
                 if (t == null || t == cell.Terrain) return;
                 // Never bury units in walls; a floor may collapse into a pit (units fall).
-                if (t.Kind != TerrainKind.Pit && cell.Occupants.Any(o => o.Alive && !t.IsPassableFor(o.Def.MoveCategory) && o.LayerDef.PassesObstaclesUpTo <= 0)) return;
+                if (t.Kind != TerrainKind.Pit && cell.Occupants.Any(o => o.Alive && !MovementRules.CanPassTerrain(_sim, o, t) && o.LayerDef.PassesObstaclesUpTo <= 0)) return;
                 _sim.CellEffects.ChangeTerrain(cell, t, cause);
                 break;
             }

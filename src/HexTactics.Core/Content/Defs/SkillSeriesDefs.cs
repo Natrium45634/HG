@@ -103,6 +103,11 @@ public enum UnitConditionType
     [Ed("Применил навык недавно")] AfterSkill,
     [Ed("Фаза босса")] BossPhase,
     [Ed("Условие сценария")] Scenario,
+    // Part 4 (docs/DECISIONS_4.md §62).
+    [Ed("Категория или тег")] Category,
+    [Ed("Слой")] Layer,
+    [Ed("Расстояние до цели")] Distance,
+    [Ed("Переменная сценария")] Environment,
 }
 
 public enum ConditionSubject
@@ -135,11 +140,11 @@ public sealed class UnitConditionDef
     [Ed("Вложенные условия"), EdShowIf(nameof(Type), UnitConditionType.All, UnitConditionType.Any, UnitConditionType.Not)]
     public List<UnitConditionDef> Children { get; set; } = new();
     [Ed("О ком"), EdShowIf(nameof(Type), UnitConditionType.HasStatus, UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.OnTerrain,
-         UnitConditionType.UnitType, UnitConditionType.BossPhase)]
+         UnitConditionType.UnitType, UnitConditionType.BossPhase, UnitConditionType.Category, UnitConditionType.Layer)]
     public ConditionSubject Subject { get; set; } = ConditionSubject.Target;
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), UnitConditionType.HasStatus)] public string Status { get; set; } = "";
     [Ed("Ресурс", "Пусто — очки действия"), EdRef(DefCategory.Resource), EdShowIf(nameof(Type), UnitConditionType.Resource)] public string Resource { get; set; } = "";
-    [Ed("Сравнение"), EdShowIf(nameof(Type), UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.UnitsInArea, UnitConditionType.BossPhase)]
+    [Ed("Сравнение"), EdShowIf(nameof(Type), UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.UnitsInArea, UnitConditionType.BossPhase, UnitConditionType.Distance)]
     public CompareMode Compare { get; set; } = CompareMode.AtLeast;
     [Ed("Значение", "Доля здоровья 0..1; ресурс; для состояния — минимум очков/стаков (0 — любое); фаза босса — номер с 1"),
      EdShowIf(nameof(Type), UnitConditionType.HasStatus, UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.BossPhase)]
@@ -149,13 +154,18 @@ public sealed class UnitConditionDef
     [Ed("Типы", "Категория существа, ID юнита, «tag:тег» или «role:роль»"), EdShowIf(nameof(Type), UnitConditionType.UnitType)]
     public List<string> Types { get; set; } = new();
     [Ed("Центр области"), EdShowIf(nameof(Type), UnitConditionType.UnitsInArea)] public AreaCentre Centre { get; set; } = AreaCentre.Anchor;
-    [Ed("Радиус"), EdRange(0, 50), EdShowIf(nameof(Type), UnitConditionType.UnitsInArea)] public int Radius { get; set; } = 1;
+    [Ed("Радиус", "Для «расстояние до цели» — гексов"), EdRange(0, 50), EdShowIf(nameof(Type), UnitConditionType.UnitsInArea, UnitConditionType.Distance)] public int Radius { get; set; } = 1;
     [Ed("Кто"), EdShowIf(nameof(Type), UnitConditionType.UnitsInArea)] public UnitSideFilter Side { get; set; } = UnitSideFilter.Enemies;
     [Ed("Количество"), EdRange(0, 1000), EdShowIf(nameof(Type), UnitConditionType.UnitsInArea)] public int Count { get; set; } = 2;
     [Ed("Навык"), EdRef(DefCategory.Skill), EdShowIf(nameof(Type), UnitConditionType.AfterSkill)] public string Skill { get; set; } = "";
     [Ed("В течение, с"), EdRange(0, 3600), EdShowIf(nameof(Type), UnitConditionType.AfterSkill)] public double Seconds { get; set; } = 5;
     [Ed("Условие сценария", "Без метки — для самого владельца"), EdShowIf(nameof(Type), UnitConditionType.Scenario)]
     public ConditionDef? ScenarioCondition { get; set; }
+    [Ed("Категории и теги", "ID категории (с предками), «tag:тег», категория существа или ID шаблона"), EdShowIf(nameof(Type), UnitConditionType.Category)]
+    public List<string> Categories { get; set; } = new();
+    [Ed("Слой", "ID слоя (ground, air, underground…)"), EdShowIf(nameof(Type), UnitConditionType.Layer)] public string Layer { get; set; } = "";
+    [Ed("Переменная"), EdShowIf(nameof(Type), UnitConditionType.Environment)] public string Variable { get; set; } = "";
+    [Ed("Значение переменной"), EdShowIf(nameof(Type), UnitConditionType.Environment)] public string VariableValue { get; set; } = "";
 
     [JsonIgnore] public bool IsLogic => Type is UnitConditionType.All or UnitConditionType.Any or UnitConditionType.Not;
 
@@ -184,6 +194,10 @@ public sealed class UnitConditionDef
             UnitConditionType.AfterSkill => $"применил «{Skill}» за последние {Seconds:0.#} с",
             UnitConditionType.BossPhase => $"{who}: фаза босса {cmp} {Value:0}",
             UnitConditionType.Scenario => "сценарий: " + (ScenarioCondition?.Describe() ?? "—"),
+            UnitConditionType.Category => $"{who} — {string.Join(", ", Categories)}",
+            UnitConditionType.Layer => $"{who} в слое «{Layer}»",
+            UnitConditionType.Distance => $"расстояние до цели {cmp} {Radius}",
+            UnitConditionType.Environment => $"{Variable} = {VariableValue}",
             _ => Type.ToString(),
         };
     }

@@ -43,12 +43,16 @@ public static class Stats
     // Part 4 (docs/DECISIONS_4.md §56, §60).
     /// <summary>Damage to a base when the unit reaches it.</summary>
     public const string BaseDamage = "base_damage";
+    // Part 4 (docs/DECISIONS_4.md §60).
+    public const string Weight = "weight";
+    public const string Size = "size";
+    public const string PursuitRange = "pursuit_range";
 
     public static readonly string[] All =
     {
         HpMax, MoveSpeed, ApMax, ApRegen, DetectionRange, Accuracy, Evasion, BlockChance, BlockReduction,
         Armor, CritChance, CritMult, Perception, Stealth, InterruptResist, Power, HealPower, BlockLimit, HealReceived, CritResist, CritBonus, MagicPower,
-        AttackRange, CastSpeed, ControlResist, ShieldPower, BaseDamage,
+        AttackRange, CastSpeed, ControlResist, ShieldPower, BaseDamage, Weight, Size, PursuitRange,
     };
 }
 
@@ -193,7 +197,7 @@ public sealed class UnitDef : Def
     [Ed("Защитный навык", "Центр радиального меню; пусто — защитная стойка из правил", Group = "Навыки"), EdRef(DefCategory.Skill)]
     public string DefenseSkill { get; set; } = "";
     [Ed("Пассивные способности", Group = "Навыки"), EdRef(DefCategory.Passive)] public List<string> Passives { get; set; } = new();
-    [Ed("Происхождения", "Раса, вид, класс, роль: их пассивы и таланты наследуются (docs/DECISIONS_3.md §46)", Group = "Навыки"), EdRef(DefCategory.Origin)]
+    [Ed("Дополнительные категории", "Раса, вид, класс, роль (происхождения): их правила и пассивы наследуются с деревом (docs/DECISIONS_4.md §61)", Group = "Навыки"), EdRef(DefCategory.Origin)]
     public List<string> Origins { get; set; } = new();
     [Ed("Стартовые состояния", Group = "Навыки")] public List<StartingStatusDef> StartingStatuses { get; set; } = new();
     [Ed("Автоатаки", "Атакуют сами через общую систему боя: навык, дальность, цели, интервал, правила выбора", Group = "Навыки")]
@@ -214,6 +218,11 @@ public sealed class UnitDef : Def
     [Ed("Внешний вид", Group = "Вид")] public UnitVisualDef Visual { get; set; } = new();
     [Ed("Стоимость угрозы", "Для подбора волн по бюджету; 0 — оценка по характеристикам (docs/DECISIONS_4.md §58)", Group = "Баланс"), EdRange(0, 100_000)]
     public double ThreatCost { get; set; }
+    // Part 4 (docs/DECISIONS_4.md §60–61).
+    [Ed("Основная категория", "Для показа и библиотеки; правила дерева наследуются вместе с дополнительными (происхождения)", Group = "Навыки"), EdRef(DefCategory.Origin)]
+    public string MainCategory { get; set; } = "";
+    [Ed("Дополнительные типы перемещения", "Действуют, пока выполнено их условие; проходимость — по любому действующему типу", Group = "Перемещение")]
+    public List<MoveTypeDef> MoveTypes { get; set; } = new();
 }
 
 public enum PassiveTrigger
@@ -268,6 +277,7 @@ public sealed class PassiveDef : Def
     [Ed("Радиус ауры", "0 — не аура; иначе действует на юнитов вокруг владельца", Group = "Аура"), EdRange(0, 20)] public int AuraRadius { get; set; }
     [Ed("Аура действует на", Group = "Аура")] public AuraAffects AuraAffects { get; set; } = AuraAffects.Allies;
     [Ed("Аура и на владельца", Group = "Аура")] public bool AuraIncludesSelf { get; set; }
+    [Ed("Аура только для", "Теги или категории получателей («tag:стая», ID категории); пусто — все", Group = "Аура")] public List<string> AuraTypes { get; set; } = new();
     [Ed("Пассивы ауры", "Что получают юниты в ауре; пусто — модификаторы этого пассива", Group = "Аура"), EdRef(DefCategory.Passive)]
     public List<string> AuraPassives { get; set; } = new();
     [Ed("Действует после срабатывания, с", "Для срабатывающих: модификаторы действуют N с после события", Group = "Срабатывание"), EdRange(0, 3600)]

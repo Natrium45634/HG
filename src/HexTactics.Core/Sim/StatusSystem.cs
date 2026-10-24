@@ -467,8 +467,9 @@ public sealed class StatusSystem
             string src = $"{p.DisplayName} ({pi.Source})";
             foreach (var m in p.StatMods) u.Stats.AddModifier(m, pi.Stacks, src);
             var extra = new DefenseDef();
-            foreach (var m in p.Modifiers)
+            foreach (var m0 in p.Modifiers)
             {
+                var m = pi.Effective(m0);
                 switch (m.Target)
                 {
                     case ModifierTarget.Stat:

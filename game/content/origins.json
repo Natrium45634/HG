@@ -13,11 +13,13 @@
       "passives": ["nature_affinity", "forest_ambush"],
       "autoTags": ["elf"],
       "icon": "❦",
-      "color": "#7fc070"
+      "color": "#7fc070",
+      "parent": "",
+      "rules": []
     },
     {
       "id": "slime_kind",
-      "name": "Слизь",
+      "name": "Кислотная слизь",
       "description": "Вид существа: водная аморфность, ядовитое тело.",
       "tags": [],
       "group": "Виды существ",
@@ -26,7 +28,24 @@
       "passives": ["water_amorphous", "toxic_body"],
       "autoTags": ["slime"],
       "icon": "≋",
-      "color": "#60b0a0"
+      "color": "#60b0a0",
+      "parent": "slimes",
+      "rules": [
+        {
+          "id": "no_basic",
+          "kind": "Passive",
+          "mode": "Exclude",
+          "passive": "",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
     },
     {
       "id": "dragonkin",
@@ -39,7 +58,386 @@
       "passives": ["dragon_scales"],
       "autoTags": ["dragon"],
       "icon": "◆",
-      "color": "#d08040"
+      "color": "#d08040",
+      "parent": "",
+      "rules": []
+    },
+    {
+      "id": "entity",
+      "name": "Сущность",
+      "description": "Корень дерева категорий.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "",
+      "rules": [
+        {
+          "id": "creature",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "creature",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "living",
+      "name": "Живые",
+      "description": "Живые существа.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "entity",
+      "rules": [
+        {
+          "id": "living",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "living",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "beasts",
+      "name": "Звери",
+      "description": "Звери.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "living",
+      "rules": [
+        {
+          "id": "beast",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "beast",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "wolf_cat",
+      "name": "Волк",
+      "description": "Волки: стая; ночью быстрее.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "beasts",
+      "rules": [
+        {
+          "id": "pack",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "pack",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        },
+        {
+          "id": "night_sense",
+          "kind": "Passive",
+          "mode": "Conditional",
+          "passive": "night_hunter",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "condition": {
+            "type": "Environment",
+            "children": [],
+            "subject": "Target",
+            "status": "",
+            "resource": "",
+            "compare": "AtLeast",
+            "value": 0.5,
+            "terrains": [],
+            "types": [],
+            "centre": "Anchor",
+            "radius": 1,
+            "side": "Enemies",
+            "count": 2,
+            "skill": "",
+            "seconds": 5,
+            "categories": [],
+            "layer": "",
+            "variable": "time_of_day",
+            "variableValue": "night"
+          },
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "wolf_scout_cat",
+      "name": "Волк-разведчик",
+      "description": "Разведчик стаи.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Role",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "wolf_cat",
+      "rules": [
+        {
+          "id": "scout",
+          "kind": "Passive",
+          "mode": "Inherit",
+          "passive": "scout_eyes",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "wolf_leader_cat",
+      "name": "Волк-вожак",
+      "description": "Вожак: аура для стаи и сила за каждого волка.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Role",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "wolf_cat",
+      "rules": [
+        {
+          "id": "howl",
+          "kind": "Passive",
+          "mode": "Inherit",
+          "passive": "leader_howl",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        },
+        {
+          "id": "strength",
+          "kind": "Passive",
+          "mode": "Inherit",
+          "passive": "pack_strength",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "slimes",
+      "name": "Слизи",
+      "description": "Слизи: стандартной атаки нет (её снимают потомки).",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "entity",
+      "rules": [
+        {
+          "id": "slime",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "slime",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        },
+        {
+          "id": "no_basic",
+          "kind": "Forbid",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "slime_mimic_cat",
+      "name": "Слизь-мимик",
+      "description": "Наследует запрет стандартной атаки; маскировка и засада.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "slimes",
+      "rules": [
+        {
+          "id": "disguise",
+          "kind": "Passive",
+          "mode": "Inherit",
+          "passive": "mimic_disguise",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        },
+        {
+          "id": "ambush",
+          "kind": "Passive",
+          "mode": "Inherit",
+          "passive": "mimic_ambush",
+          "tag": "",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "undead",
+      "name": "Нежить",
+      "description": "Нежить.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "entity",
+      "rules": [
+        {
+          "id": "undead",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "undead",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
+    },
+    {
+      "id": "constructs",
+      "name": "Конструкты",
+      "description": "Механизмы и големы.",
+      "tags": [],
+      "group": "Дерево категорий",
+      "version": 1,
+      "kind": "Species",
+      "passives": [],
+      "autoTags": [],
+      "icon": "",
+      "color": "#a0c070",
+      "parent": "entity",
+      "rules": [
+        {
+          "id": "construct",
+          "kind": "Tag",
+          "mode": "Inherit",
+          "passive": "",
+          "tag": "construct",
+          "moveCategory": "",
+          "what": "BasicAttack",
+          "skillTag": "",
+          "aiProfile": "",
+          "power": 0,
+          "priority": 0,
+          "actionKey": "BasicAttack"
+        }
+      ]
     }
   ]
 }

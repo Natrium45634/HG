@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HexTactics.Core.Content;
+using HexTactics.Core.Hex;
 
 namespace HexTactics.Core.Sim;
 
@@ -128,15 +130,36 @@ public readonly struct MoveContext
     public StackingMode Stacking { get; }
 
     public static MoveContext For(Simulation sim, Unit u) =>
-        new(sim.Rules, sim.Content, u.Def.MoveCategory, u.LayerDef, u, u.Def, u.FactionId, sim.Stacking) { Sim = sim };
+        new(sim.Rules, sim.Content, u.Def.MoveCategory, u.LayerDef, u, u.Def, u.FactionId, sim.Stacking)
+        {
+            Sim = sim, Extra = MovementRules.ExtraMoves(sim, u), Size = u.Stat(Stats.Size),
+        };
 
     /// <summary>The simulation (passives of the mover); null for map analysis and tools.</summary>
     public Simulation? Sim { get; init; }
 
+    /// <summary>Extra move categories acting now (docs/DECISIONS_4.md §60): passable by any of them.</summary>
+    public IReadOnlyList<string> Extra { get; init; } = Array.Empty<string>();
+
+    /// <summary>The «размер» of the mover (narrow passages).</summary>
+    public double Size { get; init; } = 1;
+
+    /// <summary>The terrain lets the mover through by its main or any acting extra move category.</summary>
+    public bool Passable(TerrainDef t)
+    {
+        if (t.IsPassableFor(MoveCategory)) return true;
+        foreach (var x in Extra)
+            if (t.IsPassableFor(x))
+                return true;
+        return false;
+    }
+
     public static MoveContext For(Simulation sim, UnitDef def, string? faction)
     {
         var layer = LayerResolver.Get(sim.Content, LayerResolver.LayerIdOf(sim.Content, def));
-        return new(sim.Rules, sim.Content, def.MoveCategory, layer, null, def, string.IsNullOrEmpty(faction) ? def.Faction : faction!, sim.Stacking);
+        var extra = sim.Categories.Of(def).MoveCategories.Concat(def.MoveTypes.Where(m => m.Condition == null).Select(m => m.Category)).Distinct().ToList();
+        double size = def.Stats.TryGetValue(Stats.Size, out var sz) ? sz : sim.Content.Stat(Stats.Size)?.Default ?? 1;
+        return new(sim.Rules, sim.Content, def.MoveCategory, layer, null, def, string.IsNullOrEmpty(faction) ? def.Faction : faction!, sim.Stacking) { Sim = sim, Extra = extra, Size = size };
     }
 
     /// <summary>Generic ground walker (map analysis, tools).</summary>
@@ -221,6 +244,44 @@ public static class Occupancy
 /// </summary>
 public static class MovementRules
 {
+    /// <summary>
+    /// Extra move categories of a unit now: those of its categories and the template's types whose condition holds
+    /// (docs/DECISIONS_4.md §60).
+    /// </summary>
+    public static IReadOnlyList<string> ExtraMoves(Simulation sim, Unit u)
+    {
+        if (u.CategoryMoves.Count == 0 && u.Def.MoveTypes.Count == 0) return Array.Empty<string>();
+        var list = new List<string>(u.CategoryMoves);
+        foreach (var m in u.Def.MoveTypes)
+            if (m.Category != "" && !list.Contains(m.Category) && sim.Conditions.Evaluate(m.Condition, new ConditionContext(u, null, u.Pos, null)))
+                list.Add(m.Category);
+        return list;
+    }
+
+    /// <summary>The unit may stand on the terrain by any of its acting move categories.</summary>
+    public static bool CanPassTerrain(Simulation sim, Unit u, TerrainDef t) => MoveContext.For(sim, u).Passable(t);
+
+    /// <summary>
+    /// A narrow passage (docs/DECISIONS_4.md §60): two opposite neighbours of the hex are impassable for the mover
+    /// (or off the map) — creatures of «размер для узких мест» and more cannot enter it.
+    /// </summary>
+    public static bool IsNarrow(in MoveContext c, Cell to)
+    {
+        var map = c.Sim!.Map;
+        var mc = c;
+        bool Closed(HexCoord h)
+        {
+            var cell = map.Get(h);
+            return cell == null || cell.Blocked || !mc.Passable(cell.Terrain);
+        }
+        for (int d = 0; d < 3; d++)
+        {
+            var dir = (HexDirection)d;
+            if (Closed(to.Coord.Neighbor(dir)) && Closed(to.Coord.Neighbor(dir.Opposite()))) return true;
+        }
+        return false;
+    }
+
     public const double MinStepCost = 0.1;
 
     /// <param name="forced">Push/pull: the mover may be shoved into a pit (and fall).</param>
@@ -238,11 +299,12 @@ public static class MovementRules
                 if (!(forced && t.Pit.Enterable)) return StepCheck.Pit;
             }
         }
-        else if (!t.IsPassableFor(c.MoveCategory))
+        else if (!c.Passable(t))
         {
             bool over = layer.PassesObstaclesUpTo > 0 && Math.Max(0, t.ObstacleHeight) < layer.PassesObstaclesUpTo + 1e-9;
             if (!over) return StepCheck.Impassable;
         }
+        if (c.Size >= c.Rules.Move.NarrowSize && c.Sim != null && IsNarrow(c, to)) return StepCheck.Impassable;
         foreach (var e in to.Effects)
             if (e.Def.BlocksMovement && LayerResolver.EffectAffectsLayer(c.Rules, e.Def, layer.Id))
                 return StepCheck.Barrier;

@@ -72,12 +72,14 @@ public sealed class CommandSystem
         switch (c.Type)
         {
             case CommandType.Move:
+                if (u.Forbidden.TryGetValue(nameof(ForbidWhat.Movement), out var noMove)) return noMove;
                 if (!c.TargetCell.HasValue) return "не указана клетка";
                 if (!_sim.Map.Contains(c.TargetCell.Value)) return "клетки нет на карте";
                 return null;
             case CommandType.Turn:
                 return c.Direction.HasValue ? null : "не указано направление";
             case CommandType.Attack:
+                if (u.BasicAttack == null && u.Forbidden.TryGetValue(nameof(ForbidWhat.BasicAttack), out var noAttack)) return noAttack;
                 if (u.BasicAttack == null) return "у юнита нет обычной атаки";
                 if (_sim.Content.DisabledSkills.ContainsKey(u.BasicAttack.Id)) return "обычная атака отключена из-за ошибки данных";
                 c.SkillId = u.BasicAttack.Id;
@@ -86,6 +88,12 @@ public sealed class CommandSystem
             case CommandType.Skill:
             {
                 var s = _sim.Content.Skill(c.SkillId);
+                if (s != null && u.Forbidden.Count > 0 && !u.KnowsSkill(c.SkillId))
+                {
+                    if (u.Forbidden.TryGetValue(nameof(ForbidWhat.AllSkills), out var noSkills)) return noSkills;
+                    foreach (var t in s.Tags)
+                        if (u.Forbidden.TryGetValue("skills:" + t, out var noTag)) return noTag;
+                }
                 if (s == null || !u.KnowsSkill(c.SkillId)) return "юнит не знает этот навык";
                 if (_sim.Content.DisabledSkills.TryGetValue(s.Id, out var why)) return "навык отключён: " + why;
                 if (s.Targeting == TargetingMode.Unit && _sim.GetUnit(c.TargetUnitId) == null && !c.AutoTarget) return "не указана цель";

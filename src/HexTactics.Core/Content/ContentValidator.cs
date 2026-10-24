@@ -57,6 +57,7 @@ public static class ContentValidator
         ContentChecks.Run(db, issues);
         foreach (var t in db.All<TerrainDef>()) CheckTerrain(db, t, issues);
         foreach (var u in db.All<UnitDef>()) CheckUnit(db, u, issues);
+        CheckCategories(db, issues);
         foreach (var s in db.All<StatusDef>()) CheckStatus(s, issues);
         foreach (var c in db.All<CellEffectDef>()) CheckCellEffect(c, issues);
         foreach (var s in db.All<SynergyDef>()) CheckSynergy(db, s, issues);
@@ -90,6 +91,50 @@ public static class ContentValidator
     private static string? SkillOfSource(string src) => src.StartsWith("Skill:", StringComparison.Ordinal) ? src.Substring(6) : null;
 
     private static string Src(Def? d) => d == null ? "Правила" : $"{d.Category}:{d.Id}";
+
+    /// <summary>
+    /// The category tree (docs/DECISIONS_4.md §61): a cycle or a missing parent is an error; a rule without its
+    /// value is an error; templates report the conflicts of their categories (equal-priority forbid and allow, an
+    /// «inherit» rule with the parent's ID, an «exclude» of nothing) as warnings — the battle uses a fixed order.
+    /// </summary>
+    private static void CheckCategories(ContentDatabase db, List<ContentIssue> issues)
+    {
+        foreach (var c in db.All<OriginDef>())
+        {
+            var problems = new List<string>();
+            CategoryTree.Chain(db, c, problems);
+            foreach (var p in problems.Distinct()) issues.Add(Err(c, "Parent", p));
+            for (int i = 0; i < c.Rules.Count; i++)
+            {
+                var r = c.Rules[i];
+                string path = $"Rules[{i}]";
+                bool empty = r.Mode != CategoryInherit.Exclude && r.Kind switch
+                {
+                    CategoryRuleKind.Passive => r.Passive == "",
+                    CategoryRuleKind.Tag => r.Tag == "",
+                    CategoryRuleKind.MoveCategory => r.MoveCategory == "",
+                    CategoryRuleKind.AiProfile => r.AiProfile == "",
+                    CategoryRuleKind.Forbid or CategoryRuleKind.Allow => r.What == ForbidWhat.SkillsWithTag && r.SkillTag == "",
+                    _ => false,
+                };
+                if (empty) issues.Add(Err(c, path, $"Правило «{(r.Id == "" ? r.Kind.ToString() : r.Id)}»: не задано, что оно даёт"));
+                if (r.Mode is CategoryInherit.Override or CategoryInherit.Exclude or CategoryInherit.Conditional && r.Id == "")
+                    issues.Add(Err(c, path, $"Правило с режимом «{r.Mode}» должно иметь ID — по нему находится правило родителя"));
+                if (r.Mode == CategoryInherit.Conditional && r.Condition == null)
+                    issues.Add(Warn(c, path, $"Правило «{r.Id}» «условно изменить» без условия — действует всегда"));
+                if (r.Kind == CategoryRuleKind.MoveCategory && r.MoveCategory != "" && !db.Rules.Move.MovementCategories.Contains(r.MoveCategory)
+                    && !db.All<TerrainDef>().Any(t => t.IsPassableFor(r.MoveCategory)))
+                    issues.Add(Warn(c, path, $"Тип перемещения «{r.MoveCategory}» не проходим ни по одной местности"));
+            }
+        }
+        foreach (var u in db.All<UnitDef>())
+        {
+            if (u.MainCategory == "" && u.Origins.Count == 0 && !db.All<OriginDef>().Any(o => o.AutoTags.Count > 0)) continue;
+            var res = CategoryTree.Resolve(db, u);
+            foreach (var p in res.Problems.Distinct().Where(p => !p.Contains("цикл") && !p.Contains("не найден")))
+                issues.Add(Warn(u, "Categories", p));
+        }
+    }
 
     private static ContentIssue Err(Def d, string path, string msg) => new(IssueSeverity.Error, Src(d), path, msg);
     private static ContentIssue Warn(Def d, string path, string msg) => new(IssueSeverity.Warning, Src(d), path, msg);

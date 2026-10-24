@@ -408,6 +408,7 @@ public partial class BattleScreen : Node
         Board.TimeScale = (float)Driver.Speed;
         Board.SyncUnits(Sim, Driver.Alpha, UnitVisible, _ => false, dt);
         Board.Objects.Sync(_scenario, Sim.Map, _db);
+        Board.SetNight(Sim.Scenario.Variable("time_of_day") == "night");
         foreach (var v in Board.Views.Values) v.ShowName = _diag && v.Unit.AiControlled;
         Board.SyncFog(Sim, fog);
         Board.Effects.UpdateVisibility(c => !fog || Sim.Vision.IsCellVisibleToPlayer(c.Coord));

@@ -261,6 +261,21 @@ public sealed class Unit
     public string RouteId { get; set; } = "";
     public string Group { get; set; } = "";
     public string TargetObject { get; set; } = "";
+    /// <summary>The categories of the unit with their ancestors and acting rules (docs/DECISIONS_4.md §61).</summary>
+    public CategoryResolution? CategoryInfo { get; set; }
+    /// <summary>Tags of the template and of its categories (the scenario tag is <see cref="Tag"/>).</summary>
+    public HashSet<string> Tags { get; } = new(StringComparer.Ordinal);
+    /// <summary>Extra move categories given by the categories (always on).</summary>
+    public List<string> CategoryMoves { get; } = new();
+    /// <summary>Actions forbidden by the categories: key → explanation (attack, skills, movement).</summary>
+    public Dictionary<string, string> Forbidden { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The scenario tag, a tag of the template or of its categories.</summary>
+    public bool HasTag(string tag) => !string.IsNullOrEmpty(tag) && (Tag == tag || Tags.Contains(tag) || Def.Tags.Contains(tag));
+
+    /// <summary>In a category of the tree (its ancestors included).</summary>
+    public bool InCategory(string id) => CategoryInfo?.Ids.Contains(id) == true;
+
     /// <summary>Position on a route graph (docs/DECISIONS_4.md §57); null — no graph route.</summary>
     public RouteNav? Nav { get; set; }
     /// <summary>The spawn base the unit came from (limits of the base).</summary>

@@ -425,7 +425,7 @@ public sealed class CellEffectSystem
         if (!string.IsNullOrEmpty(syn.ConvertTerrain))
         {
             var t = _sim.Content.Terrain(syn.ConvertTerrain);
-            if (t != null && !cell.Occupants.Any(o => o.Alive && !t.IsPassableFor(o.Def.MoveCategory)))
+            if (t != null && !cell.Occupants.Any(o => o.Alive && !MovementRules.CanPassTerrain(_sim, o, t)))
                 ChangeTerrain(cell, t, syn.DisplayName, depth);
         }
 

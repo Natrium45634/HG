@@ -114,6 +114,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       }
     ],
@@ -135,6 +137,8 @@
         "wave": 0,
         "objective": "",
         "flag": "",
+        "variable": "",
+        "variableValue": "",
         "fraction": 0.5
       }
     ],
@@ -143,6 +147,7 @@
     "spawnWarnings": { "enabled": true, "overrideFog": false, "fog": "AfterScouting" },
     "triggers": [],
     "passives": [],
+    "environment": [],
     "passiveOverrides": [],
     "limits": {
       "stacking": "ByUnitType",

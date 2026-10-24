@@ -77,6 +77,7 @@ public sealed class Simulation
         Scenario = new ScenarioSystem(this);
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
+        Categories = new CategoryCache(Content);
         Planner = new Planner(this);
         Targets = new TargetSelector(this);
         Defense = new DefenseSystem(this);
@@ -231,7 +232,9 @@ public sealed class Simulation
             u.Resources[rd.Id] = new ResourceState { Def = rd, Max = r.Max, Current = Math.Min(r.Start, r.Max), Regen = r.Regen, BaseMax = r.Max, BaseRegen = r.Regen, BaseCaptured = true };
         }
         u.AiControlled = Options.AiFactions.Contains(u.FactionId) && !Options.PlayerFactions.Contains(u.FactionId);
-        var profileId = string.IsNullOrEmpty(aiProfile) ? def.AiProfile : aiProfile;
+        var cats = ApplyCategories(u);
+        // An empty profile of the template takes the profile of its categories (docs/DECISIONS_4.md §61).
+        var profileId = !string.IsNullOrEmpty(aiProfile) ? aiProfile : def.AiProfile != "" ? def.AiProfile : cats.AiProfile;
         u.AiProfile = Content.Get<AiProfileDef>(profileId) ?? Content.All<AiProfileDef>().FirstOrDefault();
         u.Ai.HoldCenter = pos;
         u.Ai.NextDecisionTick = Tick + 1 + (u.Id % 5);
@@ -254,6 +257,52 @@ public sealed class Simulation
         Map.Touch(false);
         return u;
     }
+
+    /// <summary>
+    /// The category tree of the template (docs/DECISIONS_4.md §61): tags, extra move categories and forbidden
+    /// actions are set once at the appearance (conditional rules are checked now); passives of the categories are
+    /// collected by the passive system with their conditions.
+    /// </summary>
+    private CategoryResolution ApplyCategories(Unit u)
+    {
+        var res = Categories.Of(u.Def, u.Tag);
+        u.CategoryInfo = res;
+        foreach (var t in u.Def.Tags) u.Tags.Add(t);
+        bool Holds(ResolvedRule r) => r.Rule.Mode != CategoryInherit.Conditional || Conditions.Evaluate(r.Rule.Condition, new ConditionContext(u, null, u.Pos, null));
+        foreach (var r in res.Acting)
+        {
+            var rule = Holds(r) ? r.Rule : r.Otherwise;
+            if (rule == null) continue;
+            string src = $"категория «{r.From.DisplayName}»";
+            switch (rule.Kind)
+            {
+                case CategoryRuleKind.Tag when rule.Tag != "":
+                    u.Tags.Add(rule.Tag);
+                    break;
+                case CategoryRuleKind.MoveCategory when rule.MoveCategory != "":
+                    if (!u.CategoryMoves.Contains(rule.MoveCategory)) u.CategoryMoves.Add(rule.MoveCategory);
+                    break;
+                case CategoryRuleKind.Forbid:
+                    u.Forbidden[rule.ActionKey] = $"запрещено: {rule.Describe().Split(": ").Last()} ({src})";
+                    break;
+            }
+        }
+        // Forbidden actions: the abilities are taken away, so commands, the AI and auto-attacks all respect it.
+        if (u.Forbidden.ContainsKey(nameof(ForbidWhat.BasicAttack))) u.BasicAttack = null;
+        if (u.Forbidden.ContainsKey(nameof(ForbidWhat.AllSkills))) u.Skills.Clear();
+        foreach (var key in u.Forbidden.Keys.Where(k => k.StartsWith("skills:", StringComparison.Ordinal)).ToList())
+        {
+            string tag = key[7..];
+            u.Skills.RemoveAll(s => s.Tags.Contains(tag));
+            if (u.BasicAttack?.Tags.Contains(tag) == true) u.BasicAttack = null;
+        }
+        if (u.Forbidden.TryGetValue(nameof(ForbidWhat.Movement), out var why))
+            u.InstanceMods.Add((new StatModDef { Stat = Stats.MoveSpeed, Mul = -1 }, why));
+        return res;
+    }
+
+    /// <summary>Category resolutions per template (the content does not change during a battle).</summary>
+    public CategoryCache Categories { get; }
 
     internal void SetLayerInternal(Unit u, string layer)
     {
