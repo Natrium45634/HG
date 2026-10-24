@@ -30,6 +30,8 @@ public sealed class RulesDef
     [Ed("Автопауза")] public AutopauseRules Autopause { get; set; } = new();
     [Ed("Смерть")] public DeathRules Death { get; set; } = new();
     [Ed("Оценка силы", "Профиль проекта: эталон уровня 1, веса ролей, шкала уровня (docs/DECISIONS_4.md §65)")] public PowerRulesDef Power { get; set; } = new();
+    [Ed("Производительность", "Пороги предупреждений: живые юниты, группы, маршруты, пассивы, эффекты, ИИ, параллельные прогоны (docs/DECISIONS_4.md §72)")]
+    public PerformanceRulesDef Performance { get; set; } = new();
 }
 
 public sealed class TimeRules

@@ -35,6 +35,18 @@ public sealed class DefTable
         return true;
     }
 
+    /// <summary>Adds at a position (undo of a removal keeps the order of the list); false if the id exists.</summary>
+    public bool Insert(int index, Def def)
+    {
+        if (!DefType.IsInstanceOfType(def)) throw new ArgumentException($"{def.GetType().Name} не подходит для {Category}");
+        if (_byId.ContainsKey(def.Id)) return false;
+        _items.Insert(Math.Clamp(index, 0, _items.Count), def);
+        _byId[def.Id] = def;
+        return true;
+    }
+
+    public int IndexOf(string id) => _byId.TryGetValue(id, out var d) ? _items.IndexOf(d) : -1;
+
     public void Replace(Def def)
     {
         if (_byId.TryGetValue(def.Id, out var old))
@@ -139,6 +151,8 @@ public sealed class ContentDatabase
     public Dictionary<string, string> DisabledSkills { get; } = new();
 
     public DefTable Table(DefCategory c) => _tables[c];
+
+    public bool HasTable(DefCategory c) => _tables.ContainsKey(c);
 
     public IEnumerable<DefTable> Tables => _tables.Values;
 

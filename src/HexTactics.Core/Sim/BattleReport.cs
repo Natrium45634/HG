@@ -27,6 +27,19 @@ public sealed class SkillStat
 /// simulation and its state after each tick — the simulation itself does not change. The same report is built for a
 /// battle played by hand and for an autobattle.
 /// </summary>
+/// <summary>The result of one wave in a run.</summary>
+public sealed class WaveStat
+{
+    public int Index { get; set; }
+    public string Name { get; set; } = "";
+    public int Spawned { get; set; }
+    public int Killed { get; set; }
+    public int ReachedGoal { get; set; }
+    public double BaseDamage { get; set; }
+    public double Started { get; set; } = -1;
+    public double Ended { get; set; } = -1;
+}
+
 public sealed class BattleReport
 {
     [JsonIgnore] private Simulation? _sim;
@@ -64,6 +77,8 @@ public sealed class BattleReport
     public Dictionary<string, int> AiErrors { get; set; } = new();
     public List<string> FailureReasons { get; set; } = new();
     public long EventChainCuts { get; set; }
+    /// <summary>Per wave: enemies created and killed, reached the goal, damage to the bases, start and end (docs/DECISIONS_4.md §70).</summary>
+    public List<WaveStat> WaveStats { get; set; } = new();
 
     public const string PlayerSide = "игрок";
     public const string EnemySide = "враги";
@@ -97,6 +112,12 @@ public sealed class BattleReport
     private static void Add<TK>(Dictionary<TK, double> d, TK k, double v) where TK : notnull => d[k] = d.GetValueOrDefault(k) + v;
     private static void Inc<TK>(Dictionary<TK, int> d, TK k) where TK : notnull => d[k] = d.GetValueOrDefault(k) + 1;
 
+    private WaveStat Wave(int index)
+    {
+        while (WaveStats.Count <= index) WaveStats.Add(new WaveStat { Index = WaveStats.Count });
+        return WaveStats[index];
+    }
+
     private void OnEvent(SimEvent e)
     {
         var sim = _sim!;
@@ -109,8 +130,18 @@ public sealed class BattleReport
                 Add(DamageDealt, src == null ? OtherSide : SideOf(src), e.Value);
                 Add(DamageTaken, SideOf(dst), e.Value);
                 if (e.DamageType != "") Add(DamageByType, e.DamageType, e.Value);
+                if (dst is { IsStructure: true } && src is { Wave: >= 0 } && SideOf(dst) == PlayerSide) Wave(src.Wave).BaseDamage += e.Value;
                 break;
             }
+            case SimEventType.WaveStarted:
+            {
+                var w = Wave((int)e.Value);
+                if (w.Started < 0) w.Started = Math.Round(sim.Scenario.BattleTime, 2);
+                break;
+            }
+            case SimEventType.WaveEnded:
+                Wave((int)e.Value).Ended = Math.Round(sim.Scenario.BattleTime, 2);
+                break;
             case SimEventType.Heal when e.Value > 0:
                 Healing += e.Value;
                 Heals++;
@@ -131,6 +162,7 @@ public sealed class BattleReport
             {
                 var u = sim.GetUnit(e.SourceUnit);
                 if (u != null && SideOf(u) == EnemySide) EnemiesReachedGoal++;
+                if (u is { Wave: >= 0 }) Wave(u.Wave).ReachedGoal++;
                 break;
             }
             case SimEventType.Death:
@@ -143,6 +175,7 @@ public sealed class BattleReport
                 if (side == EnemySide && !dead.IsStructure && dead.DeathCause != DeathCause.Removed)
                 {
                     EnemiesKilled++;
+                    if (dead.Wave >= 0) Wave(dead.Wave).Killed++;
                     if (killer != null && SideOf(killer) == PlayerSide) EnemiesKilledByDefenders++;
                 }
                 break;
@@ -195,6 +228,11 @@ public sealed class BattleReport
         Reason = sim.OutcomeText;
         StopReason = stopReason != "" ? stopReason : sim.Outcome != BattleOutcome.None ? "бой завершён" : "";
         WavesTotal = sim.Scenario.Waves.Count;
+        for (int i = 0; i < sim.Scenario.Waves.Count; i++)
+        {
+            Wave(i).Name = sim.Scenario.Waves[i].Def.Name;
+            Wave(i).Spawned = sim.Scenario.Waves[i].UnitIds.Count;
+        }
         // A wave whose last enemy fell on the final tick is complete even if the end of the battle came first.
         WavesCompleted = sim.Scenario.Waves.Count(w => w.State == WaveState.Cleared
             || w.State == WaveState.Active && w.Planned.All(p => p.Done) && w.UnitIds.All(id => sim.GetUnit(id)?.Alive != true));
@@ -253,6 +291,9 @@ public sealed class BattleReport
             sb.AppendLine("Срабатывания пассивов: " + string.Join(", ", Passives.OrderByDescending(k => k.Value).Select(k => $"{db?.Get<PassiveDef>(k.Key)?.DisplayName ?? k.Key} ×{k.Value}")));
         sb.AppendLine($"Блокировка маршрутов: {F(RouteBlockedSeconds)} враго-с; смен цели: {TargetChanges}");
         sb.AppendLine("Ошибки ИИ: " + (AiErrors.Count == 0 ? "нет" : string.Join(", ", AiErrors.Select(k => $"{AiErrorName(k.Key)} ×{k.Value}"))));
+        foreach (var w in WaveStats.Where(w => w.Spawned > 0 || w.Started >= 0))
+            sb.AppendLine($"  волна {w.Index + 1} «{w.Name}»: появилось {w.Spawned}, уничтожено {w.Killed}, дошли до цели {w.ReachedGoal}, урон по базе {F(w.BaseDamage)}" +
+                          (w.Started >= 0 ? $", {F(w.Started)}–{(w.Ended >= 0 ? F(w.Ended) : "…")} с" : ""));
         if (FailureReasons.Count > 0) sb.AppendLine("Причины провала/потерь: " + string.Join("; ", FailureReasons));
         if (EventChainCuts > 0) sb.AppendLine($"Оборвано цепочек событий: {EventChainCuts}");
         return sb.ToString();
