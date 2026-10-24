@@ -79,6 +79,11 @@ public sealed class BattleReport
     public long EventChainCuts { get; set; }
     /// <summary>Per wave: enemies created and killed, reached the goal, damage to the bases, start and end (docs/DECISIONS_4.md §70).</summary>
     public List<WaveStat> WaveStats { get; set; } = new();
+    /// <summary>Enemy-seconds blocked on each route of the scenario (TZ §21.4: which routes were blocked most).</summary>
+    public Dictionary<string, double> RouteBlocked { get; set; } = new();
+    /// <summary>Per defender template: the damage it dealt and the enemies it killed (TZ §21.4: the most effective defenders).</summary>
+    public Dictionary<string, double> DefenderDamage { get; set; } = new();
+    public Dictionary<string, int> DefenderKills { get; set; } = new();
 
     public const string PlayerSide = "игрок";
     public const string EnemySide = "враги";
@@ -131,6 +136,7 @@ public sealed class BattleReport
                 Add(DamageTaken, SideOf(dst), e.Value);
                 if (e.DamageType != "") Add(DamageByType, e.DamageType, e.Value);
                 if (dst is { IsStructure: true } && src is { Wave: >= 0 } && SideOf(dst) == PlayerSide) Wave(src.Wave).BaseDamage += e.Value;
+                if (src is { IsStructure: false } && SideOf(src) == PlayerSide && SideOf(dst) == EnemySide) Add(DefenderDamage, src.Def.DisplayName, e.Value);
                 break;
             }
             case SimEventType.WaveStarted:
@@ -176,7 +182,11 @@ public sealed class BattleReport
                 {
                     EnemiesKilled++;
                     if (dead.Wave >= 0) Wave(dead.Wave).Killed++;
-                    if (killer != null && SideOf(killer) == PlayerSide) EnemiesKilledByDefenders++;
+                    if (killer != null && SideOf(killer) == PlayerSide)
+                    {
+                        EnemiesKilledByDefenders++;
+                        if (!killer.IsStructure) Inc(DefenderKills, killer.Def.DisplayName);
+                    }
                 }
                 break;
             }
@@ -207,7 +217,11 @@ public sealed class BattleReport
         foreach (var u in sim.Units)
         {
             if (!u.Alive || u.IsStructure || SideOf(u) != EnemySide) continue;
-            if (u.Ai.BlockedSince >= 0 || sim.Blocking.BlockerOf(u) != null) blocked++;
+            if (u.Ai.BlockedSince >= 0 || sim.Blocking.BlockerOf(u) != null)
+            {
+                blocked++;
+                if (u.RouteId != "") Add(RouteBlocked, u.RouteId, sim.Dt);
+            }
         }
         RouteBlockedSeconds += blocked * sim.Dt;
     }
@@ -289,7 +303,11 @@ public sealed class BattleReport
                 .Select(k => $"{db?.Skill(k.Key)?.DisplayName ?? k.Key} {k.Value.Casts}/{k.Value.Hits}")));
         if (Passives.Count > 0)
             sb.AppendLine("Срабатывания пассивов: " + string.Join(", ", Passives.OrderByDescending(k => k.Value).Select(k => $"{db?.Get<PassiveDef>(k.Key)?.DisplayName ?? k.Key} ×{k.Value}")));
-        sb.AppendLine($"Блокировка маршрутов: {F(RouteBlockedSeconds)} враго-с; смен цели: {TargetChanges}");
+        sb.AppendLine($"Блокировка маршрутов: {F(RouteBlockedSeconds)} враго-с" +
+                      (RouteBlocked.Count > 0 ? " (" + string.Join(", ", RouteBlocked.OrderByDescending(k => k.Value).Select(k => $"«{k.Key}» {F(k.Value)}")) + ")" : "") + $"; смен цели: {TargetChanges}");
+        if (DefenderDamage.Count > 0)
+            sb.AppendLine("Защитники: " + string.Join(", ", DefenderDamage.OrderByDescending(k => k.Value)
+                .Select(k => $"{k.Key} — урон {F(k.Value)}, уничтожил {DefenderKills.GetValueOrDefault(k.Key)}")));
         sb.AppendLine("Ошибки ИИ: " + (AiErrors.Count == 0 ? "нет" : string.Join(", ", AiErrors.Select(k => $"{AiErrorName(k.Key)} ×{k.Value}"))));
         foreach (var w in WaveStats.Where(w => w.Spawned > 0 || w.Started >= 0))
             sb.AppendLine($"  волна {w.Index + 1} «{w.Name}»: появилось {w.Spawned}, уничтожено {w.Killed}, дошли до цели {w.ReachedGoal}, урон по базе {F(w.BaseDamage)}" +
