@@ -239,7 +239,7 @@ HG/
 | `Content/WaveBudget` | подбор состава волны по бюджету угрозы с ограничениями, детерминированно по seed |
 | `Content/CategoryTree`, `Sim/CategoryCache` | дерево категорий, режимы наследования правил, конфликты и их объяснение |
 | `Sim/AutoBattle`, `Sim/BattleReport`, `Sim/PlacementSystem`, `Content/Defs/AutoBattleDefs` | режимы автобоя (расстановка, свободный бой, автотест), отчёт прогона (наблюдатель событий), пакетные прогоны по seed, остановка на событии, расстановка защитников |
-| `Content/PowerModel`, `Content/LevelFit`, `Content/ThreatModel` | оценка силы и уровня с объяснением вкладов, подгонка под уровень, стоимость угрозы |
+| `Content/PowerModel`, `Content/LevelFit`, `Content/ThreatModel`, `Content/Defs/PowerDefs`, `game/Editor/UnitPowerView` | оценка силы и уровня с объяснением вкладов и контекстом, подгонка под уровень по профилям масштабирования, уровень экземпляра, стоимость угрозы (базовая и в сцене); блок «Оценка силы» и окно подгонки в редакторе |
 | `Content/ScenarioChecks`, `Content/BalanceChecks` | «Проверить сценарий», анализ чрезмерно сильных, отчёт по волнам |
 | `game/Editor/TdScenePanel`, `game/Editor/UndoStack` | рабочее место «TD-сцена» (режимы, контекстные меню, рисование маршрутов), отмена и повтор |
 
