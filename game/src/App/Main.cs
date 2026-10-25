@@ -19,6 +19,9 @@ public partial class Main : Node
 {
     public static Main Instance { get; private set; } = null!;
 
+    /// <summary>The version of the game (project settings → application/config/version).</summary>
+    public static string Version => ProjectSettings.GetSetting("application/config/version", "1.0.0").AsString();
+
     public ContentManager Content { get; private set; } = null!;
     public Settings Settings { get; private set; } = null!;
     public Theme Theme { get; private set; } = null!;
@@ -96,6 +99,7 @@ public partial class Main : Node
     private void RunSelfTest()
     {
         int failures = 0;
+        GD.Print($"SELFTEST: HexTactics {Version}");
         GD.Print($"SELFTEST: контент — {Content.SourceDescription}, ошибок {Content.ErrorCount}");
         foreach (var i in Content.LoadIssues.Where(i => i.Severity == HexTactics.Core.Content.IssueSeverity.Error)) GD.Print("  " + i);
         if (Content.ErrorCount > 0) failures++;

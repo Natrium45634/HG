@@ -8,6 +8,7 @@ on:
 env:
   GODOT_VERSION: 4.4.1
   GODOT_BASE: https://github.com/godotengine/godot/releases/download/4.4.1-stable
+  APP_VERSION: 1.0.0
 
 jobs:
   build:
@@ -19,14 +20,20 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Version matches the project
+        run: grep -q "config/version=\"${APP_VERSION}\"" game/project.godot
+
       - name: Core tests
         run: dotnet test tests/HexTactics.Tests -c Release
 
-      - name: Install Godot .NET and export templates
+      - name: Install Godot .NET, export templates, Wine and rcedit (icon and version of the exe)
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq wine64 > /dev/null
           mkdir -p ~/godot && cd ~/godot
           curl -fsSLO "$GODOT_BASE/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip"
           curl -fsSLO "$GODOT_BASE/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz"
+          curl -fsSL -o rcedit-x64.exe https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
           unzip -q "Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64.zip"
           ln -s "$PWD/Godot_v${GODOT_VERSION}-stable_mono_linux_x86_64/Godot_v${GODOT_VERSION}-stable_mono_linux.x86_64" ~/godot/godot
           tpl=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono
@@ -37,17 +44,35 @@ jobs:
       - name: Import project
         run: ~/godot/godot --headless --path game --import
 
-      - name: Export Windows and Linux
+      - name: Point the editor to rcedit and Wine
         run: |
-          mkdir -p build/windows build/linux
+          wine=$(command -v wine64 || command -v wine || ls /usr/lib/wine/wine64)
+          f=~/.config/godot/editor_settings-4.4.tres
+          test -f "$f"
+          sed -i "s|^export/windows/rcedit = .*|export/windows/rcedit = \"$HOME/godot/rcedit-x64.exe\"|; s|^export/windows/wine = .*|export/windows/wine = \"$wine\"|" "$f"
+          grep "export/windows" "$f"
+
+      - name: Export Windows (folder and single file) and Linux
+        run: |
+          mkdir -p build/windows build/windows-single build/linux
           ~/godot/godot --headless --path game --export-release "Windows Desktop"
+          ~/godot/godot --headless --path game --export-release "Windows Single File"
           ~/godot/godot --headless --path game --export-release "Linux"
           test -f build/windows/HexTactics.exe
           test -f build/windows/HexTactics.pck
+          test -f build/windows-single/HexTactics.exe
           test -f build/linux/HexTactics.x86_64
+          # The icon and the version made it into the exe (rcedit under Wine).
+          strings -el build/windows/HexTactics.exe | grep -q "${APP_VERSION}.0"
 
       - name: Self-test of the Linux build
-        run: ./build/linux/HexTactics.x86_64 --headless -- --selftest
+        run: ./build/linux/HexTactics.x86_64 --headless -- --selftest | tee selftest.log && grep -q "HexTactics ${APP_VERSION}" selftest.log
+
+      - name: Linux archive
+        run: |
+          mkdir -p dist
+          cp installer/GUIDE_RU.txt build/linux/
+          tar -C build -czf dist/HexTactics-${APP_VERSION}-Linux-x64.tar.gz linux
 
       - uses: actions/upload-artifact@v4
         with:
@@ -56,24 +81,129 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          name: HexTactics-windows-single
+          path: build/windows-single/
+
+      - uses: actions/upload-artifact@v4
+        with:
           name: HexTactics-linux-x64
-          path: build/linux/
+          path: dist/HexTactics-${{ env.APP_VERSION }}-Linux-x64.tar.gz
 
   windows-selftest:
     needs: build
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: HexTactics-windows-x64
-          path: HexTactics
+          path: build/windows
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: HexTactics-windows-single
+          path: build/windows-single
 
       - name: Self-test of the Windows build
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath HexTactics\HexTactics.exe -ArgumentList '--headless','--','--selftest' `
+          $p = Start-Process -FilePath build\windows\HexTactics.exe -ArgumentList '--headless','--','--selftest' `
                -NoNewWindow -Wait -PassThru -RedirectStandardOutput selftest.log
           Get-Content selftest.log
           # The exit code is authoritative; the log is checked when the GUI-subsystem exe produced one.
           if ($p.ExitCode -ne 0) { Write-Error "selftest exit code $($p.ExitCode)"; exit 1 }
           if ((Get-Item selftest.log).Length -gt 0 -and -not (Select-String -Path selftest.log -Pattern 'SELFTEST: OK' -Quiet)) { exit 1 }
+
+      - name: Self-test of the single-file exe (alone in an empty folder)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force portable | Out-Null
+          Copy-Item build\windows-single\HexTactics.exe "portable\HexTactics-$env:APP_VERSION-Portable.exe"
+          $p = Start-Process -FilePath "portable\HexTactics-$env:APP_VERSION-Portable.exe" -ArgumentList '--headless','--','--selftest' `
+               -NoNewWindow -Wait -PassThru -RedirectStandardOutput portable-selftest.log -WorkingDirectory portable
+          Get-Content portable-selftest.log
+          if ($p.ExitCode -ne 0) { Write-Error "portable selftest exit code $($p.ExitCode)"; exit 1 }
+          if ((Get-Item portable-selftest.log).Length -gt 0 -and -not (Select-String -Path portable-selftest.log -Pattern 'SELFTEST: OK' -Quiet)) { exit 1 }
+          # Nothing but the exe (and the log) appears next to it.
+          Get-ChildItem portable
+
+      - name: Build the installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress | Out-Null
+          }
+          if (-not (Test-Path $iscc)) { $iscc = (Get-Command iscc -ErrorAction Stop).Source }
+          & $iscc /Qp "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$PWD\build\windows" "/DOutputDir=$PWD\dist" installer\HexTactics.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem dist
+
+      - name: Install silently, self-test the installed game, uninstall
+        shell: pwsh
+        run: |
+          $setup = "dist\HexTactics-$env:APP_VERSION-Setup.exe"
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\HexTactics'
+          $p = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/TASKS=desktopicon','/LOG=install.log' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content install.log -Tail 40; Write-Error "setup exit code $($p.ExitCode)"; exit 1 }
+          foreach ($f in 'HexTactics.exe','HexTactics.pck','Руководство.txt','unins000.exe','data_HexTactics_windows_x86_64') {
+            if (-not (Test-Path (Join-Path $dir $f))) { Write-Error "not installed: $f"; exit 1 }
+          }
+          $menu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Гекс-тактика'
+          Get-ChildItem $menu
+          if (-not (Test-Path (Join-Path $menu 'Гекс-тактика.lnk'))) { Write-Error 'no Start menu shortcut'; exit 1 }
+          if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Гекс-тактика.lnk'))) { Write-Error 'no desktop shortcut'; exit 1 }
+          $t = Start-Process -FilePath (Join-Path $dir 'HexTactics.exe') -ArgumentList '--headless','--','--selftest' `
+               -NoNewWindow -Wait -PassThru -RedirectStandardOutput installed-selftest.log -WorkingDirectory $dir
+          Get-Content installed-selftest.log
+          if ($t.ExitCode -ne 0) { Write-Error "installed selftest exit code $($t.ExitCode)"; exit 1 }
+          if (-not (Select-String -Path installed-selftest.log -Pattern "HexTactics $env:APP_VERSION" -Quiet)) { Write-Error 'wrong version'; exit 1 }
+          $u = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          # The uninstaller continues from a temporary copy of itself: wait until the files are gone.
+          for ($i = 0; $i -lt 60 -and (Test-Path (Join-Path $dir 'HexTactics.exe')); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path (Join-Path $dir 'HexTactics.exe')) { Write-Error 'uninstall left the program'; exit 1 }
+          if (Test-Path (Join-Path $menu 'Гекс-тактика.lnk')) { Write-Error 'uninstall left the shortcut'; exit 1 }
+          Write-Host "Install, self-test and uninstall: OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HexTactics-installer
+          path: |
+            dist/HexTactics-${{ env.APP_VERSION }}-Setup.exe
+            portable/HexTactics-${{ env.APP_VERSION }}-Portable.exe
+
+  release:
+    # A GitHub Release with the installer, the single-file exe and the Linux archive: on a commit marked [release]
+    # or by hand (Actions → build → Run workflow).
+    needs: [build, windows-selftest]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: HexTactics-installer
+          path: release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: HexTactics-linux-x64
+          path: release
+
+      - name: Publish v${{ env.APP_VERSION }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          find release -type f -exec ls -la {} \;
+          tag="v${APP_VERSION}"
+          gh release delete "$tag" --cleanup-tag -y || true
+          gh release create "$tag" --target "$GITHUB_SHA" --title "Гекс-тактика ${APP_VERSION}" --notes-file docs/RELEASE_NOTES.md \
+            release/dist/HexTactics-${APP_VERSION}-Setup.exe \
+            release/portable/HexTactics-${APP_VERSION}-Portable.exe \
+            release/HexTactics-${APP_VERSION}-Linux-x64.tar.gz \
+            "installer/GUIDE_RU.txt#Руководство пользователя (RU).txt"

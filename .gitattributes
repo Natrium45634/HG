@@ -3,3 +3,7 @@
 *.jpg binary
 *.ttf binary
 *.otf binary
+*.ico binary
+# Files read on Windows (installer script, user guide) keep CRLF.
+installer/*.iss text eol=crlf
+installer/*.txt text eol=crlf

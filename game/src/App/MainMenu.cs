@@ -31,6 +31,9 @@ public partial class MainMenu : Control
         var left = Ui.VBox(12);
         left.AddChild(Ui.Label("ГЕКС-ТАКТИКА", 44, Ui.Accent));
         left.AddChild(Ui.Label("тактика в реальном времени с паузой", 16, Ui.TextDim));
+        var version = Ui.Label("версия " + Main.Version, 13, Ui.TextDim);
+        version.Name = "VersionLabel";
+        left.AddChild(version);
         left.AddChild(Ui.Spacer(0, 18));
         left.AddChild(Ui.Button("Редактор (админ-режим)", () => app.ShowEditor(), "Карты, юниты, навыки, эффекты, правила и сценарии без кода").MinSize(300, 44));
         left.AddChild(Ui.Button("Настройки", OpenSettings).MinSize(300, 44));
