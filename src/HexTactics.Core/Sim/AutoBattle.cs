@@ -140,7 +140,7 @@ public sealed class AutoBattleOptions
 }
 
 /// <summary>One run of a batch, shortly.</summary>
-public sealed record BatchRun(int Index, ulong Seed, string Outcome, string Reason, int Waves, double Seconds, double BaseHealth, int DefendersLost, int Leaks);
+public sealed record BatchRun(int Index, ulong Seed, string Outcome, string Reason, int Waves, double Seconds, double BaseHealth, int DefendersLost, int Leaks, int PathErrors = 0);
 
 /// <summary>The summary of a batch (docs/DECISIONS_4.md §64, TZ §10.6), in the order of the seeds.</summary>
 public sealed class BatchReport
@@ -160,6 +160,33 @@ public sealed class BatchReport
     public double StdSeconds { get; set; }
     public List<(string Reason, int Count)> TopDefeatReasons { get; set; } = new();
     public Dictionary<string, int> AiErrors { get; set; } = new();
+    // Part 5 (ТЗ ч. 5, 19.5; docs/DECISIONS_5.md §86).
+    /// <summary>The 95 % interval of the win rate (Wilson); only from <see cref="MinRunsForInterval"/> runs.</summary>
+    public double? WinRateLow { get; set; }
+    public double? WinRateHigh { get; set; }
+    public double MedianSeconds { get; set; }
+    public double MeanLeaks { get; set; }
+    public int MaxLeaks { get; set; }
+    /// <summary>Leaks in a run → the number of such runs.</summary>
+    public SortedDictionary<int, int> LeakDistribution { get; set; } = new();
+    /// <summary>«Нет пути», закрытый маршрут, «нет продвижения», недостижимая цель — over all runs.</summary>
+    public int PathErrors { get; set; }
+    /// <summary>The worst run: the least health of the bases, then the most leaks, then the shortest.</summary>
+    public int WorstRun { get; set; } = -1;
+
+    public const int MinRunsForInterval = 10;
+    public static readonly string[] PathErrorKinds = { "no_path", "route_blocked", "stuck", "unreachable" };
+
+    /// <summary>The Wilson score interval of a proportion (z = 1.96 → 95 %).</summary>
+    public static (double Low, double High) Wilson(int successes, int n, double z = 1.96)
+    {
+        if (n <= 0) return (0, 1);
+        double p = successes / (double)n, z2 = z * z;
+        double denom = 1 + z2 / n;
+        double centre = (p + z2 / (2 * n)) / denom;
+        double half = z * Math.Sqrt(p * (1 - p) / n + z2 / (4.0 * n * n)) / denom;
+        return (Math.Max(0, centre - half), Math.Min(1, centre + half));
+    }
 
     public static BatchReport Of(string scenario, ulong baseSeed, IReadOnlyList<BattleReport> reports)
     {
@@ -167,7 +194,10 @@ public sealed class BatchReport
         for (int i = 0; i < reports.Count; i++)
         {
             var r = reports[i];
-            b.Runs.Add(new BatchRun(i, r.Seed, r.Outcome, r.Reason, r.WavesCompleted, r.Seconds, Math.Round(r.BaseHealth, 4), r.DefendersLost, r.EnemiesReachedGoal));
+            int pathErrors = PathErrorKinds.Sum(k => r.AiErrors.GetValueOrDefault(k));
+            b.Runs.Add(new BatchRun(i, r.Seed, r.Outcome, r.Reason, r.WavesCompleted, r.Seconds, Math.Round(r.BaseHealth, 4), r.DefendersLost, r.EnemiesReachedGoal, pathErrors));
+            b.PathErrors += pathErrors;
+            b.LeakDistribution[r.EnemiesReachedGoal] = b.LeakDistribution.GetValueOrDefault(r.EnemiesReachedGoal) + 1;
             foreach (var kv in r.AiErrors) b.AiErrors[kv.Key] = b.AiErrors.GetValueOrDefault(kv.Key) + kv.Value;
         }
         if (reports.Count == 0) return b;
@@ -180,6 +210,17 @@ public sealed class BatchReport
         b.MinSeconds = reports.Min(r => r.Seconds);
         b.MaxSeconds = reports.Max(r => r.Seconds);
         b.StdSeconds = Math.Sqrt(reports.Average(r => (r.Seconds - b.MeanSeconds) * (r.Seconds - b.MeanSeconds)));
+        var secs = reports.Select(r => r.Seconds).OrderBy(x => x).ToList();
+        b.MedianSeconds = secs.Count % 2 == 1 ? secs[secs.Count / 2] : (secs[secs.Count / 2 - 1] + secs[secs.Count / 2]) / 2;
+        b.MeanLeaks = reports.Average(r => r.EnemiesReachedGoal);
+        b.MaxLeaks = reports.Max(r => r.EnemiesReachedGoal);
+        if (reports.Count >= MinRunsForInterval)
+        {
+            var (lo, hi) = Wilson(reports.Count(r => r.Won), reports.Count);
+            b.WinRateLow = Math.Round(lo, 4);
+            b.WinRateHigh = Math.Round(hi, 4);
+        }
+        b.WorstRun = b.Runs.OrderBy(r => r.BaseHealth).ThenByDescending(r => r.Leaks).ThenBy(r => r.Outcome == "поражение" ? r.Seconds : double.MaxValue).ThenBy(r => r.Index).First().Index;
         b.TopDefeatReasons = reports.Where(r => !r.Won).Select(r => r.Reason != "" ? r.Reason : r.StopReason).Where(t => t != "")
             .GroupBy(t => t).OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal).Take(5).Select(g => (g.Key, g.Count())).ToList();
         return b;
@@ -191,9 +232,12 @@ public sealed class BatchReport
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Пакетный прогон «{Scenario}»: {RunsCount} прогонов, seed {BaseSeed}…{BaseSeed + (ulong)Math.Max(0, RunsCount - 1)}");
-        sb.AppendLine($"Побед: {WinRate:P0}; волн в среднем {F(MeanWaves)}");
+        sb.AppendLine($"Побед: {WinRate:P0}" + (WinRateLow.HasValue ? $" (95 % интервал {WinRateLow:P0}–{WinRateHigh:P0})" : $" (интервал — от {MinRunsForInterval} прогонов)") + $"; волн в среднем {F(MeanWaves)}");
+        sb.AppendLine($"Прорывы: в среднем {F(MeanLeaks)}, максимум {MaxLeaks}; распределение: " + string.Join(", ", LeakDistribution.Select(k => $"{k.Key} — {k.Value} прогон(ов)")));
+        sb.AppendLine($"Ошибки пути (нет пути, закрытый маршрут, нет продвижения, недостижимо): {PathErrors}");
+        if (WorstRun >= 0 && WorstRun < Runs.Count) sb.AppendLine($"Худший случай: #{WorstRun + 1} seed {Runs[WorstRun].Seed} — {Runs[WorstRun].Outcome}, базы {Runs[WorstRun].BaseHealth:P0}, прорывы {Runs[WorstRun].Leaks}");
         sb.AppendLine($"Здоровье баз: среднее {MeanBaseHealth:P0}, мин. {MinBaseHealth:P0}, макс. {MaxBaseHealth:P0}");
-        sb.AppendLine($"Длительность: среднее {F(MeanSeconds)} с, мин. {F(MinSeconds)}, макс. {F(MaxSeconds)}, разброс (σ) {F(StdSeconds)} с");
+        sb.AppendLine($"Длительность: среднее {F(MeanSeconds)} с, медиана {F(MedianSeconds)}, мин. {F(MinSeconds)}, макс. {F(MaxSeconds)}, разброс (σ) {F(StdSeconds)} с");
         sb.AppendLine("Частые причины поражения: " + (TopDefeatReasons.Count == 0 ? "нет" : string.Join("; ", TopDefeatReasons.Select(t => $"{t.Reason} ×{t.Count}"))));
         if (AiErrors.Count > 0) sb.AppendLine("Ошибки ИИ: " + string.Join(", ", AiErrors.Select(k => $"{BattleReport.AiErrorName(k.Key)} ×{k.Value}")));
         foreach (var r in Runs)
@@ -203,7 +247,8 @@ public sealed class BatchReport
 
     public string ToJson() => JsonSerializer.Serialize(new
     {
-        Scenario, BaseSeed, RunsCount, WinRate, MeanWaves, MeanBaseHealth, MinBaseHealth, MaxBaseHealth, MeanSeconds, MinSeconds, MaxSeconds, StdSeconds,
+        Scenario, BaseSeed, RunsCount, WinRate, WinRateLow, WinRateHigh, MeanWaves, MeanBaseHealth, MinBaseHealth, MaxBaseHealth, MeanSeconds, MedianSeconds, MinSeconds,
+        MaxSeconds, StdSeconds, MeanLeaks, MaxLeaks, LeakDistribution, PathErrors, WorstRun,
         TopDefeatReasons = TopDefeatReasons.Select(t => new { t.Reason, t.Count }), AiErrors, Runs,
     }, BattleReport.JsonOptions);
 }
@@ -302,6 +347,14 @@ public static class AutoBattle
         var sb = new StringBuilder(batch.ToText());
         if (reports != null && reports.Count == 1) sb.AppendLine().Append(reports[0].ToText());
         File.WriteAllText(path + ".txt", sb.ToString());
+        // CSV (ТЗ ч. 5, 19.5): a line per run and the summary; with one run — its units and waves too.
+        ReportCsv.Write(path + "_summary.csv", ReportCsv.Summary(batch));
+        if (reports != null)
+        {
+            ReportCsv.Write(path + "_runs.csv", ReportCsv.Runs(reports));
+            ReportCsv.Write(path + "_waves.csv", ReportCsv.Waves(reports));
+            if (reports.Count == 1) ReportCsv.Write(path + "_units.csv", ReportCsv.Units(reports[0]));
+        }
         return path;
     }
 
@@ -312,6 +365,8 @@ public static class AutoBattle
         string path = Path.Combine(folder, $"{Safe(report.Scenario)}_seed{report.Seed}_{stamp ?? DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture)}");
         File.WriteAllText(path + ".json", report.ToJson());
         File.WriteAllText(path + ".txt", report.ToText(db));
+        ReportCsv.Write(path + "_units.csv", ReportCsv.Units(report));
+        ReportCsv.Write(path + "_waves.csv", ReportCsv.Waves(new[] { report }));
         return path;
     }
 

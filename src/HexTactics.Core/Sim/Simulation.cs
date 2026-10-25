@@ -95,6 +95,7 @@ public sealed class Simulation
         Passives = new PassiveSystem(this);
         Groups = new GroupPlanner(this);
         GroupOrders = new GroupOrders(this);
+        Input = new PlayerInput(this);
 
         CellEffects.ApplyIntrinsicEffects();
         foreach (var cd in mapDef.Cells)
@@ -160,6 +161,11 @@ public sealed class Simulation
     /// <summary>Group positions and formations (docs/DECISIONS_3.md §44).</summary>
     public GroupPlanner Groups { get; }
     public GroupOrders GroupOrders { get; }
+    /// <summary>The player's calls (orders, queue, placement), written to the replay journal (docs/DECISIONS_5.md §86).</summary>
+    public PlayerInput Input { get; }
+
+    /// <summary>The fingerprint of the state by parts (snapshots, replays).</summary>
+    public SimDigest Digest() => SimDigest.Of(this);
 
     /// <summary>Gives a group order: each unit gets its own commands (docs/DECISIONS_3.md §44).</summary>
     public GroupOrderResult IssueGroupOrder(IReadOnlyList<Unit> units, GroupOrder order) => GroupOrders.Issue(units, order);

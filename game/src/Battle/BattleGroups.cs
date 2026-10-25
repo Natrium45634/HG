@@ -174,7 +174,7 @@ public partial class BattleScreen
             ExcludeTags = t.ExcludeTags.ToList(), AllowAutoSkills = t.AllowAutoSkills, OnTargetDeath = t.OnTargetDeath, MaxSpread = t.MaxSpread,
             WhenNoSpace = t.WhenNoSpace, Routing = Settings.RouteMode, AutoPriority = t.AutoPriority, SkillId = t.SkillId,
         };
-        var r = Sim.IssueGroupOrder(_group, o);
+        var r = Sim.Input.IssueGroupOrder(_group, o);
         LastGroupResult = r;
         GroupMode = null;
         _hint = "";

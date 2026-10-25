@@ -38,6 +38,48 @@ public sealed class WaveStat
     public double BaseDamage { get; set; }
     public double Started { get; set; } = -1;
     public double Ended { get; set; } = -1;
+    // Part 5 (ТЗ ч. 5, 19.3; docs/DECISIONS_5.md §86).
+    /// <summary>Appearances planned, and those cancelled (taken exit, a destroyed spawner, the limits).</summary>
+    public int Planned { get; set; }
+    public int Failed { get; set; }
+    /// <summary>The most enemies of the wave alive at once.</summary>
+    public int MaxAlive { get; set; }
+    /// <summary>From the first appearance to the last enemy gone, ticks; −1 — not finished.</summary>
+    public long CompletionTicks { get; set; } = -1;
+    /// <summary>Enemies of the wave that were stuck at least once («нет продвижения»).</summary>
+    public int StuckUnits { get; set; }
+}
+
+/// <summary>One unit in the report (ТЗ ч. 5, 19.2).</summary>
+public sealed class UnitStat
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Template { get; set; } = "";
+    public string Side { get; set; } = "";
+    public int Wave { get; set; } = -1;
+    public string Group { get; set; } = "";
+    public double DamageDealt { get; set; }
+    public double DamageTaken { get; set; }
+    /// <summary>Damage per second of its life in the battle.</summary>
+    public double Dps { get; set; }
+    public double Healing { get; set; }
+    public double Overheal { get; set; }
+    /// <summary>Seconds of control (movement or actions blocked) on enemies, by its statuses.</summary>
+    public double ControlSeconds { get; set; }
+    /// <summary>Positive statuses it put on allies.</summary>
+    public int Buffs { get; set; }
+    /// <summary>Hexes it moved.</summary>
+    public int PathHexes { get; set; }
+    /// <summary>Ticks it waited with a move order (a taken hex, the queue).</summary>
+    public long WaitingTicks { get; set; }
+    public int Casts { get; set; }
+    public int Misses { get; set; }
+    public int Kills { get; set; }
+    /// <summary>The tick of its death; −1 — alive at the end (or left the battle).</summary>
+    public long DeathTick { get; set; } = -1;
+    [JsonIgnore] internal long BornTick { get; set; }
+    [JsonIgnore] internal Hex.HexCoord LastPos { get; set; }
 }
 
 public sealed class BattleReport
@@ -84,6 +126,25 @@ public sealed class BattleReport
     /// <summary>Per defender template: the damage it dealt and the enemies it killed (TZ §21.4: the most effective defenders).</summary>
     public Dictionary<string, double> DefenderDamage { get; set; } = new();
     public Dictionary<string, int> DefenderKills { get; set; } = new();
+    // Part 5 (ТЗ ч. 5, 19.2–19.4; docs/DECISIONS_5.md §86).
+    /// <summary>Every unit of the battle (structures aside).</summary>
+    public List<UnitStat> UnitStats { get; set; } = new();
+    /// <summary>The format of the content files and the rules version of the tick.</summary>
+    public int SchemaVersion { get; set; } = ContentJson.CurrentFormatVersion;
+    public int SimVersion { get; set; }
+    /// <summary>Errors of the check before the start (an unsafe test has them).</summary>
+    public int ValidationErrors { get; set; }
+    /// <summary>
+    /// The time of a tick, ms: mean and the worst. Measured, so it differs between runs of the same seed — not in the
+    /// JSON (whose equality proves determinism), only in the text and the CSV.
+    /// </summary>
+    [JsonIgnore] public double TickMsMean { get; set; }
+    [JsonIgnore] public double TickMsMax { get; set; }
+    [JsonIgnore] private readonly Dictionary<int, UnitStat> _units = new();
+    [JsonIgnore] private readonly Dictionary<int, HashSet<int>> _stuck = new();
+    [JsonIgnore] private double _tickMsSum;
+    [JsonIgnore] private long _tickCount;
+    [JsonIgnore] private long _tickStarted;
 
     public const string PlayerSide = "игрок";
     public const string EnemySide = "враги";
@@ -92,10 +153,12 @@ public sealed class BattleReport
     /// <summary>Starts watching a simulation (before its first tick).</summary>
     public static BattleReport Attach(Simulation sim, string scenario = "", ulong seed = 0)
     {
-        var r = new BattleReport { _sim = sim, Scenario = scenario, Seed = seed };
+        var r = new BattleReport { _sim = sim, Scenario = scenario, Seed = seed, SimVersion = sim.Rules.Time.SimVersion };
         sim.Observed += r.OnEvent;
         sim.Damage.Resolved += r.OnDamage;
         sim.Stepped += r.OnTick;
+        sim.Combat.Healed += r.OnHealed;
+        r._tickStarted = System.Diagnostics.Stopwatch.GetTimestamp();
         return r;
     }
 
@@ -105,6 +168,28 @@ public sealed class BattleReport
         _sim.Observed -= OnEvent;
         _sim.Damage.Resolved -= OnDamage;
         _sim.Stepped -= OnTick;
+        _sim.Combat.Healed -= OnHealed;
+    }
+
+    /// <summary>The line of a unit, created when it is first seen.</summary>
+    private UnitStat? U(Unit? u)
+    {
+        if (u == null || u.IsStructure) return null;
+        if (!_units.TryGetValue(u.Id, out var s))
+            _units[u.Id] = s = new UnitStat
+            {
+                Id = u.Id, Name = u.Name, Template = u.Def.Id, Side = SideOf(u), Wave = u.Wave, Group = u.Group, BornTick = _sim!.Tick, LastPos = u.Pos,
+            };
+        return s;
+    }
+
+    private void OnHealed(Unit? source, Unit target, double healed, double over)
+    {
+        if (U(source) is { } s)
+        {
+            s.Healing += healed;
+            s.Overheal += over;
+        }
     }
 
     private string SideOf(Unit? u)
@@ -137,8 +222,21 @@ public sealed class BattleReport
                 if (e.DamageType != "") Add(DamageByType, e.DamageType, e.Value);
                 if (dst is { IsStructure: true } && src is { Wave: >= 0 } && SideOf(dst) == PlayerSide) Wave(src.Wave).BaseDamage += e.Value;
                 if (src is { IsStructure: false } && SideOf(src) == PlayerSide && SideOf(dst) == EnemySide) Add(DefenderDamage, src.Def.DisplayName, e.Value);
+                if (U(src) is { } us) us.DamageDealt += e.Value;
+                if (U(dst) is { } ud) ud.DamageTaken += e.Value;
                 break;
             }
+            case SimEventType.StatusApplied when e.DamageType != "" && e.SourceUnit >= 0 && e.SourceUnit != e.TargetUnit:
+            {
+                var src = sim.GetUnit(e.SourceUnit);
+                var dst = sim.GetUnit(e.TargetUnit);
+                if (src != null && dst != null && !sim.IsHostile(src, dst) && sim.Content.Get<StatusDef>(e.DamageType) is { Negative: false } && U(src) is { } ub) ub.Buffs++;
+                break;
+            }
+            case SimEventType.CastReleased when e.SourceUnit >= 0:
+                if (U(sim.GetUnit(e.SourceUnit)) is { } uc) uc.Casts++;
+                if (e.DamageType != "") Stat(e.DamageType).Casts++;
+                break;
             case SimEventType.WaveStarted:
             {
                 var w = Wave((int)e.Value);
@@ -152,7 +250,7 @@ public sealed class BattleReport
                 Healing += e.Value;
                 Heals++;
                 break;
-            case SimEventType.CastReleased when e.DamageType != "":
+            case SimEventType.CastReleased when e.DamageType != "" && e.SourceUnit < 0:
                 Stat(e.DamageType).Casts++;
                 break;
             case SimEventType.PassiveTriggered when e.DamageType != "":
@@ -163,6 +261,11 @@ public sealed class BattleReport
                 break;
             case SimEventType.AiProblem:
                 Inc(AiErrors, e.DamageType == "" ? "other" : e.DamageType);
+                if (e.DamageType == "stuck" && sim.GetUnit(e.SourceUnit) is { Wave: >= 0 } stuck)
+                {
+                    if (!_stuck.TryGetValue(stuck.Wave, out var set)) _stuck[stuck.Wave] = set = new HashSet<int>();
+                    set.Add(stuck.Id);
+                }
                 break;
             case SimEventType.GoalReached:
             {
@@ -176,6 +279,8 @@ public sealed class BattleReport
                 var dead = sim.GetUnit(e.TargetUnit);
                 if (dead == null || dead.DeathCause == DeathCause.Removed && dead.Hp > 0) break;
                 var killer = sim.GetUnit(e.SourceUnit);
+                if (U(dead) is { } ud) ud.DeathTick = sim.Tick;
+                if (killer != null && killer != dead && U(killer) is { } uk) uk.Kills++;
                 string side = SideOf(dead);
                 if (side == PlayerSide && !dead.IsStructure) DefendersLost++;
                 if (side == EnemySide && !dead.IsStructure && dead.DeathCause != DeathCause.Removed)
@@ -204,7 +309,11 @@ public sealed class BattleReport
 
     private void OnDamage(DamageRequest q, DamageResult r)
     {
-        if (r.Missed) return;
+        if (r.Missed)
+        {
+            if (U(q.Attacker) is { } um) um.Misses++;
+            return;
+        }
         Shielded += r.Shielded;
         Absorbed += r.Absorbed;
         if (q.Skill != null) Stat(q.Skill.Id).Hits++;
@@ -213,9 +322,30 @@ public sealed class BattleReport
     private void OnTick()
     {
         var sim = _sim!;
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        double ms = (now - _tickStarted) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        _tickStarted = now;
+        _tickMsSum += ms;
+        _tickCount++;
+        if (ms > TickMsMax) TickMsMax = ms;
         int blocked = 0;
+        var aliveByWave = new Dictionary<int, int>();
         foreach (var u in sim.Units)
         {
+            if (u.Alive && U(u) is { } us)
+            {
+                if (u.Pos != us.LastPos)
+                {
+                    us.PathHexes += Hex.HexCoord.Distance(us.LastPos, u.Pos);
+                    us.LastPos = u.Pos;
+                }
+                if (u.WaitingFor >= 0 || u.Queue.Current is { Type: CommandType.Move, Status: CommandStatus.Waiting }) us.WaitingTicks++;
+                // Control on it: the seconds go to the sources of its negative statuses.
+                if (u.Flags.BlocksMovement || u.Flags.BlocksActions)
+                    foreach (var src in u.Statuses.Where(x => x.Def.Negative && x.SourceUnit >= 0 && x.SourceUnit != u.Id).Select(x => x.SourceUnit).Distinct())
+                        if (U(sim.GetUnit(src)) is { } uc) uc.ControlSeconds += sim.Dt;
+                if (u.Wave >= 0) aliveByWave[u.Wave] = aliveByWave.GetValueOrDefault(u.Wave) + 1;
+            }
             if (!u.Alive || u.IsStructure || SideOf(u) != EnemySide) continue;
             if (u.Ai.BlockedSince >= 0 || sim.Blocking.BlockerOf(u) != null)
             {
@@ -224,6 +354,8 @@ public sealed class BattleReport
             }
         }
         RouteBlockedSeconds += blocked * sim.Dt;
+        foreach (var (w, n) in aliveByWave)
+            if (n > Wave(w).MaxAlive) Wave(w).MaxAlive = n;
     }
 
     /// <summary>Fixes the final values (outcome, waves, bases) and stops watching — call when the run stops.</summary>
@@ -244,9 +376,29 @@ public sealed class BattleReport
         WavesTotal = sim.Scenario.Waves.Count;
         for (int i = 0; i < sim.Scenario.Waves.Count; i++)
         {
-            Wave(i).Name = sim.Scenario.Waves[i].Def.Name;
-            Wave(i).Spawned = sim.Scenario.Waves[i].UnitIds.Count;
+            var wr = sim.Scenario.Waves[i];
+            var ws = Wave(i);
+            ws.Name = wr.Def.Name;
+            ws.Spawned = wr.UnitIds.Count;
+            ws.Planned = wr.Planned.Count;
+            ws.Failed = wr.Planned.Count(p => p.Done && p.SpawnedTick < 0);
+            ws.CompletionTicks = wr.StartedTick >= 0 && wr.ClearedTick >= 0 ? wr.ClearedTick - wr.StartedTick : -1;
+            ws.StuckUnits = _stuck.TryGetValue(i, out var st) ? st.Count : 0;
         }
+        foreach (var u in sim.Units) U(u);
+        foreach (var us in _units.Values)
+        {
+            double alive = ((us.DeathTick >= 0 ? us.DeathTick : sim.Tick) - us.BornTick) * sim.Dt;
+            us.Dps = alive > 0 ? Math.Round(us.DamageDealt / alive, 3) : 0;
+            us.DamageDealt = Math.Round(us.DamageDealt, 2);
+            us.DamageTaken = Math.Round(us.DamageTaken, 2);
+            us.Healing = Math.Round(us.Healing, 2);
+            us.Overheal = Math.Round(us.Overheal, 2);
+            us.ControlSeconds = Math.Round(us.ControlSeconds, 2);
+        }
+        UnitStats = _units.Values.OrderBy(u => u.Id).ToList();
+        TickMsMean = _tickCount > 0 ? Math.Round(_tickMsSum / _tickCount, 4) : 0;
+        TickMsMax = Math.Round(TickMsMax, 3);
         // A wave whose last enemy fell on the final tick is complete even if the end of the battle came first.
         WavesCompleted = sim.Scenario.Waves.Count(w => w.State == WaveState.Cleared
             || w.State == WaveState.Active && w.Planned.All(p => p.Done) && w.UnitIds.All(id => sim.GetUnit(id)?.Alive != true));
@@ -314,6 +466,15 @@ public sealed class BattleReport
                           (w.Started >= 0 ? $", {F(w.Started)}–{(w.Ended >= 0 ? F(w.Ended) : "…")} с" : ""));
         if (FailureReasons.Count > 0) sb.AppendLine("Причины провала/потерь: " + string.Join("; ", FailureReasons));
         if (EventChainCuts > 0) sb.AppendLine($"Оборвано цепочек событий: {EventChainCuts}");
+        // Part 5 (ТЗ ч. 5, 19.2–19.4).
+        foreach (var w in WaveStats.Where(w => w.Planned > 0))
+            sb.AppendLine($"  волна {w.Index + 1}: запланировано {w.Planned}, отменено {w.Failed}, живых одновременно до {w.MaxAlive}, застревали {w.StuckUnits}" +
+                          (w.CompletionTicks >= 0 ? $", пройдена за {w.CompletionTicks} тиков" : ""));
+        var top = UnitStats.Where(u => u.DamageDealt > 0 || u.Healing > 0).OrderByDescending(u => u.DamageDealt + u.Healing).Take(8).ToList();
+        if (top.Count > 0)
+            sb.AppendLine("Лучшие юниты: " + string.Join("; ", top.Select(u => $"{u.Name}#{u.Id} урон {F(u.DamageDealt)} (DPS {u.Dps:0.##}), лечение {F(u.Healing)}, убийств {u.Kills}")));
+        sb.AppendLine($"Схема данных v{SchemaVersion}, правила тика v{SimVersion}" + (ValidationErrors > 0 ? $", ошибок проверки {ValidationErrors}" : "") +
+                      (TickMsMean > 0 ? $"; тик: в среднем {TickMsMean:0.###} мс, максимум {TickMsMax:0.##} мс" : ""));
         return sb.ToString();
     }
 

@@ -33,6 +33,38 @@ public sealed class SimDriver
 
     public event Action<string>? Autopaused;
 
+    /// <summary>
+    /// «Небезопасный тест» (ТЗ ч. 5, 26.4): an exception inside a tick pauses the battle with its text instead of
+    /// breaking the application. Off — exceptions go up as before.
+    /// </summary>
+    public bool CatchErrors { get; set; }
+    /// <summary>The last caught exception (with <see cref="CatchErrors"/>); null — none.</summary>
+    public string? Error { get; private set; }
+    public event Action<string>? Failed;
+
+    private bool SafeStep()
+    {
+        if (!CatchErrors)
+        {
+            Sim.Step();
+            return true;
+        }
+        try
+        {
+            Sim.Step();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Error = $"тик {Sim.Tick}: {e.GetType().Name}: {e.Message}";
+            Paused = true;
+            _accumulator = 0;
+            Sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, "Небезопасный тест: ошибка симуляции — " + Error);
+            Failed?.Invoke(Error);
+            return false;
+        }
+    }
+
     public void SetSpeedIndex(int i) => SpeedIndex = Math.Clamp(i, 0, Speeds.Count - 1);
 
     public void Faster() => SetSpeedIndex(SpeedIndex + 1);
@@ -50,7 +82,7 @@ public sealed class SimDriver
         while (_accumulator >= Sim.Dt && n < max)
         {
             _accumulator -= Sim.Dt;
-            Sim.Step();
+            if (!SafeStep()) return n;
             n++;
             var reason = Sim.ConsumeAutopause();
             if (reason != null)
@@ -74,7 +106,7 @@ public sealed class SimDriver
     /// <summary>Executes exactly one tick (step-by-step debugging while paused).</summary>
     public void StepOnce()
     {
-        Sim.Step();
+        if (!SafeStep()) return;
         var reason = Sim.ConsumeAutopause();
         if (reason != null) Autopaused?.Invoke(reason);
     }

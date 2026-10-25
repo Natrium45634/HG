@@ -185,6 +185,60 @@ public partial class TdScenePanel
         _progress = Ui.Label(TestRunning ? $"Идёт: {_batchDone}/{_batchTotal}" : "", 12, Ui.TextDim, wrap: true);
         _progress.Name = "TdBatchProgress";
         _library.AddChild(_progress);
+        _library.AddChild(Ui.Sep());
+        btn("⟲ Проверить реплей…", PickReplay, "Реплей боя (меню боя → «Сохранить реплей»): тот же seed и действия игрока по тикам — совпал ли конец и что изменилось в контенте", "TdReplay");
+    }
+
+    private static string ReplaysDir => ProjectSettings.GlobalizePath("user://replays");
+
+    private void PickReplay()
+    {
+        System.IO.Directory.CreateDirectory(ReplaysDir);
+        var fd = new FileDialog
+        {
+            FileMode = FileDialog.FileModeEnum.OpenFile, Access = FileDialog.AccessEnum.Filesystem, CurrentDir = ReplaysDir,
+            Filters = new[] { "*.hexreplay ; Реплей боя" }, Title = "Реплей боя",
+        };
+        fd.FileSelected += path =>
+        {
+            CheckReplay(path);
+            fd.QueueFree();
+        };
+        fd.Canceled += fd.QueueFree;
+        AddChild(fd);
+        fd.PopupCentered(new Vector2I(820, 520));
+    }
+
+    /// <summary>Plays a replay back on its saved content and on the current draft: does the end match, what changed.</summary>
+    public void CheckReplay(string path)
+    {
+        BattleReplay? rep;
+        try
+        {
+            rep = BattleReplay.FromJson(System.IO.File.ReadAllText(path));
+        }
+        catch (Exception e)
+        {
+            rep = null;
+            TestResult = $"Реплей не прочитан: {e.Message}";
+        }
+        if (rep != null)
+        {
+            var lines = new List<string> { $"Реплей «{System.IO.Path.GetFileName(path)}»: сценарий «{rep.Scenario}», seed {rep.Seed}, тиков {rep.EndTick}, действий игрока {rep.Entries.Count}" };
+            try
+            {
+                if (rep.Content != null) lines.Add("На сохранённом контенте: " + rep.Play().Text);
+                var draft = rep.Play(Ctx.Db.Clone());
+                lines.Add("На текущем черновике: " + draft.Text);
+            }
+            catch (Exception e)
+            {
+                lines.Add($"Воспроизведение прервано: {e.GetType().Name}: {e.Message}");
+            }
+            TestResult = string.Join("\n", lines);
+        }
+        _status.Text = TestResult.Split('\n')[0];
+        RefreshProps();
     }
 
     private void BuildTestProps()
@@ -204,8 +258,23 @@ public partial class TdScenePanel
         RunCheck(false);
         var errors = _problems.Where(p => p.Severity == IssueSeverity.Error).ToList();
         if (errors.Count == 0) return true;
-        Dialogs.Info(this, "Тест не запущен", "Критические ошибки:\n• " + string.Join("\n• ", errors.Take(8).Select(p => p.Message)));
+        // ТЗ ч. 5, 26.4: an explicit «небезопасный тест» without the player, with the ignored errors first in its report.
+        Dialogs.Confirm(this, "Тест не запущен", "Критические ошибки:\n• " + string.Join("\n• ", errors.Take(8).Select(p => p.Message)) +
+            "\n\nМожно провести «небезопасный тест»: один прогон без игрока, ошибки — в начале отчёта, сбой симуляции не роняет редактор.", RunUnsafeTest, "Небезопасный тест");
         return false;
+    }
+
+    /// <summary>One run despite the errors (the draft is not changed).</summary>
+    public void RunUnsafeTest()
+    {
+        if (_sc == null) return;
+        var db = Ctx.Db.Clone();
+        var sc = db.Get<ScenarioDef>(_sc.Id) ?? ContentJson.Clone(_sc);
+        var res = UnsafeTest.Run(db, sc, _maxSeconds, _seed);
+        TestResult = res.Text + (res.Report != null ? "\n\n" + res.Report.ToText(db) : "");
+        TestSaved = res.Report != null ? AutoBattle.Save(ReportsDir, res.Report, db) : "";
+        _status.Text = $"Небезопасный тест: ошибок проигнорировано {res.Ignored.Count}, {(res.Exceptions.Count > 0 ? "сбои: " + res.Exceptions.Count : "без сбоев")}";
+        RefreshProps();
     }
 
     private AutoBattleOptions TestOptions() => new() { MaxSeconds = _maxSeconds, AutoPlayer = _autoPlayer, PlacePreset = true };

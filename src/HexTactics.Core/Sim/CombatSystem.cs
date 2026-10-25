@@ -381,6 +381,9 @@ public sealed class CombatSystem
     /// Healing (docs/DECISIONS_2.md §29): flat, % of max or % of missing health; × (1 + heal power of the
     /// source) × (1 + heal_received of the target); blocked by «нельзя лечить»; overheal may become a shield.
     /// </summary>
+    /// <summary>Every heal: the healer (or null), the target, the effective part and the overheal (reports).</summary>
+    public event Action<Unit?, Unit, double, double>? Healed;
+
     public double Heal(Unit? source, Unit target, double amount, string cause, HealMode mode = HealMode.Flat, bool applyPower = true, bool overhealShield = true)
     {
         if (!target.Alive || amount <= 0) return 0;
@@ -402,6 +405,7 @@ public sealed class CombatSystem
         target.Hp = Math.Min(target.HpMax, target.Hp + baseAmount);
         double healed = target.Hp - before;
         double over = baseAmount - healed;
+        Healed?.Invoke(source, target, healed, Math.Max(0, over));
         var dr = Rules.Damage;
         if (overhealShield && over > 0.5 && dr.OverhealToShieldPercent > 0)
         {

@@ -65,8 +65,11 @@ public partial class TdScenePanel : DefListPanel
     public bool Drawing => _drawing != null;
     public string StatusText => IsInstanceValid(_status) ? _status.Text : "";
 
-    public TdScenePanel(EditorContext ctx, Action<ScenarioDef> test) : base(ctx, DefCategory.Scenario, "TD-сцена", null, null)
+    private readonly Action<ScenarioDef, List<string>>? _testUnsafe;
+
+    public TdScenePanel(EditorContext ctx, Action<ScenarioDef> test, Action<ScenarioDef, List<string>>? testUnsafe = null) : base(ctx, DefCategory.Scenario, "TD-сцена", null, null)
     {
+        _testUnsafe = testUnsafe;
         _test = test;
         // «--tdmode=routes|waves» opens the workspace in that mode (screenshots, tests).
         if (App.Main.Instance.Args.TryGetValue("tdmode", out var m))
@@ -206,7 +209,7 @@ public partial class TdScenePanel : DefListPanel
             TdMode.Routes => "Выберите базу спавна (ЛКМ) и нажмите «Создать маршрут» — или сразу протяните ЛКМ от базы спавна.",
             TdMode.Placement when PresetUnit is { } pu => $"ЛКМ по гексу — поставить «{Ctx.Db.Unit(pu)?.DisplayName ?? pu}» в расстановку по умолчанию, по занятому — убрать; ПКМ — убрать.",
             TdMode.Placement => "ЛКМ по гексу — добавить/убрать гекс зоны расстановки (вместе с зонами объектов). Справа — режим боя и настройки подготовки.",
-            TdMode.Test => "Автотест — один прогон без игрока; пакет — N прогонов с seed = база + i. Отчёты сохраняются в user://reports, контент не меняется.",
+            TdMode.Test => "Автотест — один прогон без игрока; пакет — N прогонов с seed = база + i (от 10 — 95 % интервал доли побед). Отчёты — в user://reports: JSON, текст и CSV (прогоны, волны, юниты, сводка); контент не меняется.",
             _ => "Выберите волну и группу; «Добавить группу» привязывает её к выбранной базе спавна и её маршруту.",
         };
     }
@@ -1425,7 +1428,16 @@ public partial class TdScenePanel : DefListPanel
         var errors = _problems.Where(p => p.Severity == IssueSeverity.Error).ToList();
         if (errors.Count > 0)
         {
-            Dialogs.Info(this, "Сцена не запущена", "Критические ошибки:\n• " + string.Join("\n• ", errors.Take(8).Select(p => p.Message)) + (errors.Count > 8 ? $"\n… и ещё {errors.Count - 8}" : ""));
+            string list = "Критические ошибки:\n• " + string.Join("\n• ", errors.Take(8).Select(p => p.Message)) + (errors.Count > 8 ? $"\n… и ещё {errors.Count - 8}" : "");
+            if (_testUnsafe == null)
+            {
+                Dialogs.Info(this, "Сцена не запущена", list);
+                return;
+            }
+            // ТЗ ч. 5, 26.4: only explicitly, only as a test, with the errors in its log.
+            var sc = _sc;
+            Dialogs.Confirm(this, "Сцена не запущена", list + "\n\nМожно запустить «небезопасный тест»: бой отмечен, ошибки попадут в журнал, сбой тика ставит бой на паузу.",
+                () => _testUnsafe(sc, errors.Select(p => p.Message).ToList()), "Небезопасный тест");
             return;
         }
         _test(_sc);

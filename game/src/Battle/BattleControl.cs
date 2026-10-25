@@ -302,11 +302,11 @@ public partial class BattleScreen
         // Turning: a route node keeps its facing after arrival; the plan's end gets the facing of its last move or a turn order.
         if (g.NodeIndex >= 0)
         {
-            if (Sim.SetArrivalFacing(u, g.CommandId, g.Dir)) ConfirmFacing(u, g.Dir);
+            if (Sim.Input.SetArrivalFacing(u, g.CommandId, g.Dir)) ConfirmFacing(u, g.Dir);
             return;
         }
         var last = _proj.Count > 0 ? _proj[^1].Command : null;
-        if (last != null && last.Type == CommandType.Move && Sim.SetArrivalFacing(u, last.Id, g.Dir))
+        if (last != null && last.Type == CommandType.Move && Sim.Input.SetArrivalFacing(u, last.Id, g.Dir))
         {
             ConfirmFacing(u, g.Dir);
             return;
@@ -545,7 +545,7 @@ public partial class BattleScreen
     {
         var u = Selected;
         if (u == null) return;
-        var err = Sim.Enqueue(u, c, -1, false);
+        var err = Sim.Input.Enqueue(u, c, -1, false);
         _projKey = null;
         if (err != null) _hud.ShowBanner("Команда не принята: " + err, Ui.Bad);
         else OnOrderConfirmed();

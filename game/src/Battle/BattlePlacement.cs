@@ -53,7 +53,7 @@ public partial class BattleScreen
 
     public void RemovePlaced(Unit u)
     {
-        if (Sim.Placement.Remove(u))
+        if (Sim.Input.Unplace(u))
         {
             if (Selected == u) Select(null, byPlayer: false);
             _hud.ShowBanner($"«{u.Name}» снят — бюджет возвращён", Ui.Text, 2);
@@ -62,7 +62,7 @@ public partial class BattleScreen
 
     public void UpgradePlaced(Unit u)
     {
-        var nu = Sim.Placement.Upgrade(u, out var why);
+        var nu = Sim.Input.Upgrade(u, out var why);
         if (nu == null)
         {
             _hud.ShowBanner("Улучшение невозможно: " + why, Ui.Bad);
@@ -74,7 +74,7 @@ public partial class BattleScreen
 
     public void PlacePreset()
     {
-        int n = Sim.Placement.PlacePreset(free: false);
+        int n = Sim.Input.PlacePreset(free: false);
         _hud.ShowBanner(n > 0 ? $"Расставлено по умолчанию: {n}" : "Расстановка по умолчанию не поместилась (бюджет, лимиты, занятые гексы)", n > 0 ? Ui.Good : Ui.Warn, 3);
     }
 
@@ -82,7 +82,7 @@ public partial class BattleScreen
     {
         PlaceTemplate = null;
         Relocating = null;
-        if (!Sim.Placement.Confirm())
+        if (!Sim.Input.Confirm())
         {
             _hud.ShowBanner("Подготовка заканчивается сама (по времени или условию)", Ui.Warn);
             return;
@@ -98,14 +98,14 @@ public partial class BattleScreen
         if (PlaceTemplate != null)
         {
             var dir = FacingTowardsEnemies(_hover.Coord);
-            var u = Sim.Placement.Place(PlaceTemplate, _hover.Coord, out var why, dir);
+            var u = Sim.Input.Place(PlaceTemplate, _hover.Coord, out var why, dir);
             if (u == null) _hud.ShowBanner("Нельзя поставить: " + why, Ui.Bad, 2.5f);
             else if (Sim.Placement.CanAfford(PlaceTemplate) != null) PlaceTemplate = null;
             return true;
         }
         if (Relocating != null)
         {
-            if (!Sim.Placement.Move(Relocating, _hover.Coord, out var why)) _hud.ShowBanner("Нельзя переставить: " + why, Ui.Bad, 2.5f);
+            if (!Sim.Input.MovePlaced(Relocating, _hover.Coord, out var why)) _hud.ShowBanner("Нельзя переставить: " + why, Ui.Bad, 2.5f);
             Relocating = null;
             return true;
         }

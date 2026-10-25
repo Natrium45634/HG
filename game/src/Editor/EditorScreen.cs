@@ -300,7 +300,7 @@ public partial class EditorScreen : Control
             "ai" => new DefListPanel(_ctx, DefCategory.AiProfile, "Профили ИИ"),
             "formations" => new FormationPanel(_ctx),
             "scenarios" => new ScenarioEditorPanel(_ctx, TestScenario),
-            "td" => new TdScenePanel(_ctx, TestScenario),
+            "td" => new TdScenePanel(_ctx, TestScenario, TestUnsafe),
             "group_presets" => new DefListPanel(_ctx, DefCategory.GroupPreset, "Пресеты групп волн (применяются в TD-сцене)", null, () => new GroupPresetDef { Name = "Новый пресет" }),
             "rules" => new RulesPanel(_ctx),
             "scaling_profiles" => new DefListPanel(_ctx, DefCategory.ScalingProfile, "Профили масштабирования («Подогнать под уровень», уровень экземпляра)", null, () => new ScalingProfileDef { Name = "Новый профиль" }),
@@ -446,7 +446,12 @@ public partial class EditorScreen : Control
 
     // ------------------------------------------------------------------ tests (draft only)
 
-    private void RunTest(ScenarioDef sc, ulong seed)
+    private void RunTest(ScenarioDef sc, ulong seed) => RunTest(sc, seed, null);
+
+    /// <summary>«Небезопасный тест» (ТЗ ч. 5, 26.4): the scenario starts despite the errors listed, marked, and a failing tick pauses it.</summary>
+    private void TestUnsafe(ScenarioDef sc, List<string> errors) => RunTest(sc, sc.Seed == 0 ? 12345 : sc.Seed, errors);
+
+    private void RunTest(ScenarioDef sc, ulong seed, List<string>? unsafeErrors)
     {
         var db = _ctx.Db.Clone();
         ContentValidator.Validate(db);
@@ -458,7 +463,8 @@ public partial class EditorScreen : Control
         }
         copy.Seed = seed;
         Main.Instance.Content.Autosave();
-        Main.Instance.ShowBattle(copy, db, admin: true, onExit: () => Main.Instance.ShowEditor());
+        if (unsafeErrors == null) Main.Instance.ShowBattle(copy, db, admin: true, onExit: () => Main.Instance.ShowEditor());
+        else Main.Instance.ShowBattle(new HexTactics.Game.Battle.BattleScreen(copy, db, true, () => Main.Instance.ShowEditor()) { Unsafe = true, UnsafeErrors = unsafeErrors });
     }
 
     private void TestScenario(ScenarioDef sc) => RunTest(sc, sc.Seed == 0 ? 12345 : sc.Seed);

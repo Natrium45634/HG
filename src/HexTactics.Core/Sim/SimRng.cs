@@ -26,6 +26,9 @@ public sealed class SimRng
     /// <summary>Number of draws so far (diagnostics / determinism checks).</summary>
     public long Draws { get; private set; }
 
+    /// <summary>The internal state folded into one number (snapshots compare it).</summary>
+    public ulong StateMix => _s0 ^ Rotl(_s1, 13) ^ Rotl(_s2, 29) ^ Rotl(_s3, 43);
+
     private static ulong SplitMix(ref ulong x)
     {
         ulong z = x += 0x9E3779B97F4A7C15UL;

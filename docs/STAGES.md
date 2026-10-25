@@ -2497,3 +2497,27 @@ Windows-сборка проверена самопроверкой на Windows 
 * **Тесты**: `Part5MapTests` (5), `Part5TdTests` (6), UI-тест
   `editor_map_tools_stroke_undo_rect_stamp_resize`. T01, T06, T07, T09,
   T10, T13 — приняты.
+
+## Ч5 · Этап C. ИИ и симулятор
+
+* **Сделано** ([§86](DECISIONS_5.md)): строгость маршрута (коридор с
+  допуском, строго по гексам, только узлы); «нет продвижения» (стоит,
+  туда-сюда, бесконечное перестроение) и упорядоченные реакции на
+  блокировку; уступает больший ID; юнит не меняет гекс дважды за тик;
+  режимы Tower Defense, Штурм, Смешанный, Сопровождение, Песочница с
+  таблицей обязательных / допустимых / неиспользуемых частей; «только
+  маршрут» в профиле ИИ; выбор конечной базы группой (ближайшая
+  достижимая, кратчайший путь, слабейшая, по весам); снимок старта и
+  «Начать заново» к нему; реплей (журнал действий игрока, seed, версии и
+  контент) с проверкой в редакторе; небезопасный тест; телеметрия по юнитам
+  и волнам, интервал Уилсона, CSV.
+* **Файлы**: `src/HexTactics.Core/Content/{ScenarioModes,ScenarioObjectsCheck,ContentChecks}.cs`,
+  `Defs/{RouteGraphDefs,RulesDef,AutoBattleDefs,MapScenarioDefs,UnitDefs}.cs`,
+  `Sim/{AiSystem,CommandSystem,Pathfinder,Simulation,Unit,ScenarioSystem,SimDigest,PlayerInput,BattleReplay,UnsafeTest,SimDriver,BattleReport,AutoBattle,ReportCsv,CombatSystem,SimRng}.cs`;
+  `game/src/UI/PropertyGrid.cs` (списки вариантов),
+  `game/src/Editor/{ScenarioEditorPanel,TdScenePanel,TdSceneTest,EditorScreen}.cs`,
+  `game/src/Battle/{BattleScreen,BattleHud,BattleControl,BattleGroups,BattlePlacement}.cs`,
+  `game/src/App/Main.cs`; `docs/schema/*`.
+* **Тесты**: `Part5AiTests` (5), `Part5ModeTests` (3), `Part5RouteOnlyTests`
+  (4), `Part5SimTests` (5), `Part5TelemetryTests` (5), UI-тест
+  `battle_reset_replay_and_unsafe_test`. T11, T23, T26, T27 — приняты.

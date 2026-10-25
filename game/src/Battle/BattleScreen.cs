@@ -27,9 +27,13 @@ public enum InputMode
 /// </summary>
 public partial class BattleScreen : Node
 {
-    private readonly ScenarioDef _scenario;
-    private readonly ContentDatabase _db;
+    private ScenarioDef _scenario;
+    private ContentDatabase _db;
     private readonly bool _admin;
+    // The start frozen (docs/DECISIONS_5.md §86): «начать заново» returns exactly here; the player's calls are recorded.
+    private BattleSnapshot? _snapshot;
+    public BattleSnapshot? Snapshot => _snapshot;
+    public BattleReplay? Replay { get; private set; }
     private readonly Action? _onExit;
 
     public Simulation Sim { get; private set; } = null!;
@@ -72,6 +76,14 @@ public partial class BattleScreen : Node
     public string Hint => _hint;
     public List<ProjectedCommand> Projection => _proj;
 
+    /// <summary>«Небезопасный тест» (ТЗ ч. 5, 26.4): started despite errors of the check; a failing tick pauses the battle.</summary>
+    public bool Unsafe { get; init; }
+    public List<string> UnsafeErrors { get; init; } = new();
+
+    /// <summary>A battle from a snapshot: «начать заново».</summary>
+    public BattleScreen(BattleSnapshot snapshot, bool admin, Action? onExit) : this(snapshot.Content.Get<ScenarioDef>(snapshot.Scenario)!, snapshot.Content, admin, onExit) =>
+        _snapshot = snapshot;
+
     public BattleScreen(ScenarioDef scenario, ContentDatabase db, bool admin, Action? onExit)
     {
         _scenario = scenario;
@@ -84,10 +96,22 @@ public partial class BattleScreen : Node
     public override void _Ready()
     {
         ulong? seed = Main.Instance.Args.TryGetValue("seed", out var s) && ulong.TryParse(s, out var v) ? v : null;
-        Sim = ScenarioSystem.Create(_db, _scenario, seed, _admin);
+        if (_snapshot == null)
+        {
+            (_snapshot, var sim) = BattleSnapshot.Begin(_db, _scenario, seed, _admin);
+            Sim = sim;
+            _db = _snapshot.Content;
+            _scenario = _db.Get<ScenarioDef>(_snapshot.Scenario)!;
+        }
+        else Sim = _snapshot.Restore();
+        Replay = BattleReplay.Record(_snapshot, Sim);
+        if (Unsafe)
+            Sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"НЕБЕЗОПАСНЫЙ ТЕСТ: проигнорировано ошибок проверки — {UnsafeErrors.Count}" +
+                (UnsafeErrors.Count > 0 ? ": " + string.Join("; ", UnsafeErrors.Take(6)) : ""));
         // Events raised while setting up (e.g. enemies visible at start) must not pause the first tick.
         Sim.ConsumeAutopause();
-        Driver = new SimDriver(Sim);
+        Driver = new SimDriver(Sim) { CatchErrors = Unsafe };
+        Driver.Failed += e => _hud.ShowBanner("Небезопасный тест: ошибка симуляции — бой на паузе. " + e, Ui.Bad, 8f);
         Driver.Autopaused += r => _hud.ShowBanner("Автопауза: " + r, Ui.Warn);
         if (Main.Instance.Args.TryGetValue("speed", out var sp) && int.TryParse(sp, out var si))
         {
@@ -106,6 +130,7 @@ public partial class BattleScreen : Node
         var layer = new CanvasLayer { Layer = 1 };
         layer.AddChild(_hud);
         AddChild(layer);
+        if (Unsafe) _hud.ShowBanner($"НЕБЕЗОПАСНЫЙ ТЕСТ: проигнорировано ошибок проверки — {UnsafeErrors.Count} (см. журнал)", Ui.Bad, 8f);
 
         Board.Rig.InsetsProvider = _hud.WorkInsets;
         var first = Sim.Units.FirstOrDefault(u => Sim.CanPlayerCommand(u));
@@ -172,7 +197,7 @@ public partial class BattleScreen : Node
                 _ => Command.Skill(sk.Id, null, -1, u.Pos.DirectionTo(c)),
             };
             if (sk == u.BasicAttack && target != null) cmd = Command.Attack(target.Id);
-            var err = Sim.Enqueue(u, cmd);
+            var err = Sim.Input.Enqueue(u, cmd);
             if (err != null) GD.Print("cast: " + err);
         }
         if (Main.Instance.Args.TryGetValue("after", out var a) && double.TryParse(a, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var secs))
@@ -214,10 +239,10 @@ public partial class BattleScreen : Node
             // Demo queue: move → attack/skill → move → defend (for screenshots).
             var u = Selected;
             var enemy = Sim.Units.FirstOrDefault(e => Sim.IsHostile(u, e));
-            Sim.Enqueue(u, Command.Move(u.Pos + new HexCoord(3, 0)));
-            Sim.Enqueue(u, Command.Turn(HexDirection.NE));
-            if (enemy != null) Sim.Enqueue(u, Command.Move(u.Pos + new HexCoord(5, -1)));
-            Sim.Enqueue(u, Command.Defend());
+            Sim.Input.Enqueue(u, Command.Move(u.Pos + new HexCoord(3, 0)));
+            Sim.Input.Enqueue(u, Command.Turn(HexDirection.NE));
+            if (enemy != null) Sim.Input.Enqueue(u, Command.Move(u.Pos + new HexCoord(5, -1)));
+            Sim.Input.Enqueue(u, Command.Defend());
         }
     }
 
@@ -368,12 +393,12 @@ public partial class BattleScreen : Node
         string? err;
         if (InsertIndex >= 0)
         {
-            err = Sim.Enqueue(u, c, InsertIndex);
+            err = Sim.Input.Enqueue(u, c, InsertIndex);
             if (err == null) InsertIndex++;
         }
         else
         {
-            err = Sim.Enqueue(u, c, -1, Replace);
+            err = Sim.Input.Enqueue(u, c, -1, Replace);
         }
         _projKey = null;
         if (err != null) _hud.ShowBanner("Команда не принята: " + err, Ui.Bad);
@@ -1522,7 +1547,7 @@ public partial class BattleScreen : Node
             if (u.Queue.Count > 0) _hud.ShowBanner("Выполняемый приказ отменяется только явно: «Отменить всё» (Shift+Delete)", Ui.TextDim, 2.5f);
             return;
         }
-        Sim.RemoveCommand(u, last.Id);
+        Sim.Input.RemoveCommand(u, last.Id);
         _projKey = null;
         _hud.OnQueueChanged();
     }
@@ -1532,7 +1557,7 @@ public partial class BattleScreen : Node
     {
         var u = Selected;
         if (u == null || !Sim.CanPlayerCommand(u)) return;
-        Sim.ClearPending(u);
+        Sim.Input.ClearPending(u);
         _projKey = null;
         _hud.OnQueueChanged();
     }
@@ -1542,7 +1567,7 @@ public partial class BattleScreen : Node
     {
         var u = Selected;
         if (u == null || !Sim.CanPlayerCommand(u)) return;
-        Sim.ClearQueue(u);
+        Sim.Input.ClearQueue(u);
         _projKey = null;
         _hud.OnQueueChanged();
     }
@@ -1577,5 +1602,22 @@ public partial class BattleScreen : Node
         else Main.Instance.ShowMainMenu();
     }
 
-    public void Restart() => Main.Instance.ShowBattle(_scenario, _db, _admin, _onExit);
+    /// <summary>Back to the start: the same content, scenario and seed (the snapshot), the same «небезопасный тест» mark.</summary>
+    public void Restart() => Main.Instance.ShowBattle(new BattleScreen(_snapshot!, _admin, _onExit) { Unsafe = Unsafe, UnsafeErrors = UnsafeErrors });
+
+    /// <summary>The replay so far, with the content of the start inside; written to user://replays.</summary>
+    public string SaveReplay()
+    {
+        var copy = BattleReplay.FromJson(Replay!.ToJson())!;
+        copy.EndTick = Sim.Tick;
+        copy.EndHash = Sim.Digest().Hash;
+        var mem = new MemoryStorage();
+        ContentIO.Save(_snapshot!.Content, mem);
+        copy.Content = new Dictionary<string, string>(mem.Files);
+        var dir = ProjectSettings.GlobalizePath("user://replays");
+        System.IO.Directory.CreateDirectory(dir);
+        var path = System.IO.Path.Combine(dir, $"{_snapshot.Scenario}_{DateTime.Now:yyyyMMdd_HHmmss}.hexreplay");
+        System.IO.File.WriteAllText(path, copy.ToJson());
+        return path;
+    }
 }

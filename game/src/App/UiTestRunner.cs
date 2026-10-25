@@ -80,6 +80,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_quick_input_links_creates_and_search_lists", EditorQuickInput));
         _tests.Add(("editor_project_overview_counts_and_jumps", EditorProjectOverview));
         _tests.Add(("editor_map_tools_stroke_undo_rect_stamp_resize", EditorMapTools));
+        _tests.Add(("battle_reset_replay_and_unsafe_test", BattleResetReplayUnsafe));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2532,6 +2533,66 @@ public partial class UiTestRunner : Node
         // The published scene did not change by the tests.
         var published = Main.Instance.Content.Published.Get<ScenarioDef>("td_pass_defense")!;
         Check(published.Placement.Preset.Count == 4, "опубликованный сценарий не должен меняться тестами");
+    }
+
+    /// <summary>
+    /// Part 5, stage C through the UI (docs/DECISIONS_5.md §86): an order by the mouse goes into the replay journal;
+    /// «Начать заново» returns exactly to the start (T26); the replay saved from the menu plays back in the TD scene and
+    /// matches; a scene with an error starts only as a «небезопасный тест» — marked, with its errors in the log.
+    /// </summary>
+    private async Task BattleResetReplayUnsafe()
+    {
+        var bs = await OpenBattle("sandbox");
+        string start = bs.Snapshot!.Start.Hash;
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(knight));
+        await Frames(10);
+        await Click(HexScreen(bs, knight.Pos));
+        await Key(Godot.Key.M);
+        await Click(HexScreen(bs, knight.Pos + new HexCoord(2, 0)));
+        Check(bs.Replay!.Entries.Any(e => e.Op == ReplayOp.Enqueue && e.Unit == knight.Id), "приказ мышью должен попасть в журнал реплея");
+        for (int i = 0; i < 120; i++) bs.Sim.Step();
+        Check(bs.Snapshot.Check(bs.Sim).Count > 0, "бой должен уйти от начала");
+        bs.Hud.ToggleMenu();
+        await Frames(2);
+        await ClickInView(Find<Button>(bs).First(b => b.Name == "SaveReplay"));
+        var dir = ProjectSettings.GlobalizePath("user://replays");
+        var file = System.IO.Directory.GetFiles(dir, "sandbox_*.hexreplay").OrderBy(System.IO.File.GetLastWriteTimeUtc).LastOrDefault();
+        Check(file != null, "реплей должен сохраниться в user://replays");
+        // «Начать заново» from the menu: the very start, the same seed.
+        await ClickInView(Find<Button>(bs).First(b => b.Text == "Начать заново" && b.IsVisibleInTree()));
+        await Frames(6);
+        var again = Battle();
+        Check(again != bs && again.Sim.Digest().Hash == start && again.Snapshot!.Seed == bs.Snapshot.Seed, "сброс должен вернуть бой к стартовому снимку");
+
+        // The replay plays back in the TD scene: on its saved content it matches.
+        await OpenEditor("td");
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass");
+        await Frames(10);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Test").GetGlobalRect().GetCenter());
+        await Frames(3);
+        Check(Find<Button>(panel).Any(b => b.Name == "TdReplay" && b.IsVisibleInTree()), "кнопка «Проверить реплей» должна быть в тестировании");
+        panel.CheckReplay(file!);
+        Check(panel.TestResult.Contains("На сохранённом контенте: Реплей совпал с записью"), "реплей должен совпасть: " + panel.TestResult);
+
+        // A scene with an error: the launch offers only the unsafe test, which is marked and logs the errors.
+        var sc = panel.Scene!;
+        sc.Mode = BattleMode.TowerDefense;
+        sc.Objects.RemoveAll(o => o.Type == ScenarioObjectType.PlayerBase);
+        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdAutoTest"));
+        await Frames(3);
+        var dlg = Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible);
+        Check(dlg != null && dlg.DialogText.Contains("обязательно — базы игрока") && dlg.OkButtonText == "Небезопасный тест", "ошибка должна блокировать тест и предложить небезопасный");
+        dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        await Frames(3);
+        Check(panel.TestResult.StartsWith("НЕБЕЗОПАСНЫЙ ТЕСТ") && panel.TestResult.Contains("обязательно — базы игрока"), "отчёт небезопасного теста: " + panel.TestResult);
+        Main.Instance.ShowBattle(new BattleScreen(sc, Main.Instance.Content.Published, true, null) { Unsafe = true, UnsafeErrors = new() { "проба ошибки" } });
+        await Frames(6);
+        var marked = Battle();
+        Check(marked.Unsafe && marked.Driver.CatchErrors && marked.Sim.Log.Entries.Any(e => e.Text.Contains("НЕБЕЗОПАСНЫЙ ТЕСТ") && e.Text.Contains("проба ошибки")),
+            "небезопасный бой должен быть отмечен и записать ошибки в журнал");
     }
 
     /// <summary>

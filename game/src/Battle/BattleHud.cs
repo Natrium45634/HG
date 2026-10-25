@@ -603,6 +603,20 @@ public partial class BattleHud : Control
         var v = Ui.VBox(8, Ui.Label("Меню", 20, Ui.Accent));
         v.AddChild(Ui.Button("Продолжить", ToggleMenu).MinSize(240, 40));
         v.AddChild(Ui.Button("Начать заново", () => _bs.Restart()).MinSize(240, 40));
+        var save = Ui.Button("Сохранить реплей", () =>
+        {
+            try
+            {
+                ShowBanner("Реплей сохранён: " + _bs.SaveReplay(), Ui.Good, 5f);
+            }
+            catch (System.Exception e)
+            {
+                ShowBanner("Реплей не сохранён: " + e.Message, Ui.Bad, 5f);
+            }
+        }).MinSize(240, 40);
+        save.Name = "SaveReplay";
+        save.TooltipText = "Seed, контент и действия игрока по тикам — бой воспроизводится в редакторе («Проверить реплей»)";
+        v.AddChild(save);
         v.AddChild(Ui.Button("Настройки", () =>
         {
             var dlg = new SettingsDialog();
@@ -751,7 +765,7 @@ public partial class BattleHud : Control
         if (u == null) return;
         if (id == 1000)
         {
-            if (_waypointIndex >= 0 && _waypointIndex < u.Queue.Count) Sim.RemoveCommand(u, u.Queue.Items[_waypointIndex].Id);
+            if (_waypointIndex >= 0 && _waypointIndex < u.Queue.Count) Sim.Input.RemoveCommand(u, u.Queue.Items[_waypointIndex].Id);
             OnQueueChanged();
             return;
         }
@@ -1441,13 +1455,13 @@ public partial class BattleHud : Control
             bool pending = c.Status == CommandStatus.Pending;
             var up = Ui.Button("↑", () =>
             {
-                Sim.ReorderCommand(u, c.Id, idx - 1);
+                Sim.Input.ReorderCommand(u, c.Id, idx - 1);
                 OnQueueChanged();
             }, "Выше");
             up.Disabled = !pending || idx == 0;
             var down = Ui.Button("↓", () =>
             {
-                Sim.ReorderCommand(u, c.Id, idx + 1);
+                Sim.Input.ReorderCommand(u, c.Id, idx + 1);
                 OnQueueChanged();
             }, "Ниже");
             down.Disabled = !pending || idx == proj.Count - 1;
@@ -1455,7 +1469,7 @@ public partial class BattleHud : Control
             row.AddChild(down);
             row.AddChild(Ui.Button("✕", () =>
             {
-                Sim.RemoveCommand(u, c.Id);
+                Sim.Input.RemoveCommand(u, c.Id);
                 OnQueueChanged();
             }, c.Status == CommandStatus.Pending ? "Удалить" : "Отменить (выполненные действия не откатываются)"));
             _queueList.AddChild(row);

@@ -169,6 +169,9 @@ public partial class Main : Node
     public void ShowBattle(ScenarioDef scenario, ContentDatabase db, bool admin, Action? onExit = null) =>
         SetScreen(new BattleScreen(scenario, db, admin, onExit));
 
+    /// <summary>A prepared battle screen: a restart from its snapshot, an unsafe test.</summary>
+    public void ShowBattle(BattleScreen screen) => SetScreen(screen);
+
     public void ShowEditor() => SetScreen(new EditorScreen());
 
     public override void _Process(double delta)

@@ -172,6 +172,18 @@ ReachMarker, UnitDead, UnitAlive, KillCount, TimeElapsed, WaveSpawned`),
 `triggers[]` (условие → `Message, SpawnWave, Autopause, Victory, Defeat,
 AddCellEffect`), `limits` (`fogOfWar`, `timeLimit`, `allowStacking`).
 
+Часть 5 ([DECISIONS_5.md §86](DECISIONS_5.md)): `mode` — `Normal,
+TdPlacement, FreeBattle, AutoTest, TowerDefense, Assault, Mixed, Escort,
+Sandbox`; у маршрута `strictness` (`Corridor, StrictHexes, Waypoints`),
+`tolerance`, `onBlocked[]` (`Wait, LocalDetour, Repath, AttackBlocker,
+SwitchRoute, ChangeObjective, Abort`), `weight`; у группы `hunt` и
+`routeSelect` (`Single, RoundRobin, Random, NearestBase, ShortestRoute,
+LowestHp, Weighted`); у профиля ИИ `routeOnly`; в правилах `stuck`
+(`seconds`, `yieldSeconds`). Реплей боя (`.hexreplay`) — JSON:
+`scenario, seed, simVersion, versions{}, contentHash, content{}?,
+startHash, endTick, endHash, entries[]` (тик, действие игрока, его
+параметры).
+
 ## 7. Правила боя и формулы
 
 `rules.json` разбит на группы: `time`, `ap`, `turn`, `move`, `height`,
