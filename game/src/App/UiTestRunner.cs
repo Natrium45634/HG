@@ -2579,20 +2579,32 @@ public partial class UiTestRunner : Node
 
         // A scene with an error: the launch offers only the unsafe test, which is marked and logs the errors.
         var sc = panel.Scene!;
-        sc.Mode = BattleMode.TowerDefense;
-        sc.Objects.RemoveAll(o => o.Type == ScenarioObjectType.PlayerBase);
-        await ClickInView(Find<Button>(panel).First(b => b.Name == "TdAutoTest"));
-        await Frames(3);
-        var dlg = Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible);
-        Check(dlg != null && dlg.DialogText.Contains("обязательно — базы игрока") && dlg.OkButtonText == "Небезопасный тест", "ошибка должна блокировать тест и предложить небезопасный");
-        dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
-        await Frames(3);
-        Check(panel.TestResult.StartsWith("НЕБЕЗОПАСНЫЙ ТЕСТ") && panel.TestResult.Contains("обязательно — базы игрока"), "отчёт небезопасного теста: " + panel.TestResult);
-        Main.Instance.ShowBattle(new BattleScreen(sc, Main.Instance.Content.Published, true, null) { Unsafe = true, UnsafeErrors = new() { "проба ошибки" } });
-        await Frames(6);
-        var marked = Battle();
-        Check(marked.Unsafe && marked.Driver.CatchErrors && marked.Sim.Log.Entries.Any(e => e.Text.Contains("НЕБЕЗОПАСНЫЙ ТЕСТ") && e.Text.Contains("проба ошибки")),
-            "небезопасный бой должен быть отмечен и записать ошибки в журнал");
+        // The draft is shared by the next tests (publishing): the scene is put back as it was at the end.
+        var oldMode = sc.Mode;
+        var oldObjects = sc.Objects.ToList();
+        try
+        {
+            sc.Mode = BattleMode.TowerDefense;
+            sc.Objects.RemoveAll(o => o.Type == ScenarioObjectType.PlayerBase);
+            await ClickInView(Find<Button>(panel).First(b => b.Name == "TdAutoTest"));
+            await Frames(3);
+            var dlg = Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible);
+            Check(dlg != null && dlg.DialogText.Contains("обязательно — базы игрока") && dlg.OkButtonText == "Небезопасный тест", "ошибка должна блокировать тест и предложить небезопасный");
+            dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+            await Frames(3);
+            Check(panel.TestResult.StartsWith("НЕБЕЗОПАСНЫЙ ТЕСТ") && panel.TestResult.Contains("обязательно — базы игрока"), "отчёт небезопасного теста: " + panel.TestResult);
+            Main.Instance.ShowBattle(new BattleScreen(sc, Main.Instance.Content.Published, true, null) { Unsafe = true, UnsafeErrors = new() { "проба ошибки" } });
+            await Frames(6);
+            var marked = Battle();
+            Check(marked.Unsafe && marked.Driver.CatchErrors && marked.Sim.Log.Entries.Any(e => e.Text.Contains("НЕБЕЗОПАСНЫЙ ТЕСТ") && e.Text.Contains("проба ошибки")),
+                "небезопасный бой должен быть отмечен и записать ошибки в журнал");
+        }
+        finally
+        {
+            sc.Mode = oldMode;
+            sc.Objects.Clear();
+            sc.Objects.AddRange(oldObjects);
+        }
     }
 
     /// <summary>
