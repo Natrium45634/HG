@@ -29,6 +29,26 @@ public enum RouteForkRule
     [Ed("По очереди")] RoundRobin,
 }
 
+/// <summary>How strictly an enemy keeps to the drawn hexes (docs/DECISIONS_5.md §86).</summary>
+public enum RouteStrictness
+{
+    [Ed("Коридор", "Гексы маршрута — ориентир: можно обходить толпу в пределах допуска (как в 1.0)")] Corridor,
+    [Ed("Строго по гексам", "Только нарисованные гексы; сойти можно лишь реакцией на блокировку — с записью в журнал")] StrictHexes,
+    [Ed("Только узлы", "Между узлами — любой путь, гексы рёбер не обязательны")] Waypoints,
+}
+
+/// <summary>What an enemy on a route does when it makes no progress (ТЗ ч. 5, 11.3; docs/DECISIONS_5.md §86).</summary>
+public enum BlockedReaction
+{
+    [Ed("Ждать")] Wait,
+    [Ed("Уступить или обойти рядом", "Шаг в свободный соседний гекс; во встречной пробке уступает юнит с большим ID")] LocalDetour,
+    [Ed("Перестроить путь к узлу", "Путь прямо к концу ребра, мимо гексов линии")] Repath,
+    [Ed("Атаковать преграду", "Врага или разрушаемое препятствие на пути")] AttackBlocker,
+    [Ed("Запасной маршрут")] SwitchRoute,
+    [Ed("Сменить цель", "Альтернативные цели сценария и профиля ИИ")] ChangeObjective,
+    [Ed("Остановиться с диагностикой")] Abort,
+}
+
 /// <summary>A loop: an edge back to an earlier node (docs/DECISIONS_4.md §57).</summary>
 public sealed class RouteLoopDef : ContentPart
 {
@@ -96,8 +116,23 @@ public sealed class RouteDef : ContentPart
     [Ed("Завершение")] public RouteEndKind End { get; set; } = RouteEndKind.Target;
     [Ed("Разрешить незавершённый", "Подтверждение автора: маршрут без цели всё равно используется")] public bool AllowIncomplete { get; set; }
     [Ed("Запасной маршрут", "Выход из узла заблокирован — враг переходит на этот маршрут")] public string Fallback { get; set; } = "";
+    [Ed("Строгость следования", "Как враг держится нарисованных гексов (ТЗ ч. 5, 11.2; docs/DECISIONS_5.md §86)")]
+    public RouteStrictness Strictness { get; set; } = RouteStrictness.Corridor;
+    [Ed("Допуск коридора, гексов", "Насколько можно отойти от линии маршрута"), EdRange(1, 6), EdShowIf(nameof(Strictness), RouteStrictness.Corridor)]
+    public int Tolerance { get; set; } = 1;
+    [Ed("Если путь заблокирован", "Реакции по порядку: каждая следующая — когда предыдущая не помогла за время «нет продвижения» " +
+        "(правила → «Застревание»); пусто — по умолчанию: ждать, уступить или обойти, перестроить путь, запасной маршрут, другая цель, остановиться")]
+    public List<BlockedReaction> OnBlocked { get; set; } = new();
     [Ed("Узлы"), EdHidden] public List<RouteNodeDef> Nodes { get; set; } = new();
     [Ed("Рёбра"), EdHidden] public List<RouteEdgeDef> Edges { get; set; } = new();
+
+    /// <summary>The reactions in force: the route's own list or the default one.</summary>
+    [JsonIgnore] public IReadOnlyList<BlockedReaction> Reactions => OnBlocked.Count > 0 ? OnBlocked : DefaultReactions;
+
+    public static readonly BlockedReaction[] DefaultReactions =
+    {
+        BlockedReaction.Wait, BlockedReaction.LocalDetour, BlockedReaction.Repath, BlockedReaction.SwitchRoute, BlockedReaction.ChangeObjective, BlockedReaction.Abort,
+    };
 
     [JsonIgnore] public string DisplayName => string.IsNullOrEmpty(Name) ? Id : Name;
 

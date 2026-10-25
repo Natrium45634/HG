@@ -800,13 +800,59 @@
           },
           "description": "Узлы"
         },
+        "onBlocked": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Wait",
+              "LocalDetour",
+              "Repath",
+              "AttackBlocker",
+              "SwitchRoute",
+              "ChangeObjective",
+              "Abort"
+            ]
+          },
+          "description": "Если путь заблокирован — Реакции по порядку: каждая следующая — когда предыдущая не помогла за время «нет продвижения» (правила → «Застревание»); пусто — по умолчанию: ждать, уступить или обойти, перестроить путь, запасной маршрут, другая цель, остановиться"
+        },
+        "reactions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Wait",
+              "LocalDetour",
+              "Repath",
+              "AttackBlocker",
+              "SwitchRoute",
+              "ChangeObjective",
+              "Abort"
+            ]
+          }
+        },
         "spawn": {
           "type": "string",
           "description": "База спавна — Объект, у которого маршрут начинается"
         },
+        "strictness": {
+          "type": "string",
+          "enum": [
+            "Corridor",
+            "StrictHexes",
+            "Waypoints"
+          ],
+          "description": "Строгость следования — Как враг держится нарисованных гексов (ТЗ ч. 5, 11.2; docs/DECISIONS_5.md §86)"
+        },
         "target": {
           "type": "string",
           "description": "Цель — Объект в конце маршрута (база игрока, цель, контрольная точка)"
+        },
+        "tolerance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "description": "Допуск коридора, гексов — Насколько можно отойти от линии маршрута"
         }
       },
       "additionalProperties": true

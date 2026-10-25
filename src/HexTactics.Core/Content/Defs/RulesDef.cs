@@ -28,6 +28,8 @@ public sealed class RulesDef : ContentPart
     [Ed("Видимость")] public VisionRules Vision { get; set; } = new();
     [Ed("Очередь команд")] public QueueRules Queue { get; set; } = new();
     [Ed("Ограничения")] public LimitRules Limits { get; set; } = new();
+    [Ed("Застревание на маршруте", "Когда враг на маршруте считается застрявшим и как часто пробует следующую реакцию (версия правил 2)")]
+    public StuckRules Stuck { get; set; } = new();
     [Ed("Автопауза")] public AutopauseRules Autopause { get; set; } = new();
     [Ed("Смерть")] public DeathRules Death { get; set; } = new();
     [Ed("Оценка силы", "Профиль проекта: эталон уровня 1, веса ролей, шкала уровня (docs/DECISIONS_4.md §65)")] public PowerRulesDef Power { get; set; } = new();
@@ -266,6 +268,14 @@ public sealed class QueueRules : ContentPart
         FailureReason.Disabled => Disabled,
         _ => new FailurePolicyDef { Action = FailureAction.Skip },
     };
+}
+
+/// <summary>«Нет продвижения» on a route (ТЗ ч. 5, 11.4; docs/DECISIONS_5.md §86): standing, back and forth, endless replanning.</summary>
+public sealed class StuckRules : ContentPart
+{
+    [Ed("Нет продвижения, с", "Столько секунд без продвижения по маршруту (стоит или ходит туда-сюда) — следующая реакция на блокировку"), EdRange(0.5, 120)]
+    public double Seconds { get; set; } = 4;
+    [Ed("Уступает на, с", "Сколько стоит в стороне, пропуская встречного"), EdRange(0.2, 30)] public double YieldSeconds { get; set; } = 2;
 }
 
 public sealed class LimitRules : ContentPart

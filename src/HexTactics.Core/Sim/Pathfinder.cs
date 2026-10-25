@@ -17,6 +17,8 @@ public sealed class PathOptions
     public bool ComputeNearest { get; init; }
     /// <summary>Cells treated as impassable (detour around a blocker's zone).</summary>
     public HashSet<HexCoord>? Avoid { get; init; }
+    /// <summary>Only these hexes may be entered (the goal always may): a strict route or its corridor (docs/DECISIONS_5.md §86).</summary>
+    public HashSet<HexCoord>? Allowed { get; init; }
 }
 
 public sealed class PathResult
@@ -167,6 +169,7 @@ public sealed class Pathfinder
                 var check = MovementRules.Check(mc, cell, n, opt.IgnoreUnits, out var cost);
                 if (check != StepCheck.Ok) continue;
                 if (opt.Avoid != null && opt.Avoid.Contains(n.Coord)) continue;
+                if (opt.Allowed != null && !opt.Allowed.Contains(n.Coord) && n.Coord != goal) continue;
                 if (opt.HazardPenalty > 0 && n.IsHazard) cost += opt.HazardPenalty;
                 double ng = _g[cur] + cost;
                 if (_stamp[n.Index] != _gen || ng < _g[n.Index] - 1e-9)

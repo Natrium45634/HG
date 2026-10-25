@@ -619,9 +619,13 @@ public sealed class AiSystem
             }
             if (u.RouteIndex < route.Count)
             {
+                var rdef = u.Nav != null ? _sim.Scenario.Def?.Route(u.Nav.Route) : null;
+                // «Только узлы»: straight to the end of the edge, its hexes are not required (rules version 2).
+                if (rdef?.Strictness == RouteStrictness.Waypoints && _sim.Rules.Time.SimVersion >= 2 && u.RouteIndex < route.Count - 1) u.RouteIndex = route.Count - 1;
+                if (RouteStuck(u, route, rdef)) return true;
                 bool moving = MoveTo(u, route[u.RouteIndex], 0, u.Nav != null
                     ? $"идёт по маршруту «{u.Nav.Route}»: ребро {u.Nav.Edge}, гекс {u.RouteIndex + 1}/{route.Count}"
-                    : $"идёт по маршруту: точка {u.RouteIndex + 1}/{route.Count}");
+                    : $"идёт по маршруту: точка {u.RouteIndex + 1}/{route.Count}", Allowed(u, route, rdef));
                 if (moving) u.Ai.BlockedSince = -1;
                 else if (HexCoord.Distance(u.Pos, route[u.RouteIndex]) > 1
                          && !_sim.Pathfinder.Find(_sim, u, u.Pos, route[u.RouteIndex], new PathOptions { IgnoreUnits = true, MaxExpanded = 3000 }).Found)
@@ -651,6 +655,174 @@ public sealed class AiSystem
             u.Ai.BlockedSince = -1;
         }
         return false;
+    }
+
+    // ------------------------------------------------------------------ blocked routes (ТЗ ч. 5, 11.2–11.5; docs/DECISIONS_5.md §86)
+
+    private readonly Dictionary<(string Route, string Edge, int Tol), HashSet<HexCoord>> _corridors = new();
+
+    /// <summary>
+    /// Where a route enemy may step (rules version 2): «строго» — the hexes of its edge; «коридор» — within the tolerance of
+    /// them. An enemy already outside (after a fight) is not restricted until it is back.
+    /// </summary>
+    private HashSet<HexCoord>? Allowed(Unit u, List<HexCoord> route, RouteDef? r)
+    {
+        if (r == null || _sim.Rules.Time.SimVersion < 2 || r.Strictness == RouteStrictness.Waypoints || u.Nav == null) return null;
+        int tol = r.Strictness == RouteStrictness.StrictHexes ? 0 : Math.Max(1, r.Tolerance);
+        var key = (r.Id, u.Nav.Edge, tol);
+        if (!_corridors.TryGetValue(key, out var set))
+        {
+            set = new HashSet<HexCoord>();
+            foreach (var c in route)
+                foreach (var x in tol == 0 ? new List<HexCoord> { c } : HexCoord.Spiral(c, tol))
+                    set.Add(x);
+            _corridors[key] = set;
+        }
+        return set.Contains(u.Pos) ? set : null;
+    }
+
+    /// <summary>
+    /// «Нет продвижения»: no new hex of the route and no step closer to the next one for the time of the rules — whether the
+    /// enemy stands, walks back and forth or replans. Then the next reaction of the route's list; each next one after the
+    /// same time again. True — a reaction acted this decision (or the enemy stands aside / gave up).
+    /// </summary>
+    private bool RouteStuck(Unit u, List<HexCoord> route, RouteDef? r)
+    {
+        if (_sim.Rules.Time.SimVersion < 2) return false;
+        var a = u.Ai;
+        if (a.Aborted)
+        {
+            Explain(u, "остановился: маршрут непроходим");
+            return true;
+        }
+        if (a.YieldUntil > _sim.Tick)
+        {
+            Explain(u, "уступает дорогу");
+            return true;
+        }
+        long key = (u.Nav?.Taken.Count ?? 0) * 100_000L + u.RouteIndex;
+        int dist = HexCoord.Distance(u.Pos, route[u.RouteIndex]);
+        long gap = _sim.TicksFor(Math.Max(1.5, 3 * (u.AiProfile?.DecisionInterval ?? 0.5)));
+        if (key != a.ProgressKey || dist < a.ProgressDist || a.LastFollowTick < 0 || _sim.Tick - a.LastFollowTick > gap)
+        {
+            if (key != a.ProgressKey || dist < a.ProgressDist) a.StuckStep = 0;
+            a.ProgressKey = key;
+            a.ProgressDist = dist;
+            a.ProgressSince = _sim.Tick;
+        }
+        a.LastFollowTick = _sim.Tick;
+        long window = _sim.TicksFor(_sim.Rules.Stuck.Seconds);
+        if (_sim.Tick - a.ProgressSince < window * (a.StuckStep + 1)) return false;
+        var list = r?.Reactions ?? RouteDef.DefaultReactions;
+        if (a.StuckStep >= list.Count) return false;
+        var reaction = list[a.StuckStep++];
+        a.LastReaction = reaction.ToString();
+        double secs = (_sim.Tick - a.ProgressSince) * _sim.Dt;
+        string strict = r?.Strictness == RouteStrictness.StrictHexes && reaction is BlockedReaction.LocalDetour or BlockedReaction.Repath
+            ? " — сходит со строгого маршрута по списку реакций" : "";
+        switch (reaction)
+        {
+            case BlockedReaction.Wait:
+                Problem(u, "stuck", $"нет продвижения {secs:0.#} с — ждёт");
+                return false;
+            case BlockedReaction.LocalDetour:
+                return Detour(u, route, secs, strict);
+            case BlockedReaction.Repath:
+            {
+                var end = route[^1];
+                var path = _sim.Pathfinder.Find(_sim, u, u.Pos, end, new PathOptions { MaxExpanded = 6000 });
+                if (!path.Found)
+                {
+                    Problem(u, "stuck", $"нет продвижения {secs:0.#} с — к концу ребра пути нет");
+                    return false;
+                }
+                u.RouteIndex = route.Count - 1;
+                _sim.Emit(SimEventType.AiProblem, LogLevel.Diagnostic, $"ИИ {u.Name}: нет продвижения {secs:0.#} с — перестраивает путь к узлу {end}{strict}", u.Id, -1, u.Pos, damageType: "repath");
+                return MoveTo(u, end, 0, "перестроил путь к узлу маршрута");
+            }
+            case BlockedReaction.AttackBlocker:
+            {
+                var blocker = BlockerAhead(u, route);
+                if (blocker == null || !_sim.IsHostile(u, blocker) || u.AiProfile == null) return false;
+                _sim.Emit(SimEventType.AiProblem, LogLevel.Diagnostic, $"ИИ {u.Name}: путь закрыт {blocker.Name} — атакует", u.Id, blocker.Id, u.Pos, damageType: "attack_blocker");
+                SetTarget(u, blocker);
+                return TryAttack(u, blocker, u.AiProfile, "путь закрыт — атакует преграду");
+            }
+            case BlockedReaction.SwitchRoute:
+            {
+                if (r == null || r.Fallback == "" || r.Fallback == r.Id || _sim.Scenario.Def?.Route(r.Fallback) is not { } alt) return false;
+                _sim.Emit(SimEventType.AiProblem, LogLevel.Normal, $"ИИ {u.Name}: нет продвижения {secs:0.#} с — переходит на запасной маршрут «{alt.DisplayName}»", u.Id, -1, u.Pos, damageType: "switch_route");
+                _sim.Routes.Assign(u, alt.Id, fromStart: false);
+                return true;
+            }
+            case BlockedReaction.ChangeObjective:
+            {
+                if (u.Ai.Alternative != null || u.AiProfile == null) return false;
+                u.Ai.BlockedSince = Math.Min(u.Ai.BlockedSince < 0 ? long.MaxValue : u.Ai.BlockedSince, a.ProgressSince);
+                ChooseAlternative(u, u.AiProfile);
+                return u.Ai.Alternative != null;
+            }
+            default:
+                a.Aborted = true;
+                _sim.Emit(SimEventType.AiProblem, LogLevel.Normal, $"ИИ {u.Name}: маршрут непроходим ({secs:0.#} с без продвижения, реакции исчерпаны) — остановился", u.Id, -1, u.Pos, damageType: "aborted");
+                u.Queue.Clear();
+                return true;
+        }
+    }
+
+    /// <summary>The unit standing on the next hex of the way to the route (null — none).</summary>
+    private Unit? BlockerAhead(Unit u, List<HexCoord> route)
+    {
+        var goal = route[u.RouteIndex];
+        var free = _sim.Pathfinder.Find(_sim, u, u.Pos, goal, new PathOptions { IgnoreUnits = true, MaxExpanded = 3000 });
+        if (!free.Found || free.Path.Count < 2) return null;
+        var step = _sim.Map.Get(free.Path[1]);
+        return step?.Occupants.FirstOrDefault(o => o != u && o.Alive && o.Layer == u.Layer);
+    }
+
+    /// <summary>
+    /// «Уступить или обойти»: two route enemies face each other — the one with the larger ID steps aside into a free hex
+    /// off the way and waits there a moment (no one passes through another, ТЗ 11.5); a standing blocker is walked around.
+    /// </summary>
+    private bool Detour(Unit u, List<HexCoord> route, double secs, string strict)
+    {
+        var blocker = BlockerAhead(u, route);
+        if (blocker != null && blocker.Nav != null && blocker.Ai.YieldUntil <= _sim.Tick && blocker.Id > u.Id && !blocker.Ai.Aborted)
+        {
+            // The other one yields when its own list gets there; this one waits.
+            Problem(u, "stuck", $"нет продвижения {secs:0.#} с — ждёт, пока {blocker.Name} уступит");
+            return false;
+        }
+        var mc = MoveContext.For(_sim, u);
+        var here = _sim.Map.Get(u.Pos);
+        var onWay = new HashSet<HexCoord>(route);
+        if (blocker?.Route != null) onWay.UnionWith(blocker.Route);
+        HexCoord? best = null;
+        int bestScore = int.MaxValue;
+        foreach (var n in u.Pos.Neighbors())
+        {
+            var cell = _sim.Map.Get(n);
+            if (cell == null || here == null || MovementRules.Check(mc, here, cell, false, out _) != StepCheck.Ok) continue;
+            int score = (onWay.Contains(n) ? 100 : 0) + HexCoord.Distance(n, route[u.RouteIndex]);
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = n;
+            }
+        }
+        if (best == null)
+        {
+            Problem(u, "stuck", $"нет продвижения {secs:0.#} с — отойти некуда");
+            return false;
+        }
+        bool yielding = blocker != null && blocker.Nav != null;
+        u.Ai.YieldUntil = _sim.Tick + _sim.TicksFor(_sim.Rules.Stuck.YieldSeconds + 1);
+        _sim.Emit(SimEventType.AiProblem, LogLevel.Diagnostic,
+            $"ИИ {u.Name}: нет продвижения {secs:0.#} с — " + (yielding ? $"уступает дорогу {blocker!.Name}" : "обходит") + $", шаг в {best.Value}{strict}",
+            u.Id, blocker?.Id ?? -1, u.Pos, damageType: "detour");
+        u.Queue.Clear();
+        Issue(u, Command.Move(best.Value), yielding ? $"уступает дорогу {blocker!.Name}" : "обходит препятствие");
+        return true;
     }
 
     private HexCoord MapCenter()
@@ -926,11 +1098,11 @@ public sealed class AiSystem
         return true;
     }
 
-    private bool MoveTo(Unit u, HexCoord goal, int tolerance, string why)
+    private bool MoveTo(Unit u, HexCoord goal, int tolerance, string why, HashSet<HexCoord>? allowed = null)
     {
         var cur = u.Queue.Current;
         if (cur != null && cur.Type == CommandType.Move && cur.TargetCell.HasValue && HexCoord.Distance(cur.TargetCell.Value, goal) <= tolerance) return true;
-        var path = _sim.Pathfinder.Find(_sim, u, u.Pos, goal, new PathOptions { GoalTolerance = tolerance, HazardPenalty = u.AiProfile?.HazardAvoidance ?? 0, MaxExpanded = 6000 });
+        var path = _sim.Pathfinder.Find(_sim, u, u.Pos, goal, new PathOptions { GoalTolerance = tolerance, HazardPenalty = u.AiProfile?.HazardAvoidance ?? 0, MaxExpanded = 6000, Allowed = allowed });
         HexCoord? dest = path.Found ? path.End : path.Nearest;
         if (dest == null || dest.Value == u.Pos) return false;
         Issue(u, Command.Move(dest.Value), why);

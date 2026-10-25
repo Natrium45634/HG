@@ -599,6 +599,10 @@ public sealed class CommandSystem
         var from = _sim.Map.Get(u.Pos);
         var to = _sim.Map.Get(next);
         var check = MovementRules.Check(MoveContext.For(_sim, u), from, to, false, out var cost);
+        // A swap or a pass moves both at once: never with a unit that has already changed its hex this tick (no double step).
+        if (check == StepCheck.Occupied && Rules.Time.SimVersion >= 2 && (Rules.Move.AllowSwap || Rules.Move.YieldToAllies) &&
+            (u.RelocatedTick == _sim.Tick || to!.Occupants.Any(o => o.Alive && o != u && o.RelocatedTick == _sim.Tick)))
+            return Result.Continue;
         if (check == StepCheck.Occupied && Rules.Move.AllowSwap && TrySwap(u, cmd, to!))
             return Result.Continue;
         if (check == StepCheck.Occupied && Rules.Move.YieldToAllies && TryYield(u, cmd, to!))

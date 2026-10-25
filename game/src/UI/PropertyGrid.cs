@@ -376,6 +376,7 @@ public partial class PropertyGrid : VBoxContainer
                 return c;
             }
             if (itemType == typeof(double)) return NumberList(parent, owner, prop, ed, (List<double>)list);
+            if (itemType.IsEnum) return EnumList(parent, owner, prop, ed, list, itemType);
             if (itemType == typeof(HexCoord)) return CoordList(parent, owner, prop, ed, (List<HexCoord>)list);
             if (itemType.IsClass) return ObjectList(parent, owner, prop, ed, list, itemType);
             return null;
@@ -719,6 +720,59 @@ public partial class PropertyGrid : VBoxContainer
             RaiseChanged(owner, prop.Name);
         };
         row.AddChild(le);
+        return row;
+    }
+
+    /// <summary>An ordered list of choices (the reactions to a blocked way, tie-breaks): pick, move up, remove, add.</summary>
+    private Control EnumList(VBoxContainer parent, object owner, PropertyInfo prop, EdAttribute ed, IList list, Type itemType)
+    {
+        var row = Row(parent, ed);
+        var col = Ui.VBox(3).Expand();
+        row.AddChild(col);
+        var names = Enum.GetNames(itemType);
+        void Fill()
+        {
+            Ui.ClearChildren(col);
+            if (list.Count == 0) col.AddChild(Ui.Label("пусто — по умолчанию", 12, Ui.TextDim));
+            for (int i = 0; i < list.Count; i++)
+            {
+                int idx = i;
+                var h = Ui.HBox(4);
+                h.AddChild(Ui.Label($"{i + 1}.", 13, Ui.TextDim));
+                var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) }.Expand();
+                for (int n = 0; n < names.Length; n++) ob.AddItem(Names.Of(itemType, names[n]), n);
+                ob.Selected = Array.IndexOf(names, list[i]!.ToString());
+                ob.ItemSelected += sel =>
+                {
+                    list[idx] = Enum.Parse(itemType, names[sel]);
+                    RaiseChanged(owner, prop.Name);
+                };
+                h.AddChild(ob);
+                var up = Ui.Button("↑", () =>
+                {
+                    (list[idx - 1], list[idx]) = (list[idx], list[idx - 1]);
+                    RaiseChanged(owner, prop.Name);
+                    Fill();
+                }, "Раньше");
+                up.Disabled = idx == 0;
+                h.AddChild(up);
+                h.AddChild(Ui.Button("✕", () =>
+                {
+                    list.RemoveAt(idx);
+                    RaiseChanged(owner, prop.Name);
+                    Fill();
+                }, "Удалить"));
+                col.AddChild(h);
+            }
+            col.AddChild(Ui.Button("+ добавить", () =>
+            {
+                var used = list.Cast<object>().Select(x => x.ToString()).ToHashSet();
+                list.Add(Enum.Parse(itemType, names.FirstOrDefault(n => !used.Contains(n)) ?? names[0]));
+                RaiseChanged(owner, prop.Name);
+                Fill();
+            }));
+        }
+        Fill();
         return row;
     }
 

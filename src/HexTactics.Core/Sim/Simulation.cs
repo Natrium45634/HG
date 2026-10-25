@@ -366,6 +366,7 @@ public sealed class Simulation
         if (from != null && from.Coord != to) CellEffects.OnUnitExited(u, from);
         bool moved = u.Pos != to;
         u.Pos = to;
+        if (moved) u.RelocatedTick = Tick;
         var cell = Map.Get(to);
         if (cell != null)
         {

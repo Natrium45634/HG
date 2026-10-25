@@ -200,6 +200,8 @@ public sealed class Unit
     public LayerDef LayerDef { get; internal set; } = new() { Id = Layers.Ground };
     /// <summary>Last cell that was not a pit for this unit (fall "return" consequence).</summary>
     public HexCoord LastSafePos { get; internal set; }
+    /// <summary>The tick of the last change of the hex (a step, a push, a swap): a unit is never moved twice in one tick.</summary>
+    public long RelocatedTick { get; internal set; } = -1;
 
     public double Hp { get; internal set; }
     public double Ap { get; internal set; }
@@ -419,4 +421,17 @@ public sealed class AiState
     public Dictionary<string, long> Problems { get; } = new(StringComparer.Ordinal);
     public HexCoord LastPos { get; set; }
     public long LastMovedTick { get; set; }
+    // Progress on a route (docs/DECISIONS_5.md §86): standing, back and forth and endless replanning all are «no progress».
+    public long ProgressKey { get; set; } = long.MinValue;
+    public int ProgressDist { get; set; } = int.MaxValue;
+    public long ProgressSince { get; set; } = -1;
+    public long LastFollowTick { get; set; } = -1;
+    /// <summary>How many reactions of the route's list were tried since the last progress.</summary>
+    public int StuckStep { get; set; }
+    /// <summary>Stands aside letting another pass until this tick.</summary>
+    public long YieldUntil { get; set; } = -1;
+    /// <summary>Gave up the route («остановиться с диагностикой»).</summary>
+    public bool Aborted { get; set; }
+    /// <summary>The last reaction to a blocked route (diagnostics, tests).</summary>
+    public string LastReaction { get; set; } = "";
 }

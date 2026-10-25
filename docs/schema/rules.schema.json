@@ -1378,6 +1378,10 @@
           "$ref": "#/$defs/SpawnWarningRules",
           "description": "Маркеры появления врагов"
         },
+        "stuck": {
+          "$ref": "#/$defs/StuckRules",
+          "description": "Застревание на маршруте — Когда враг на маршруте считается застрявшим и как часто пробует следующую реакцию (версия правил 2)"
+        },
         "time": {
           "$ref": "#/$defs/TimeRules",
           "description": "Время"
@@ -1484,6 +1488,24 @@
           "minimum": 0.05,
           "maximum": 1,
           "description": "Толщина, доля стороны гекса"
+        }
+      },
+      "additionalProperties": true
+    },
+    "StuckRules": {
+      "type": "object",
+      "properties": {
+        "seconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 120,
+          "description": "Нет продвижения, с — Столько секунд без продвижения по маршруту (стоит или ходит туда-сюда) — следующая реакция на блокировку"
+        },
+        "yieldSeconds": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 30,
+          "description": "Уступает на, с — Сколько стоит в стороне, пропуская встречного"
         }
       },
       "additionalProperties": true
