@@ -1,0 +1,459 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/synergies.schema.json",
+  "title": "синергия (synergies.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "synergies"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SynergyDef"
+      }
+    }
+  },
+  "$defs": {
+    "ShieldSpecDef": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "ignoresPeriodic": {
+          "type": "boolean",
+          "description": "Пропускает периодический урон"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название щита"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет расхода — Сначала расходуются щиты с большим приоритетом"
+        },
+        "protects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Защищает от — Пусто — от любого урона"
+        },
+        "regenDelay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Задержка восстановления, с — После получения урона"
+        },
+        "regenPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Восстановление/с — 0 — не восстанавливается"
+        },
+        "stacking": {
+          "type": "string",
+          "enum": [
+            "Refresh",
+            "Add",
+            "Separate",
+            "ReplaceIfStronger"
+          ],
+          "description": "Повторное наложение"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SkillEffectDef": {
+      "type": "object",
+      "properties": {
+        "aiProfile": {
+          "type": "string",
+          "x-ref": "AiProfile",
+          "description": "Профиль ИИ"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Величина — Урон/лечение/очки состояния/изменение ресурса/объём щита; для накопления — изменение очков (стаков), может быть отрицательным"
+        },
+        "cellEffect": {
+          "type": "string",
+          "x-ref": "CellEffect",
+          "description": "Эффект клетки"
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс"
+        },
+        "damageType": {
+          "type": "string",
+          "x-ref": "DamageType",
+          "description": "Тип урона"
+        },
+        "distance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Расстояние"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Длительность, с — 0 = по умолчанию; для изменения характеристики — до конца боя"
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "TowardSource",
+            "AwayFromSource",
+            "Opposite",
+            "Random",
+            "Set"
+          ],
+          "description": "Направление взгляда"
+        },
+        "filter": {
+          "$ref": "#/$defs/TargetFilterDef",
+          "description": "На кого действует"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Формула — Необязательно. Заменяет величину. Переменные: amount, caster_*, target_*, level"
+        },
+        "healMode": {
+          "type": "string",
+          "enum": [
+            "Flat",
+            "PercentMax",
+            "PercentMissing"
+          ],
+          "description": "Режим лечения — Фиксированное, % от максимума или % от недостающего здоровья (величина — проценты)"
+        },
+        "isGlobal": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Уровень/заряды"
+        },
+        "obstacleDamage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Урон препятствию"
+        },
+        "requiresHit": {
+          "type": "boolean",
+          "description": "Требует попадания — Применяется только если бросок попадания успешен"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "route": {
+          "type": "string",
+          "description": "Маршрут карты"
+        },
+        "scalingFactor": {
+          "type": "number",
+          "description": "Коэффициент масштаба"
+        },
+        "scalingStat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Масштаб от характеристики — Величина += характеристика исполнителя × коэффициент"
+        },
+        "setDirection": {
+          "type": "string",
+          "enum": [
+            "E",
+            "NE",
+            "NW",
+            "W",
+            "SW",
+            "SE"
+          ],
+          "description": "Задать направление"
+        },
+        "shield": {
+          "$ref": "#/$defs/ShieldSpecDef",
+          "description": "Щит — Объём — «Величина», длительность — «Длительность»"
+        },
+        "shieldName": {
+          "type": "string",
+          "description": "Название снимаемого щита — Пусто — все щиты"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        },
+        "statAdd": {
+          "type": "number",
+          "description": "Прибавка к характеристике"
+        },
+        "statMul": {
+          "type": "number",
+          "description": "Множитель характеристики — Доля: 0.2 = +20%"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "summonUnit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Призываемый юнит"
+        },
+        "targetsUnits": {
+          "type": "boolean"
+        },
+        "terrain": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Местность"
+        },
+        "text": {
+          "type": "string",
+          "description": "Текст / ID — Сообщение; ID визуального или звукового эффекта; имя флага или триггера сценария"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Damage",
+            "Heal",
+            "ApplyStatus",
+            "RemoveStatus",
+            "Push",
+            "Pull",
+            "ChangeFacing",
+            "ModifyResource",
+            "ModifyAp",
+            "Shield",
+            "RemoveShield",
+            "ChangeTerrain",
+            "AddCellEffect",
+            "RemoveCellEffect",
+            "DestroyObstacle",
+            "Summon",
+            "TeleportCaster",
+            "ModifyStat",
+            "ModifyAccumulation",
+            "SetRoute",
+            "SetAiProfile",
+            "Message",
+            "PlayVfx",
+            "PlaySound",
+            "SetFlag",
+            "ActivateTrigger"
+          ],
+          "description": "Действие"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SynergyDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "a": {
+          "$ref": "#/$defs/SynergyOperandDef",
+          "description": "Операнд A"
+        },
+        "addEffects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "CellEffect"
+          },
+          "description": "Добавить эффекты клетки"
+        },
+        "b": {
+          "$ref": "#/$defs/SynergyOperandDef",
+          "description": "Операнд B"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "convertTerrain": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Сменить местность на"
+        },
+        "cooldownPerCell": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Кулдаун на клетку, с — Защита от повторного срабатывания"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "logText": {
+          "type": "string",
+          "description": "Сообщение журнала"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Радиус — 0 = только эта клетка"
+        },
+        "radiusCellEffects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "CellEffect"
+          },
+          "description": "Эффекты клеток в радиусе"
+        },
+        "removeA": {
+          "type": "boolean",
+          "description": "Убрать A"
+        },
+        "removeB": {
+          "type": "boolean",
+          "description": "Убрать B — Для местности — не применяется (используйте «Сменить местность»)"
+        },
+        "unitEffects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillEffectDef"
+          },
+          "description": "Эффекты на юнитов в радиусе"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "SynergyOperandDef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "CellEffect",
+            "CellEffectTag",
+            "TerrainTag"
+          ],
+          "description": "Тип операнда"
+        },
+        "value": {
+          "type": "string",
+          "description": "Значение — Id эффекта клетки или тег"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TargetFilterDef": {
+      "type": "object",
+      "properties": {
+        "allies": {
+          "type": "boolean",
+          "description": "Союзники"
+        },
+        "enemies": {
+          "type": "boolean",
+          "description": "Враги"
+        },
+        "neutrals": {
+          "type": "boolean",
+          "description": "Нейтралы"
+        },
+        "self": {
+          "type": "boolean",
+          "description": "Сам исполнитель"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

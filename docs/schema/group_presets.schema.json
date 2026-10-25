@@ -1,0 +1,432 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/group_presets.schema.json",
+  "title": "пресет группы (group_presets.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "group_presets"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/GroupPresetDef"
+      }
+    }
+  },
+  "$defs": {
+    "ConditionDef": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Категории врагов — Для подсчёта убитых: категории существ или tag:тег; пусто — все"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConditionDef"
+          },
+          "description": "Вложенные условия"
+        },
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Количество — Убитые/волны/прорывы; дальность для «в дальности»; номер фазы босса; число разрушений и комбинаций"
+        },
+        "flag": {
+          "type": "string",
+          "description": "Флаг"
+        },
+        "fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Доля здоровья"
+        },
+        "marker": {
+          "type": "string",
+          "description": "Метка карты — Для разрушения и комбинаций — пусто: где угодно"
+        },
+        "objective": {
+          "type": "string",
+          "description": "Цель (ID)"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Время, с"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Player",
+            "Enemy",
+            "Any"
+          ],
+          "description": "Сторона"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "synergy": {
+          "type": "string",
+          "x-ref": "Synergy",
+          "description": "Синергия"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "AllEnemiesDead",
+            "AllPlayerUnitsDead",
+            "SurviveTime",
+            "ReachMarker",
+            "UnitDead",
+            "UnitAlive",
+            "KillCount",
+            "TimeElapsed",
+            "WaveSpawned",
+            "All",
+            "Any",
+            "Not",
+            "InOrder",
+            "UnitInArea",
+            "WaveCleared",
+            "WavesCleared",
+            "ObjectiveCompleted",
+            "ObjectiveFailed",
+            "FlagSet",
+            "HpBelow",
+            "EnemiesLeaked",
+            "Always",
+            "TargetInRange",
+            "EnemySpotted",
+            "UnitLeftArea",
+            "ResourceReached",
+            "HasStatus",
+            "FlagTimer",
+            "ObstacleDestroyed",
+            "BossPhase",
+            "SynergyOccurred",
+            "Environment"
+          ],
+          "description": "Условие"
+        },
+        "unitTag": {
+          "type": "string",
+          "description": "Метка юнита — Пусто — сам владелец (босс, носитель состояния, юнит с пассивкой или правилом ИИ)"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение — Ресурс; для состояния — минимум очков/стаков (0 — любое)"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Переменная"
+        },
+        "variableValue": {
+          "type": "string",
+          "description": "Значение — Равно ли значение переменной этому"
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Волна (индекс)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GroupPresetDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "template": {
+          "$ref": "#/$defs/SpawnGroupDef",
+          "description": "Группа — Шаблон группы: база спавна и маршрут задаются в сцене"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "SpawnGroupDef": {
+      "type": "object",
+      "properties": {
+        "aiProfile": {
+          "type": "string",
+          "x-ref": "AiProfile",
+          "description": "Профиль ИИ — Пусто — из шаблона"
+        },
+        "altRoutes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Другие маршруты — Враги группы распределяются между основным и этими маршрутами"
+        },
+        "cancelCondition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие отмены — Выполнено — оставшиеся враги группы не появятся"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Количество"
+        },
+        "delay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Задержка, с — От начала волны"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Включена"
+        },
+        "extraBases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Доп. базы спавна — Враги распределяются по базам по очереди (основная — первая)"
+        },
+        "faction": {
+          "type": "string",
+          "x-ref": "Faction",
+          "description": "Фракция — Пусто — фракция волны"
+        },
+        "fromBudget": {
+          "type": "boolean",
+          "description": "Подобрана по бюджету — Создана подбором по бюджету угрозы; заменяется при новом закреплении"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID"
+        },
+        "interval": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Интервал, с — Между врагами группы (0 — сразу)"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Уровень экземпляров — 0 — уровень шаблона; иначе характеристики экземпляров подгоняются (шаблон не меняется)"
+        },
+        "levelMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Уровень до — Больше «уровня» — случайно в диапазоне (по seed)"
+        },
+        "maxAlive": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Лимит живых группы — Одновременно живых врагов группы; 0 — без лимита"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название — Пусто — по шаблону"
+        },
+        "preset": {
+          "type": "string",
+          "description": "Из пресета — ID пресета, из которого создана группа (для справки: группа — копия, удаление пресета её не меняет)"
+        },
+        "repeatEvery": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Повтор через, с — От начала предыдущего выхода группы"
+        },
+        "repeats": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Повторов — Сколько раз группа выходит снова (0 — один раз)"
+        },
+        "route": {
+          "type": "string",
+          "description": "Маршрут — ID маршрута сценария"
+        },
+        "routeSelect": {
+          "type": "string",
+          "enum": [
+            "Single",
+            "RoundRobin",
+            "Random"
+          ],
+          "description": "Выбор маршрута — Если указаны другие маршруты"
+        },
+        "spawnBase": {
+          "type": "string",
+          "description": "База спавна — ID объекта сценария"
+        },
+        "statMods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatModDef"
+          },
+          "description": "Модификаторы экземпляров — Только у врагов этой группы; шаблон не меняется"
+        },
+        "subgroupPause": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Пауза между подгруппами, с"
+        },
+        "subgroupSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Размер подгруппы — Враги выходят пачками по N, между пачками — пауза; 0 — без подгрупп"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Метка-ID — Для условий и целей"
+        },
+        "target": {
+          "type": "string",
+          "description": "Цель — ID объекта; пусто — цель маршрута"
+        },
+        "unit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Шаблон юнита"
+        }
+      },
+      "additionalProperties": true
+    },
+    "StatModDef": {
+      "type": "object",
+      "properties": {
+        "add": {
+          "type": "number",
+          "description": "Прибавка — Добавляется к базовому значению"
+        },
+        "mul": {
+          "type": "number",
+          "description": "Множитель — Доля: 0.2 = +20%, -0.5 = -50%"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

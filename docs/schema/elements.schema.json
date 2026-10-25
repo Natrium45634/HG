@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/elements.schema.json",
+  "title": "элемент (elements.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "elements"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ElementDef"
+      }
+    }
+  },
+  "$defs": {
+    "ElementDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "cellEffectChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс эффекта клетки"
+        },
+        "cellEffects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "CellEffect"
+          },
+          "description": "Создаёт эффекты клеток — Под целью при уроне; пусто — от родителя"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет — Пусто — от родителя"
+        },
+        "damageTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "DamageType"
+          },
+          "description": "Типы урона — Какие типы урона создаёт элемент (для справки и подсказок); пусто — от родителя"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Значок — 1–2 символа; пусто — от родителя"
+        },
+        "interactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ElementInteractionDef"
+          },
+          "description": "Взаимодействия — Свои дополняют унаследованные; совпадение «с элементом» — переопределяет"
+        },
+        "noListInheritance": {
+          "type": "boolean",
+          "description": "Не наследовать списки — Пустые списки остаются пустыми (не берутся у родителя)"
+        },
+        "parent": {
+          "type": "string",
+          "x-ref": "Element",
+          "description": "Родительский элемент — Незаданные поля наследуются от родителя"
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ElementStatusDef"
+          },
+          "description": "Накладывает состояния — При уроне этого элемента; пусто — от родителя"
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "Basic",
+            "Advanced",
+            "Rare",
+            "Unique",
+            "Custom"
+          ],
+          "description": "Уровень — Базовый, продвинутый, редкий, уникальный, пользовательский"
+        },
+        "vfx": {
+          "type": "string",
+          "description": "Визуальный эффект — Имя эффекта/частиц; пусто — от родителя"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "ElementInteractionDef": {
+      "type": "object",
+      "properties": {
+        "applyStatus": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Наложить состояние"
+        },
+        "consume": {
+          "type": "boolean",
+          "description": "Снять партнёра — Состояние/эффект клетки другого элемента исчезает"
+        },
+        "createCellEffect": {
+          "type": "string",
+          "x-ref": "CellEffect",
+          "description": "Создать эффект клетки"
+        },
+        "damagePercent": {
+          "type": "number",
+          "minimum": -500,
+          "maximum": 500,
+          "description": "Изменение урона, % — +50 — урон в 1,5 раза больше, −50 — вдвое меньше"
+        },
+        "logText": {
+          "type": "string",
+          "description": "Сообщение журнала"
+        },
+        "partner": {
+          "type": "string",
+          "enum": [
+            "TargetStatus",
+            "CellEffect",
+            "Either"
+          ],
+          "description": "Где искать"
+        },
+        "statusAmount": {
+          "type": "number",
+          "description": "Очки/стаки состояния"
+        },
+        "with": {
+          "type": "string",
+          "x-ref": "Element",
+          "description": "С элементом — Срабатывает и для потомков этого элемента"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ElementStatusDef": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "Очки/стаки — Для накопительных — очки за удар, для временных — стаки"
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Длительность, с — 0 — по умолчанию из состояния"
+        },
+        "perDamage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "От доли урона — Очки = урон × коэффициент (0 — фиксированные очки)"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/stats.schema.json",
+  "title": "характеристика (stats.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "stats"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/StatDef"
+      }
+    }
+  },
+  "$defs": {
+    "StatDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "calcOrder": {
+          "type": "string",
+          "enum": [
+            "Standard",
+            "PercentOfBase",
+            "Diminishing",
+            "FlatOnly"
+          ],
+          "description": "Порядок расчёта — Как складываются модификаторы этой характеристики (у брони, сопротивлений и силы атаки может быть разным)"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "default": {
+          "type": "number",
+          "description": "По умолчанию"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "Number",
+            "Percent"
+          ],
+          "description": "Формат"
+        },
+        "max": {
+          "type": "number",
+          "description": "Максимум"
+        },
+        "min": {
+          "type": "number",
+          "description": "Минимум"
+        },
+        "rounding": {
+          "type": "string",
+          "enum": [
+            "None",
+            "Round",
+            "Floor",
+            "Ceiling"
+          ],
+          "description": "Округление"
+        },
+        "showInPanel": {
+          "type": "boolean",
+          "description": "Показывать в панели"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

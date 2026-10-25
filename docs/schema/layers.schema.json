@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/layers.schema.json",
+  "title": "слой (layers.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "layers"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayerDef"
+      }
+    }
+  },
+  "$defs": {
+    "LayerDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "blockable": {
+          "type": "boolean",
+          "description": "Блокируется по умолчанию — Существа слоя могут быть заблокированы"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "collidesWith": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Layer"
+          },
+          "description": "Сталкивается со слоями — С существами каких слоёв нельзя делить клетку (пусто — только со своим)"
+        },
+        "detectionStat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика обнаружения — Наблюдатель видит существ слоя, если значение > 0"
+        },
+        "displayHeight": {
+          "type": "number",
+          "minimum": -5,
+          "maximum": 10,
+          "description": "Высота отображения — Смещение фишки над поверхностью, уровней высоты (воздух — выше, подземный — ниже)"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Скрыт — Виден только наблюдателю с характеристикой обнаружения слоя или вплотную"
+        },
+        "ignoresHeight": {
+          "type": "boolean",
+          "description": "Игнорирует правила высоты — Подъём и спуск без ограничений и доп. стоимости"
+        },
+        "ignoresTerrainCost": {
+          "type": "boolean",
+          "description": "Игнорирует стоимость местности — Каждая клетка стоит 1"
+        },
+        "immuneToPits": {
+          "type": "boolean",
+          "description": "Иммунитет к ямам"
+        },
+        "passesObstaclesUpTo": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Преодолевает препятствия до высоты — Уровней: воздушный пролетает над стенами ниже этого значения; 0 — не преодолевает"
+        },
+        "revealRange": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Дальность раскрытия — На этой дистанции существо видно всегда"
+        },
+        "translucent": {
+          "type": "boolean",
+          "description": "Полупрозрачный — Подземные существа видны как тень"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

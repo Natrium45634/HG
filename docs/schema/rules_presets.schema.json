@@ -1,0 +1,1724 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/rules_presets.schema.json",
+  "title": "пресет правил (rules_presets.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "rules_presets"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RulesPresetDef"
+      }
+    }
+  },
+  "$defs": {
+    "ApRules": {
+      "type": "object",
+      "properties": {
+        "defendBlockBonus": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Бонус блока в стойке"
+        },
+        "defendCost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "ОД стойки защиты"
+        },
+        "defendEvasionBonus": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Бонус уклонения в стойке"
+        },
+        "defendRegenMultiplier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Восстановление ОД в стойке — Множитель"
+        },
+        "movePerCost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "ОД за единицу стоимости движения"
+        },
+        "reactionsRespectReserve": {
+          "type": "boolean",
+          "description": "Реакции не трогают резерв — Реакции тратят только свободные ОД (текущие − резерв)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AssetLimitsDef": {
+      "type": "object",
+      "properties": {
+        "maxImageMb": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1024,
+          "description": "Макс. размер файла изображения, МБ"
+        },
+        "maxModelMb": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4096,
+          "description": "Макс. размер файла модели, МБ"
+        },
+        "maxSoundMb": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1024,
+          "description": "Макс. размер звука, МБ"
+        },
+        "textures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextureLimitDef"
+          },
+          "description": "Текстуры по назначению"
+        },
+        "warnAnimationSeconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Предупреждение: длительность анимации, с"
+        },
+        "warnBones": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Предупреждение: костей скелета"
+        },
+        "warnModelMb": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4096,
+          "description": "Предупреждение по размеру модели, МБ"
+        },
+        "warnSoundSeconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Предупреждение: длительность звука, с"
+        },
+        "warnTotalMb": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Предупреждение: суммарный объём ресурсов, МБ — Для всего пакета"
+        },
+        "warnTriangles": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 100000000,
+          "description": "Предупреждение: треугольников персонажа"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AutoAttackRules": {
+      "type": "object",
+      "properties": {
+        "aiUnits": {
+          "type": "boolean",
+          "description": "Для юнитов под ИИ — ИИ и автоатаки используют одни и те же ОД; ручные приказы ИИ имеют приоритет"
+        },
+        "bossTag": {
+          "type": "string",
+          "description": "Тег босса"
+        },
+        "eliteTag": {
+          "type": "string",
+          "description": "Тег элиты — Для правила «босс или элита»"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Автоатаки включены"
+        },
+        "playerUnits": {
+          "type": "boolean",
+          "description": "Для юнитов игрока"
+        },
+        "protectedTag": {
+          "type": "string",
+          "description": "Тег защищаемого объекта — Юниты/объекты с этим тегом — для правила «ближайший к защищаемому»"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AutopauseRules": {
+      "type": "object",
+      "properties": {
+        "allyCriticalDamage": {
+          "type": "boolean",
+          "description": "Критический урон союзнику"
+        },
+        "commandFailed": {
+          "type": "boolean",
+          "description": "Отмена команды"
+        },
+        "criticalHpFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Порог критического HP"
+        },
+        "enemySpotted": {
+          "type": "boolean",
+          "description": "Обнаружен враг"
+        },
+        "pathUnavailable": {
+          "type": "boolean",
+          "description": "Маршрут недоступен"
+        },
+        "queueEmpty": {
+          "type": "boolean",
+          "description": "Очередь юнита опустела"
+        },
+        "skillInterrupted": {
+          "type": "boolean",
+          "description": "Прерывание навыка"
+        },
+        "unitDied": {
+          "type": "boolean",
+          "description": "Гибель юнита"
+        },
+        "waveStarted": {
+          "type": "boolean",
+          "description": "Начало волны"
+        }
+      },
+      "additionalProperties": true
+    },
+    "CombatRules": {
+      "type": "object",
+      "properties": {
+        "baseHit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Базовый шанс попадания"
+        },
+        "coverFactor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Вес укрытия"
+        },
+        "damageFormula": {
+          "type": "string",
+          "description": "Формула урона — Пусто — встроенная. Переменные: raw, armor, resist, crit, surprise, block"
+        },
+        "friendlyFire": {
+          "type": "boolean",
+          "description": "Урон по союзникам — Области задевают союзников, если эффект это допускает"
+        },
+        "healCanCrit": {
+          "type": "boolean",
+          "description": "Лечение может быть критическим"
+        },
+        "hitFormula": {
+          "type": "string",
+          "description": "Формула шанса попадания — Пусто — встроенная. Переменные: base, accuracy, evasion, height, surprise, cover"
+        },
+        "maxHit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Макс. шанс попадания"
+        },
+        "minArmorFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Мин. доля урона после брони"
+        },
+        "minDamageOnHit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Мин. урон при попадании"
+        },
+        "minHit": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Мин. шанс попадания"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ComponentCurveDef": {
+      "type": "object",
+      "properties": {
+        "cap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Предел — Наибольшее значение составляющей (к эталону); 0 — без предела"
+        },
+        "exponent": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 2,
+          "description": "Степень"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Linear",
+            "Power",
+            "Log"
+          ],
+          "description": "Зависимость"
+        }
+      },
+      "additionalProperties": true
+    },
+    "CritRulesDef": {
+      "type": "object",
+      "properties": {
+        "flankBonus": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Бонус шанса: фланг"
+        },
+        "meleeBonus": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Бонус шанса: ближний бой"
+        },
+        "minMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Мин. множитель крита — Множитель после защиты от критов не ниже"
+        },
+        "rangedBonus": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Бонус шанса: дальний бой"
+        },
+        "rearBonus": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Бонус шанса: тыл"
+        },
+        "spellBonus": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Бонус шанса: заклинания"
+        }
+      },
+      "additionalProperties": true
+    },
+    "DamageRulesDef": {
+      "type": "object",
+      "properties": {
+        "adminBreakdown": {
+          "type": "boolean",
+          "description": "Подробный разбор в журнале — В административном режиме — каждый шаг расчёта"
+        },
+        "crit": {
+          "$ref": "#/$defs/CritRulesDef",
+          "description": "Криты"
+        },
+        "maxTotalPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 500,
+          "description": "Верхний предел суммы модификаторов, %"
+        },
+        "minTotalPercent": {
+          "type": "number",
+          "minimum": -500,
+          "maximum": 0,
+          "description": "Нижний предел суммы модификаторов, % — −500 — допускается полное гашение"
+        },
+        "overhealShieldDuration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Длительность щита от излишка, с"
+        },
+        "overhealShieldMaxPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 500,
+          "description": "Макс. щит от излишка, % HP"
+        },
+        "overhealToShieldPercent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Избыточное лечение → щит, % — Доля излишка лечения, превращаемая в щит (0 — выкл.)"
+        },
+        "reflectMaxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Глубина цепочки отражения — 1 — отражённый урон больше не отражается"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DamageSourceRuleDef"
+          },
+          "description": "Правила источников — Исключения единого порядка расчёта для каждого источника урона"
+        }
+      },
+      "additionalProperties": true
+    },
+    "DamageSourceRuleDef": {
+      "type": "object",
+      "properties": {
+        "absorption": {
+          "type": "boolean",
+          "description": "Поглощение"
+        },
+        "armor": {
+          "type": "boolean",
+          "description": "Учитывает броню — Если тип урона учитывает броню"
+        },
+        "attackerBonuses": {
+          "type": "boolean",
+          "description": "Бонусы атакующего — Характеристики и бонусы урона того, кто вызвал урон"
+        },
+        "canCrit": {
+          "type": "boolean",
+          "description": "Может критовать"
+        },
+        "elementEffects": {
+          "type": "boolean",
+          "description": "Взаимодействия элементов"
+        },
+        "reflection": {
+          "type": "boolean",
+          "description": "Отражение"
+        },
+        "rollHit": {
+          "type": "boolean",
+          "description": "Бросок попадания — Для источников без собственного броска (навыки бросают сами)"
+        },
+        "shields": {
+          "type": "boolean",
+          "description": "Щиты"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "Skill",
+            "AutoAttack",
+            "Periodic",
+            "CellEffect",
+            "Terrain",
+            "Synergy",
+            "Reflection",
+            "Fall",
+            "Scenario",
+            "Passive",
+            "Other"
+          ],
+          "description": "Источник"
+        }
+      },
+      "additionalProperties": true
+    },
+    "DamageTypeWeightDef": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "x-ref": "DamageType",
+          "description": "Тип урона"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Доля — Насколько часто этот урон встречается в проекте"
+        }
+      },
+      "additionalProperties": true
+    },
+    "DeathRules": {
+      "type": "object",
+      "properties": {
+        "corpseCellEffect": {
+          "type": "string",
+          "x-ref": "CellEffect",
+          "description": "Эффект клетки при смерти"
+        },
+        "summonsDieWithOwner": {
+          "type": "boolean",
+          "description": "Призванные исчезают со смертью призывателя"
+        }
+      },
+      "additionalProperties": true
+    },
+    "DetectionRules": {
+      "type": "object",
+      "properties": {
+        "blindNoticeFactor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Множитель замечания при ослеплении"
+        },
+        "darknessNoticePenalty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Штраф замечания от темноты — Умножается на темноту карты (0..1)"
+        },
+        "noSectorNotice": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Без секторов: шанс заметить — Для целей без направления взгляда или с круговым восприятием"
+        },
+        "noSectorSurprise": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Без секторов: шанс неожиданности"
+        },
+        "noticeFreeDistance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Дистанция без штрафа"
+        },
+        "noticePenaltyPerHex": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Штраф замечания за гекс"
+        },
+        "sectors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SectorRule"
+          },
+          "description": "Секторы — Фронт, ближний фланг, дальний фланг, тыл"
+        },
+        "surpriseAccuracy": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Неожиданность: бонус точности"
+        },
+        "surpriseBonusVsUnaware": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Бонус неожиданности, если цель не видит"
+        },
+        "surpriseCrit": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Неожиданность: бонус крита"
+        },
+        "surpriseDamageMul": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Неожиданность: множитель урона"
+        },
+        "surpriseInterrupt": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Неожиданность: бонус прерывания"
+        },
+        "unnoticedEvasionFactor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Уклонение от незамеченной атаки — Множитель уклонения"
+        },
+        "unseenNoticeFactor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Множитель замечания, если цель не видит атакующего"
+        }
+      },
+      "additionalProperties": true
+    },
+    "EnvironmentVisualsDef": {
+      "type": "object",
+      "properties": {
+        "effectAppear": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Появление эффекта клетки — Если у эффекта клетки не задан свой"
+        },
+        "fall": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Падение в яму"
+        },
+        "hit": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Попадание (урон)"
+        },
+        "hitSound": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Звук попадания"
+        },
+        "obstacleDestroyed": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Разрушение препятствия"
+        },
+        "terrainChanged": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Изменение местности"
+        },
+        "trapTriggered": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Срабатывание ловушки"
+        },
+        "unitDeath": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Гибель юнита"
+        },
+        "unitSpawn": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Появление юнита"
+        }
+      },
+      "additionalProperties": true
+    },
+    "FailurePolicyDef": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "Skip",
+            "CancelQueue",
+            "Wait",
+            "Repath"
+          ],
+          "description": "Действие"
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Попыток пересчёта"
+        },
+        "then": {
+          "type": "string",
+          "enum": [
+            "Skip",
+            "CancelQueue",
+            "Wait",
+            "Repath"
+          ],
+          "description": "Затем — Если ожидание/пересчёт не помогли"
+        },
+        "waitSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Ждать, с"
+        }
+      },
+      "additionalProperties": true
+    },
+    "HeightRules": {
+      "type": "object",
+      "properties": {
+        "accuracyPerLevel": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Точность за уровень превосходства"
+        },
+        "climbCostPerLevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Стоимость подъёма за уровень"
+        },
+        "descendCostPerLevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Стоимость спуска за уровень"
+        },
+        "eyeHeight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Высота глаз, уровней"
+        },
+        "maxClimb": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Макс. подъём за шаг"
+        },
+        "maxDrop": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Макс. спуск за шаг"
+        },
+        "rangePerLevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Дальность за уровень (дистанц.)"
+        },
+        "terrainBlocksLoS": {
+          "type": "boolean",
+          "description": "Рельеф блокирует обзор"
+        }
+      },
+      "additionalProperties": true
+    },
+    "InfoDisclosureDef": {
+      "type": "object",
+      "properties": {
+        "facing": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Направление взгляда"
+        },
+        "health": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Здоровье"
+        },
+        "intent": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Намерение — Что готовит, куда идёт, кого атакует"
+        },
+        "nameAndType": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Имя и тип"
+        },
+        "panelEnabled": {
+          "type": "boolean",
+          "description": "Панель доступна — Открывать информационную панель по клику на врага"
+        },
+        "resistances": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Сопротивления и уязвимости — «После наблюдения» — после попадания этим типом урона"
+        },
+        "resources": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Ресурсы"
+        },
+        "skills": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Навыки — «После наблюдения» — после того как игрок видел применение"
+        },
+        "statuses": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "WhenVisible",
+            "AfterSeen",
+            "AfterObserved",
+            "Never"
+          ],
+          "description": "Состояния и эффекты"
+        }
+      },
+      "additionalProperties": true
+    },
+    "LayerRules": {
+      "type": "object",
+      "properties": {
+        "cellEffectLayers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Layer"
+          },
+          "description": "Слои эффектов клеток — Если у эффекта не задано"
+        },
+        "default": {
+          "type": "string",
+          "x-ref": "Layer",
+          "description": "Слой по умолчанию"
+        },
+        "meleeTargets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Layer"
+          },
+          "description": "Цели ближнего боя — Если у навыка не задано: ближний бой (дальность ≤ 1, не дистанционный)"
+        },
+        "rangedTargets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Layer"
+          },
+          "description": "Цели дальнего боя — Если у навыка не задано: дистанционные атаки"
+        },
+        "spellTargets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Layer"
+          },
+          "description": "Цели заклинаний и поддержки — Если у навыка не задано: заклинания, поддержка, утилиты"
+        }
+      },
+      "additionalProperties": true
+    },
+    "LevelPointDef": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Уровень"
+        },
+        "power": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Сила — Относительно эталона (эталон = 1)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "LevelScaleDef": {
+      "type": "object",
+      "properties": {
+        "exponent": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 5,
+          "description": "Степень"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Table",
+            "Linear",
+            "Power"
+          ],
+          "description": "Вид шкалы"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LevelPointDef"
+          },
+          "description": "Точки — Уровень и сила; между точками — линейно, за последней — по наклону последнего отрезка"
+        },
+        "step": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 100,
+          "description": "Шаг силы за уровень"
+        }
+      },
+      "additionalProperties": true
+    },
+    "LimitRules": {
+      "type": "object",
+      "properties": {
+        "allowGlobalSkills": {
+          "type": "boolean",
+          "description": "Разрешить глобальные навыки"
+        },
+        "maxEffectsPerCell": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Макс. эффектов на клетке"
+        },
+        "maxEventsPerTick": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 1000000,
+          "description": "Макс. событий за тик"
+        },
+        "maxMapCells": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Макс. клеток карты"
+        },
+        "maxPerHex": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24,
+          "description": "Макс. существ на гексе — Для режима «разрешено всем»"
+        },
+        "maxReactionDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Макс. глубина реакций"
+        },
+        "maxStatusStacks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Макс. стаков состояния"
+        },
+        "maxSynergyChain": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Макс. цепочка синергий"
+        },
+        "maxUnits": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Макс. юнитов"
+        }
+      },
+      "additionalProperties": true
+    },
+    "MoveRules": {
+      "type": "object",
+      "properties": {
+        "alliesBlockPath": {
+          "type": "boolean",
+          "description": "Союзники блокируют путь"
+        },
+        "allowSwap": {
+          "type": "boolean",
+          "description": "Обмен местами — Два союзника, идущие навстречу друг другу, меняются гексами за один шаг (docs/DECISIONS_3.md §44)"
+        },
+        "hazardPenalty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Штраф опасных клеток — Добавка к стоимости опасной клетки при поиске пути игрока (обход при почти равной цене)"
+        },
+        "movementCategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Категории движения"
+        },
+        "narrowSize": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 100,
+          "description": "Размер для узких мест — Существа такого размера и больше не проходят гекс между двумя непроходимыми соседями напротив друг друга"
+        },
+        "referenceWeight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Эталонная масса — Отбрасывание: дистанция × эталон / масса цели (вниз), не меньше 0"
+        },
+        "tieBreak": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Turns",
+              "Steps"
+            ]
+          },
+          "description": "Разрыв ничьих маршрута — При равной стоимости маршрута игрока: по порядку критериев"
+        },
+        "yieldToAllies": {
+          "type": "boolean",
+          "description": "Стоящие союзники пропускают — Союзник без приказа меняется местами с проходящим и возвращается на своё место — узкий проход не запирается теми, кто уже пришёл"
+        }
+      },
+      "additionalProperties": true
+    },
+    "PerformanceRulesDef": {
+      "type": "object",
+      "properties": {
+        "maxAiDecisionsPerSecond": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000000,
+          "description": "Макс. решений ИИ в секунду — Всех юнитов вместе"
+        },
+        "maxAliveUnits": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Макс. живых юнитов — Одновременно на поле: враги, защитники, сооружения"
+        },
+        "maxEffects": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000,
+          "description": "Макс. одновременных эффектов — Состояния и эффекты клеток"
+        },
+        "maxGroupsPerWave": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Макс. групп в волне"
+        },
+        "maxPassiveRules": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000,
+          "description": "Макс. правил пассивов — Одновременно действующих модификаторов пассивов у всех юнитов"
+        },
+        "maxRouteEdges": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Макс. рёбер графа маршрутов — У всех маршрутов сцены"
+        },
+        "maxRouteNodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Макс. узлов маршрута — У одного маршрута"
+        },
+        "minAiDecisionInterval": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 10,
+          "description": "Мин. интервал решений ИИ, с — Профиль с интервалом меньше — предупреждение"
+        },
+        "parallelRuns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256,
+          "description": "Параллельных тестовых прогонов — Пакетные прогоны; 0 — по числу ядер"
+        },
+        "waveJump": {
+          "type": "number",
+          "minimum": 1.05,
+          "maximum": 10,
+          "description": "Скачок сложности волны — Волна дороже предыдущей во столько раз — выделяется в отчёте по волнам"
+        }
+      },
+      "additionalProperties": true
+    },
+    "PowerRulesDef": {
+      "type": "object",
+      "properties": {
+        "areaDensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Плотность целей в области — Ожидаемое число врагов на каждый гекс области сверх первого"
+        },
+        "bossScale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LevelScaleDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Отдельная шкала боссов — Для ранга «босс»; пусто — общая"
+        },
+        "controlReference": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 10,
+          "description": "Эталон контроля — Секунд контроля в секунду, дающих 1 единицу C"
+        },
+        "curveD": {
+          "$ref": "#/$defs/ComponentCurveDef",
+          "description": "Урон: зависимость"
+        },
+        "curveH": {
+          "$ref": "#/$defs/ComponentCurveDef",
+          "description": "Здоровье и защита: зависимость"
+        },
+        "curveM": {
+          "$ref": "#/$defs/ComponentCurveDef",
+          "description": "Мобильность: зависимость"
+        },
+        "curveR": {
+          "$ref": "#/$defs/ComponentCurveDef",
+          "description": "Дальность: зависимость"
+        },
+        "damageTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DamageTypeWeightDef"
+          },
+          "description": "Основные типы урона — Профиль эффективного здоровья; пусто — физический урон наполовину, остальные корневые типы поровну"
+        },
+        "fightSeconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 600,
+          "description": "Длительность эталонного боя, с — Для восстановления, самолечения, пассивов со сроком"
+        },
+        "rangeZones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LevelPointDef"
+          },
+          "description": "Зоны дальности — Порог дальности — множитель (новая зона поражения — скачок)"
+        },
+        "referenceThreat": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1000,
+          "description": "Стоимость угрозы эталона — Базовая стоимость угрозы эталонного юнита"
+        },
+        "referenceUnit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Эталон уровня 1 — Шаблон, относительно которого считаются все составляющие; пусто — встроенный эталон (100 здоровья, удар 10)"
+        },
+        "roleScales": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RoleScaleDef"
+          },
+          "description": "Шкалы ролей — Своя шкала для роли (иначе общая)"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RoleWeightsDef"
+          },
+          "description": "Веса ролей"
+        },
+        "scale": {
+          "$ref": "#/$defs/LevelScaleDef",
+          "description": "Шкала уровня"
+        },
+        "typicalAllies": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Союзников в типичной группе — Контекст «типичная группа»"
+        }
+      },
+      "additionalProperties": true
+    },
+    "QueueRules": {
+      "type": "object",
+      "properties": {
+        "cooldown": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Перезарядка"
+        },
+        "disabled": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Под контролем"
+        },
+        "maxWaitSeconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3600,
+          "description": "Макс. ожидание, с — Жёсткий предел любого ожидания"
+        },
+        "noLineOfSight": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Нет линии видимости"
+        },
+        "noPath": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Пути нет"
+        },
+        "notEnoughAp": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Не хватает ОД"
+        },
+        "notEnoughResource": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Не хватает ресурса"
+        },
+        "outOfRange": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Цель вне дальности"
+        },
+        "pathBlocked": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Путь заблокирован"
+        },
+        "targetLost": {
+          "$ref": "#/$defs/FailurePolicyDef",
+          "description": "Цель потеряна"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RoleScaleDef": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "Auto",
+            "Universal",
+            "Tank",
+            "Fighter",
+            "Shooter",
+            "Assassin",
+            "Support",
+            "Controller",
+            "Boss"
+          ],
+          "description": "Роль"
+        },
+        "scale": {
+          "$ref": "#/$defs/LevelScaleDef",
+          "description": "Шкала"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RoleWeightsDef": {
+      "type": "object",
+      "properties": {
+        "c": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Контроль (C) — Вклад на единицу контроля (эталон контроля = 1)"
+        },
+        "d": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Урон (D)"
+        },
+        "h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Здоровье и защита (H)"
+        },
+        "m": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Мобильность (M)"
+        },
+        "r": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Дальность (R)"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "Auto",
+            "Universal",
+            "Tank",
+            "Fighter",
+            "Shooter",
+            "Assassin",
+            "Support",
+            "Controller",
+            "Boss"
+          ],
+          "description": "Роль"
+        },
+        "s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Поддержка и синергии (S) — Вклад на единицу пользы союзникам"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RulesDef": {
+      "type": "object",
+      "properties": {
+        "ap": {
+          "$ref": "#/$defs/ApRules",
+          "description": "Очки действия"
+        },
+        "assets": {
+          "$ref": "#/$defs/AssetLimitsDef",
+          "description": "Ресурсы: лимиты — Размеры и форматы импортируемых текстур, моделей, анимаций и звуков (docs/DECISIONS_3.md §47)"
+        },
+        "autoAttacks": {
+          "$ref": "#/$defs/AutoAttackRules",
+          "description": "Автоатаки"
+        },
+        "autopause": {
+          "$ref": "#/$defs/AutopauseRules",
+          "description": "Автопауза"
+        },
+        "combat": {
+          "$ref": "#/$defs/CombatRules",
+          "description": "Бой"
+        },
+        "damage": {
+          "$ref": "#/$defs/DamageRulesDef",
+          "description": "Расчёт урона — Единый порядок для всех источников и его исключения"
+        },
+        "death": {
+          "$ref": "#/$defs/DeathRules",
+          "description": "Смерть"
+        },
+        "detection": {
+          "$ref": "#/$defs/DetectionRules",
+          "description": "Обнаружение и неожиданность"
+        },
+        "height": {
+          "$ref": "#/$defs/HeightRules",
+          "description": "Высота"
+        },
+        "info": {
+          "$ref": "#/$defs/InfoDisclosureDef",
+          "description": "Раскрытие информации о врагах"
+        },
+        "layers": {
+          "$ref": "#/$defs/LayerRules",
+          "description": "Слои существ"
+        },
+        "limits": {
+          "$ref": "#/$defs/LimitRules",
+          "description": "Ограничения"
+        },
+        "move": {
+          "$ref": "#/$defs/MoveRules",
+          "description": "Движение"
+        },
+        "performance": {
+          "$ref": "#/$defs/PerformanceRulesDef",
+          "description": "Производительность — Пороги предупреждений: живые юниты, группы, маршруты, пассивы, эффекты, ИИ, параллельные прогоны (docs/DECISIONS_4.md §72)"
+        },
+        "power": {
+          "$ref": "#/$defs/PowerRulesDef",
+          "description": "Оценка силы — Профиль проекта: эталон уровня 1, веса ролей, шкала уровня (docs/DECISIONS_4.md §65)"
+        },
+        "queue": {
+          "$ref": "#/$defs/QueueRules",
+          "description": "Очередь команд"
+        },
+        "spawnWarnings": {
+          "$ref": "#/$defs/SpawnWarningRules",
+          "description": "Маркеры появления врагов"
+        },
+        "time": {
+          "$ref": "#/$defs/TimeRules",
+          "description": "Время"
+        },
+        "turn": {
+          "$ref": "#/$defs/TurnRules",
+          "description": "Поворот"
+        },
+        "vision": {
+          "$ref": "#/$defs/VisionRules",
+          "description": "Видимость"
+        },
+        "visuals": {
+          "$ref": "#/$defs/EnvironmentVisualsDef",
+          "description": "Эффекты окружения — Визуальные эффекты и звуки событий: появление эффектов, ловушки, разрушение, смена местности, падение"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RulesPresetDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "rules": {
+          "$ref": "#/$defs/RulesDef",
+          "description": "Правила — Полный набор правил; сценарий с этим пресетом использует его вместо глобальных"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "SectorRule": {
+      "type": "object",
+      "properties": {
+        "noticeChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс заметить"
+        },
+        "sector": {
+          "type": "string",
+          "enum": [
+            "Front",
+            "NearFlank",
+            "FarFlank",
+            "Rear",
+            "None"
+          ],
+          "description": "Сектор"
+        },
+        "surpriseChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс неожиданности"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SpawnWarningRules": {
+      "type": "object",
+      "properties": {
+        "cometCells": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Длина кометы, клеток"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Маркеры включены"
+        },
+        "fog": {
+          "type": "string",
+          "enum": [
+            "Show",
+            "Hide",
+            "AfterScouting",
+            "Partial"
+          ],
+          "description": "Туман войны"
+        },
+        "minSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Мин. предупреждение, с — Линия идёт не меньше этого времени (дольше — если путь длинный)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "Growing",
+            "Comet"
+          ],
+          "description": "Вид"
+        },
+        "speedFactor": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10,
+          "description": "Скорость линии — Множитель к обычной скорости врага (1 — в такт его шагам)"
+        },
+        "vanishBefore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30,
+          "description": "Исчезает до появления, с"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 1,
+          "description": "Толщина, доля стороны гекса"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TextureLimitDef": {
+      "type": "object",
+      "properties": {
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384,
+          "description": "Максимум, пикс. — Больше — отклонить или уменьшить при импорте"
+        },
+        "needsAlpha": {
+          "type": "boolean",
+          "description": "Нужна прозрачность — JPEG и изображения без альфа-канала — предупреждение"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "HexSurface",
+            "Environment",
+            "Atlas",
+            "Character",
+            "SkillIcon",
+            "StatusIcon",
+            "Mask",
+            "Other"
+          ],
+          "description": "Назначение"
+        },
+        "recommendedMax": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384,
+          "description": "Рекомендуемый максимум, пикс."
+        },
+        "recommendedMin": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16384,
+          "description": "Рекомендуемый минимум, пикс."
+        }
+      },
+      "additionalProperties": true
+    },
+    "TimeRules": {
+      "type": "object",
+      "properties": {
+        "defaultSpeedIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Скорость по умолчанию — Индекс в списке скоростей"
+        },
+        "maxTicksPerFrame": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Макс. тиков за кадр — Если кадр не успевает — игра замедляется, тики не пропускаются"
+        },
+        "speedPresets": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Скорости — Множители времени для кнопок скорости"
+        },
+        "startPaused": {
+          "type": "boolean",
+          "description": "Начинать на паузе"
+        },
+        "ticksPerSecond": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 120,
+          "description": "Тиков в секунду — Фиксированный шаг симуляции"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TurnRules": {
+      "type": "object",
+      "properties": {
+        "apPerStep": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "ОД за шаг 60°"
+        },
+        "autoFaceCostsAp": {
+          "type": "boolean",
+          "description": "Поворот по ходу стоит ОД"
+        },
+        "autoFaceOnMove": {
+          "type": "boolean",
+          "description": "Поворачиваться по ходу движения"
+        },
+        "autoFaceTarget": {
+          "type": "boolean",
+          "description": "Поворачиваться к цели перед атакой"
+        },
+        "manualCostsAp": {
+          "type": "boolean",
+          "description": "Ручной поворот стоит ОД — Команда «Поворот» (стрелка взгляда): по умолчанию бесплатна (docs/DECISIONS_3.md §40)"
+        },
+        "manualTakesTime": {
+          "type": "boolean",
+          "description": "Ручной поворот занимает время — Иначе — мгновенно"
+        },
+        "secondsPerStep": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Время шага 60°, с"
+        }
+      },
+      "additionalProperties": true
+    },
+    "VisionRules": {
+      "type": "object",
+      "properties": {
+        "blindDetectRange": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Дальность обзора при ослеплении"
+        },
+        "fogOfWar": {
+          "type": "boolean",
+          "description": "Туман войны — Игрок видит только то, что видят его юниты"
+        },
+        "invisibleDetectRange": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Дальность обнаружения невидимых"
+        },
+        "stealthRangeFactor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Влияние скрытности на дальность — Дальность × (1 − скрытность × k)"
+        },
+        "updateInterval": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 5,
+          "description": "Интервал пересчёта, с"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

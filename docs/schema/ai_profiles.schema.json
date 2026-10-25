@@ -1,0 +1,1182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/ai_profiles.schema.json",
+  "title": "профиль ИИ (ai_profiles.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "ai_profiles"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AiProfileDef"
+      }
+    }
+  },
+  "$defs": {
+    "AiProfileDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "advanceWhenIdle": {
+          "type": "boolean",
+          "description": "Наступать без обзора — Если врагов не видно — идти к стартовой зоне игрока (или центру карты)"
+        },
+        "aggression": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Агрессивность — 0 — осторожный, 1 — всегда атакует"
+        },
+        "alert": {
+          "type": "boolean",
+          "description": "Поднимать тревогу — Сообщать союзникам о замеченном враге"
+        },
+        "altTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AltTargetDef"
+          },
+          "description": "Альтернативные цели — База уничтожена или недоступна; пусто — из сценария"
+        },
+        "breakObstacles": {
+          "type": "boolean",
+          "description": "Ломать препятствия — Путь закрыт разрушаемым препятствием — атакует его"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "decisionInterval": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10,
+          "description": "Интервал решений, с"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "encounter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EncounterDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Встреча с защитниками — Для врагов на маршруте: преследование, отвлечение, возврат"
+        },
+        "faceThreats": {
+          "type": "boolean",
+          "description": "Поворачиваться к угрозе — Разворачиваться лицом к видимому врагу"
+        },
+        "guardBase": {
+          "type": "boolean",
+          "description": "Охранять базу — Центр удержания — своя база с наибольшим приоритетом защиты"
+        },
+        "hazardAvoidance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Избегание опасностей — Множитель стоимости опасных клеток в маршруте"
+        },
+        "holdPosition": {
+          "type": "boolean",
+          "description": "Удерживать позицию"
+        },
+        "holdRadius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30,
+          "description": "Радиус удержания"
+        },
+        "keepDistance": {
+          "type": "boolean",
+          "description": "Держать дистанцию — Отходить, если враг ближе предпочитаемой дистанции"
+        },
+        "leadAllies": {
+          "type": "boolean",
+          "description": "Вести союзников — Союзники рядом атакуют цель вожака"
+        },
+        "patrol": {
+          "type": "boolean",
+          "description": "Патрулировать — Обходит точки вокруг позиции (или маршрут-патруль) и реагирует в зоне"
+        },
+        "patrolRadius": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "description": "Радиус патруля"
+        },
+        "preferControl": {
+          "type": "boolean",
+          "description": "Предпочитать контроль — Сначала навыки с оглушением, замедлением, обездвиживанием"
+        },
+        "preferredRange": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30,
+          "description": "Предпочитаемая дистанция — 0 = ближний бой"
+        },
+        "pursue": {
+          "type": "boolean",
+          "description": "Преследовать — Идти к последней известной позиции цели"
+        },
+        "retreatHpFraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Отступать при HP ниже"
+        },
+        "routeFocus": {
+          "type": "boolean",
+          "description": "Идти по маршруту, не отвлекаясь — Враг волны идёт к цели маршрута и атакует только тех, кто его блокирует"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AiRuleDef"
+          },
+          "description": "Правила поведения — «Если — то — иначе» с приоритетом: поведение (отступить, удерживать, атаковать слабейшего…) и действия из каталога; поведение задаёт первое по приоритету сработавшее правило"
+        },
+        "stayWithAllies": {
+          "type": "boolean",
+          "description": "Держаться союзников — Не отходит от своих дальше радиуса удержания"
+        },
+        "support": {
+          "type": "boolean",
+          "description": "Поддержка — Лечить/усиливать союзников при возможности"
+        },
+        "supportHpThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Порог лечения союзника"
+        },
+        "targetPriority": {
+          "type": "string",
+          "enum": [
+            "Nearest",
+            "Weakest",
+            "MostDangerous",
+            "LowestHpFraction",
+            "Isolated",
+            "ThreatToBase",
+            "ByTypes"
+          ],
+          "description": "Приоритет целей"
+        },
+        "targetTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Предпочитаемые цели — Теги («tag:x»), категории, ID шаблонов — для приоритета «по тегам и типам»"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "AiRuleDef": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TriggerActionDef"
+          },
+          "description": "То: действия"
+        },
+        "cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перезарядка, с"
+        },
+        "directive": {
+          "type": "string",
+          "enum": [
+            "None",
+            "Attack",
+            "AttackWeakest",
+            "AttackDangerous",
+            "DefendBase",
+            "Retreat",
+            "Hold",
+            "Advance",
+            "Support",
+            "Guard",
+            "ReturnToRoute",
+            "Wait"
+          ],
+          "description": "То: поведение"
+        },
+        "elseActions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TriggerActionDef"
+          },
+          "description": "Иначе: действия"
+        },
+        "elseDirective": {
+          "type": "string",
+          "enum": [
+            "None",
+            "Attack",
+            "AttackWeakest",
+            "AttackDangerous",
+            "DefendBase",
+            "Retreat",
+            "Hold",
+            "Advance",
+            "Support",
+            "Guard",
+            "ReturnToRoute",
+            "Wait"
+          ],
+          "description": "Иначе: поведение"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "once": {
+          "type": "boolean",
+          "description": "Однократно — Иначе — повторно с перезарядкой"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет — Правила проверяются от большего приоритета; поведение задаёт первое сработавшее"
+        },
+        "when": {
+          "$ref": "#/$defs/ConditionDef",
+          "description": "Если"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AltTargetDef": {
+      "type": "object",
+      "properties": {
+        "flag": {
+          "type": "string",
+          "description": "Флаг события"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "OtherBase",
+            "AttackDefenders",
+            "CaptureObject",
+            "BreakObstacle",
+            "Stop",
+            "Retreat",
+            "Event"
+          ],
+          "description": "Что делать"
+        },
+        "object": {
+          "type": "string",
+          "description": "Объект — ID объекта; пусто — ближайшая цель/контрольная точка"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ConditionDef": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Категории врагов — Для подсчёта убитых: категории существ или tag:тег; пусто — все"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConditionDef"
+          },
+          "description": "Вложенные условия"
+        },
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Количество — Убитые/волны/прорывы; дальность для «в дальности»; номер фазы босса; число разрушений и комбинаций"
+        },
+        "flag": {
+          "type": "string",
+          "description": "Флаг"
+        },
+        "fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Доля здоровья"
+        },
+        "marker": {
+          "type": "string",
+          "description": "Метка карты — Для разрушения и комбинаций — пусто: где угодно"
+        },
+        "objective": {
+          "type": "string",
+          "description": "Цель (ID)"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Время, с"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Player",
+            "Enemy",
+            "Any"
+          ],
+          "description": "Сторона"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "synergy": {
+          "type": "string",
+          "x-ref": "Synergy",
+          "description": "Синергия"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "AllEnemiesDead",
+            "AllPlayerUnitsDead",
+            "SurviveTime",
+            "ReachMarker",
+            "UnitDead",
+            "UnitAlive",
+            "KillCount",
+            "TimeElapsed",
+            "WaveSpawned",
+            "All",
+            "Any",
+            "Not",
+            "InOrder",
+            "UnitInArea",
+            "WaveCleared",
+            "WavesCleared",
+            "ObjectiveCompleted",
+            "ObjectiveFailed",
+            "FlagSet",
+            "HpBelow",
+            "EnemiesLeaked",
+            "Always",
+            "TargetInRange",
+            "EnemySpotted",
+            "UnitLeftArea",
+            "ResourceReached",
+            "HasStatus",
+            "FlagTimer",
+            "ObstacleDestroyed",
+            "BossPhase",
+            "SynergyOccurred",
+            "Environment"
+          ],
+          "description": "Условие"
+        },
+        "unitTag": {
+          "type": "string",
+          "description": "Метка юнита — Пусто — сам владелец (босс, носитель состояния, юнит с пассивкой или правилом ИИ)"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение — Ресурс; для состояния — минимум очков/стаков (0 — любое)"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Переменная"
+        },
+        "variableValue": {
+          "type": "string",
+          "description": "Значение — Равно ли значение переменной этому"
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Волна (индекс)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "EncounterDef": {
+      "type": "object",
+      "properties": {
+        "allowedTargets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Допустимые цели — Теги («tag:x»), категории, ID шаблонов; пусто — любые"
+        },
+        "attackMoving": {
+          "type": "boolean",
+          "description": "Атаковать движущуюся цель"
+        },
+        "basePriority": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Приоритет базы — 0 — бьётся с любым встречным, 1 — только с блокирующими"
+        },
+        "distractionSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Время отвлечения, с — Сколько можно быть вне маршрута; 0 — без ограничения"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "Runner",
+            "Hunter",
+            "PackGuard",
+            "Assassin",
+            "Tank",
+            "Support"
+          ],
+          "description": "Поведение при встрече"
+        },
+        "pursuitRange": {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": 50,
+          "description": "Дистанция преследования — Гексов от маршрута; −1 — характеристика «дальность преследования»"
+        },
+        "returnCondition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnitConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие возврата — Выполнено — бросает преследование и возвращается на маршрут"
+        },
+        "throughObstacles": {
+          "type": "boolean",
+          "description": "Преследовать сквозь препятствия — Нет — бросает цель, если путь к ней вдвое длиннее прямой"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ShieldSpecDef": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "ignoresPeriodic": {
+          "type": "boolean",
+          "description": "Пропускает периодический урон"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название щита"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет расхода — Сначала расходуются щиты с большим приоритетом"
+        },
+        "protects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Защищает от — Пусто — от любого урона"
+        },
+        "regenDelay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Задержка восстановления, с — После получения урона"
+        },
+        "regenPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Восстановление/с — 0 — не восстанавливается"
+        },
+        "stacking": {
+          "type": "string",
+          "enum": [
+            "Refresh",
+            "Add",
+            "Separate",
+            "ReplaceIfStronger"
+          ],
+          "description": "Повторное наложение"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SkillEffectDef": {
+      "type": "object",
+      "properties": {
+        "aiProfile": {
+          "type": "string",
+          "x-ref": "AiProfile",
+          "description": "Профиль ИИ"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Величина — Урон/лечение/очки состояния/изменение ресурса/объём щита; для накопления — изменение очков (стаков), может быть отрицательным"
+        },
+        "cellEffect": {
+          "type": "string",
+          "x-ref": "CellEffect",
+          "description": "Эффект клетки"
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс"
+        },
+        "damageType": {
+          "type": "string",
+          "x-ref": "DamageType",
+          "description": "Тип урона"
+        },
+        "distance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Расстояние"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Длительность, с — 0 = по умолчанию; для изменения характеристики — до конца боя"
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "TowardSource",
+            "AwayFromSource",
+            "Opposite",
+            "Random",
+            "Set"
+          ],
+          "description": "Направление взгляда"
+        },
+        "filter": {
+          "$ref": "#/$defs/TargetFilterDef",
+          "description": "На кого действует"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Формула — Необязательно. Заменяет величину. Переменные: amount, caster_*, target_*, level"
+        },
+        "healMode": {
+          "type": "string",
+          "enum": [
+            "Flat",
+            "PercentMax",
+            "PercentMissing"
+          ],
+          "description": "Режим лечения — Фиксированное, % от максимума или % от недостающего здоровья (величина — проценты)"
+        },
+        "isGlobal": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Уровень/заряды"
+        },
+        "obstacleDamage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Урон препятствию"
+        },
+        "requiresHit": {
+          "type": "boolean",
+          "description": "Требует попадания — Применяется только если бросок попадания успешен"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "route": {
+          "type": "string",
+          "description": "Маршрут карты"
+        },
+        "scalingFactor": {
+          "type": "number",
+          "description": "Коэффициент масштаба"
+        },
+        "scalingStat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Масштаб от характеристики — Величина += характеристика исполнителя × коэффициент"
+        },
+        "setDirection": {
+          "type": "string",
+          "enum": [
+            "E",
+            "NE",
+            "NW",
+            "W",
+            "SW",
+            "SE"
+          ],
+          "description": "Задать направление"
+        },
+        "shield": {
+          "$ref": "#/$defs/ShieldSpecDef",
+          "description": "Щит — Объём — «Величина», длительность — «Длительность»"
+        },
+        "shieldName": {
+          "type": "string",
+          "description": "Название снимаемого щита — Пусто — все щиты"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        },
+        "statAdd": {
+          "type": "number",
+          "description": "Прибавка к характеристике"
+        },
+        "statMul": {
+          "type": "number",
+          "description": "Множитель характеристики — Доля: 0.2 = +20%"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "summonUnit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Призываемый юнит"
+        },
+        "targetsUnits": {
+          "type": "boolean"
+        },
+        "terrain": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Местность"
+        },
+        "text": {
+          "type": "string",
+          "description": "Текст / ID — Сообщение; ID визуального или звукового эффекта; имя флага или триггера сценария"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Damage",
+            "Heal",
+            "ApplyStatus",
+            "RemoveStatus",
+            "Push",
+            "Pull",
+            "ChangeFacing",
+            "ModifyResource",
+            "ModifyAp",
+            "Shield",
+            "RemoveShield",
+            "ChangeTerrain",
+            "AddCellEffect",
+            "RemoveCellEffect",
+            "DestroyObstacle",
+            "Summon",
+            "TeleportCaster",
+            "ModifyStat",
+            "ModifyAccumulation",
+            "SetRoute",
+            "SetAiProfile",
+            "Message",
+            "PlayVfx",
+            "PlaySound",
+            "SetFlag",
+            "ActivateTrigger"
+          ],
+          "description": "Действие"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TargetFilterDef": {
+      "type": "object",
+      "properties": {
+        "allies": {
+          "type": "boolean",
+          "description": "Союзники"
+        },
+        "enemies": {
+          "type": "boolean",
+          "description": "Враги"
+        },
+        "neutrals": {
+          "type": "boolean",
+          "description": "Нейтралы"
+        },
+        "self": {
+          "type": "boolean",
+          "description": "Сам исполнитель"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TriggerActionDef": {
+      "type": "object",
+      "properties": {
+        "aiProfile": {
+          "type": "string",
+          "x-ref": "AiProfile",
+          "description": "Профиль ИИ"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Величина — Очки/стаки состояния, % лечения"
+        },
+        "autoAttack": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Автоатака (индекс)"
+        },
+        "cellEffect": {
+          "type": "string",
+          "x-ref": "CellEffect",
+          "description": "Эффект клетки"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Количество"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillEffectDef"
+          },
+          "description": "Операции — Каталог операций навыков: применяются к выбранным юнитам"
+        },
+        "flag": {
+          "type": "string",
+          "description": "Флаг"
+        },
+        "group": {
+          "type": "string",
+          "description": "Группа волны — ID группы"
+        },
+        "marker": {
+          "type": "string",
+          "description": "Метка карты — Пусто — вокруг владельца"
+        },
+        "object": {
+          "type": "string",
+          "description": "Объект — ID базы или объекта сценария"
+        },
+        "objectState": {
+          "type": "string",
+          "enum": [
+            "Activate",
+            "Deactivate",
+            "Destroy",
+            "Repair"
+          ],
+          "description": "Новое состояние"
+        },
+        "objective": {
+          "type": "string",
+          "description": "Цель (ID)"
+        },
+        "phase": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Фаза босса (номер) — 1 — первая фаза из списка босса"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Радиус"
+        },
+        "route": {
+          "type": "string",
+          "description": "Маршрут — Маршрут сценария или карты"
+        },
+        "skill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "Self",
+            "UnitTag",
+            "Enemies",
+            "PlayerUnits"
+          ],
+          "description": "На кого"
+        },
+        "targetTag": {
+          "type": "string",
+          "description": "Цель-юниты — Метка или тег юнитов, которых атаковать (вместо объекта)"
+        },
+        "terrain": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Местность"
+        },
+        "text": {
+          "type": "string",
+          "description": "Текст / ID — Сообщение; имя триггера; ID визуального или звукового эффекта"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Message",
+            "SpawnWave",
+            "Autopause",
+            "Victory",
+            "Defeat",
+            "AddCellEffect",
+            "SetFlag",
+            "CompleteObjective",
+            "FailObjective",
+            "CancelWave",
+            "ChangeTerrain",
+            "SummonUnits",
+            "ApplyStatus",
+            "RemoveStatus",
+            "AddSkill",
+            "RemoveSkill",
+            "SetAutoAttackSkill",
+            "SetAiProfile",
+            "HealPercent",
+            "Effects",
+            "SetRoute",
+            "DestroyObstacle",
+            "ActivateTrigger",
+            "SetBossPhase",
+            "PlayVfx",
+            "PlaySound",
+            "SetEnvironment",
+            "ActivateBase",
+            "DeactivateBase",
+            "SetGroupRoute",
+            "SetTarget",
+            "SetObjectState",
+            "EndScenario",
+            "LogDiagnostic"
+          ],
+          "description": "Действие"
+        },
+        "unit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Юнит"
+        },
+        "unitTag": {
+          "type": "string",
+          "description": "Метка юнита"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Переменная"
+        },
+        "variableValue": {
+          "type": "string",
+          "description": "Значение переменной"
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Волна (индекс)"
+        },
+        "win": {
+          "type": "boolean",
+          "description": "Итог"
+        }
+      },
+      "additionalProperties": true
+    },
+    "UnitConditionDef": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Категории и теги — ID категории (с предками), «tag:тег», категория существа или ID шаблона"
+        },
+        "centre": {
+          "type": "string",
+          "enum": [
+            "Anchor",
+            "Self",
+            "Target"
+          ],
+          "description": "Центр области"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnitConditionDef"
+          },
+          "description": "Вложенные условия"
+        },
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Количество"
+        },
+        "isLogic": {
+          "type": "boolean"
+        },
+        "layer": {
+          "type": "string",
+          "description": "Слой — ID слоя (ground, air, underground…)"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Радиус — Для «расстояние до цели» — гексов"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс — Пусто — очки действия"
+        },
+        "scenarioCondition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие сценария — Без метки — для самого владельца"
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "В течение, с"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Enemies",
+            "Allies",
+            "Any"
+          ],
+          "description": "Кто"
+        },
+        "skill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "subject": {
+          "type": "string",
+          "enum": [
+            "Self",
+            "Target"
+          ],
+          "description": "О ком"
+        },
+        "terrains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Поверхности — ID местности или эффекта клетки; «kind:Water» — вид местности"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "All",
+            "Any",
+            "Not",
+            "TargetAlive",
+            "PreviousHit",
+            "PreviousEffect",
+            "HasStatus",
+            "HpFraction",
+            "Resource",
+            "OnTerrain",
+            "UnitType",
+            "UnitsInArea",
+            "AfterSkill",
+            "BossPhase",
+            "Scenario",
+            "Category",
+            "Layer",
+            "Distance",
+            "Environment"
+          ],
+          "description": "Условие"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Типы — Категория существа, ID юнита, «tag:тег» или «role:роль»"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение — Доля здоровья 0..1; ресурс; для состояния — минимум очков/стаков (0 — любое); фаза босса — номер с 1"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Переменная"
+        },
+        "variableValue": {
+          "type": "string",
+          "description": "Значение переменной"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

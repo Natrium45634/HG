@@ -1,0 +1,606 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/cell_effects.schema.json",
+  "title": "эффект клетки (cell_effects.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "cell_effects"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CellEffectDef"
+      }
+    }
+  },
+  "$defs": {
+    "CellEffectDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "adjacentInterval": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 3600,
+          "description": "Интервал соседства, с"
+        },
+        "adjacentRadius": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Радиус соседства"
+        },
+        "affectsLayers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Layer"
+          },
+          "description": "Действует на слои — Пусто — по правилам (наземный)"
+        },
+        "allowedTerrainTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Разрешён на местности с тегами — Пусто — на любой"
+        },
+        "appearVfx": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Эффект появления"
+        },
+        "blocksLoS": {
+          "type": "boolean",
+          "description": "Блокирует обзор — Дым, туман"
+        },
+        "blocksMovement": {
+          "type": "boolean",
+          "description": "Блокирует движение — Барьер"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "consumeOnEnter": {
+          "type": "boolean",
+          "description": "Исчезает после срабатывания при входе — Ловушки и т. п. (заряд расходуется)"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Длительность, с — 0 = постоянный"
+        },
+        "element": {
+          "type": "string",
+          "x-ref": "Element",
+          "description": "Элемент — Для взаимодействий элементов (лава — огонь, лужа — вода…)"
+        },
+        "forbiddenTerrainTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Запрещён на местности с тегами"
+        },
+        "hazard": {
+          "type": "boolean",
+          "description": "Опасный — ИИ избегает"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Значок — 1–2 символа"
+        },
+        "immuneCreatureCategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Иммунные категории существ"
+        },
+        "loopVfx": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Постоянный эффект — Пока эффект лежит на гексе (огонь, лёд, ядовитая лужа); замена вида не меняет урон"
+        },
+        "maxLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Макс. уровень"
+        },
+        "moveCostAdd": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 100,
+          "description": "Доп. стоимость перемещения"
+        },
+        "noticeModifier": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Модификатор замечания атак — Прибавка к шансу заметить атаку для юнитов в клетке/через неё"
+        },
+        "onAdjacent": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillEffectDef"
+          },
+          "description": "По соседству — Каждый интервал — на юнитов в радиусе (кроме самой клетки)"
+        },
+        "onEnter": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillEffectDef"
+          },
+          "description": "При входе юнита"
+        },
+        "onExit": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillEffectDef"
+          },
+          "description": "При выходе юнита"
+        },
+        "onTick": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillEffectDef"
+          },
+          "description": "Каждый тик (на юнита в клетке) — Нахождение в клетке"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Приоритет обработки — Меньше — раньше"
+        },
+        "scaleWithLevel": {
+          "type": "boolean",
+          "description": "Эффекты тика масштабируются уровнем"
+        },
+        "spread": {
+          "$ref": "#/$defs/SpreadDef",
+          "description": "Распространение"
+        },
+        "stackPolicy": {
+          "type": "string",
+          "enum": [
+            "Refresh",
+            "AddLevel",
+            "AddDuration",
+            "Ignore",
+            "Replace"
+          ],
+          "description": "Повторное наложение"
+        },
+        "tickInterval": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 3600,
+          "description": "Интервал тика, с"
+        },
+        "visual": {
+          "type": "string",
+          "enum": [
+            "Glow",
+            "Flames",
+            "Gas",
+            "Ice",
+            "Sparks",
+            "Liquid",
+            "Smoke",
+            "Runes",
+            "Barrier"
+          ],
+          "description": "Стиль"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "ShieldSpecDef": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "ignoresPeriodic": {
+          "type": "boolean",
+          "description": "Пропускает периодический урон"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название щита"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет расхода — Сначала расходуются щиты с большим приоритетом"
+        },
+        "protects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Защищает от — Пусто — от любого урона"
+        },
+        "regenDelay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Задержка восстановления, с — После получения урона"
+        },
+        "regenPerSecond": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Восстановление/с — 0 — не восстанавливается"
+        },
+        "stacking": {
+          "type": "string",
+          "enum": [
+            "Refresh",
+            "Add",
+            "Separate",
+            "ReplaceIfStronger"
+          ],
+          "description": "Повторное наложение"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SkillEffectDef": {
+      "type": "object",
+      "properties": {
+        "aiProfile": {
+          "type": "string",
+          "x-ref": "AiProfile",
+          "description": "Профиль ИИ"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Величина — Урон/лечение/очки состояния/изменение ресурса/объём щита; для накопления — изменение очков (стаков), может быть отрицательным"
+        },
+        "cellEffect": {
+          "type": "string",
+          "x-ref": "CellEffect",
+          "description": "Эффект клетки"
+        },
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс"
+        },
+        "damageType": {
+          "type": "string",
+          "x-ref": "DamageType",
+          "description": "Тип урона"
+        },
+        "distance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Расстояние"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Длительность, с — 0 = по умолчанию; для изменения характеристики — до конца боя"
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "TowardSource",
+            "AwayFromSource",
+            "Opposite",
+            "Random",
+            "Set"
+          ],
+          "description": "Направление взгляда"
+        },
+        "filter": {
+          "$ref": "#/$defs/TargetFilterDef",
+          "description": "На кого действует"
+        },
+        "formula": {
+          "type": "string",
+          "description": "Формула — Необязательно. Заменяет величину. Переменные: amount, caster_*, target_*, level"
+        },
+        "healMode": {
+          "type": "string",
+          "enum": [
+            "Flat",
+            "PercentMax",
+            "PercentMissing"
+          ],
+          "description": "Режим лечения — Фиксированное, % от максимума или % от недостающего здоровья (величина — проценты)"
+        },
+        "isGlobal": {
+          "type": "boolean"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Уровень/заряды"
+        },
+        "obstacleDamage": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Урон препятствию"
+        },
+        "requiresHit": {
+          "type": "boolean",
+          "description": "Требует попадания — Применяется только если бросок попадания успешен"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "route": {
+          "type": "string",
+          "description": "Маршрут карты"
+        },
+        "scalingFactor": {
+          "type": "number",
+          "description": "Коэффициент масштаба"
+        },
+        "scalingStat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Масштаб от характеристики — Величина += характеристика исполнителя × коэффициент"
+        },
+        "setDirection": {
+          "type": "string",
+          "enum": [
+            "E",
+            "NE",
+            "NW",
+            "W",
+            "SW",
+            "SE"
+          ],
+          "description": "Задать направление"
+        },
+        "shield": {
+          "$ref": "#/$defs/ShieldSpecDef",
+          "description": "Щит — Объём — «Величина», длительность — «Длительность»"
+        },
+        "shieldName": {
+          "type": "string",
+          "description": "Название снимаемого щита — Пусто — все щиты"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        },
+        "statAdd": {
+          "type": "number",
+          "description": "Прибавка к характеристике"
+        },
+        "statMul": {
+          "type": "number",
+          "description": "Множитель характеристики — Доля: 0.2 = +20%"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "summonUnit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Призываемый юнит"
+        },
+        "targetsUnits": {
+          "type": "boolean"
+        },
+        "terrain": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Местность"
+        },
+        "text": {
+          "type": "string",
+          "description": "Текст / ID — Сообщение; ID визуального или звукового эффекта; имя флага или триггера сценария"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Damage",
+            "Heal",
+            "ApplyStatus",
+            "RemoveStatus",
+            "Push",
+            "Pull",
+            "ChangeFacing",
+            "ModifyResource",
+            "ModifyAp",
+            "Shield",
+            "RemoveShield",
+            "ChangeTerrain",
+            "AddCellEffect",
+            "RemoveCellEffect",
+            "DestroyObstacle",
+            "Summon",
+            "TeleportCaster",
+            "ModifyStat",
+            "ModifyAccumulation",
+            "SetRoute",
+            "SetAiProfile",
+            "Message",
+            "PlayVfx",
+            "PlaySound",
+            "SetFlag",
+            "ActivateTrigger"
+          ],
+          "description": "Действие"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SpreadDef": {
+      "type": "object",
+      "properties": {
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс на соседа"
+        },
+        "childDurationFactor": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 1,
+          "description": "Длительность потомка — Доля длительности родителя"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Распространяется"
+        },
+        "interval": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 3600,
+          "description": "Интервал, с"
+        },
+        "maxGenerations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Макс. поколений — Защита от бесконечного распространения"
+        },
+        "toCellsWithEffects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "CellEffect"
+          },
+          "description": "Только в клетки с эффектами — Id или tag:тег; пусто — любые"
+        },
+        "toTerrainTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Только на местность с тегами — Пусто — любая допустимая"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TargetFilterDef": {
+      "type": "object",
+      "properties": {
+        "allies": {
+          "type": "boolean",
+          "description": "Союзники"
+        },
+        "enemies": {
+          "type": "boolean",
+          "description": "Враги"
+        },
+        "neutrals": {
+          "type": "boolean",
+          "description": "Нейтралы"
+        },
+        "self": {
+          "type": "boolean",
+          "description": "Сам исполнитель"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

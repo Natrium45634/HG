@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/scaling_profiles.schema.json",
+  "title": "профиль масштабирования (scaling_profiles.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "scaling_profiles"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ScalingProfileDef"
+      }
+    }
+  },
+  "$defs": {
+    "ScaleParamDef": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Запрет автоматического изменения"
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Максимум — 0 — без максимума"
+        },
+        "maxChange": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Не более чем в N раз — Допустимый диапазон изменения от исходного; 0 — без ограничения"
+        },
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Минимум — 0 — без минимума"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет — Подсказка отчёта: что разрешить первым, если цель недостижима"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        },
+        "step": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Шаг — Округление нового значения; 0 — без округления"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "Stat",
+            "SkillDamage",
+            "Resistances"
+          ],
+          "description": "Что меняется"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Вес — Доля роста: значение × множитель ^ вес (пропорции роли сохраняются)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ScalingProfileDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScaleParamDef"
+          },
+          "description": "Параметры"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "Auto",
+            "Universal",
+            "Tank",
+            "Fighter",
+            "Shooter",
+            "Assassin",
+            "Support",
+            "Controller",
+            "Boss"
+          ],
+          "description": "Роль — Для какой роли профиль подходит (подсказка)"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

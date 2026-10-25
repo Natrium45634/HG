@@ -1,0 +1,558 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/assets.schema.json",
+  "title": "ресурс (assets.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "assets"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AssetDef"
+      }
+    }
+  },
+  "$defs": {
+    "AnimMarkerDef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "StrikeStart",
+            "HitCheck",
+            "ProjectileRelease",
+            "AreaCreate",
+            "EffectAppear",
+            "CastEnd",
+            "MoveEnd",
+            "DefenseStart",
+            "DefenseEnd"
+          ],
+          "description": "Маркер"
+        },
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Время в клипе, с"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AnimationMapDef": {
+      "type": "object",
+      "properties": {
+        "blend": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Смешивание, с — Плавный переход из предыдущего клипа"
+        },
+        "clip": {
+          "type": "string",
+          "description": "Клип модели — Имя анимации в файле модели"
+        },
+        "end": {
+          "type": "string",
+          "enum": [
+            "ReturnIdle",
+            "HoldLast",
+            "Loop"
+          ],
+          "description": "По окончании"
+        },
+        "interruptible": {
+          "type": "boolean",
+          "description": "Прерываемая — Другая роль может прервать клип до конца"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Повтор"
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnimMarkerDef"
+          },
+          "description": "Маркеры — Игровые моменты в клипе: проверка попадания, выпуск снаряда…; клип подстраивается под момент симуляции"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Приоритет — Роль с большим приоритетом прерывает меньшую (смерть > контроль > атака…)"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "Idle",
+            "Move",
+            "Attack",
+            "Skill",
+            "Hit",
+            "Block",
+            "Control",
+            "Death",
+            "Spawn",
+            "Turn",
+            "Dodge",
+            "Fly",
+            "Burrow",
+            "Interact",
+            "Victory"
+          ],
+          "description": "Роль"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 10,
+          "description": "Скорость"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Варианты — Другие клипы этой роли; выбирается случайно (генератор интерфейса, не боя)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "AssetDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "albedo": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "analysis": {
+          "type": "string",
+          "description": "Анализ файла — Размеры, треугольники, кости, анимации — при импорте"
+        },
+        "animations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnimationMapDef"
+          },
+          "description": "Анимации — Соответствие ролей клипам; роль без клипа анимируется процедурно"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AttachmentDef"
+          },
+          "description": "Точки привязки — Оружие, снаряд, источник магии, попадание, смерть, индикатор состояния, взгляд"
+        },
+        "billboard": {
+          "type": "boolean",
+          "description": "Всегда к камере (billboard)"
+        },
+        "blend": {
+          "type": "string",
+          "enum": [
+            "Mix",
+            "Add",
+            "Multiply"
+          ],
+          "description": "Режим смешивания"
+        },
+        "bones": {
+          "type": "integer",
+          "description": "Костей"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "clipLengths": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Длительности клипов, с"
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Клипы в файле"
+        },
+        "detailMask": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Маска деталей — Грязь, трещины, повреждения: где виден детальный слой"
+        },
+        "detailTexture": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Текстура деталей"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Длительность, с"
+        },
+        "emission": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Свечение"
+        },
+        "emissionEnergy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 16,
+          "description": "Сила свечения"
+        },
+        "emissionMap": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Карта свечения"
+        },
+        "fallback": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Резервная модель — Если эта не загрузилась; потом — базовая фишка"
+        },
+        "filter": {
+          "type": "string",
+          "enum": [
+            "LinearMipmap",
+            "Linear",
+            "Nearest"
+          ],
+          "description": "Фильтрация"
+        },
+        "hasAlpha": {
+          "type": "boolean",
+          "description": "Есть альфа-канал"
+        },
+        "hasFile": {
+          "type": "boolean"
+        },
+        "height": {
+          "type": "integer",
+          "description": "Высота, пикс."
+        },
+        "importedAt": {
+          "type": "string",
+          "description": "Дата импорта"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Model",
+            "Texture",
+            "Sprite",
+            "Icon",
+            "Sound",
+            "Material"
+          ],
+          "description": "Вид"
+        },
+        "lodDistance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Дальность детализации — Дальше этого расстояния камеры детальный слой и нормали не рисуются (0 — всегда)"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Повтор"
+        },
+        "metallic": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Металличность"
+        },
+        "metallicMap": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Карта металличности"
+        },
+        "normalMap": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Карта нормалей"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Заметки автора"
+        },
+        "path": {
+          "type": "string",
+          "description": "Файл — Относительный путь в пакете (assets/…); абсолютные пути и «..» запрещены"
+        },
+        "pixelSize": {
+          "type": "number",
+          "minimum": 0.0005,
+          "maximum": 1,
+          "description": "Размер пикселя"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "HexSurface",
+            "Environment",
+            "Atlas",
+            "Character",
+            "SkillIcon",
+            "StatusIcon",
+            "Mask",
+            "Other"
+          ],
+          "description": "Назначение — Определяет рекомендуемый и максимальный размер"
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Радиус слышимости, гексов"
+        },
+        "repeat": {
+          "type": "boolean",
+          "description": "Повторение"
+        },
+        "rotationY": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360,
+          "description": "Поворот, ° — Чтобы «лицо» модели смотрело по направлению юнита"
+        },
+        "roughness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шероховатость"
+        },
+        "roughnessMap": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Карта шероховатости"
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 100,
+          "description": "Масштаб"
+        },
+        "sha256": {
+          "type": "string",
+          "description": "SHA-256 — Контрольная сумма файла при импорте"
+        },
+        "simplified": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Упрощённая модель — Для «упрощённых эффектов»"
+        },
+        "simplifiedMaterial": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Упрощённый материал — Для слабых систем («упрощённые эффекты»)"
+        },
+        "size": {
+          "type": "integer",
+          "description": "Размер, байт"
+        },
+        "sourceFile": {
+          "type": "string",
+          "description": "Исходное имя файла"
+        },
+        "spatial": {
+          "type": "boolean",
+          "description": "Пространственный — Звучит из точки на поле (громче рядом с камерой)"
+        },
+        "texture": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Текстура"
+        },
+        "transparency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.95,
+          "description": "Прозрачность"
+        },
+        "triangles": {
+          "type": "integer",
+          "description": "Треугольников"
+        },
+        "uvOffsetU": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10,
+          "description": "Смещение U"
+        },
+        "uvOffsetV": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10,
+          "description": "Смещение V"
+        },
+        "uvRotation": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360,
+          "description": "Поворот, °"
+        },
+        "uvScale": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 100,
+          "description": "Масштаб"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Asset"
+          },
+          "description": "Варианты — Другие звуки; при воспроизведении выбирается случайный"
+        },
+        "volumeDb": {
+          "type": "number",
+          "minimum": -60,
+          "maximum": 24,
+          "description": "Громкость, дБ"
+        },
+        "width": {
+          "type": "integer",
+          "description": "Ширина, пикс."
+        },
+        "yOffset": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10,
+          "description": "Смещение по высоте"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "AttachmentDef": {
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "Узел модели — Имя узла в файле; пусто — смещение от опоры"
+        },
+        "point": {
+          "type": "string",
+          "enum": [
+            "Weapon",
+            "Projectile",
+            "MagicSource",
+            "Hit",
+            "Death",
+            "Status",
+            "Facing"
+          ],
+          "description": "Точка"
+        },
+        "x": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10,
+          "description": "Смещение X"
+        },
+        "y": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10,
+          "description": "Смещение Y (вверх)"
+        },
+        "z": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10,
+          "description": "Смещение Z (вперёд)"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

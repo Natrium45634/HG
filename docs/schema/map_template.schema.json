@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/map_template.schema.json",
+  "title": "шаблон карты: один объект в файле папки map_templates/",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "map_template"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "map_template"
+    },
+    "map_template": {
+      "$ref": "#/$defs/MapTemplateDef"
+    }
+  },
+  "$defs": {
+    "MapCellDef": {
+      "type": "object",
+      "properties": {
+        "allowPlacement": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Можно размещать — Переопределение"
+        },
+        "allowedEffects": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "x-ref": "CellEffect"
+          },
+          "description": "Допустимые эффекты — Если задано — только эти эффекты клеток могут быть наложены"
+        },
+        "blocked": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Непроходима — Переопределение: true — закрыта для всех"
+        },
+        "blocksLoS": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Блокирует обзор — Переопределение"
+        },
+        "c": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Координаты"
+        },
+        "cover": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Укрытие — Переопределение"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Описание клетки"
+        },
+        "effects": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "x-ref": "CellEffect"
+          },
+          "description": "Стартовые эффекты"
+        },
+        "h": {
+          "type": "integer",
+          "minimum": -5,
+          "maximum": 20,
+          "description": "Высота"
+        },
+        "moveCost": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Стоимость перемещения — Переопределение"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Имя клетки"
+        },
+        "obstacleHp": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Прочность препятствия — Переопределение"
+        },
+        "t": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Местность"
+        },
+        "tags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги клетки"
+        }
+      },
+      "additionalProperties": true
+    },
+    "MapMarkerDef": {
+      "type": "object",
+      "properties": {
+        "c": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Клетка"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID метки"
+        },
+        "label": {
+          "type": "string",
+          "description": "Подпись"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Радиус"
+        },
+        "spawnWarning": {
+          "type": "boolean",
+          "description": "Маркер предупреждения — Показывать линию пути перед появлением врагов из этой точки"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "PlayerStart",
+            "EnemySpawn",
+            "NeutralSpawn",
+            "Objective",
+            "Trigger",
+            "Exit"
+          ],
+          "description": "Тип"
+        }
+      },
+      "additionalProperties": true
+    },
+    "MapRouteDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID маршрута"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[q, r]"
+          },
+          "description": "Точки — Первая — точка появления, последняя — цель маршрута"
+        }
+      },
+      "additionalProperties": true
+    },
+    "MapRulesDef": {
+      "type": "object",
+      "properties": {
+        "darkness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Темнота — 0..1: снижает дальность обнаружения и шанс заметить атаку"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Местность за краем — Для информации редактора"
+        }
+      },
+      "additionalProperties": true
+    },
+    "MapTemplateDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "builtIn": {
+          "type": "boolean",
+          "description": "Встроенный — Шаблон из поставки (можно восстановить)"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapCellDef"
+          }
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapMarkerDef"
+          }
+        },
+        "parts": {
+          "$ref": "#/$defs/TemplatePartsDef",
+          "description": "Сохраняемые части"
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Назначение — Для чего подходит шаблон"
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MapRouteDef"
+          }
+        },
+        "rules": {
+          "$ref": "#/$defs/MapRulesDef",
+          "description": "Правила карты"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "description": "Порядок в списке — Меньше — выше"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "TemplatePartsDef": {
+      "type": "object",
+      "properties": {
+        "heights": {
+          "type": "boolean",
+          "description": "Высоты — Иначе — высота 0"
+        },
+        "objectives": {
+          "type": "boolean",
+          "description": "Цели — Метки целей, выходов и триггеров"
+        },
+        "obstacles": {
+          "type": "boolean",
+          "description": "Препятствия — Клетки, местность которых — препятствие"
+        },
+        "other": {
+          "type": "boolean",
+          "description": "Прочие настройки — Правила карты, переопределения клеток, стартовые эффекты, имена клеток"
+        },
+        "routes": {
+          "type": "boolean",
+          "description": "Маршруты"
+        },
+        "spawnPoints": {
+          "type": "boolean",
+          "description": "Точки появления — Метки старта игрока и появления врагов/нейтралов"
+        },
+        "terrain": {
+          "type": "boolean",
+          "description": "Типы местности — Иначе — пол по умолчанию"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/vfx.schema.json",
+  "title": "визуальный эффект (vfx.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "vfx"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/VfxDef"
+      }
+    }
+  },
+  "$defs": {
+    "VfxDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "color2": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Второй цвет — Цвет к концу жизни частиц; пусто — прозрачный основной"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500,
+          "description": "Частиц"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 10,
+          "description": "Длительность, с"
+        },
+        "fadeIn": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Появление, с"
+        },
+        "fadeOut": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Затухание, с"
+        },
+        "fps": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 120,
+          "description": "Кадров в секунду"
+        },
+        "framesX": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Кадров по горизонтали"
+        },
+        "framesY": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Кадров по вертикали"
+        },
+        "height": {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 10,
+          "description": "Высота над поверхностью"
+        },
+        "intensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Интенсивность"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Vfx"
+          },
+          "description": "Слои — Эффекты, показываемые вместе"
+        },
+        "light": {
+          "type": "boolean",
+          "description": "Вспышка света"
+        },
+        "lightEnergy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 16,
+          "description": "Сила света"
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Циклический — Повторяется, пока длится причина (эффект клетки, состояние)"
+        },
+        "model": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Модель"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Непрозрачность"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Порядок отображения — Больше — поверх"
+        },
+        "orientation": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360,
+          "description": "Поворот, °"
+        },
+        "overlay": {
+          "type": "string",
+          "enum": [
+            "Add",
+            "Replace",
+            "NoDuplicate"
+          ],
+          "description": "Наложение — Если на гексе уже есть такой эффект"
+        },
+        "shape": {
+          "type": "string",
+          "enum": [
+            "Burst",
+            "Ring",
+            "Pillar",
+            "Sparks",
+            "Smoke"
+          ],
+          "description": "Форма частиц"
+        },
+        "simplified": {
+          "type": "string",
+          "x-ref": "Vfx",
+          "description": "Упрощённый вариант — Для «упрощённых эффектов»"
+        },
+        "size": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 10,
+          "description": "Размер — В радиусах гекса"
+        },
+        "sound": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Звук"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Скорость частиц"
+        },
+        "sprite": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Спрайт частиц — Необязательная текстура"
+        },
+        "texture": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Текстура — Для текстуры, анимации, проекции, линии, конуса"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Particles",
+            "Texture",
+            "AnimatedTexture",
+            "Model",
+            "Decal",
+            "Glow",
+            "Line",
+            "Cone",
+            "AreaOutline",
+            "Composite"
+          ],
+          "description": "Тип эффекта"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  }
+}
