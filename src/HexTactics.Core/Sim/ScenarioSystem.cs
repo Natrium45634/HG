@@ -543,11 +543,23 @@ public sealed partial class ScenarioSystem
             return;
         }
         p.SpawnedTick = _sim.Tick;
+        var gdef = p.Group != "" ? w.Def.Groups.FirstOrDefault(g => g.Id == p.Group) : null;
+        string target = p.Target;
+        // The final base chosen when the enemy appears (ТЗ ч. 5, 8.3): nearest reachable, shortest, weakest, by weights.
+        if (gdef is { RouteSelect: GroupRouteSelect.NearestBase or GroupRouteSelect.ShortestRoute or GroupRouteSelect.LowestHp or GroupRouteSelect.Weighted }
+            && Mode != BattleMode.FreeBattle && GroupRoute(p.Group) is not { Length: > 0 } && ChooseRoute(u, gdef) is { } chosen && chosen != routeId)
+        {
+            routeId = chosen;
+            points = RoutePoints(routeId);
+            if (points is { Count: > 0 }) u.Facing = u.Pos.DirectionTo(points[0] == u.Pos && points.Count > 1 ? points[1] : points[0]) ?? u.Facing;
+            if (gdef.Target == "") target = Def?.Route(routeId)?.Target ?? "";
+        }
         u.Wave = w.Index;
         u.Group = p.Group;
         u.RouteId = routeId;
-        u.TargetObject = p.Target;
+        u.TargetObject = target;
         u.SpawnBase = p.SpawnBase;
+        u.Ai.Hunts = Mode == BattleMode.Assault || Mode == BattleMode.Mixed && gdef?.Hunt == true;
         if (p.Mods.Count > 0)
         {
             u.InstanceMods.AddRange(p.Mods);
@@ -582,6 +594,61 @@ public sealed partial class ScenarioSystem
             foreach (var a in w.Def.OnStart) Execute(a, w.Def.Name, null);
         }
     }
+
+    /// <summary>The route of a group by its base rule; null — keep the planned one. The choice is logged.</summary>
+    private string? ChooseRoute(Unit u, SpawnGroupDef g)
+    {
+        var routes = g.Routes().Select(id => Def?.Route(id)).Where(r => r != null && RoutePoints(r.Id) is { Count: > 0 }).Select(r => r!).ToList();
+        if (routes.Count < 2) return null;
+        // A destroyed base is never chosen while another is left.
+        var alive = routes.Where(r => r.Target == "" || _sim.Structures.Of(r.Target) is not { Alive: false }).ToList();
+        if (alive.Count > 0) routes = alive;
+        RouteDef? pick;
+        string why;
+        switch (g.RouteSelect)
+        {
+            case GroupRouteSelect.NearestBase:
+            {
+                var open = routes.Where(r => _sim.Pathfinder.Find(_sim, u, u.Pos, RoutePoints(r.Id)![^1], new PathOptions { IgnoreUnits = true, MaxExpanded = 4000 }).Found).ToList();
+                if (open.Count > 0) routes = open;
+                pick = routes.OrderBy(r => HexCoord.Distance(u.Pos, TargetCell(r))).First();
+                why = open.Count > 0 ? "ближайшая достижимая база" : "ближайшая база (путь ни к одной не открыт)";
+                break;
+            }
+            case GroupRouteSelect.ShortestRoute:
+                pick = routes.OrderBy(r => RoutePoints(r.Id)!.Count).First();
+                why = "кратчайший путь";
+                break;
+            case GroupRouteSelect.LowestHp:
+                pick = routes.OrderBy(r => _sim.Structures.Of(r.Target) is { } s ? s.Hp / Math.Max(1, s.HpMax) : 2).First();
+                why = "база с наименьшим здоровьем";
+                break;
+            default:
+            {
+                double sum = routes.Sum(r => Math.Max(0, r.Weight));
+                if (sum <= 0) return null;
+                double roll = _sim.SpawnRng.NextDouble() * sum;
+                pick = routes[^1];
+                foreach (var r in routes)
+                {
+                    roll -= Math.Max(0, r.Weight);
+                    if (roll < 0)
+                    {
+                        pick = r;
+                        break;
+                    }
+                }
+                why = "по весам";
+                break;
+            }
+        }
+        string to = pick.Target != "" && Def?.Object(pick.Target) is { } o ? $"«{o.DisplayName}»" : $"«{pick.DisplayName}»";
+        _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"{u.Name} (группа «{g.Id}»): цель {to} — {why}", u.Id, cell: u.Pos);
+        return pick.Id;
+    }
+
+    /// <summary>The hex of a route's target object, or its last hex.</summary>
+    private HexCoord TargetCell(RouteDef r) => r.Target != "" && Def?.Object(r.Target) is { } o ? o.Anchor : RoutePoints(r.Id)![^1];
 
     /// <summary>A spawn base works now: active and not switched off by its conditions.</summary>
     private bool SpawnBaseActive(ScenarioObjectDef b)

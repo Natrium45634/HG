@@ -278,14 +278,34 @@ public partial class ScenarioEditorPanel : DefListPanel
     {
         if (!IsInstanceValid(_propsTab) || _sc == null) return;
         Ui.ClearChildren(_propsTab);
+        var mode = Ui.VBox(2);
+        mode.Name = "ModeFields";
+        _propsTab.AddChild(mode);
+        FillMode(mode);
         var grid = new PropertyGrid { LabelWidth = 170 };
         grid.SetTarget(_sc, Ctx.Db);
-        grid.Changed += () => OnEdited(_sc);
+        grid.Changed += () =>
+        {
+            OnEdited(_sc);
+            FillMode(mode);
+        };
         grid.PropertyChanged += (o, p) =>
         {
             if (p == nameof(ScenarioDef.Map) || p == nameof(ScenarioLimitsDef.Stacking)) RebuildPreview(true);
         };
         _propsTab.AddChild(grid);
+    }
+
+    /// <summary>The fields of the mode (ТЗ ч. 5, 18.5): required, allowed, ignored — and what is missing now.</summary>
+    private void FillMode(VBoxContainer box)
+    {
+        if (!IsInstanceValid(box) || _sc == null) return;
+        Ui.ClearChildren(box);
+        box.AddChild(Ui.Label($"Режим «{EdUtil.EnumLabel(_sc.Mode)}»", 14, Ui.Accent));
+        foreach (var line in ScenarioModes.Summary(_sc.Mode)) box.AddChild(Ui.Label(line, 12, Ui.TextDim, wrap: true));
+        foreach (var p in ScenarioModes.Check(Ctx.Db, _sc))
+            box.AddChild(Ui.Label((p.Severity == IssueSeverity.Error ? "⛔ " : "⚠ ") + p.Message, 12, p.Severity == IssueSeverity.Error ? Ui.Bad : Ui.Warn, wrap: true));
+        box.AddChild(Ui.Sep());
     }
 
     private void RefreshUnits()

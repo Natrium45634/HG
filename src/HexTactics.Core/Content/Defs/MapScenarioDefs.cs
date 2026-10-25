@@ -154,6 +154,11 @@ public enum GroupRouteSelect
     [Ed("Один маршрут")] Single,
     [Ed("По очереди")] RoundRobin,
     [Ed("Случайно (ГСЧ боя)")] Random,
+    // Part 5 (ТЗ ч. 5, 8.3; docs/DECISIONS_5.md §86): the final base — chosen when the enemy appears.
+    [Ed("Ближайшая достижимая база", "Цель маршрута ближе всех к месту появления, путь к ней открыт")] NearestBase,
+    [Ed("Кратчайший путь", "Маршрут с наименьшим числом гексов")] ShortestRoute,
+    [Ed("База с наименьшим здоровьем", "Доля здоровья цели маршрута в момент появления")] LowestHp,
+    [Ed("Случайно по весам (seed)", "Вес — у каждого маршрута")] Weighted,
 }
 
 /// <summary>
@@ -190,7 +195,9 @@ public sealed class SpawnGroupDef : ContentPart
     [Ed("Подобрана по бюджету", "Создана подбором по бюджету угрозы; заменяется при новом закреплении")] public bool FromBudget { get; set; }
     // Stage 3 (docs/DECISIONS_4.md §57): several routes for one group.
     [Ed("Другие маршруты", "Враги группы распределяются между основным и этими маршрутами")] public List<string> AltRoutes { get; set; } = new();
-    [Ed("Выбор маршрута", "Если указаны другие маршруты")] public GroupRouteSelect RouteSelect { get; set; } = GroupRouteSelect.RoundRobin;
+    [Ed("Выбор маршрута (базы)", "Если указаны другие маршруты; при уничтожении выбранной базы — альтернативные цели")] public GroupRouteSelect RouteSelect { get; set; } = GroupRouteSelect.RoundRobin;
+    [Ed("Охотится", "Режим «Смешанный»: враги группы ищут юнитов игрока, маршрут — только путь подхода (в «Штурме» охотятся все)")]
+    public bool Hunt { get; set; }
 
     /// <summary>The main route and the other ones (empty IDs skipped).</summary>
     public List<string> Routes()

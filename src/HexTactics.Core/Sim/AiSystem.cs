@@ -110,6 +110,10 @@ public sealed class AiSystem
             return;
         }
 
+        // «Штурм» and hunting groups of «Смешанный»: the player's units first, the route is only the way there.
+        if (u.Ai.Hunts && p.RouteOnly) Problem(u, "route_only", "«только маршрут» — на охоту не переключается (профиль сильнее режима и группы)");
+        else if (u.Ai.Hunts && dir is not (AiDirective.Hold or AiDirective.Retreat) && Hunt(u, p)) return;
+
         // Wave enemies with «идти по маршруту, не отвлекаясь» walk on (only blockers stop them, handled above).
         bool focus = p.RouteFocus || u.Nav?.Focus == true || dir == AiDirective.Advance;
         if (focus && u.Route != null && FollowRoute(u)) return;
@@ -139,7 +143,13 @@ public sealed class AiSystem
         if (p.Patrol && u.Ai.HoldCenter is HexCoord pc) attackable = attackable.Where(e => HexCoord.Distance(e.Pos, pc) <= p.PatrolRadius + 2).ToList();
         // A route enemy: whom it may leave its route for, and when it comes back (docs/DECISIONS_4.md §59).
         bool onRoute = u.Route != null && (u.Nav != null || u.RouteId != "");
-        if (onRoute && p.Encounter != null)
+        // «Только маршрут»: whom it reaches from its place, and its own target at the end of the route — never a chase.
+        if (p.RouteOnly)
+        {
+            int reach = MaxReach(u);
+            attackable = attackable.Where(e => StructureSystem.DistanceTo(u.Pos, e) <= reach || e.IsStructure && e.ObjectId != "" && e.ObjectId == u.TargetObject).ToList();
+        }
+        else if (onRoute && p.Encounter != null)
         {
             attackable = EncounterTargets(u, p, p.Encounter, attackable, out var giveUp);
             if (giveUp != "" && u.Ai.OffRouteSince >= 0)
@@ -151,7 +161,7 @@ public sealed class AiSystem
         {
             var target = ChooseTarget(u, attackable, p, dir, out var why);
             SetTarget(u, target);
-            if (onRoute && u.Ai.OffRouteSince < 0)
+            if (onRoute && u.Ai.OffRouteSince < 0 && !p.RouteOnly)
             {
                 u.Ai.OffRouteSince = _sim.Tick;
                 u.Ai.RouteAnchor = u.Pos;
@@ -187,7 +197,7 @@ public sealed class AiSystem
         if (u.Ai.Alternative != null && FollowAlternative(u, p)) return;
 
         // Pursue last known enemy position.
-        if (p.Pursue && u.Ai.KnownEnemies.Count > 0 && !hold)
+        if (p.Pursue && !p.RouteOnly && u.Ai.KnownEnemies.Count > 0 && !hold)
         {
             var last = u.Ai.KnownEnemies.OrderByDescending(k => k.Value.Tick).ThenBy(k => HexCoord.Distance(u.Pos, k.Value.Pos)).First();
             if (HexCoord.Distance(u.Pos, last.Value.Pos) <= 1)
@@ -210,12 +220,12 @@ public sealed class AiSystem
         if ((p.StayWithAllies || dir == AiDirective.Guard) && KeepWithAllies(u, p)) return;
 
         // Patrol around the position.
-        if (p.Patrol && Patrol(u, p)) return;
+        if (p.Patrol && !p.RouteOnly && Patrol(u, p)) return;
 
         // «Свободный бой» and autotests: look for the other side (docs/DECISIONS_4.md §64).
-        if (!hold && (_sim.Scenario.Mode is BattleMode.FreeBattle || (_sim.Scenario.Mode is BattleMode.AutoTest && u.Route == null && u.Wave < 0)) && Seek(u)) return;
+        if (!hold && !p.RouteOnly && (_sim.Scenario.Mode is BattleMode.FreeBattle || (_sim.Scenario.Mode is BattleMode.AutoTest && u.Route == null && u.Wave < 0)) && Seek(u)) return;
 
-        if (p.AdvanceWhenIdle && !hold && (cur == null || cur.Type == CommandType.Defend))
+        if (p.AdvanceWhenIdle && !p.RouteOnly && !hold && (cur == null || cur.Type == CommandType.Defend))
         {
             var start = _sim.Map.Def.Markers.Where(m => m.Type == MarkerType.PlayerStart).Select(m => (HexCoord?)m.C).FirstOrDefault();
             var goal = start ?? MapCenter();
@@ -400,6 +410,11 @@ public sealed class AiSystem
                     return;
                 }
                 case AltTargetKind.AttackDefenders:
+                    if (p.RouteOnly)
+                    {
+                        _sim.Emit(SimEventType.AiDecision, LogLevel.Detail, $"{u.Name}: {lost} — «атаковать защитников» пропущено: профиль «только маршрут»", u.Id, -1, u.Pos);
+                        continue;
+                    }
                     if (!_sim.Units.Any(e => e.Alive && !e.IsStructure && _sim.IsHostile(u, e))) continue;
                     Switch(u, AltTargetKind.AttackDefenders, $"{lost} — атакует защитников");
                     u.TargetObject = "";
@@ -538,6 +553,30 @@ public sealed class AiSystem
         if (e == null) return false;
         if (StructureSystem.DistanceTo(u.Pos, e) <= 1) return false;
         if (MoveTo(u, StructureSystem.AimCell(e, u.Pos), 1, $"ищет противника: идёт к {e.Name}")) return true;
+        Problem(u, "no_path", $"нет пути к противнику {e.Name}");
+        return false;
+    }
+
+    /// <summary>
+    /// A hunter: attacks a visible enemy, otherwise goes to the nearest known or seen unit of the other side; with nobody
+    /// to hunt — false (the route or the base then).
+    /// </summary>
+    private bool Hunt(Unit u, AiProfileDef p)
+    {
+        var visible = _sim.Units.Where(e => e.Alive && !e.IsStructure && _sim.IsHostile(u, e) && _sim.Vision.CanFactionSee(u.FactionId, e) && CanHitLayer(u, e)).ToList();
+        if (visible.Count > 0)
+        {
+            var target = ChooseTarget(u, visible, p, u.Ai.Directive, out var why);
+            SetTarget(u, target);
+            if (TryAttack(u, target, p, "охотится: " + why)) return true;
+            if (Approach(u, target, p, "охотится: " + why, false)) return true;
+        }
+        var cur = u.Queue.Current;
+        if (cur != null && cur.Type == CommandType.Move && cur.Status != CommandStatus.Pending) return true;
+        var e = _sim.Units.Where(x => x.Alive && !x.IsStructure && _sim.IsHostile(u, x)).OrderBy(x => HexCoord.Distance(u.Pos, x.Pos)).ThenBy(x => x.Id).FirstOrDefault();
+        if (e == null) return false;
+        if (HexCoord.Distance(u.Pos, e.Pos) <= 1) return false;
+        if (MoveTo(u, e.Pos, 1, $"охотится: идёт к {e.Name}")) return true;
         Problem(u, "no_path", $"нет пути к противнику {e.Name}");
         return false;
     }

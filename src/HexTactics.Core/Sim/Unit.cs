@@ -432,6 +432,8 @@ public sealed class AiState
     public long YieldUntil { get; set; } = -1;
     /// <summary>Gave up the route («остановиться с диагностикой»).</summary>
     public bool Aborted { get; set; }
+    /// <summary>Looks for the player's units first, the route is only the way there («Штурм», groups «охотится» of «Смешанный»).</summary>
+    public bool Hunts { get; set; }
     /// <summary>The last reaction to a blocked route (diagnostics, tests).</summary>
     public string LastReaction { get; set; } = "";
 }

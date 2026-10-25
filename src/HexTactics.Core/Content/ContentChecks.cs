@@ -391,6 +391,16 @@ public static class ContentChecks
             if (r.Actions.Any(x => x.Type == TriggerActionType.SetAiProfile && x.AiProfile == a.Id && x.Target == ActionTarget.Self))
                 issues.Add(Warn(a, $"Rules[{i}]", "Правило переключает юнита на этот же профиль"));
         }
+        // «Только маршрут» (docs/DECISIONS_5.md §86): what in the profile would send it hunting does not act.
+        if (a.RouteOnly)
+        {
+            if (a.Encounter is { Mode: EncounterMode.Hunter or EncounterMode.Assassin or EncounterMode.PackGuard } enc)
+                issues.Add(Warn(a, "Encounter", $"«Только маршрут»: поведение при встрече «{EdUtil.EnumLabel(enc.Mode)}» не уводит с маршрута — бьёт только тех, кого достаёт с места"));
+            if (a.AltTargets.Any(t => t.Kind == AltTargetKind.AttackDefenders))
+                issues.Add(Warn(a, "AltTargets", "«Только маршрут»: альтернатива «атаковать защитников» пропускается"));
+            if (a.AdvanceWhenIdle || a.Patrol)
+                issues.Add(Info(a, "RouteOnly", "«Только маршрут»: наступление без обзора и патруль не действуют (как и преследование)"));
+        }
     }
 
     /// <summary>Synergies whose results create their own inputs again (A+B → … → A) chain without end except cooldowns.</summary>

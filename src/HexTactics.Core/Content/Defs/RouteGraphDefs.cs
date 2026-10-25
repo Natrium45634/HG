@@ -116,6 +116,7 @@ public sealed class RouteDef : ContentPart
     [Ed("Завершение")] public RouteEndKind End { get; set; } = RouteEndKind.Target;
     [Ed("Разрешить незавершённый", "Подтверждение автора: маршрут без цели всё равно используется")] public bool AllowIncomplete { get; set; }
     [Ed("Запасной маршрут", "Выход из узла заблокирован — враг переходит на этот маршрут")] public string Fallback { get; set; } = "";
+    [Ed("Вес", "Для выбора группой «случайно по весам»"), EdRange(0, 1000)] public double Weight { get; set; } = 1;
     [Ed("Строгость следования", "Как враг держится нарисованных гексов (ТЗ ч. 5, 11.2; docs/DECISIONS_5.md §86)")]
     public RouteStrictness Strictness { get; set; } = RouteStrictness.Corridor;
     [Ed("Допуск коридора, гексов", "Насколько можно отойти от линии маршрута"), EdRange(1, 6), EdShowIf(nameof(Strictness), RouteStrictness.Corridor)]

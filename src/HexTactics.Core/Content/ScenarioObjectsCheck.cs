@@ -24,6 +24,7 @@ public static class ScenarioObjectsCheck
             list.Add(new(IssueSeverity.Error, "Routes", $"ID маршрута «{id}» повторяется"));
         foreach (var r in sc.Routes) list.AddRange(Route(db, sc, map, r));
         list.AddRange(Groups(db, sc, map));
+        list.AddRange(ScenarioModes.Check(db, sc));
         return list;
     }
 
@@ -276,6 +277,12 @@ public static class ScenarioObjectsCheck
                 if (g.Target != "" && sc.Object(g.Target) == null) list.Add(new(IssueSeverity.Error, path, $"{name}: цель «{g.Target}» не найдена"));
                 foreach (var alt in g.AltRoutes.Where(x => x != "" && sc.Route(x) == null && map?.FindRoute(x) == null))
                     list.Add(new(IssueSeverity.Error, path, $"{name}: другой маршрут «{alt}» не найден", b?.Anchor));
+                // The choice of the final base (docs/DECISIONS_5.md §86).
+                var choice = g.Routes().Select(sc.Route).Where(x => x != null).Select(x => x!).ToList();
+                if (g.RouteSelect == GroupRouteSelect.Weighted && choice.Count > 1 && choice.All(x => x.Weight <= 0))
+                    list.Add(new(IssueSeverity.Error, path, $"{name}: выбор «по весам», но у всех маршрутов вес 0", b?.Anchor));
+                if (g.RouteSelect is GroupRouteSelect.NearestBase or GroupRouteSelect.LowestHp && choice.Count > 1 && choice.Select(x => x.Target).Distinct().Count() < 2)
+                    list.Add(new(IssueSeverity.Info, path, $"{name}: выбор по базе, но все маршруты ведут к одной цели — выбор ничего не меняет", b?.Anchor));
                 if (g.SubgroupSize > 0 && g.SubgroupSize >= g.Count && g.Repeats == 0)
                     list.Add(new(IssueSeverity.Info, path, $"{name}: подгруппа ({g.SubgroupSize}) не меньше количества ({g.Count}) — пауза не действует"));
                 if (g.MaxAlive > 0 && w.MaxAlive > 0 && g.MaxAlive > w.MaxAlive)

@@ -853,6 +853,12 @@
           "minimum": 1,
           "maximum": 6,
           "description": "Допуск коридора, гексов — Насколько можно отойти от линии маршрута"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Вес — Для выбора группой «случайно по весам»"
         }
       },
       "additionalProperties": true
@@ -1152,7 +1158,12 @@
             "Normal",
             "TdPlacement",
             "FreeBattle",
-            "AutoTest"
+            "AutoTest",
+            "TowerDefense",
+            "Assault",
+            "Mixed",
+            "Escort",
+            "Sandbox"
           ],
           "description": "Режим боя"
         },
@@ -1936,6 +1947,10 @@
           "type": "boolean",
           "description": "Подобрана по бюджету — Создана подбором по бюджету угрозы; заменяется при новом закреплении"
         },
+        "hunt": {
+          "type": "boolean",
+          "description": "Охотится — Режим «Смешанный»: враги группы ищут юнитов игрока, маршрут — только путь подхода (в «Штурме» охотятся все)"
+        },
         "id": {
           "type": "string",
           "description": "ID"
@@ -1993,9 +2008,13 @@
           "enum": [
             "Single",
             "RoundRobin",
-            "Random"
+            "Random",
+            "NearestBase",
+            "ShortestRoute",
+            "LowestHp",
+            "Weighted"
           ],
-          "description": "Выбор маршрута — Если указаны другие маршруты"
+          "description": "Выбор маршрута (базы) — Если указаны другие маршруты; при уничтожении выбранной базы — альтернативные цели"
         },
         "spawnBase": {
           "type": "string",
