@@ -13,6 +13,10 @@ public sealed class RouteNav
     public string Node { get; set; } = "";
     public string Edge { get; set; } = "";
     public Dictionary<string, int> Uses { get; } = new(StringComparer.Ordinal);
+    /// <summary>When the enemy first took each loop edge (for «выйти через N с»).</summary>
+    public Dictionary<string, long> LoopStart { get; } = new(StringComparer.Ordinal);
+    /// <summary>The roll «выйти после прохода» of each pass, made once (edge:pass → exit).</summary>
+    public Dictionary<string, bool> ExitRolls { get; } = new(StringComparer.Ordinal);
     public long DwellUntil { get; set; } = -1;
     public bool Finished { get; set; }
     /// <summary>Walking a loop that forbids fighting on the way.</summary>
@@ -190,6 +194,7 @@ public sealed class RouteNavigator
             return RouteStep.Wait;
         }
         nav.Uses[e.Id] = nav.Uses.GetValueOrDefault(e.Id) + 1;
+        nav.LoopStart.TryAdd(e.Id, _sim.Tick);
         nav.Taken.Add(e.Id);
         // A cycle nobody controls (an unpublished draft) must not walk forever.
         if (nav.Taken.Count > 10_000 && r.End != RouteEndKind.Patrol)
@@ -231,7 +236,15 @@ public sealed class RouteNavigator
             var loop = f.Loop!;
             int used = u.Nav?.Uses.GetValueOrDefault(f.Id) ?? 0;
             if (loop.MaxRepeats > 0 && used >= loop.MaxRepeats) return true;
+            if (loop.MaxSeconds > 0 && u.Nav != null && u.Nav.LoopStart.TryGetValue(f.Id, out var t0) && _sim.Tick - t0 >= _sim.TicksFor(loop.MaxSeconds)) return true;
             if (loop.ExitCondition != null && _sim.Scenario.Evaluate(loop.ExitCondition, u)) return true;
+            if (loop.ExitChance > 0 && used > 0 && u.Nav != null)
+            {
+                // One roll per pass (the node may be asked several times while the enemy waits in it).
+                string key = f.Id + ":" + used;
+                if (!u.Nav.ExitRolls.TryGetValue(key, out var exit)) u.Nav.ExitRolls[key] = exit = _sim.AiRng.Chance(loop.ExitChance);
+                if (exit) return true;
+            }
         }
         return false;
     }

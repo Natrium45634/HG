@@ -64,6 +64,9 @@ public static class ScenarioObjectsCheck
             }
             if (o.Type == ScenarioObjectType.SpawnBase && o.Spawn == null)
                 list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}»: база спавна без компонента «Спавн» — враги из неё не появятся", o.Anchor, o.Id));
+            if (o.Spawn != null && o.Health is { Destructible: true } && o.Spawn.OnDestroyed == SpawnerDestroyedPolicy.ContinueQueue)
+                list.Add(new(IssueSeverity.Info, "Objects", $"«{o.DisplayName}»: после разрушения запланированные враги продолжат появляться на её месте — " +
+                    "так задумано? Иначе выберите «остановить» или «докончить начатую порцию»", o.Anchor, o.Id));
             if (o.Spawn != null && !sc.Waves.Any(w => w.Groups.Any(g => g.SpawnBase == o.Id)))
                 list.Add(new(IssueSeverity.Info, "Objects", $"Из «{o.DisplayName}» не появляется ни одна группа", o.Anchor, o.Id));
         }
@@ -229,6 +232,13 @@ public static class ScenarioObjectsCheck
         foreach (var e in r.Edges.Where(r.IsLoopEdge))
             if (r.End != RouteEndKind.Patrol && !r.IsControlledLoop(e))
                 list.Add(new(IssueSeverity.Error, "Routes", $"{name}: петля через ребро {e.Id} без числа повторений и условия выхода — отметьте «бесконечный патруль» или задайте выход", e.Cells.FirstOrDefault(), r.Id));
+        // A route that must reach its end needs a guaranteed way out of each loop: a chance or a condition may never come
+        // (ТЗ ч. 5, 10.9; docs/DECISIONS_5.md §85).
+        if (r.End == RouteEndKind.Target)
+            foreach (var e in r.Edges.Where(x => x.Loop != null && r.IsLoopEdge(x) && !x.Loop.Guaranteed && r.LoopControls(x).All(f => !f.Loop!.Guaranteed)))
+                list.Add(new(e.Loop!.ExitChance > 0 && e.Loop.ExitCondition == null ? IssueSeverity.Error : IssueSeverity.Warning, "Routes",
+                    $"{name}: петля через ребро {e.Id} заканчивается только {(e.Loop.ExitChance > 0 ? "по шансу" : "по условию")} — задайте предел повторений или времени, иначе враг может не дойти до цели",
+                    e.Cells.FirstOrDefault(), r.Id));
         if (r.End == RouteEndKind.Target && reach.Count > 0 && !r.Nodes.Any(n => reach.Contains(n.Id) && !r.Out(n.Id).Any()))
             list.Add(new(IssueSeverity.Error, "Routes", $"{name}: из петель нет выхода к концу маршрута", r.StartNode()?.C, r.Id));
         if (r.Fallback != "" && (sc.Route(r.Fallback) == null || r.Fallback == r.Id))

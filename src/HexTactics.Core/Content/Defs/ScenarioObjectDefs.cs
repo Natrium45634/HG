@@ -85,6 +85,17 @@ public sealed class SpawnComponentDef : ContentPart
     [Ed("Условие отключения")] public ConditionDef? DisableCondition { get; set; }
     [Ed("Если выход занят")] public SpawnBlockedPolicy Blocked { get; set; } = SpawnBlockedPolicy.NearestFree;
     [Ed("Радиус поиска свободного гекса"), EdRange(1, 10), EdShowIf(nameof(Blocked), SpawnBlockedPolicy.NearestFree)] public int SearchRadius { get; set; } = 3;
+    [Ed("Если база разрушена", "Что делать с запланированными появлениями (ТЗ ч. 5, 9.10); перенаправить уже вышедших — триггер на событие " +
+        "«Уничтожение базы» с действием «сменить маршрут группы»")]
+    public SpawnerDestroyedPolicy OnDestroyed { get; set; } = SpawnerDestroyedPolicy.ContinueQueue;
+}
+
+/// <summary>What a destroyed spawn base does with the appearances still planned (docs/DECISIONS_5.md §85).</summary>
+public enum SpawnerDestroyedPolicy
+{
+    [Ed("Продолжить очередь", "Запланированные враги появляются на месте разрушенной базы (как в 1.0)")] ContinueQueue,
+    [Ed("Остановить", "Оставшиеся появления отменяются")] Stop,
+    [Ed("Докончить начатую порцию", "Порция (подгруппа), из которой кто-то уже вышел до разрушения, выходит до конца; остальные отменяются")] CompleteBatch,
 }
 
 /// <summary>

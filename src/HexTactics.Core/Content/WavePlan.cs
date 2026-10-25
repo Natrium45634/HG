@@ -33,7 +33,7 @@ public static class WavePlan
     public static List<PlannedWave> Of(ContentDatabase db, ScenarioDef sc)
     {
         var list = new List<PlannedWave>();
-        double? prevEnd = 0;
+        double? prevEnd = 0, prevSpawnEnd = 0;
         for (int i = 0; i < sc.Waves.Count; i++)
         {
             var w = sc.Waves[i];
@@ -87,6 +87,10 @@ public static class WavePlan
                     p.Start = prevEnd is { } e ? e + w.Delay : null;
                     p.StartText = i == 0 ? "сразу" : "после зачистки предыдущей" + (w.Delay > 0 ? $" + {w.Delay:0.#} с" : "");
                     break;
+                case WaveStart.AfterPreviousSpawned:
+                    p.Start = prevSpawnEnd is { } se ? se + w.Delay : null;
+                    p.StartText = i == 0 ? "сразу" : "после появления предыдущей" + (w.Delay > 0 ? $" + {w.Delay:0.#} с" : "");
+                    break;
                 case WaveStart.OnCondition:
                     p.StartText = "по условию";
                     break;
@@ -96,6 +100,7 @@ public static class WavePlan
             }
             // The wave is cleared about when its last enemy has walked its route.
             prevEnd = p.Start is { } s0 ? s0 + p.SpawnSeconds + p.Spawns.Select(s => WalkSeconds(db, sc, s)).DefaultIfEmpty(0).Max() : null;
+            prevSpawnEnd = p.Start is { } s1 ? s1 + p.SpawnSeconds : null;
             list.Add(p);
         }
         return list;

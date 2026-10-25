@@ -271,6 +271,7 @@ public enum WaveStart
     [Ed("После зачистки предыдущей волны")] AfterPrevious,
     [Ed("По условию (вход в область, устройство, событие…)")] OnCondition,
     [Ed("Только действием триггера")] Manual,
+    [Ed("После окончания появления предыдущей", "Предыдущая выпустила всех врагов; её враги ещё могут быть живы")] AfterPreviousSpawned,
 }
 
 public sealed class WaveDef : ContentPart
@@ -279,7 +280,7 @@ public sealed class WaveDef : ContentPart
     [Ed("Начало")] public WaveStart Start { get; set; } = WaveStart.Time;
     [Ed("Время начала, с"), EdRange(0, 36000), EdShowIf(nameof(Start), WaveStart.Time)] public double Time { get; set; } = 30;
     [Ed("Задержка, с", "После зачистки предыдущей / выполнения условия (маркер предупреждения добавляется сверху)"), EdRange(0, 3600),
-     EdShowIf(nameof(Start), WaveStart.AfterPrevious, WaveStart.OnCondition)]
+     EdShowIf(nameof(Start), WaveStart.AfterPrevious, WaveStart.OnCondition, WaveStart.AfterPreviousSpawned)]
     public double Delay { get; set; }
     [Ed("Условие начала"), EdShowIf(nameof(Start), WaveStart.OnCondition)] public ConditionDef StartCondition { get; set; } = new() { Type = ConditionType.UnitInArea };
     [Ed("Метка появления", "ID метки карты (точка появления)")] public string SpawnMarker { get; set; } = "";

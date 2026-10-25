@@ -40,6 +40,10 @@ public sealed class PlannedSpawn
     public string WaitReason { get; set; } = "";
     /// <summary>Planned again after waiting for a slot (holds that slot until it appears).</summary>
     public bool Replanned { get; set; }
+    /// <summary>The portion (subgroup of a run of a group) the appearance belongs to; "" — alone.</summary>
+    public string Batch { get; init; } = "";
+    /// <summary>When it appeared (−1 — not yet or cancelled).</summary>
+    public long SpawnedTick { get; set; } = -1;
 }
 
 public sealed class WaveRuntime
@@ -51,6 +55,11 @@ public sealed class WaveRuntime
     public List<int> UnitIds { get; } = new();
     public long StartedTick { get; set; } = -1;
     public long ClearedTick { get; set; } = -1;
+    /// <summary>
+    /// Every appearance is done (spawned or cancelled): «появление окончено» — the wave itself ends when its enemies are
+    /// gone (ТЗ ч. 5, 9.7; docs/DECISIONS_5.md §85).
+    /// </summary>
+    public long SpawnFinishedTick { get; set; } = -1;
     /// <summary>The composition picked by the budget at the start (an unpinned budget wave).</summary>
     public BudgetResult? Budget { get; set; }
     /// <summary>Groups whose «условие отмены» fired.</summary>
@@ -242,7 +251,7 @@ public sealed partial class ScenarioSystem
 
     /// <summary>One appearance before it is planned on the timeline.</summary>
     private sealed record SpawnItem(UnitDef Def, string Tag, string AiProfile, HexCoord From, string Marker, string Route, string Target, string Group,
-        string Base, string Faction, double Offset, List<(StatModDef, string)> Mods);
+        string Base, string Faction, double Offset, List<(StatModDef, string)> Mods, string Batch = "");
 
     /// <summary>The wave's difficulty and the group's own modifiers as instance modifiers.</summary>
     private static List<(StatModDef, string)> ModsOf(WaveDef w, SpawnGroupDef? g)
@@ -317,7 +326,8 @@ public sealed partial class ScenarioSystem
                         : g.RouteSelect == GroupRouteSelect.Random ? routes[_sim.SpawnRng.NextInt(0, routes.Count)] : routes[turn++ % routes.Count];
                     string target = g.Target != "" ? g.Target : Def?.Route(route)?.Target ?? "";
                     list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, route, target, g.Id, b.Id,
-                        g.Faction != "" ? g.Faction : w.Faction, b.Spawn!.InitialDelay + rep * g.RepeatEvery + g.OffsetOf(k), mods));
+                        g.Faction != "" ? g.Faction : w.Faction, b.Spawn!.InitialDelay + rep * g.RepeatEvery + g.OffsetOf(k), mods,
+                        $"{g.Id}:{rep}:{(g.SubgroupSize > 0 ? k / g.SubgroupSize : k)}"));
                 }
         }
         return list;
@@ -361,7 +371,7 @@ public sealed partial class ScenarioSystem
             {
                 Id = _nextSpawnId++, Wave = w.Index, Def = it.Def, Marker = it.Marker, From = it.From,
                 Tick = baseTick + _sim.TicksFor(it.Offset), Tag = it.Tag, AiProfile = it.AiProfile,
-                Route = it.Route, Target = it.Target, Group = it.Group, SpawnBase = it.Base, Faction = it.Faction, Mods = it.Mods,
+                Route = it.Route, Target = it.Target, Group = it.Group, SpawnBase = it.Base, Faction = it.Faction, Mods = it.Mods, Batch = it.Batch,
             };
             w.Planned.Add(p);
             Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
@@ -397,6 +407,7 @@ public sealed partial class ScenarioSystem
         foreach (var p in w.Planned.Where(p => !p.Done)) p.Done = true;
         Warnings.RemoveWave(index);
         w.State = WaveState.Cancelled;
+        if (w.SpawnFinishedTick < 0) SpawnFinished(w);
         _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Волна «{w.Def.Name}» отменена");
         _sim.Emit(SimEventType.WaveEnded, LogLevel.Diagnostic, $"Волна «{w.Def.Name}» завершена: отменена", value: index);
         Raise(ScenarioEventType.WaveEnded, null, "", index);
@@ -474,6 +485,20 @@ public sealed partial class ScenarioSystem
         HexCoord? cell;
         if (b?.Spawn != null)
         {
+            // A destroyed base: its policy (ТЗ ч. 5, 9.10; docs/DECISIONS_5.md §85).
+            if (_sim.Structures.Of(b.Id) is { Alive: false } dead && b.Spawn.OnDestroyed != SpawnerDestroyedPolicy.ContinueQueue)
+            {
+                bool keep = b.Spawn.OnDestroyed == SpawnerDestroyedPolicy.CompleteBatch && p.Batch != ""
+                            && w.Planned.Any(x => x.Batch == p.Batch && x.SpawnBase == p.SpawnBase && x.SpawnedTick >= 0 && x.SpawnedTick <= dead.DiedAtTick);
+                if (!keep)
+                {
+                    p.Done = true;
+                    Warnings.Remove(p.Id);
+                    _sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"«{b.DisplayName}» разрушена — появление «{p.Def.DisplayName}» отменено " +
+                        (b.Spawn.OnDestroyed == SpawnerDestroyedPolicy.Stop ? "(остановить)" : "(порция не начиналась)"));
+                    return;
+                }
+            }
             // A spawn base: inactive — the appearance waits; a taken exit — the base's policy (docs/DECISIONS_4.md §58).
             if (!SpawnBaseActive(b)) return;
             cell = SpawnCell(b, p.Def);
@@ -517,6 +542,7 @@ public sealed partial class ScenarioSystem
             _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, e.Message);
             return;
         }
+        p.SpawnedTick = _sim.Tick;
         u.Wave = w.Index;
         u.Group = p.Group;
         u.RouteId = routeId;
@@ -610,10 +636,14 @@ public sealed partial class ScenarioSystem
                         at = Math.Max(at, prev.StartedTick + _sim.TicksFor(prev.Def.MinGapNext));
                     if (w.Def.Start == WaveStart.AfterPrevious && w.Index > 0 && _waves[w.Index - 1].State is WaveState.Cleared or WaveState.Cancelled)
                         Schedule(w, at, lead: true);
+                    else if (w.Def.Start == WaveStart.AfterPreviousSpawned && (w.Index == 0 || _waves[w.Index - 1].SpawnFinishedTick >= 0 || _waves[w.Index - 1].State == WaveState.Cancelled))
+                        Schedule(w, at, lead: true);
                     else if (w.Def.Start == WaveStart.AfterPrevious && w.Index == 0)
                         Schedule(w, at, lead: true);
                     else if (w.Def.Start == WaveStart.OnCondition && Evaluate(w.Def.StartCondition))
                         Schedule(w, at, lead: true);
+                    // Appearances due right now come out in this tick, as planned (ТЗ ч. 5, T07), not one tick later.
+                    if (w.State == WaveState.Scheduled) ProcessSpawns(w);
                     break;
                 }
                 case WaveState.Scheduled:
@@ -645,6 +675,7 @@ public sealed partial class ScenarioSystem
                         Warnings.Plan(p.Id, w.Index, w.Def, p.Def, p.Faction, p.Marker, p.From, p.Tick, p.Route);
                     }
                     ProcessSpawns(w);
+                    if (w.SpawnFinishedTick < 0 && w.StartedTick >= 0 && w.Planned.All(p => p.Done)) SpawnFinished(w);
                     if (w.State == WaveState.Active && w.Planned.All(p => p.Done))
                     {
                         bool cleared = w.Def.CustomEnd ? Evaluate(w.Def.EndCondition) : AliveOf(w) == 0;
@@ -663,6 +694,13 @@ public sealed partial class ScenarioSystem
                 }
             }
         }
+    }
+
+    private void SpawnFinished(WaveRuntime w)
+    {
+        w.SpawnFinishedTick = _sim.Tick;
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Волна «{w.Def.Name}»: появление окончено — выпущено {w.UnitIds.Count} из {w.Total}", value: w.Index);
+        Raise(ScenarioEventType.WaveSpawnFinished, null, "", w.Index);
     }
 
     /// <summary>«Условие отмены» of a group: its remaining appearances are cancelled once.</summary>

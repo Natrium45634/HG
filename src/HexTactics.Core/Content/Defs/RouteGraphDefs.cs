@@ -34,9 +34,16 @@ public sealed class RouteLoopDef : ContentPart
 {
     [Ed("Повторений", "Сколько раз враг проходит петлю; 0 — без ограничения (только у патруля)"), EdRange(0, 1000)] public int MaxRepeats { get; set; } = 2;
     [Ed("Условие выхода", "Выполнено — петля больше не выбирается")] public ConditionDef? ExitCondition { get; set; }
+    [Ed("Шанс выйти после прохода", "После каждого прохода враг выходит с этим шансом (ГСЧ ИИ, воспроизводимо по seed); предел повторений " +
+        "остаётся гарантией (docs/DECISIONS_5.md §85)"), EdRange(0, 1)] public double ExitChance { get; set; }
+    [Ed("Выйти через, с", "Не дольше этого времени на петле; 0 — без предела по времени"), EdRange(0, 3600)] public double MaxSeconds { get; set; }
     [Ed("Атаковать по пути", "Нет — враг на петле идёт, не отвлекаясь на цели")] public bool Engage { get; set; } = true;
 
-    public override string ToString() => (MaxRepeats > 0 ? $"×{MaxRepeats}" : "без ограничения") + (ExitCondition != null ? ", с условием выхода" : "");
+    /// <summary>The loop ends whatever happens: a limit of repeats or of time (a chance or a condition alone may never come).</summary>
+    [System.Text.Json.Serialization.JsonIgnore] public bool Guaranteed => MaxRepeats > 0 || MaxSeconds > 0;
+
+    public override string ToString() => (MaxRepeats > 0 ? $"×{MaxRepeats}" : "без ограничения") + (MaxSeconds > 0 ? $", ≤ {MaxSeconds:0.#} с" : "") +
+                                         (ExitChance > 0 ? $", выход {ExitChance:P0}" : "") + (ExitCondition != null ? ", с условием выхода" : "");
 }
 
 /// <summary>How a route ends: at a target, or by a rule for patrols and guards.</summary>
@@ -169,7 +176,7 @@ public sealed class RouteDef : ContentPart
     public IEnumerable<RouteEdgeDef> LoopControls(RouteEdgeDef e)
     {
         var fromTo = Reachable(e.To);
-        return Edges.Where(f => (f.Loop is { MaxRepeats: > 0 } || f.Loop?.ExitCondition != null)
+        return Edges.Where(f => (f.Loop is { MaxRepeats: > 0 } or { MaxSeconds: > 0 } or { ExitChance: > 0 } || f.Loop?.ExitCondition != null)
                                 && (f == e || fromTo.Contains(f.From) && Reachable(f.To).Contains(e.From)));
     }
 

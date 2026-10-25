@@ -890,6 +890,12 @@
           "type": "boolean",
           "description": "Атаковать по пути — Нет — враг на петле идёт, не отвлекаясь на цели"
         },
+        "exitChance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс выйти после прохода — После каждого прохода враг выходит с этим шансом (ГСЧ ИИ, воспроизводимо по seed); предел повторений остаётся гарантией (docs/DECISIONS_5.md §85)"
+        },
         "exitCondition": {
           "anyOf": [
             {
@@ -901,11 +907,20 @@
           ],
           "description": "Условие выхода — Выполнено — петля больше не выбирается"
         },
+        "guaranteed": {
+          "type": "boolean"
+        },
         "maxRepeats": {
           "type": "integer",
           "minimum": 0,
           "maximum": 1000,
           "description": "Повторений — Сколько раз враг проходит петлю; 0 — без ограничения (только у патруля)"
+        },
+        "maxSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Выйти через, с — Не дольше этого времени на петле; 0 — без предела по времени"
         }
       },
       "additionalProperties": true
@@ -1788,6 +1803,15 @@
           },
           "description": "Типы перемещения — Кого может создавать (пусто — всех)"
         },
+        "onDestroyed": {
+          "type": "string",
+          "enum": [
+            "ContinueQueue",
+            "Stop",
+            "CompleteBatch"
+          ],
+          "description": "Если база разрушена — Что делать с запланированными появлениями (ТЗ ч. 5, 9.10); перенаправить уже вышедших — триггер на событие «Уничтожение базы» с действием «сменить маршрут группы»"
+        },
         "reactivateInterval": {
           "type": "number",
           "minimum": 0,
@@ -2284,7 +2308,8 @@
             "BattleEnded",
             "StatusApplied",
             "SkillUsed",
-            "PassiveTriggered"
+            "PassiveTriggered",
+            "WaveSpawnFinished"
           ],
           "description": "Событие — Нет — условие проверяется каждый тик (как раньше)"
         },
@@ -2543,7 +2568,8 @@
             "Time",
             "AfterPrevious",
             "OnCondition",
-            "Manual"
+            "Manual",
+            "AfterPreviousSpawned"
           ],
           "description": "Начало"
         },
