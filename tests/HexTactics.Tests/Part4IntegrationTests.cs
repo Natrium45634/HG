@@ -28,9 +28,9 @@ public class Part4IntegrationTests
     }
 
 #if DEBUG
-    private const double Slack = 2.5;
+    private static readonly double Slack = 2.5 * TestUtil.MachineSlack;
 #else
-    private const double Slack = 1.0;
+    private static readonly double Slack = 1.0 * TestUtil.MachineSlack;
 #endif
 
     /// <summary>TZ §21.1–21.3 on the shipped content: the map, the bases, the routes, the waves.</summary>

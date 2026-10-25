@@ -10,6 +10,12 @@ namespace HexTactics.Tests;
 /// <summary>Small hand-built content for isolated tests + access to the shipped content pack.</summary>
 public static class TestUtil
 {
+    /// <summary>
+    /// Time budgets of the load tests are set for a developer machine; shared CI runners (CI=true) are several times
+    /// slower and vary from run to run, so the budget there is doubled — it still catches a real slowdown.
+    /// </summary>
+    public static double MachineSlack => Environment.GetEnvironmentVariable("CI") == "true" ? 2.0 : 1.0;
+
     public static string ContentDir => Path.Combine(AppContext.BaseDirectory, "content");
 
     private static ContentDatabase? _shipped;

@@ -24,9 +24,9 @@ public class Part3IntegrationTests
     }
 
 #if DEBUG
-    private const double Slack = 2.0;
+    private static readonly double Slack = 2.0 * TestUtil.MachineSlack;
 #else
-    private const double Slack = 1.0;
+    private static readonly double Slack = 1.0 * TestUtil.MachineSlack;
 #endif
 
     /// <summary>A 30 × 18 field cut by two walls with narrow passes.</summary>

@@ -182,9 +182,9 @@ public class LoadTests
     }
 
 #if DEBUG
-    private const double Slack = 2.0;
+    private static readonly double Slack = 2.0 * TestUtil.MachineSlack;
 #else
-    private const double Slack = 1.0;
+    private static readonly double Slack = 1.0 * TestUtil.MachineSlack;
 #endif
 
     [Fact]
