@@ -2479,3 +2479,21 @@ Windows-сборка проверена самопроверкой на Windows 
   `game/content/rules.json`; `docs/schema/*`.
 * **Тесты**: `Part5DataTests` (7), `SchemaTests` (4), UI-тест
   `editor_project_overview_counts_and_jumps`. T03, T04, T25 — приняты.
+
+## Ч5 · Этап B. Редактор карты и TD
+
+* **Сделано** ([§85](DECISIONS_5.md)): инструменты карты — прямоугольник,
+  пипетка, ластик, копирование и штамп (в том числе из шаблона) с поворотом
+  на 60° и зеркалом, «≠» у разных значений выделенных клеток, слои,
+  «Размер…» с потерями до изменения; единицы мира (шаг высоты в правилах);
+  TD — разрушенная база спавна (остановить / докончить порцию / продолжить),
+  «появление окончено» ≠ «волна завершена» и старт по нему, выход из петли
+  по шансу и времени с гарантированным пределом, появление без опоздания на
+  тик.
+* **Файлы**: `src/HexTactics.Core/Content/MapOps.cs`, `Defs/{ScenarioObjectDefs,RouteGraphDefs,MapScenarioDefs,AutoBattleDefs,RulesDef}.cs`,
+  `ScenarioObjectsCheck.cs`, `WavePlan.cs`, `Sim/{ScenarioSystem,RouteNavigator}.cs`;
+  `game/src/Editor/MapEditorPanel.cs`, `game/src/UI/PropertyGrid.cs`
+  (`Mixed`), `game/src/Render/{Board,BoardView}.cs`.
+* **Тесты**: `Part5MapTests` (5), `Part5TdTests` (6), UI-тест
+  `editor_map_tools_stroke_undo_rect_stamp_resize`. T01, T06, T07, T09,
+  T10, T13 — приняты.

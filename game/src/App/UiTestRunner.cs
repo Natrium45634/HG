@@ -79,6 +79,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_td_context_menus_route_group_base", EditorTdMenus));
         _tests.Add(("editor_quick_input_links_creates_and_search_lists", EditorQuickInput));
         _tests.Add(("editor_project_overview_counts_and_jumps", EditorProjectOverview));
+        _tests.Add(("editor_map_tools_stroke_undo_rect_stamp_resize", EditorMapTools));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2802,6 +2803,102 @@ public partial class UiTestRunner : Node
         ctx.Db.Table(DefCategory.Element).Remove("p5_test_el");
         ctx.MarkDirty();
         ctx.Validate();
+    }
+
+    /// <summary>
+    /// Part 5 stage B (ТЗ T01, 5.3–5.8): a new 10 × 8 map, a brush stroke over ten cells undone by one step and redone;
+    /// the rectangle, mixed values «≠», copy and stamp turned by 60°, the eyedropper, the eraser, layers and the size
+    /// with its losses shown before the change, undone in one step.
+    /// </summary>
+    private async Task EditorMapTools()
+    {
+        var ed = await OpenEditor("maps");
+        var ctx = ed.Context;
+        var panel = Find<MapEditorPanel>(GetTree().Root).First();
+        await ClickButton("Создать");
+        await Frames(30);
+        string id = panel.Current!.Id;
+        MapDef Map() => ctx.Db.Get<MapDef>(id)!;
+        Check(Map().Cells.Count == 80, "новая карта не 10 × 8: " + Map().Cells.Count);
+        BoardViewport Vp() => Find<BoardViewport>(panel).First();
+        Vector2 At(HexCoord c)
+        {
+            var vp = Vp();
+            var cell = vp.Board.Map!.Get(c)!;
+            return vp.GetGlobalRect().Position + vp.Board.Rig.Camera.UnprojectPosition(Render.Board.Center(c, Render.Board.PickY(cell)));
+        }
+        Button Tool(string text) => Find<Button>(panel).First(b => b.Text == text);
+        var opt = Find<OptionButton>(panel).First(o => o.ItemCount > 5 && o.GetItemText(0).Contains("["));
+        opt.Select(Enumerable.Range(0, opt.ItemCount).First(i => opt.GetItemText(i).Contains("[lava]")));
+
+        // T01: one stroke over ten cells is one step of the history.
+        var row = Enumerable.Range(0, 10).Select(col => HexLayout.FromOffset(col, 3)).ToList();
+        await DragPath(row.Select(At).ToList(), 3);
+        Check(Map().Cells.Count(c => row.Contains(c.C) && c.T == "lava") == 10, "штрих кисти не прошёл по десяти клеткам: " + Map().Cells.Count(c => row.Contains(c.C) && c.T == "lava"));
+        await Committed(ctx);
+        await ClickVisible(Find<Button>(ed).First(b => b.Name == "EdUndo"));
+        await Frames(8);
+        Check(Map().Cells.Count(c => row.Contains(c.C) && c.T == "lava") == 0, "одна отмена должна убрать весь штрих");
+        await ClickVisible(Find<Button>(ed).First(b => b.Name == "EdRedo"));
+        await Frames(8);
+        Check(Map().Cells.Count(c => row.Contains(c.C) && c.T == "lava") == 10, "повтор не вернул штрих");
+        // The history rebuilt the form: the controls are new.
+        panel = Find<MapEditorPanel>(GetTree().Root).First();
+        opt = Find<OptionButton>(panel).First(o => o.ItemCount > 5 && o.GetItemText(0).Contains("["));
+
+        // A rectangle over rows 2–4: lava and floor — the form marks the terrain «≠».
+        await ClickVisible(Tool("Прямоугольник"));
+        await DragPath(new[] { At(HexLayout.FromOffset(2, 2)), At(HexLayout.FromOffset(4, 4)) }, 4);
+        await Frames(4);
+        Check(panel.Selection.Count >= 6, "прямоугольник не выделил клетки: " + panel.Selection.Count);
+        Check(Find<Label>(panel).Any(l => l.Name == "Mixed_T" && l.Text.EndsWith("≠")), "разные местности не отмечены «≠»");
+
+        // Copy, turn by 60° and stamp in the lower right part.
+        await ClickVisible(Find<Button>(panel).First(b => b.Name == "MapCopy"));
+        Check(panel.Stamp != null && panel.Stamp.Count == panel.Selection.Count, "кусок не скопирован");
+        await ClickVisible(Find<Button>(panel).First(b => b.Name == "MapStampTurn"));
+        var target = HexLayout.FromOffset(6, 5);
+        await Click(At(target));
+        await Frames(4);
+        Check(Map().Cells.Any(c => c.T == "lava" && HexLayout.ToOffset(c.C).Row >= 5), "штамп не поставил кусок с лавой ниже");
+
+        // The eyedropper takes the terrain of a floor cell back to the brush.
+        await ClickVisible(Tool("Пипетка"));
+        var floorCell = Map().Cells.First(c => c.T != "lava").C;
+        string floor = Map().Cells.First(c => c.C == floorCell).T;
+        await Click(At(floorCell));
+        Check(opt.GetItemText(opt.Selected).Contains($"[{floor}]"), "пипетка не взяла местность");
+
+        // The eraser clears the overrides of a cell.
+        var erased = HexLayout.FromOffset(8, 1);
+        Map().Cells.First(c => c.C == erased).Cover = 0.5;
+        await ClickVisible(Tool("Ластик"));
+        await Click(At(erased));
+        Check(Map().Cells.First(c => c.C == erased).Cover == null, "ластик не сбросил переопределение");
+
+        // Layers: hiding the markers changes nothing in the map.
+        var layers = Find<MenuButton>(panel).First(m => m.Name == "MapLayers");
+        int markers = Map().Markers.Count;
+        layers.GetPopup().EmitSignal(PopupMenu.SignalName.IdPressed, 0L);
+        Check(!panel.LayerVisible(0) && Map().Markers.Count == markers, "слой меток не скрылся или данные изменились");
+        layers.GetPopup().EmitSignal(PopupMenu.SignalName.IdPressed, 0L);
+        await Committed(ctx);
+
+        // The size: 8 columns — the losses before the change, then one undo returns the cells.
+        await ClickButton("Размер…");
+        var dlg = Find<ConfirmationDialog>(GetTree().Root).Last(d => d.Visible);
+        Find<SpinBox>(dlg).First(x => x.Name == "ResizeCols").Value = 8;
+        await Frames(2);
+        var info = Find<Label>(dlg).First(l => l.Name == "ResizeInfo");
+        Check(info.Text.Contains("Будет удалено клеток: 16"), "нет предпросмотра удаления: " + info.Text);
+        dlg.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        await Frames(6);
+        Check(Map().Cells.Count == 64, "размер не изменился: " + Map().Cells.Count);
+        await ClickVisible(Find<Button>(ed).First(b => b.Name == "EdUndo"));
+        await Frames(8);
+        Check(Map().Cells.Count == 80, "отмена не вернула клетки: " + Map().Cells.Count);
+        ctx.Db.Table(DefCategory.Map).Remove(id);
+        ctx.MarkDirty();
     }
 
     /// <summary>Types the text into the focused control as key presses with characters.</summary>

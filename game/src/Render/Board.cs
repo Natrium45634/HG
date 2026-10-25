@@ -11,7 +11,8 @@ namespace HexTactics.Game.Render;
 public static class Board
 {
     public const float HexSize = 1.0f;
-    public const float LevelHeight = 0.35f;
+    /// <summary>The step of one level of relief, world units (rules → «Единицы мира», set when a board binds its content).</summary>
+    public static float LevelHeight { get; set; } = 0.35f;
     public const float Gap = 0.05f;
     public const float WallHeight = 1.05f;
     public const float WaterDepth = 0.22f;

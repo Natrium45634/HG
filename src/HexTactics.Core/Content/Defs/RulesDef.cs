@@ -9,6 +9,7 @@ namespace HexTactics.Core.Content;
 public sealed class RulesDef : ContentPart
 {
     [Ed("Время")] public TimeRules Time { get; set; } = new();
+    [Ed("Единицы мира", "Радиус гекса — единица мира; шаг высоты рельефа на экране (ТЗ ч. 5, 6.2)")] public WorldRules World { get; set; } = new();
     [Ed("Очки действия")] public ApRules Ap { get; set; } = new();
     [Ed("Поворот")] public TurnRules Turn { get; set; } = new();
     [Ed("Движение")] public MoveRules Move { get; set; } = new();
@@ -45,6 +46,18 @@ public sealed class TimeRules : ContentPart
     [Ed("Версия правил симуляции", "1 — как в 1.0 (один генератор случайности на всё); 2 — раздельные потоки: бой, ИИ и маршруты, спавн " +
         "(docs/DECISIONS_5.md §84). Смена версии меняет исход боёв с тем же seed"), EdRange(1, 2)]
     public int SimVersion { get; set; } = 1;
+}
+
+/// <summary>
+/// World units of the board (docs/DECISIONS_5.md §85): the radius of a hex is the unit — sizes of models and offsets are
+/// given in radii; the step of one level of relief is how high it is drawn. The rules (sight, attacks from above) count
+/// levels, not units, so the step changes the look only.
+/// </summary>
+public sealed class WorldRules : ContentPart
+{
+    [Ed("Радиус гекса", "Единица мира: размеры моделей, смещения и масштабы задаются в радиусах гекса"), EdReadOnly] public double HexRadius { get; set; } = 1;
+    [Ed("Шаг высоты рельефа", "Высота одного уровня на экране, в радиусах гекса; правила считают уровни, а не единицы"), EdRange(0.1, 2)]
+    public double ElevationStep { get; set; } = 0.35;
 }
 
 public sealed class ApRules : ContentPart

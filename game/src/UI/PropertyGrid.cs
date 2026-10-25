@@ -65,6 +65,11 @@ public partial class PropertyGrid : VBoxContainer
     /// a list instead of a text field; nested grids inherit them.
     /// </summary>
     public Dictionary<string, Func<IEnumerable<(string Id, string Label)>>> Choices { get; } = new();
+    /// <summary>
+    /// Top-level properties whose values differ between the objects the form edits at once (several cells of a map,
+    /// ТЗ ч. 5, 5.8): the row is marked «≠» with the values in its tooltip; a change sets the value for all.
+    /// </summary>
+    public Dictionary<string, string> Mixed { get; } = new();
 
     public PropertyGrid()
     {
@@ -262,6 +267,13 @@ public partial class PropertyGrid : VBoxContainer
             var box = BoxFor(ed.Group);
             var row = BuildProperty(box, obj, prop, ed);
             if (row != null && prop.GetCustomAttribute<EdShowIfAttribute>() != null) _conditional.Add((prop, obj, row));
+            if (topLevel && row != null && Mixed.TryGetValue(prop.Name, out var mixed) && row.GetChildCount() > 0 && row.GetChild(0) is Label ml)
+            {
+                ml.Text = ml.Text + " ≠";
+                ml.AddThemeColorOverride("font_color", Ui.Warn);
+                ml.TooltipText = $"Разные значения у выделенных — {mixed}. Изменение задаст значение всем.";
+                ml.Name = "Mixed_" + prop.Name;
+            }
         }
     }
 

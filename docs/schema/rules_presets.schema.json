@@ -1396,6 +1396,10 @@
         "visuals": {
           "$ref": "#/$defs/EnvironmentVisualsDef",
           "description": "Эффекты окружения — Визуальные эффекты и звуки событий: появление эффектов, ловушки, разрушение, смена местности, падение"
+        },
+        "world": {
+          "$ref": "#/$defs/WorldRules",
+          "description": "Единицы мира — Радиус гекса — единица мира; шаг высоты рельефа на экране (ТЗ ч. 5, 6.2)"
         }
       },
       "additionalProperties": true
@@ -1722,6 +1726,22 @@
           "minimum": 0.05,
           "maximum": 5,
           "description": "Интервал пересчёта, с"
+        }
+      },
+      "additionalProperties": true
+    },
+    "WorldRules": {
+      "type": "object",
+      "properties": {
+        "elevationStep": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 2,
+          "description": "Шаг высоты рельефа — Высота одного уровня на экране, в радиусах гекса; правила считают уровни, а не единицы"
+        },
+        "hexRadius": {
+          "type": "number",
+          "description": "Радиус гекса — Единица мира: размеры моделей, смещения и масштабы задаются в радиусах гекса"
         }
       },
       "additionalProperties": true

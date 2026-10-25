@@ -137,6 +137,7 @@ public partial class BoardView : Node3D
 
     public void Bind(BattleMap map, ContentDatabase db)
     {
+        Board.LevelHeight = (float)Math.Clamp(db.Rules.World.ElevationStep, 0.1, 2.0);
         _map = map;
         _db = db;
         Effects.Db = db;

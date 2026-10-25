@@ -24,6 +24,11 @@ public enum MapTool
     Select,
     Marker,
     Route,
+    // Part 5 (docs/DECISIONS_5.md §85).
+    RectSelect,
+    Eyedropper,
+    Eraser,
+    Stamp,
 }
 
 /// <summary>
@@ -60,6 +65,20 @@ public partial class MapEditorPanel : DefListPanel
     private float _rebuildTimer;
     private readonly HashSet<HexCoord> _strokeCells = new();
     private readonly Action<MapDef> _preview;
+    // Part 5 tools: a rectangle, the stamp (a copied piece or a template, turned and mirrored), visible layers.
+    private HexCoord? _rectStart, _rectEnd;
+    private bool _rectAdd;
+    private MapClip? _clip;
+    private int _clipTurn;
+    private bool _clipMirror;
+    private CheckBox _stampGrow = null!;
+    private bool _showMarkers = true, _showRoutes = true, _showProblems = true;
+
+    /// <summary>The selected cells (tests, the cell tab).</summary>
+    public IReadOnlyCollection<HexCoord> Selection => _selection;
+
+    /// <summary>The piece the stamp places (turned and mirrored as set).</summary>
+    public MapClip? Stamp => _clip == null ? null : MapOps.Transform(_clip, _clipTurn, _clipMirror);
 
     public MapEditorPanel(EditorContext ctx, Action<MapDef> preview) : base(ctx, DefCategory.Map, "Карты", null, null)
     {
@@ -105,6 +124,10 @@ public partial class MapEditorPanel : DefListPanel
             (MapTool.Select, "Выделение", "ЛКМ — выделить (Shift — добавить), правка свойств у всех выделенных"),
             (MapTool.Marker, "Метки", "ЛКМ — поставить метку, ПКМ — удалить"),
             (MapTool.Route, "Маршрут", "ЛКМ — добавить точку выбранного маршрута, ПКМ — убрать точку (маршруты волн и маркеров появления)"),
+            (MapTool.RectSelect, "Прямоугольник", "Протянуть ЛКМ — выделить клетки в прямоугольнике (Shift — добавить к выделению)"),
+            (MapTool.Eyedropper, "Пипетка", "ЛКМ — взять местность и высоту клетки для кисти"),
+            (MapTool.Eraser, "Ластик", "ЛКМ — сбросить переопределения клетки (стоимость, обзор, укрытие, эффекты, теги, имя) к местности; ПКМ — убрать метку"),
+            (MapTool.Stamp, "Штамп", "ЛКМ — поставить скопированный кусок или шаблон (поворот 60° и зеркало — кнопками)"),
         };
         foreach (var (t, label, tip) in tools)
         {
@@ -138,6 +161,7 @@ public partial class MapEditorPanel : DefListPanel
         opts.AddChild(Ui.Button("Сохранить как шаблон…", SaveAsTemplateDialog, "Сохранить эту карту как шаблон с выбором частей"));
         opts.AddChild(Ui.Button("⤢", () => _view.Board.FitCamera(), "Вписать карту в окно", 36));
         opts.AddChild(Ui.Button("1:1", () => _view.Board.Rig.ResetStandardZoom(), "Стандартный масштаб (карта 10 × 8)", 40));
+        opts.AddChild(Ui.Button("Размер…", ResizeDialog, "Изменить размер прямоугольной карты: что пропадёт, видно до изменения"));
         opts.AddChild(Ui.Button("Проверить", RunCheck));
         opts.AddChild(Ui.Button("▶ Просмотр в игре", () =>
         {
@@ -145,6 +169,42 @@ public partial class MapEditorPanel : DefListPanel
             _preview(_map!);
         }, "Песочница на этой карте (черновик, без сохранения)"));
         left.AddChild(opts);
+
+        // Copy and stamp, layers (ТЗ ч. 5, 5.3–5.4).
+        var more = new HFlowContainer();
+        more.AddThemeConstantOverride("h_separation", 6);
+        var copy = Ui.Button("Копировать", CopySelection, "Копировать выделенные клетки — кусок для штампа (Ctrl+C)");
+        copy.Name = "MapCopy";
+        more.AddChild(copy);
+        var fromTemplate = new MenuButton { Text = "Шаблон ▾", Flat = false, TooltipText = "Шаблон карты из библиотеки как штамп", Name = "MapStampTemplate" };
+        var tpl = MapTemplates.Ordered(Ctx.Db).ToList();
+        for (int i = 0; i < tpl.Count; i++) fromTemplate.GetPopup().AddItem(tpl[i].DisplayName, i);
+        fromTemplate.GetPopup().IdPressed += id => StampFromTemplate(tpl[(int)id]);
+        more.AddChild(fromTemplate);
+        var turn = Ui.Button("⟲ 60°", () => _clipTurn = (_clipTurn + 1) % 6, "Повернуть штамп на 60°", 56);
+        turn.Name = "MapStampTurn";
+        more.AddChild(turn);
+        var mirror = Ui.Button("⇋", () => _clipMirror = !_clipMirror, "Отразить штамп слева направо", 40);
+        mirror.Name = "MapStampMirror";
+        more.AddChild(mirror);
+        _stampGrow = new CheckBox { Text = "за краем", FocusMode = FocusModeEnum.None, TooltipText = "Части штампа за краем карты добавляют клетки; выключено — пропускаются" };
+        more.AddChild(_stampGrow);
+        // Visible layers (hiding a layer does not change the map).
+        var layers = new MenuButton { Text = "Слои ▾", Flat = false, TooltipText = "Что показывать на поле; скрытие не меняет данные карты", Name = "MapLayers" };
+        var lp = layers.GetPopup();
+        lp.HideOnCheckableItemSelection = false;
+        lp.AddCheckItem("Метки", 0);
+        lp.AddCheckItem("Маршруты", 1);
+        lp.AddCheckItem("Проблемы проверки", 2);
+        for (int i = 0; i < 3; i++) lp.SetItemChecked(i, true);
+        lp.IdPressed += id =>
+        {
+            int i = lp.GetItemIndex((int)id);
+            lp.SetItemChecked(i, !lp.IsItemChecked(i));
+            SetLayer((int)id, lp.IsItemChecked(i));
+        };
+        more.AddChild(layers);
+        left.AddChild(more);
 
         _view = new BoardViewport();
         _view.Clicked += OnClick;
@@ -248,8 +308,19 @@ public partial class MapEditorPanel : DefListPanel
         o.Clear();
         _view.Labels.Begin();
         foreach (var c in _selection) o.RingHex(c, new Color(0.4f, 0.8f, 1f), 0.09f);
-        foreach (var c in _problemCells) o.HatchHex(c, new Color(1f, 0.3f, 0.25f, 0.6f));
-        if (_map != null)
+        if (_showProblems)
+            foreach (var c in _problemCells) o.HatchHex(c, new Color(1f, 0.3f, 0.25f, 0.6f));
+        if (_map != null && _rectStart is HexCoord rs && _rectEnd is HexCoord re)
+            foreach (var c in MapOps.Rect(_map, rs, re)) o.FillHex(c, new Color(0.4f, 0.8f, 1f, 0.3f));
+        if (_map != null && _tool == MapTool.Stamp && Stamp is { } stamp && _view.HoverHex is HexCoord sh)
+            foreach (var c in stamp.Cells)
+            {
+                var at = c.C + sh;
+                var tcol = Ui.Parse(Ctx.Db.Terrain(c.T)?.Color, new Color(0.7f, 0.7f, 0.7f));
+                if (_battleMap?.Get(at) != null || _stampGrow.ButtonPressed) o.FillHex(at, new Color(tcol.R, tcol.G, tcol.B, 0.55f), 0.9f, 0.02f);
+                else o.RingHex(at, new Color(1f, 0.4f, 0.35f, 0.6f), 0.05f);
+            }
+        if (_map != null && _showMarkers)
         {
             foreach (var m in _map.Markers)
             {
@@ -270,7 +341,7 @@ public partial class MapEditorPanel : DefListPanel
                     (string.IsNullOrEmpty(m.Label) ? Names.Of(m.Type) : m.Label), col, 26);
             }
         }
-        if (_map != null)
+        if (_map != null && _showRoutes)
             foreach (var r in _map.Routes)
             {
                 bool sel = r == _selectedRoute;
@@ -288,7 +359,7 @@ public partial class MapEditorPanel : DefListPanel
             }
         if (_view.HoverHex is HexCoord h)
         {
-            int r = _tool is MapTool.Paint or MapTool.Raise or MapTool.Lower or MapTool.SetHeight or MapTool.AddCell or MapTool.RemoveCell ? (int)_brush.Value : 0;
+            int r = _tool is MapTool.Paint or MapTool.Raise or MapTool.Lower or MapTool.SetHeight or MapTool.AddCell or MapTool.RemoveCell or MapTool.Eraser ? (int)_brush.Value : 0;
             foreach (var c in HexCoord.Spiral(h, r))
             {
                 if (_battleMap?.Get(c) != null) o.RingHex(c, new Color(1, 1, 1, 0.8f), 0.06f);
@@ -327,10 +398,41 @@ public partial class MapEditorPanel : DefListPanel
         if (!mb.Pressed)
         {
             _strokeCells.Clear();
+            if (_tool == MapTool.RectSelect && _rectStart is HexCoord a && _map != null)
+            {
+                if (!_rectAdd) _selection.Clear();
+                foreach (var c in MapOps.Rect(_map, a, hex ?? _rectEnd ?? a)) _selection.Add(c);
+                _rectStart = _rectEnd = null;
+                RefreshCellTab();
+            }
             if (_rebuildPending) RebuildMap(false);
             return;
         }
         _strokeCells.Clear();
+        if (_tool == MapTool.RectSelect)
+        {
+            if (hex == null) return;
+            _rectStart = _rectEnd = hex;
+            _rectAdd = mb.ShiftPressed || mb.CtrlPressed;
+            return;
+        }
+        if (_tool == MapTool.Eyedropper)
+        {
+            var src = hex is HexCoord eh ? CellDef(eh) : null;
+            if (src == null) return;
+            _terrain.Selected = Math.Max(0, Ctx.Db.Ids(DefCategory.Terrain).ToList().IndexOf(src.T));
+            _heightValue.Value = src.H;
+            SetTool(MapTool.Paint);
+            return;
+        }
+        if (_tool == MapTool.Stamp)
+        {
+            if (hex == null || _map == null || Stamp is not { } st) return;
+            var (changed, skipped) = MapOps.Paste(_map, st, hex.Value, _stampGrow.ButtonPressed);
+            _status.Text = $"Штамп: изменено клеток {changed.Count}" + (skipped > 0 ? $", за краем пропущено {skipped}" : "");
+            MarkChanged(structure: _stampGrow.ButtonPressed && changed.Count > 0);
+            return;
+        }
         if (_tool == MapTool.Select)
         {
             if (hex == null || cell == null)
@@ -422,7 +524,24 @@ public partial class MapEditorPanel : DefListPanel
     private void ApplyTool(HexCoord? hex, Cell? cell, bool alt, bool dragging)
     {
         if (_map == null || hex == null) return;
-        if (_tool is MapTool.Select or MapTool.Marker or MapTool.Line) return;
+        if (_tool == MapTool.RectSelect)
+        {
+            if (_rectStart != null) _rectEnd = hex;
+            return;
+        }
+        if (_tool is MapTool.Select or MapTool.Marker or MapTool.Line or MapTool.Eyedropper or MapTool.Stamp) return;
+        if (_tool == MapTool.Eraser)
+        {
+            if (alt)
+            {
+                if (!dragging && _map.Markers.FirstOrDefault(m => m.C == hex.Value) is { } mk) _map.Markers.Remove(mk);
+            }
+            else
+                foreach (var c in HexCoord.Spiral(hex.Value, (int)_brush.Value))
+                    if (CellDef(c) is { } ec) MapOps.Erase(ec);
+            MarkChanged();
+            return;
+        }
         if (dragging && _tool == MapTool.Fill) return;
         int r = (int)_brush.Value;
         var targets = _tool == MapTool.Fill ? FloodSame(hex.Value) : HexCoord.Spiral(hex.Value, r);
@@ -518,9 +637,13 @@ public partial class MapEditorPanel : DefListPanel
             _selection.Clear();
             return;
         }
-        _cellTab.AddChild(Ui.Label(_selection.Count == 1 ? $"Клетка {first.C}" : $"Выделено клеток: {_selection.Count} (показаны значения первой)", 15, Ui.Accent));
+        // Several cells: what differs is marked «≠» instead of showing the first cell's value as common (ТЗ ч. 5, 5.8).
+        var cells = _selection.Select(CellDef).Where(c => c != null).Select(c => c!).ToList();
+        var mixed = MapOps.Mixed(cells, Ctx.Db);
+        _cellTab.AddChild(Ui.Label(_selection.Count == 1 ? $"Клетка {first.C}" : $"Выделено клеток: {_selection.Count}" + (mixed.Count > 0 ? " · «≠» — значения различаются" : " · значения совпадают"), 15, Ui.Accent));
         var proxy = first.Clone();
         var grid = new PropertyGrid { LabelWidth = 170 };
+        foreach (var kv in mixed) grid.Mixed[kv.Key] = kv.Value;
         grid.SetTarget(proxy, Ctx.Db);
         grid.PropertyChanged += (owner, propName) =>
         {
@@ -542,6 +665,103 @@ public partial class MapEditorPanel : DefListPanel
             _selection.Clear();
             RefreshCellTab();
         }));
+    }
+
+    /// <summary>Shows or hides a layer of the overlay: 0 markers, 1 routes, 2 problems of the check.</summary>
+    public void SetLayer(int layer, bool on)
+    {
+        switch (layer)
+        {
+            case 0: _showMarkers = on; break;
+            case 1: _showRoutes = on; break;
+            default: _showProblems = on; break;
+        }
+    }
+
+    public bool LayerVisible(int layer) => layer switch { 0 => _showMarkers, 1 => _showRoutes, _ => _showProblems };
+
+    public void StampFromTemplate(MapTemplateDef t)
+    {
+        _clip = MapOps.FromTemplate(t);
+        _clipTurn = 0;
+        _clipMirror = false;
+        SetTool(MapTool.Stamp);
+        _status.Text = $"Штамп из шаблона «{t.DisplayName}»: {_clip.Count} клеток — ЛКМ ставит";
+    }
+
+    private void CopySelection()
+    {
+        if (_map == null || _selection.Count == 0)
+        {
+            _status.Text = "Копирование: сначала выделите клетки («Выделение» или «Прямоугольник»)";
+            return;
+        }
+        _clip = MapOps.Copy(_map, _selection, _map.DisplayName);
+        _clipTurn = 0;
+        _clipMirror = false;
+        SetTool(MapTool.Stamp);
+        _status.Text = $"Скопировано клеток: {_clip.Count} — «Штамп»: ЛКМ ставит кусок; ⟲ 60° и ⇋ — поворот и зеркало";
+    }
+
+    public override void _UnhandledKeyInput(InputEvent e)
+    {
+        if (_map == null || e is not InputEventKey { Pressed: true, CtrlPressed: true } k) return;
+        if (k.Keycode == Key.C && _selection.Count > 0)
+        {
+            CopySelection();
+            AcceptEvent();
+        }
+        else if (k.Keycode == Key.V && _clip != null)
+        {
+            SetTool(MapTool.Stamp);
+            AcceptEvent();
+        }
+    }
+
+    /// <summary>The size of a rectangular map: columns × rows by the odd-r offset of its cells.</summary>
+    private (int Cols, int Rows) MapSize() =>
+        _map == null || _map.Cells.Count == 0 ? (10, 8)
+            : (_map.Cells.Max(c => HexLayout.ToOffset(c.C).Col) + 1, _map.Cells.Max(c => HexLayout.ToOffset(c.C).Row) + 1);
+
+    /// <summary>«Размер…» (ТЗ ч. 5, 5.6): the new size, what disappears with the cells — before the change; one undo.</summary>
+    private void ResizeDialog()
+    {
+        if (_map == null) return;
+        var (cols, rows) = MapSize();
+        var box = Ui.VBox(6);
+        var size = Ui.HBox(6);
+        var w = new SpinBox { MinValue = 2, MaxValue = 60, Value = cols, Name = "ResizeCols" };
+        var h = new SpinBox { MinValue = 2, MaxValue = 60, Value = rows, Name = "ResizeRows" };
+        size.AddChild(Ui.Label("Колонок:", 13, Ui.TextDim));
+        size.AddChild(w);
+        size.AddChild(Ui.Label("Рядов:", 13, Ui.TextDim));
+        size.AddChild(h);
+        box.AddChild(size);
+        var info = Ui.Label("", 13, Ui.Text, wrap: true).MinSize(460);
+        info.Name = "ResizeInfo";
+        box.AddChild(info);
+        void Preview()
+        {
+            var p = MapOps.ResizePreview(Ctx.Db, _map!, (int)w.Value, (int)h.Value);
+            info.Text = $"Будет удалено клеток: {p.Removed.Count}, добавлено: {p.Added.Count} (местность «{Ctx.Db.Terrain(SelectedTerrain())?.DisplayName}»)." +
+                        (p.Losses.Count == 0 ? "\nВажное не пропадёт." : "\nПропадёт:\n • " + string.Join("\n • ", p.Losses.Take(14)) + (p.Losses.Count > 14 ? $"\n … и ещё {p.Losses.Count - 14}" : ""));
+            info.AddThemeColorOverride("font_color", p.Losses.Count > 0 ? Ui.Warn : Ui.Text);
+        }
+        w.ValueChanged += _ => Preview();
+        h.ValueChanged += _ => Preview();
+        Preview();
+        Dialogs.Custom(this, "Размер карты", box, "Изменить", () =>
+        {
+            MapOps.Resize(Ctx.Db, _map!, (int)w.Value, (int)h.Value, SelectedTerrain());
+            _selection.RemoveWhere(c => CellDef(c) == null);
+            MarkChanged(structure: true);
+            Ctx.Commit("Размер карты");
+            RebuildMap(true);
+            RefreshMarkerTab();
+            RefreshRouteTab();
+            RunCheck();
+            return true;
+        });
     }
 
     private void NewRoute()
