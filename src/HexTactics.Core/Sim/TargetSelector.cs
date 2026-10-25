@@ -151,7 +151,7 @@ public sealed class TargetSelector
                 {
                     if (!allowRandom) break; // planning previews never touch the battle's generator
                     var sorted = pool.OrderBy(t => t.Id).ToList();
-                    pool = new List<Unit> { sorted[_sim.Rng.NextInt(0, sorted.Count)] };
+                    pool = new List<Unit> { sorted[_sim.AiRng.NextInt(0, sorted.Count)] };
                     why.Add("случайно");
                     break;
                 }
@@ -165,7 +165,7 @@ public sealed class TargetSelector
         if (pool.Count > 1 && randomTies && allowRandom)
         {
             var sorted = pool.OrderBy(t => t.Id).ToList();
-            pick = sorted[_sim.Rng.NextInt(0, sorted.Count)];
+            pick = sorted[_sim.AiRng.NextInt(0, sorted.Count)];
             why.Add($"случайно среди {sorted.Count}");
         }
         else

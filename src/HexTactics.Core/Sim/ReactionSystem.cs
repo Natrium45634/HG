@@ -122,7 +122,15 @@ public sealed class ReactionSystem
         if (inChain > 0 && (!p.ChainReaction || inChain >= p.MaxChainDepth))
         {
             DroppedByRecursion++;
-            _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"{owner.Name}: «{p.DisplayName}» не запускает себя повторно (рекурсия)", owner.Id);
+            // The chain is named (ТЗ ч. 5, T25): which passive started which, up to the one that would repeat.
+            string Step(string k)
+            {
+                var pid = k[(k.IndexOf(':') + 1)..];
+                return _sim.Content.Get<PassiveDef>(pid)?.DisplayName ?? pid;
+            }
+            _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic,
+                $"{owner.Name}: «{p.DisplayName}» не запускает себя повторно (рекурсия; цепочка: {string.Join(" → ", chain.Append(key).Select(Step))}; " +
+                (p.ChainReaction ? $"предел цепной реакции {p.MaxChainDepth})" : "цепная реакция выключена)"), owner.Id);
             return;
         }
         if (p.Condition != null && !_sim.Scenario.Evaluate(p.Condition, owner)) return;

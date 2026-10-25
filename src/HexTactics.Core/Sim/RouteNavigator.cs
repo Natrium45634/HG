@@ -248,7 +248,7 @@ public sealed class RouteNavigator
             {
                 double total = usable.Sum(e => Math.Max(0, e.Weight));
                 if (total <= 0) return usable[0];
-                double x = _sim.Rng.NextDouble() * total;
+                double x = _sim.AiRng.NextDouble() * total;
                 foreach (var e in usable)
                 {
                     x -= Math.Max(0, e.Weight);

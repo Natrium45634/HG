@@ -42,6 +42,9 @@ public sealed class TimeRules : ContentPart
     [Ed("Макс. тиков за кадр", "Если кадр не успевает — игра замедляется, тики не пропускаются"), EdRange(1, 1000)]
     public int MaxTicksPerFrame { get; set; } = 40;
     [Ed("Начинать на паузе")] public bool StartPaused { get; set; } = true;
+    [Ed("Версия правил симуляции", "1 — как в 1.0 (один генератор случайности на всё); 2 — раздельные потоки: бой, ИИ и маршруты, спавн " +
+        "(docs/DECISIONS_5.md §84). Смена версии меняет исход боёв с тем же seed"), EdRange(1, 2)]
+    public int SimVersion { get; set; } = 1;
 }
 
 public sealed class ApRules : ContentPart

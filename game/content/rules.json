@@ -7,7 +7,8 @@
       "speedPresets": [0.25, 0.5, 1, 2, 4, 8, 16],
       "defaultSpeedIndex": 2,
       "maxTicksPerFrame": 40,
-      "startPaused": true
+      "startPaused": true,
+      "simVersion": 2
     },
     "ap": {
       "movePerCost": 1,

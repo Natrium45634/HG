@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Nodes;
 using HexTactics.Core.Content;
+using HexTactics.Core.Hex;
+using HexTactics.Core.Sim;
 using Xunit;
 
 namespace HexTactics.Tests;
@@ -78,5 +80,96 @@ public class Part5DataTests
     {
         var db = TestUtil.Shipped();
         Assert.Empty(ContentCompat.Check(db));
+    }
+
+    [Fact]
+    public void RandomStreams_Version2_AiAndSpawnDoNotShiftTheBattleRolls_Version1_IsOneStream()
+    {
+        var db = TestUtil.Shipped();
+        Assert.Equal(2, db.Rules.Time.SimVersion);
+        var sc = db.All<ScenarioDef>().First();
+        var a = ScenarioSystem.Create(db, sc, 42);
+        var b = ScenarioSystem.Create(db, sc, 42);
+        Assert.NotSame(a.Rng, a.AiRng);
+        Assert.NotSame(a.Rng, a.SpawnRng);
+        // Extra draws of the AI and the spawn (a changed profile, another group) leave the battle's rolls as they were.
+        for (int i = 0; i < 100; i++)
+        {
+            b.AiRng.NextULong();
+            b.SpawnRng.NextULong();
+        }
+        for (int i = 0; i < 50; i++) Assert.Equal(a.Rng.NextULong(), b.Rng.NextULong());
+        var c = ScenarioSystem.Create(db, sc, 42);
+        Assert.NotEqual(c.Rng.NextULong(), c.AiRng.NextULong());
+        // The same seed still gives the same battle.
+        var r1 = AutoBattle.Run(db, sc, 7, new AutoBattleOptions { MaxSeconds = 60 });
+        var r2 = AutoBattle.Run(db, sc, 7, new AutoBattleOptions { MaxSeconds = 60 });
+        Assert.Equal(ContentJson.Serialize(r1), ContentJson.Serialize(r2));
+        // Rules version 1 (packs of 1.0): one stream, as before.
+        db.Rules.Time.SimVersion = 1;
+        var old = ScenarioSystem.Create(db, sc, 42);
+        Assert.Same(old.Rng, old.AiRng);
+        Assert.Same(old.Rng, old.SpawnRng);
+        Assert.Equal(1, new RulesDef().Time.SimVersion);
+    }
+
+    [Fact]
+    public void T03_DeletingAUsedTemplate_SaysWhereByKind()
+    {
+        var db = TestUtil.Shipped();
+        // An enemy used in waves of several scenarios.
+        var unit = db.All<UnitDef>().OrderByDescending(u => db.FindReferences(DefCategory.Unit, u.Id).Count(r => r.Path.Contains(".Waves["))).First();
+        var refs = db.FindReferences(DefCategory.Unit, unit.Id);
+        var text = ContentDependencies.Summary(refs);
+        Assert.StartsWith("используется в ", text);
+        Assert.Matches(@"\d+ (волне|волнах) \(\d+ сценари", text);
+        Assert.Equal("нигде не используется", ContentDependencies.Summary(Array.Empty<ReferenceInfo>()));
+        // Units in three waves of two scenarios and one passive.
+        var fake = new[]
+        {
+            new ReferenceInfo(db.All<ScenarioDef>().First(), "a.Waves[0].Groups[0].Unit", DefCategory.Unit, unit.Id),
+            new ReferenceInfo(db.All<ScenarioDef>().First(), "a.Waves[0].Groups[1].Unit", DefCategory.Unit, unit.Id),
+            new ReferenceInfo(db.All<ScenarioDef>().First(), "a.Waves[1].Groups[0].Unit", DefCategory.Unit, unit.Id),
+            new ReferenceInfo(db.All<ScenarioDef>().Skip(1).First(), "b.Waves[0].Groups[0].Unit", DefCategory.Unit, unit.Id),
+            new ReferenceInfo(db.All<PassiveDef>().First(), "p.AuraTypes[0]", DefCategory.Unit, unit.Id),
+        };
+        Assert.Equal("используется в 3 волнах (2 сценария) и 1 пассиве", ContentDependencies.Summary(fake));
+    }
+
+    [Fact]
+    public void T04_RenamingEveryTemplate_KeepsTheScenarioWorking()
+    {
+        var db = TestUtil.Shipped();
+        var sc = db.All<ScenarioDef>().First(s => s.Waves.Count > 0);
+        var before = AutoBattle.Run(db, sc, 11, new AutoBattleOptions { MaxSeconds = 90 });
+        foreach (var d in db.AllDefs()) d.Name = "Переименовано: " + d.Name;
+        Assert.DoesNotContain(ContentValidator.Validate(db), i => i.Severity == IssueSeverity.Error);
+        var after = AutoBattle.Run(db, db.Get<ScenarioDef>(sc.Id)!, 11, new AutoBattleOptions { MaxSeconds = 90 });
+        Assert.Equal(before.Outcome, after.Outcome);
+        Assert.Equal(before.Ticks, after.Ticks);
+        Assert.Equal(before.EnemiesKilled, after.EnemiesKilled);
+    }
+
+    [Fact]
+    public void T25_CyclicPassives_StopWithTheChainNamed()
+    {
+        var db = TestUtil.Minimal();
+        db.Add(new PassiveDef { Id = "thorns", Name = "Шипы", Trigger = PassiveTrigger.OnDamaged, Action = PassiveAction.EffectsOnSource, Effects = { new SkillEffectDef { Type = EffectType.Damage, DamageType = "fire", Amount = 1, Filter = TargetFilterDef.Everyone() } } });
+        db.Add(new PassiveDef { Id = "spite", Name = "Злоба", Trigger = PassiveTrigger.OnDamaged, Action = PassiveAction.EffectsOnSource, Effects = { new SkillEffectDef { Type = EffectType.Damage, DamageType = "fire", Amount = 1, Filter = TargetFilterDef.Everyone() } } });
+        db.Unit("soldier")!.Passives.Add("thorns");
+        db.Unit("dummy")!.Passives.Add("spite");
+        var sim = TestUtil.Sim(db, TestUtil.Field());
+        var a = sim.Spawn(db.Unit("soldier")!, null, new HexCoord(2, 2), HexDirection.E);
+        var b = sim.Spawn(db.Unit("dummy")!, null, new HexCoord(3, 2), HexDirection.W);
+        sim.Combat.DealDamage(a, b, 1, "fire", null, "тест");
+        sim.Reactions.Process();
+        sim.Step();
+        Assert.True(sim.Reactions.DroppedByRecursion > 0);
+        var why = sim.Log.Entries.Concat(sim.DrainEvents()).Select(e => e.Text).FirstOrDefault(t => t.Contains("рекурсия"));
+        Assert.NotNull(why);
+        Assert.Contains("цепочка:", why);
+        Assert.Contains("Злоба", why);
+        Assert.Contains("Шипы", why);
+        Assert.Contains("цепная реакция выключена", why);
     }
 }

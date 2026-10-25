@@ -421,7 +421,7 @@ public partial class DefListPanel : HSplitContainer
         var refs = Ctx.Db.FindReferences(Category, cur.Id);
         string text = refs.Count == 0
             ? $"Удалить «{cur.DisplayName}» [{cur.Id}]?"
-            : $"На «{cur.DisplayName}» ссылаются {refs.Count} мест(а):\n" + string.Join("\n", refs.Take(12).Select(r => $" • {r.OwnerLabel} → {r.Path}")) +
+            : $"«{cur.DisplayName}» {ContentDependencies.Summary(refs)}; на него ссылаются {refs.Count} мест(а):\n" + string.Join("\n", refs.Take(12).Select(r => $" • {r.OwnerLabel} → {r.Path}")) +
               (refs.Count > 12 ? $"\n … и ещё {refs.Count - 12}" : "") + "\n\nПосле удаления эти ссылки станут ошибками (их покажет проверка). Удалить?";
         Dialogs.Confirm(this, "Удаление", text, () =>
         {

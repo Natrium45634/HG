@@ -314,7 +314,7 @@ public sealed partial class ScenarioSystem
                 {
                     var b = bases[k % bases.Count];
                     string route = routes.Count == 1 || g.RouteSelect == GroupRouteSelect.Single ? routes[0]
-                        : g.RouteSelect == GroupRouteSelect.Random ? routes[_sim.Rng.NextInt(0, routes.Count)] : routes[turn++ % routes.Count];
+                        : g.RouteSelect == GroupRouteSelect.Random ? routes[_sim.SpawnRng.NextInt(0, routes.Count)] : routes[turn++ % routes.Count];
                     string target = g.Target != "" ? g.Target : Def?.Route(route)?.Target ?? "";
                     list.Add(new SpawnItem(def, g.Tag, g.AiProfile, b.Anchor, b.Marker != "" ? b.Marker : b.Id, route, target, g.Id, b.Id,
                         g.Faction != "" ? g.Faction : w.Faction, b.Spawn!.InitialDelay + rep * g.RepeatEvery + g.OffsetOf(k), mods));
@@ -530,7 +530,7 @@ public sealed partial class ScenarioSystem
         }
         // The level of the instances of a group (docs/DECISIONS_4.md §65): a fixed one or a range by the seed.
         if (p.Group != "" && w.Def.Groups.FirstOrDefault(g => g.Id == p.Group) is { Level: > 0 } lg)
-            ApplyLevel(u, lg.LevelMax > lg.Level ? _sim.Rng.NextInt(lg.Level, lg.LevelMax + 1) : lg.Level);
+            ApplyLevel(u, lg.LevelMax > lg.Level ? _sim.SpawnRng.NextInt(lg.Level, lg.LevelMax + 1) : lg.Level);
         _createdTotal++;
         if (p.SpawnBase != "") _createdByBase[p.SpawnBase] = CreatedBy(p.SpawnBase) + 1;
         if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);

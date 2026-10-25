@@ -55,6 +55,11 @@ public sealed class Simulation
         Options = options ?? new SimOptions();
         Rules = Options.Rules ?? content.Rules;
         Rng = new SimRng(Options.Seed);
+        // Separate streams from the same seed (docs/DECISIONS_5.md §84): a change in what the AI or the spawn draws does
+        // not shift the rolls of the battle. Rules version 1 keeps the single stream of 1.0.
+        bool streams = Rules.Time.SimVersion >= 2;
+        AiRng = streams ? new SimRng(Options.Seed ^ 0xA1A1_5EED_0000_0001UL) : Rng;
+        SpawnRng = streams ? new SimRng(Options.Seed ^ 0x5A5A_5EED_0000_0002UL) : Rng;
         TicksPerSecond = Math.Max(1, Rules.Time.TicksPerSecond);
         Dt = 1.0 / TicksPerSecond;
         var issues = new List<ContentIssue>();
@@ -108,7 +113,12 @@ public sealed class Simulation
     public ContentDatabase Content { get; }
     public RulesDef Rules { get; }
     public SimOptions Options { get; }
+    /// <summary>The battle: hits, crits, chances, statuses, spreading effects.</summary>
     public SimRng Rng { get; }
+    /// <summary>Decisions of the AI and route forks (the same object as <see cref="Rng"/> under rules version 1).</summary>
+    public SimRng AiRng { get; }
+    /// <summary>Spawning: random routes of groups, instance levels (the same object as <see cref="Rng"/> under rules version 1).</summary>
+    public SimRng SpawnRng { get; }
     /// <summary>Walking route graphs of the scenario (docs/DECISIONS_4.md §57).</summary>
     public RouteNavigator Routes { get; }
     public BattleMap Map { get; }

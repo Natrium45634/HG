@@ -76,4 +76,72 @@ public static class ContentDependencies
     /// <summary>Definitions that refer to the given one (directly).</summary>
     public static List<Def> UsedBy(ContentDatabase db, Def d) =>
         db.FindReferences(d.Category, d.Id).Where(r => r.Owner != null && r.Owner != d).Select(r => r.Owner!).Distinct().ToList();
+
+    /// <summary>
+    /// What the references to an object amount to, by kind (ТЗ ч. 5, 3.5): «используется в 3 волнах (2 сценария),
+    /// 1 пассиве и 2 юнитах». Waves are counted by wave, other owners by object.
+    /// </summary>
+    public static string Summary(IReadOnlyCollection<ReferenceInfo> refs)
+    {
+        if (refs.Count == 0) return "нигде не используется";
+        var parts = new List<string>();
+        var waves = refs.Where(r => r.Owner is ScenarioDef && r.Path.Contains(".Waves[", StringComparison.Ordinal))
+            .Select(r => (Sc: r.Owner!.Id, Wave: WaveOf(r.Path))).Distinct().ToList();
+        if (waves.Count > 0)
+        {
+            int scen = waves.Select(w => w.Sc).Distinct().Count();
+            parts.Add($"{waves.Count} {Plural(waves.Count, "волне", "волнах")} ({scen} {Plural(scen, "сценарий", "сценария", "сценариев")})");
+        }
+        var others = refs.Where(r => !(r.Owner is ScenarioDef && r.Path.Contains(".Waves[", StringComparison.Ordinal)))
+            .GroupBy(r => r.Owner?.Category).OrderBy(g => g.Key.HasValue ? (int)g.Key.Value : -1);
+        foreach (var g in others)
+        {
+            int n = g.Select(r => r.Owner?.Id ?? "rules").Distinct().Count();
+            parts.Add(g.Key switch
+            {
+                null => "правилах боя",
+                DefCategory c => $"{n} {Locative(c, n)}",
+            });
+        }
+        return "используется в " + (parts.Count == 1 ? parts[0] : string.Join(", ", parts.Take(parts.Count - 1)) + " и " + parts[^1]);
+    }
+
+    private static string WaveOf(string path)
+    {
+        int i = path.IndexOf(".Waves[", StringComparison.Ordinal);
+        int j = path.IndexOf(']', i);
+        return j > i ? path[i..(j + 1)] : path;
+    }
+
+    private static string Plural(int n, string one, string many) => n % 10 == 1 && n % 100 != 11 ? one : many;
+
+    private static string Plural(int n, string one, string few, string many) =>
+        n % 10 == 1 && n % 100 != 11 ? one : n % 10 is >= 2 and <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many;
+
+    private static string Locative(DefCategory c, int n)
+    {
+        var (one, many) = c switch
+        {
+            DefCategory.Unit => ("юните", "юнитах"),
+            DefCategory.Skill => ("навыке", "навыках"),
+            DefCategory.Passive => ("пассиве", "пассивах"),
+            DefCategory.Origin => ("категории существ", "категориях существ"),
+            DefCategory.Scenario => ("сценарии", "сценариях"),
+            DefCategory.Map => ("карте", "картах"),
+            DefCategory.MapTemplate => ("шаблоне карты", "шаблонах карт"),
+            DefCategory.Status => ("состоянии", "состояниях"),
+            DefCategory.Element => ("элементе", "элементах"),
+            DefCategory.DamageType => ("типе урона", "типах урона"),
+            DefCategory.Terrain => ("типе местности", "типах местности"),
+            DefCategory.CellEffect => ("эффекте клетки", "эффектах клеток"),
+            DefCategory.Synergy => ("синергии", "синергиях"),
+            DefCategory.GroupPreset => ("пресете группы", "пресетах групп"),
+            DefCategory.Faction => ("фракции", "фракциях"),
+            DefCategory.AiProfile => ("профиле ИИ", "профилях ИИ"),
+            DefCategory.Asset => ("ресурсе", "ресурсах"),
+            DefCategory.Vfx => ("визуальном эффекте", "визуальных эффектах"),
+            _ => ("объекте «" + c + "»", "объектах «" + c + "»"),
+        };
+        return Plural(n, one, many);
+    }
 }
