@@ -2455,3 +2455,27 @@ Windows-сборка проверена самопроверкой на Windows 
   `game/content/{elements,damage_types,stats}.json`.
 * **Тесты**: `QuickEntryTests` (25), UI-тест
   `editor_quick_input_links_creates_and_search_lists`.
+
+---
+
+# Часть 5
+
+Аудит и план — [DECISIONS_5.md §78–§83](DECISIONS_5.md).
+
+## Ч5 · Этап A. Данные и проверка
+
+* **Сделано** ([§84](DECISIONS_5.md)): поля других версий сохраняются на
+  всех уровнях и называются в проверке; JSON Schema всех файлов из
+  определений (`docs/schema`, тест актуальности и соответствия встроенного
+  контента); версия правил симуляции и раздельные потоки ГСЧ (бой; ИИ и
+  маршруты; спавн), версия 1 — как в 1.0; сводка зависимостей по видам при
+  удалении; цепочка и причина обрыва рекурсии пассивов; раздел «Обзор
+  проекта».
+* **Файлы**: `src/HexTactics.Core/Content/{ContentCompat,ContentSchema,ProjectOverview}.cs`,
+  `Defs/*` (`ContentPart`), `ContentDependencies.cs`, `ReferenceWalker.cs`,
+  `ContentValidator.cs`, `Defs/RulesDef.cs` (`simVersion`),
+  `Sim/{Simulation,TargetSelector,RouteNavigator,ScenarioSystem,ReactionSystem}.cs`;
+  `game/src/Editor/{OverviewPanel,EditorScreen,DefListPanel}.cs`;
+  `game/content/rules.json`; `docs/schema/*`.
+* **Тесты**: `Part5DataTests` (7), `SchemaTests` (4), UI-тест
+  `editor_project_overview_counts_and_jumps`. T03, T04, T25 — приняты.

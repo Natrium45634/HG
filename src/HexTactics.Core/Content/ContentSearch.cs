@@ -234,7 +234,7 @@ public sealed class ContentSearch
         return s;
     }
 
-    private static SearchState StateOf(Def d, ContentDatabase? published)
+    public static SearchState StateOf(Def d, ContentDatabase? published)
     {
         if (d.Incomplete) return SearchState.Incomplete;
         if (published == null) return SearchState.Published;

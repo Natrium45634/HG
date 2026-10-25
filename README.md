@@ -198,6 +198,9 @@
   чего ещё нет. Есть в пассивах, талантах, категориях существ и юнитах.
   Все поля-ссылки открываются **списком с поиском** (формы слов, синонимы,
   другая раскладка, «＋ Создать»).
+* **«Обзор проекта»**: все каталоги с количеством объектов, новыми и
+  изменёнными в черновике, ошибками; битые ссылки и поля другой версии —
+  с переходом к объекту. Файлы других версий не теряют незнакомые поля.
 * **Отмена/повтор** Ctrl+Z / Ctrl+Y (одна запись на операцию), «Журнал…»
   с возвратом к точке, **точки восстановления** перед массовыми
   изменениями, **массовые изменения** выбранных шаблонов.
@@ -310,6 +313,7 @@ docs/                       архитектура, решения, формат
 | Автобой, отчёт, пакеты | `Sim/AutoBattle.cs`, `BattleReport.cs`, `PlacementSystem.cs` |
 | Оценка силы, подгонка, угроза | `Content/PowerModel.cs`, `LevelFit.cs`, `ThreatModel.cs` |
 | История правок, массовые изменения | `Content/EditHistory.cs`, `MassEdit.cs`, `ChangeImpact.cs`, `VersionCompare.cs` |
+| Совместимость и схемы файлов, обзор проекта | `Content/ContentCompat.cs` (поля других версий), `ContentSchema.cs`, `ProjectOverview.cs`; игра: `Editor/OverviewPanel.cs` |
 | Поиск по черновику, быстрый ввод правил | `Content/ContentSearch.cs` (стеммер, синонимы, состояния), `Content/QuickRule.cs` (текст → модификаторы); игра: `UI/SearchableOption.cs`, `Editor/QuickRuleBar.cs` |
 | Производительность | `Content/PerformanceBudget.cs`, `Sim/SimProfiler.cs` |
 | Экран боя | `game/src/Battle/BattleScreen.cs` (ввод, горячие клавиши), `BattleHud.cs` |
@@ -446,8 +450,9 @@ Windows: `%APPDATA%\Godot\app_userdata\HexTactics\`
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | архитектура: слои, системы симуляции, контент, расширения частей 2–4 (§11 — модули части 4) |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | правила боя и значения по умолчанию (часть 1) |
-| [docs/DECISIONS_2.md](docs/DECISIONS_2.md) · [_3](docs/DECISIONS_3.md) · [_4](docs/DECISIONS_4.md) · [_5](docs/DECISIONS_5.md) | решения и противоречия частей 2–5 (часть 4: §55–§76; быстрый ввод со связями — §77) |
+| [docs/DECISIONS_2.md](docs/DECISIONS_2.md) · [_3](docs/DECISIONS_3.md) · [_4](docs/DECISIONS_4.md) · [_5](docs/DECISIONS_5.md) | решения и противоречия частей 2–5 (часть 4: §55–§76; быстрый ввод — §77; аудит части 5 — §78–§83; этапы части 5 — §84–) |
 | [docs/DATA_FORMAT.md](docs/DATA_FORMAT.md) | формат файлов контента, версии, миграции |
+| [docs/schema](docs/schema) | JSON Schema каждого файла контента (генерируются из определений, тест сверяет) |
 | [docs/STAGES.md](docs/STAGES.md) | отчёты по всем этапам и итоговые отчёты частей (требования ТЗ → тесты) |
 | [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) | что в выпуске |
 | [installer/GUIDE_RU.txt](installer/GUIDE_RU.txt) | руководство пользователя |

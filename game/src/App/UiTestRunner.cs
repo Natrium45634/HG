@@ -78,6 +78,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_undo_log_mass_overrides_reports_compare", EditorProjectTools));
         _tests.Add(("editor_td_context_menus_route_group_base", EditorTdMenus));
         _tests.Add(("editor_quick_input_links_creates_and_search_lists", EditorQuickInput));
+        _tests.Add(("editor_project_overview_counts_and_jumps", EditorProjectOverview));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2769,6 +2770,38 @@ public partial class UiTestRunner : Node
         await Key(Godot.Key.Enter);
         await Frames(3);
         Check(ctx.Db.Get<PassiveDef>(pid)!.Modifiers[0].Match == "el:fire", "выбор в списке с поиском не записал значение");
+    }
+
+    /// <summary>
+    /// «Обзор проекта» (ТЗ ч. 5, 25.1): catalogues with the draft's new objects, a broken reference listed with a jump to
+    /// its object.
+    /// </summary>
+    private async Task EditorProjectOverview()
+    {
+        var ed = await OpenEditor("overview");
+        var ctx = ed.Context;
+        int newBefore = Find<OverviewPanel>(GetTree().Root).First().Last!.Categories.First(c => c.Category == DefCategory.Element).New;
+        ctx.Db.Add(new ElementDef { Id = "p5_test_el", Name = "Тестовый элемент" });
+        var unit = ctx.Db.All<UnitDef>().First(u => u.Faction != "enemy");
+        string keep = unit.BasicAttack;
+        unit.BasicAttack = "no_such_skill";
+        ctx.MarkDirty();
+        ctx.Validate();
+        await Frames(4);
+        var panel = Find<OverviewPanel>(GetTree().Root).First();
+        var el = panel.Last!.Categories.First(c => c.Category == DefCategory.Element);
+        Check(el.New == newBefore + 1, "новый элемент черновика не посчитан: " + el.New);
+        Check(Find<Label>(panel).Any(l => l.Name == "OverviewSummary" && l.Text.Contains($"новых в черновике {panel.Last.New}")), "сводка не показывает новое");
+        var broken = Find<Button>(panel).FirstOrDefault(b => b.Name == "Broken_0");
+        Check(broken != null && broken.Text.Contains("no_such_skill") && broken.Text.Contains(unit.DisplayName), "битая ссылка не показана: " + broken?.Text);
+        await ClickVisible(broken!);
+        await Frames(8);
+        var units = Find<UnitEditorPanel>(GetTree().Root).FirstOrDefault();
+        Check(units != null && units.Current == unit, "переход не открыл юнита с битой ссылкой");
+        unit.BasicAttack = keep;
+        ctx.Db.Table(DefCategory.Element).Remove("p5_test_el");
+        ctx.MarkDirty();
+        ctx.Validate();
     }
 
     /// <summary>Types the text into the focused control as key presses with characters.</summary>

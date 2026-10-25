@@ -36,6 +36,7 @@ public partial class EditorScreen : Control
 
     private static readonly (string Key, string Title, DefCategory? Cat)[] Sections =
     {
+        ("overview", "Обзор проекта", null),
         ("maps", "Карты", DefCategory.Map),
         ("templates", "Шаблоны карт", DefCategory.MapTemplate),
         ("units", "Юниты", DefCategory.Unit),
@@ -68,6 +69,15 @@ public partial class EditorScreen : Control
         ("catalog", "Каталог операций", null),
         ("check", "Проверка", null),
         ("test", "Тестирование", null),
+    };
+
+    /// <summary>The title of the section of a catalogue, as in the list on the left («Юниты и враги» for units).</summary>
+    public static string SectionTitle(DefCategory c) => c switch
+    {
+        DefCategory.Unit => "Юниты и враги",
+        DefCategory.Passive => "Пассивные умения и таланты",
+        DefCategory.Scenario => "Сценарии и TD-сцены",
+        _ => Sections.FirstOrDefault(s => s.Cat == c).Title ?? c.ToString(),
     };
 
     public override void _Ready()
@@ -303,6 +313,7 @@ public partial class EditorScreen : Control
                 Rules = ContentJson.Clone(_ctx.Db.Rules),
             }),
             "check" => new ValidationPanel(_ctx),
+            "overview" => new OverviewPanel(_ctx),
             "catalog" => new CatalogPanel(),
             _ => new TestPanel(_ctx, (sc, seed) => RunTest(sc, seed)),
         };

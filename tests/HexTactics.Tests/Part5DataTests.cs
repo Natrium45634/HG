@@ -172,4 +172,27 @@ public class Part5DataTests
         Assert.Contains("Шипы", why);
         Assert.Contains("цепная реакция выключена", why);
     }
+
+    [Fact]
+    public void ProjectOverview_CountsTheDraft_AndListsBrokenReferencesWithTheirObject()
+    {
+        var published = TestUtil.Shipped();
+        var db = published.Clone();
+        db.Add(new ElementDef { Id = "holy", Name = "Святость" });
+        db.Element("fire")!.Description = "изменено";
+        db.Unit(db.All<UnitDef>().First().Id)!.BasicAttack = "no_such_skill";
+        db.Element("water")!.Extra = new() { ["future"] = System.Text.Json.JsonDocument.Parse("1").RootElement };
+        var o = ProjectOverview.Build(db, published, ContentValidator.Validate(db));
+        var el = o.Categories.Single(c => c.Category == DefCategory.Element);
+        Assert.Equal(published.Table(DefCategory.Element).Count + 1, el.Total);
+        Assert.Equal(1, el.New);
+        Assert.Equal(2, el.Changed);   // fire (description) and water (a field of another version)
+        Assert.Equal(1, el.Warnings);
+        var broken = Assert.Single(o.BrokenReferences);
+        Assert.Contains("no_such_skill", broken.Message);
+        Assert.Equal(DefCategory.Unit, ProjectOverview.Target(broken)!.Value.Category);
+        Assert.Single(o.OtherVersionFields);
+        Assert.True(o.Errors >= 1);
+        Assert.Equal(o.Categories.Sum(c => c.Total), o.Objects);
+    }
 }
