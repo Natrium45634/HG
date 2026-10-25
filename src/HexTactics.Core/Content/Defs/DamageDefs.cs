@@ -46,7 +46,7 @@ public enum ElementTier
 }
 
 /// <summary>A status applied by damage of an element (e.g. fire → «Горение»).</summary>
-public sealed class ElementStatusDef
+public sealed class ElementStatusDef : ContentPart
 {
     [Ed("Состояние"), EdRef(DefCategory.Status, AllowEmpty = false)] public string Status { get; set; } = "";
     [Ed("Шанс"), EdRange(0, 1)] public double Chance { get; set; } = 1;
@@ -68,7 +68,7 @@ public enum InteractionPartner
 /// Element reaction: damage of this element meets a status or cell effect of another element
 /// (water + lightning → conduction, fire + water → steam…).
 /// </summary>
-public sealed class ElementInteractionDef
+public sealed class ElementInteractionDef : ContentPart
 {
     [Ed("С элементом", "Срабатывает и для потомков этого элемента"), EdRef(DefCategory.Element, AllowEmpty = false)] public string With { get; set; } = "";
     [Ed("Где искать")] public InteractionPartner Partner { get; set; } = InteractionPartner.Either;
@@ -107,7 +107,7 @@ public sealed class ElementDef : Def, IInheritable
 /// What a damage modifier applies to: "*" — any damage, a damage type id (with its descendants),
 /// "el:id" — an element (with descendants), "cat:Physical" — a category, "tag:x" — damage types with a tag.
 /// </summary>
-public sealed class DamageModDef
+public sealed class DamageModDef : ContentPart
 {
     [Ed("К чему", "Любой урон, тип урона (и его потомки), элемент, категория или тег"), EdDamageMatch] public string Match { get; set; } = "*";
     [Ed("Модификатор, %", "Получаемый урон × (1 + V/100): +100 — двойной, +500 — шестикратный, −50 — вдвое меньше, −100 и ниже — нет урона (не лечит)"),
@@ -117,13 +117,13 @@ public sealed class DamageModDef
     public override string ToString() => $"{Match} {Percent:+0;-0}%";
 }
 
-public sealed class FlatReductionDef
+public sealed class FlatReductionDef : ContentPart
 {
     [Ed("К чему"), EdDamageMatch] public string Match { get; set; } = "*";
     [Ed("Снижение за удар", "Отрицательное — дополнительный получаемый урон"), EdRange(-100000, 100000)] public double Amount { get; set; }
 }
 
-public sealed class ConversionDef
+public sealed class ConversionDef : ContentPart
 {
     [Ed("Из", "Какой урон преобразуется"), EdDamageMatch] public string From { get; set; } = "*";
     [Ed("В тип урона"), EdRef(DefCategory.DamageType, AllowEmpty = false)] public string To { get; set; } = "";
@@ -143,7 +143,7 @@ public enum AbsorbOrder
     [Ed("До щитов")] BeforeShields,
 }
 
-public sealed class AbsorptionDef
+public sealed class AbsorptionDef : ContentPart
 {
     [Ed("К чему"), EdDamageMatch] public string Match { get; set; } = "*";
     [Ed("Поглощение, %", "Доля оставшегося урона, которая не наносится"), EdRange(0, 100)] public double Percent { get; set; } = 25;
@@ -167,7 +167,7 @@ public enum ReflectBase
     [Ed("От урона до щитов")] BeforeShields,
 }
 
-public sealed class ReflectionDef
+public sealed class ReflectionDef : ContentPart
 {
     [Ed("К чему"), EdDamageMatch] public string Match { get; set; } = "*";
     [Ed("Отражение, %"), EdRange(0, 500)] public double Percent { get; set; } = 20;
@@ -179,7 +179,7 @@ public sealed class ReflectionDef
 }
 
 /// <summary>Defensive properties of a unit, a status level or a passive (they add up).</summary>
-public sealed class DefenseDef
+public sealed class DefenseDef : ContentPart
 {
     [Ed("Сопротивления и уязвимости", "Модификаторы складываются; итог ограничен правилами (по умолчанию −500…+500 %)")]
     public List<DamageModDef> Modifiers { get; set; } = new();
@@ -196,7 +196,7 @@ public sealed class DefenseDef
 }
 
 /// <summary>Offensive properties: bonus damage by type and conversion of dealt damage.</summary>
-public sealed class OffenseDef
+public sealed class OffenseDef : ContentPart
 {
     [Ed("Бонусы урона, %", "Наносимый урон × (1 + Σ/100) по типу, элементу или категории")]
     public List<DamageModDef> Bonuses { get; set; } = new();
@@ -214,7 +214,7 @@ public enum ShieldStacking
 }
 
 /// <summary>A shield: a separate absorption pool (docs/DECISIONS_2.md §29).</summary>
-public sealed class ShieldSpecDef
+public sealed class ShieldSpecDef : ContentPart
 {
     [Ed("Название щита")] public string Name { get; set; } = "Щит";
     [Ed("Защищает от", "Пусто — от любого урона"), EdDamageMatch] public List<string> Protects { get; set; } = new();
@@ -250,7 +250,7 @@ public enum DamageSource
 }
 
 /// <summary>Per-source exceptions of the unified pipeline, all visible in the rules editor.</summary>
-public sealed class DamageSourceRuleDef
+public sealed class DamageSourceRuleDef : ContentPart
 {
     [Ed("Источник")] public DamageSource Source { get; set; }
     [Ed("Бросок попадания", "Для источников без собственного броска (навыки бросают сами)")] public bool RollHit { get; set; }
@@ -263,7 +263,7 @@ public sealed class DamageSourceRuleDef
     [Ed("Взаимодействия элементов")] public bool ElementEffects { get; set; } = true;
 }
 
-public sealed class CritRulesDef
+public sealed class CritRulesDef : ContentPart
 {
     [Ed("Бонус шанса: ближний бой"), EdRange(-1, 1)] public double MeleeBonus { get; set; }
     [Ed("Бонус шанса: дальний бой"), EdRange(-1, 1)] public double RangedBonus { get; set; }
@@ -273,7 +273,7 @@ public sealed class CritRulesDef
     [Ed("Мин. множитель крита", "Множитель после защиты от критов не ниже"), EdRange(1, 10)] public double MinMultiplier { get; set; } = 1.1;
 }
 
-public sealed class DamageRulesDef
+public sealed class DamageRulesDef : ContentPart
 {
     [Ed("Нижний предел суммы модификаторов, %", "−500 — допускается полное гашение"), EdRange(-500, 0)] public double MinTotalPercent { get; set; } = -500;
     [Ed("Верхний предел суммы модификаторов, %"), EdRange(0, 500)] public double MaxTotalPercent { get; set; } = 500;

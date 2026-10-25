@@ -25,7 +25,7 @@ public static class ReferenceWalker
 
     public static PropertyInfo[] PropsOf(Type t) =>
         PropCache.GetOrAdd(t, tt => tt.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0 && p.Name != nameof(ContentPart.Extra))
             .ToArray());
 
     public static void Walk(ContentDatabase db, Visitor visitor)

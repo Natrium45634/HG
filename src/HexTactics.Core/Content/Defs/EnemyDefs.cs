@@ -21,7 +21,7 @@ public enum DetectionZoneShape
 }
 
 /// <summary>How a creature perceives its surroundings (docs/DECISIONS_2.md §23).</summary>
-public sealed class PerceptionDef
+public sealed class PerceptionDef : ContentPart
 {
     [Ed("Модель взгляда", "Одно направление (секторы как обычно), несколько направлений, круговое или без направления")]
     public FacingModel Model { get; set; } = FacingModel.Single;
@@ -86,7 +86,7 @@ public sealed class PerceptionDef
 }
 
 /// <summary>A line (sector) of sight of a creature with several directions of view (docs/DECISIONS_3.md §40).</summary>
-public sealed class SightLineDef
+public sealed class SightLineDef : ContentPart
 {
     [Ed("Основная", "Основная линия взгляда: по ней задаётся направление юнита (стрелка)")] public bool Primary { get; set; }
     [Ed("Направление", "Шаги по 60° от основной линии (0 — она сама); для фиксированной — абсолютное направление: 0 — восток, 1 — северо-восток…"), EdRange(0, 5)]
@@ -113,7 +113,7 @@ public enum Disclosure
 }
 
 /// <summary>What the enemy info panel reveals, per category (docs/DECISIONS_2.md §24).</summary>
-public sealed class InfoDisclosureDef
+public sealed class InfoDisclosureDef : ContentPart
 {
     [Ed("Панель доступна", "Открывать информационную панель по клику на врага")] public bool PanelEnabled { get; set; } = true;
     [Ed("Имя и тип")] public Disclosure NameAndType { get; set; } = Disclosure.AfterSeen;
@@ -126,7 +126,7 @@ public sealed class InfoDisclosureDef
     [Ed("Намерение", "Что готовит, куда идёт, кого атакует")] public Disclosure Intent { get; set; } = Disclosure.WhenVisible;
 }
 
-public sealed class InfoOverrideDef
+public sealed class InfoOverrideDef : ContentPart
 {
     [Ed("Свои правила раскрытия", "Иначе — из правил боя")] public bool Override { get; set; }
     [Ed("Раскрытие"), EdShowIf(nameof(Override), true)] public InfoDisclosureDef Values { get; set; } = new();
@@ -140,7 +140,7 @@ public enum BlockZone
 }
 
 /// <summary>A unit that holds enemies back (docs/DECISIONS_2.md §27). The limit itself is the stat block_limit.</summary>
-public sealed class BlockerDef
+public sealed class BlockerDef : ContentPart
 {
     [Ed("Зона блокирования")] public BlockZone Zone { get; set; } = BlockZone.AllAdjacent;
     [Ed("Блокирует категории", "Категории существ или tag:тег; пусто — любых")] public List<string> Categories { get; set; } = new();
@@ -157,7 +157,7 @@ public enum BlockedBehavior
 }
 
 /// <summary>How a unit reacts to being blocked.</summary>
-public sealed class BlockableDef
+public sealed class BlockableDef : ContentPart
 {
     [Ed("Может быть заблокирован")] public bool CanBeBlocked { get; set; } = true;
     [Ed("Нужна особая способность", "Тег, который должен быть у блокирующего (пусто — не нужна)"), EdShowIf(nameof(CanBeBlocked), true)] public string RequiredAbility { get; set; } = "";

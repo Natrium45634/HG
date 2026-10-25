@@ -26,7 +26,7 @@ public enum ObjectiveLogic
     [Ed("Обязательные по порядку")] InOrder,
 }
 
-public sealed class ObjectiveDef
+public sealed class ObjectiveDef : ContentPart
 {
     [Ed("ID цели", "Уникален в сценарии; на него ссылаются условия и зависимости")] public string Id { get; set; } = "goal";
     [Ed("Название")] public string Name { get; set; } = "Цель";
@@ -78,7 +78,7 @@ public enum WarningFog
 }
 
 /// <summary>Global spawn warning settings (rules).</summary>
-public sealed class SpawnWarningRules
+public sealed class SpawnWarningRules : ContentPart
 {
     [Ed("Маркеры включены")] public bool Enabled { get; set; } = true;
     [Ed("Мин. предупреждение, с", "Линия идёт не меньше этого времени (дольше — если путь длинный)"), EdRange(0, 600)] public double MinSeconds { get; set; } = 3;
@@ -90,14 +90,14 @@ public sealed class SpawnWarningRules
     [Ed("Туман войны")] public WarningFog Fog { get; set; } = WarningFog.Show;
 }
 
-public sealed class ScenarioWarningsDef
+public sealed class ScenarioWarningsDef : ContentPart
 {
     [Ed("Маркеры в этом сценарии")] public bool Enabled { get; set; } = true;
     [Ed("Свой режим тумана")] public bool OverrideFog { get; set; }
     [Ed("Туман войны"), EdShowIf(nameof(OverrideFog), true)] public WarningFog Fog { get; set; } = WarningFog.AfterScouting;
 }
 
-public sealed class BossPhaseDef
+public sealed class BossPhaseDef : ContentPart
 {
     [Ed("Название фазы")] public string Name { get; set; } = "Фаза";
     [Ed("Условие начала", "Например, «здоровье ниже 50 %» (без метки — сам босс)")] public ConditionDef When { get; set; } = new() { Type = ConditionType.HpBelow, Fraction = 0.5 };
@@ -105,7 +105,7 @@ public sealed class BossPhaseDef
     [Ed("Сообщение")] public string Message { get; set; } = "";
 }
 
-public sealed class BossDef
+public sealed class BossDef : ContentPart
 {
     [Ed("Это босс", "Полоса здоровья вверху экрана, правило автоатак «босс»")] public bool IsBoss { get; set; }
     [Ed("Титул"), EdShowIf(nameof(IsBoss), true)] public string Title { get; set; } = "";

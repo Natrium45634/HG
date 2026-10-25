@@ -82,7 +82,7 @@ public enum SkillVfx
     Glow,
 }
 
-public sealed class InterruptDef
+public sealed class InterruptDef : ContentPart
 {
     [Ed("Прерывается уроном")] public bool ByDamage { get; set; } = true;
     [Ed("Шанс прерывания уроном"), EdRange(0, 1), EdShowIf(nameof(ByDamage), true)] public double ChanceOnDamage { get; set; } = 0.3;
@@ -209,7 +209,7 @@ public sealed class SkillDef : Def
     }
 }
 
-public sealed class SkillStageDef
+public sealed class SkillStageDef : ContentPart
 {
     [Ed("Название этапа")] public string Name { get; set; } = "";
     [Ed("Задержка, с", "После срабатывания навыка"), EdRange(0, 60)] public double Delay { get; set; }
@@ -276,7 +276,7 @@ public enum AreaShape
     Global,
 }
 
-public sealed class AreaDef
+public sealed class AreaDef : ContentPart
 {
     [Ed("Форма")] public AreaShape Shape { get; set; } = AreaShape.Single;
 
@@ -304,7 +304,7 @@ public sealed class AreaDef
     public List<MaskCellDef> Cells { get; set; } = new();
 }
 
-public sealed class MaskCellDef
+public sealed class MaskCellDef : ContentPart
 {
     [Ed("Смещение")] public HexCoord Offset { get; set; }
     [Ed("Доп. эффекты клетки", "Применяются только в этой клетке маски")] public List<SkillEffectDef> Effects { get; set; } = new();
@@ -352,7 +352,7 @@ public enum FacingMode
     Set,
 }
 
-public sealed class SkillEffectDef
+public sealed class SkillEffectDef : ContentPart
 {
     [Ed("Действие")] public EffectType Type { get; set; } = EffectType.Damage;
 

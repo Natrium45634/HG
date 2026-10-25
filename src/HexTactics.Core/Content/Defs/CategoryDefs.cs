@@ -37,7 +37,7 @@ public enum ForbidWhat
     [Ed("Движение")] Movement,
 }
 
-public sealed class CategoryRuleDef
+public sealed class CategoryRuleDef : ContentPart
 {
     [Ed("ID правила", "Одинаковый ID у потомка — то же правило (переопределить, исключить, условно изменить)")] public string Id { get; set; } = "";
     [Ed("Что задаёт")] public CategoryRuleKind Kind { get; set; } = CategoryRuleKind.Passive;
@@ -79,7 +79,7 @@ public sealed class CategoryRuleDef
 }
 
 /// <summary>An extra way of moving (docs/DECISIONS_4.md §60): acts while its condition holds.</summary>
-public sealed class MoveTypeDef
+public sealed class MoveTypeDef : ContentPart
 {
     [Ed("Тип перемещения", "walk, fly, swim, burrow, jump…")] public string Category { get; set; } = "swim";
     [Ed("Условие", "Пусто — всегда (например, «есть состояние Полёт»)")] public UnitConditionDef? Condition { get; set; }
@@ -99,7 +99,7 @@ public enum CountSide
 /// «За каждого» (docs/DECISIONS_4.md §62): the modifier's value is multiplied by the number of counted units — by
 /// tags and categories, side, radius; summoned, dead and outside-the-aura units only when allowed — and capped.
 /// </summary>
-public sealed class PerEachDef
+public sealed class PerEachDef : ContentPart
 {
     [Ed("Теги или категории", "Учитываемые: «tag:стая», ID категории, категория существа, ID шаблона; пусто — любые")] public List<string> Types { get; set; } = new();
     [Ed("Кто")] public CountSide Side { get; set; } = CountSide.Allies;
@@ -115,7 +115,7 @@ public sealed class PerEachDef
 }
 
 /// <summary>A variable of the scenario (docs/DECISIONS_4.md §62): time of day, weather… changed by events.</summary>
-public sealed class EnvironmentVarDef
+public sealed class EnvironmentVarDef : ContentPart
 {
     [Ed("Имя", "Например time_of_day, weather")] public string Name { get; set; } = "time_of_day";
     [Ed("Значение в начале")] public string Value { get; set; } = "day";

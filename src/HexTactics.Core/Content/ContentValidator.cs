@@ -48,6 +48,8 @@ public static class ContentValidator
         // Numeric ranges from [EdRange]; damage matches ("*", type, el:, cat:, tag:).
         foreach (var d in db.AllDefs()) CheckRanges(d, d, d.Id, issues, 0);
         foreach (var d in db.AllDefs()) CheckDamageMatches(db, d, d, d.Id, issues, 0);
+        // Fields of other versions are kept, and named (docs/DECISIONS_5.md §84).
+        issues.AddRange(ContentCompat.Check(db));
         CheckHierarchies(db, issues);
         CheckRanges(null, db.Rules, "rules", issues, 0);
 

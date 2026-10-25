@@ -6,7 +6,7 @@ namespace HexTactics.Core.Content;
 /// Global configurable rules. Every value here is documented in docs/DECISIONS.md and
 /// editable in the rules editor. Nothing gameplay-relevant is hardcoded elsewhere.
 /// </summary>
-public sealed class RulesDef
+public sealed class RulesDef : ContentPart
 {
     [Ed("Время")] public TimeRules Time { get; set; } = new();
     [Ed("Очки действия")] public ApRules Ap { get; set; } = new();
@@ -34,7 +34,7 @@ public sealed class RulesDef
     public PerformanceRulesDef Performance { get; set; } = new();
 }
 
-public sealed class TimeRules
+public sealed class TimeRules : ContentPart
 {
     [Ed("Тиков в секунду", "Фиксированный шаг симуляции"), EdRange(5, 120)] public int TicksPerSecond { get; set; } = 20;
     [Ed("Скорости", "Множители времени для кнопок скорости")] public List<double> SpeedPresets { get; set; } = new() { 0.25, 0.5, 1, 2, 4, 8, 16 };
@@ -44,7 +44,7 @@ public sealed class TimeRules
     [Ed("Начинать на паузе")] public bool StartPaused { get; set; } = true;
 }
 
-public sealed class ApRules
+public sealed class ApRules : ContentPart
 {
     [Ed("ОД за единицу стоимости движения"), EdRange(0, 100)] public double MovePerCost { get; set; } = 1.0;
     [Ed("Реакции не трогают резерв", "Реакции тратят только свободные ОД (текущие − резерв)")] public bool ReactionsRespectReserve { get; set; } = true;
@@ -54,7 +54,7 @@ public sealed class ApRules
     [Ed("Восстановление ОД в стойке", "Множитель"), EdRange(0, 10)] public double DefendRegenMultiplier { get; set; } = 0.5;
 }
 
-public sealed class TurnRules
+public sealed class TurnRules : ContentPart
 {
     [Ed("ОД за шаг 60°"), EdRange(0, 100)] public double ApPerStep { get; set; } = 0.25;
     [Ed("Время шага 60°, с"), EdRange(0, 10)] public double SecondsPerStep { get; set; } = 0.1;
@@ -73,7 +73,7 @@ public enum RouteTieBreak
     [Ed("Меньше шагов")] Steps,
 }
 
-public sealed class MoveRules
+public sealed class MoveRules : ContentPart
 {
     [Ed("Категории движения")] public List<string> MovementCategories { get; set; } = new() { "walk", "fly", "swim" };
     [Ed("Союзники блокируют путь")] public bool AlliesBlockPath { get; set; } = true;
@@ -90,7 +90,7 @@ public sealed class MoveRules
     public List<RouteTieBreak> TieBreak { get; set; } = new() { RouteTieBreak.Turns, RouteTieBreak.Steps };
 }
 
-public sealed class HeightRules
+public sealed class HeightRules : ContentPart
 {
     [Ed("Макс. подъём за шаг"), EdRange(0, 20)] public int MaxClimb { get; set; } = 1;
     [Ed("Макс. спуск за шаг"), EdRange(0, 20)] public int MaxDrop { get; set; } = 2;
@@ -112,14 +112,14 @@ public enum AttackSector
     [Ed("Без секторов")] None = 4,
 }
 
-public sealed class SectorRule
+public sealed class SectorRule : ContentPart
 {
     [Ed("Сектор")] public AttackSector Sector { get; set; }
     [Ed("Шанс неожиданности"), EdRange(0, 1)] public double SurpriseChance { get; set; }
     [Ed("Шанс заметить"), EdRange(0, 1)] public double NoticeChance { get; set; }
 }
 
-public sealed class DetectionRules
+public sealed class DetectionRules : ContentPart
 {
     [Ed("Секторы", "Фронт, ближний фланг, дальний фланг, тыл")]
     public List<SectorRule> Sectors { get; set; } = new()
@@ -155,7 +155,7 @@ public sealed class DetectionRules
     }
 }
 
-public sealed class CombatRules
+public sealed class CombatRules : ContentPart
 {
     [Ed("Базовый шанс попадания"), EdRange(0, 1)] public double BaseHit { get; set; } = 0.85;
     [Ed("Мин. шанс попадания"), EdRange(0, 1)] public double MinHit { get; set; } = 0.05;
@@ -175,7 +175,7 @@ public sealed class CombatRules
     public string DamageFormula { get; set; } = "";
 }
 
-public sealed class VisionRules
+public sealed class VisionRules : ContentPart
 {
     [Ed("Интервал пересчёта, с"), EdRange(0.05, 5)] public double UpdateInterval { get; set; } = 0.25;
     [Ed("Туман войны", "Игрок видит только то, что видят его юниты")] public bool FogOfWar { get; set; } = true;
@@ -192,7 +192,7 @@ public enum FailureAction
     Repath,
 }
 
-public sealed class FailurePolicyDef
+public sealed class FailurePolicyDef : ContentPart
 {
     [Ed("Действие")] public FailureAction Action { get; set; } = FailureAction.Skip;
     [Ed("Ждать, с"), EdRange(0, 600)] public double WaitSeconds { get; set; }
@@ -224,7 +224,7 @@ public enum FailureReason
     Invalid,
 }
 
-public sealed class QueueRules
+public sealed class QueueRules : ContentPart
 {
     [Ed("Не хватает ОД")] public FailurePolicyDef NotEnoughAp { get; set; } = new() { Action = FailureAction.Wait, WaitSeconds = 10, Then = FailureAction.Skip };
     [Ed("Не хватает ресурса")] public FailurePolicyDef NotEnoughResource { get; set; } = new() { Action = FailureAction.Wait, WaitSeconds = 10, Then = FailureAction.Skip };
@@ -252,7 +252,7 @@ public sealed class QueueRules
     };
 }
 
-public sealed class LimitRules
+public sealed class LimitRules : ContentPart
 {
     [Ed("Макс. глубина реакций"), EdRange(1, 64)] public int MaxReactionDepth { get; set; } = 8;
     [Ed("Макс. событий за тик"), EdRange(100, 1000000)] public int MaxEventsPerTick { get; set; } = 5000;
@@ -265,7 +265,7 @@ public sealed class LimitRules
     [Ed("Разрешить глобальные навыки")] public bool AllowGlobalSkills { get; set; } = true;
 }
 
-public sealed class AutopauseRules
+public sealed class AutopauseRules : ContentPart
 {
     [Ed("Обнаружен враг")] public bool EnemySpotted { get; set; } = true;
     [Ed("Критический урон союзнику")] public bool AllyCriticalDamage { get; set; } = true;
@@ -278,7 +278,7 @@ public sealed class AutopauseRules
     [Ed("Очередь юнита опустела")] public bool QueueEmpty { get; set; }
 }
 
-public sealed class DeathRules
+public sealed class DeathRules : ContentPart
 {
     [Ed("Призванные исчезают со смертью призывателя")] public bool SummonsDieWithOwner { get; set; } = true;
     [Ed("Эффект клетки при смерти"), EdRef(DefCategory.CellEffect)] public string CorpseCellEffect { get; set; } = "";

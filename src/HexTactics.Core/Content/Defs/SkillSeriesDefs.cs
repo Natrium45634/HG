@@ -74,7 +74,7 @@ public enum ConditionFailAction
 }
 
 /// <summary>A cost of one stage (hit) of a series. Empty resource — action points.</summary>
-public sealed class StageCostDef
+public sealed class StageCostDef : ContentPart
 {
     [Ed("Ресурс", "Пусто — очки действия"), EdRef(DefCategory.Resource)] public string Resource { get; set; } = "";
     [Ed("Количество"), EdRange(0, 100000)] public double Amount { get; set; } = 1;
@@ -134,7 +134,7 @@ public enum UnitSideFilter
 /// Condition of a skill stage (and of a passive, docs/DECISIONS_3.md §46): a tree of AND/OR/NOT with leaves
 /// about the caster/owner, the target, the previous hit and the area. Scenario conditions of part 2 are a leaf.
 /// </summary>
-public sealed class UnitConditionDef
+public sealed class UnitConditionDef : ContentPart
 {
     [Ed("Условие")] public UnitConditionType Type { get; set; } = UnitConditionType.TargetAlive;
     [Ed("Вложенные условия"), EdShowIf(nameof(Type), UnitConditionType.All, UnitConditionType.Any, UnitConditionType.Not)]
@@ -231,7 +231,7 @@ public enum PierceInteraction
 /// the skill is the unit's «defensive skill» or its kind is «Защита»; it works inside the damage pipeline
 /// (hit — dodge and parry; armor step — reduction and blocks).
 /// </summary>
-public sealed class DefenseStanceDef
+public sealed class DefenseStanceDef : ContentPart
 {
     [Ed("Включена", "Навык создаёт защитное состояние")] public bool Enabled { get; set; }
     [Ed("Вид защиты", "Подпись, анимации и тексты"), EdShowIf(nameof(Enabled), true)] public DefenseKind Kind { get; set; } = DefenseKind.Stance;

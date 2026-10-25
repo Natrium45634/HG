@@ -41,7 +41,7 @@ public enum BaseDefeatMode
     [Ed("Своё условие")] Custom,
 }
 
-public sealed class BaseDefeatDef
+public sealed class BaseDefeatDef : ContentPart
 {
     [Ed("Правило поражения")] public BaseDefeatMode Mode { get; set; } = BaseDefeatMode.MainBase;
     [Ed("Главная база", "ID объекта; пусто — база с отметкой «главная» (или первая)"), EdShowIf(nameof(Mode), BaseDefeatMode.MainBase)] public string MainBase { get; set; } = "";
@@ -57,7 +57,7 @@ public sealed class BaseDefeatDef
 }
 
 /// <summary>Component «Здоровье и защита»: the object becomes a structure in battle.</summary>
-public sealed class StructureDef
+public sealed class StructureDef : ContentPart
 {
     [Ed("Здоровье"), EdRange(1, 1_000_000)] public double MaxHp { get; set; } = 500;
     [Ed("Броня"), EdRange(0, 10_000)] public double Armor { get; set; }
@@ -71,7 +71,7 @@ public sealed class StructureDef
 }
 
 /// <summary>Component «Спавн» (docs/DECISIONS_4.md §58).</summary>
-public sealed class SpawnComponentDef
+public sealed class SpawnComponentDef : ContentPart
 {
     [Ed("Активна", "Выключенная база не создаёт врагов, пока её не включит событие")] public bool Active { get; set; } = true;
     [Ed("Начальная задержка, с"), EdRange(0, 3600)] public double InitialDelay { get; set; }
@@ -91,7 +91,7 @@ public sealed class SpawnComponentDef
 /// An object of the scenario: stable ID (independent of name, position and look), type preset, occupied hexes and
 /// components. A base may occupy one hex (a portal) or an area (a fortress); the whole area is checked.
 /// </summary>
-public sealed class ScenarioObjectDef
+public sealed class ScenarioObjectDef : ContentPart
 {
     [Ed("ID", "Стабильный; не меняется при переименовании и перемещении")] public string Id { get; set; } = "";
     [Ed("Название")] public string Name { get; set; } = "";

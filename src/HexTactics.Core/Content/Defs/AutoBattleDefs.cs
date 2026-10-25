@@ -27,7 +27,7 @@ public enum PreparationEnd
 }
 
 /// <summary>A template the player may place in the preparation phase.</summary>
-public sealed class PlacementUnitDef
+public sealed class PlacementUnitDef : ContentPart
 {
     [Ed("Шаблон"), EdRef(DefCategory.Unit, AllowEmpty = false)] public string Unit { get; set; } = "";
     [Ed("Стоимость", "0 — стоимость угрозы шаблона"), EdRange(0, 100_000)] public double Cost { get; set; }
@@ -40,7 +40,7 @@ public sealed class PlacementUnitDef
 }
 
 /// <summary>The preparation phase of «TD с расстановкой» and the defenders of «Автотест» (docs/DECISIONS_4.md §64).</summary>
-public sealed class PlacementDef
+public sealed class PlacementDef : ContentPart
 {
     [Ed("Конец подготовки")] public PreparationEnd End { get; set; } = PreparationEnd.Confirm;
     [Ed("Длительность подготовки, с"), EdRange(0, 3600), EdShowIf(nameof(End), PreparationEnd.Timer, PreparationEnd.ConfirmOrTimer)] public double Duration { get; set; } = 30;
@@ -86,7 +86,7 @@ public enum EncounterMode
 }
 
 /// <summary>Leaving the route for a fight, and coming back (docs/DECISIONS_4.md §59, TZ §5.3).</summary>
-public sealed class EncounterDef
+public sealed class EncounterDef : ContentPart
 {
     [Ed("Поведение при встрече")] public EncounterMode Mode { get; set; } = EncounterMode.Hunter;
     [Ed("Дистанция преследования", "Гексов от маршрута; −1 — характеристика «дальность преследования»"), EdRange(-1, 50)] public int PursuitRange { get; set; } = -1;
@@ -112,7 +112,7 @@ public enum AltTargetKind
     [Ed("Событие (флаг)")] Event,
 }
 
-public sealed class AltTargetDef
+public sealed class AltTargetDef : ContentPart
 {
     [Ed("Что делать")] public AltTargetKind Kind { get; set; } = AltTargetKind.OtherBase;
     [Ed("Объект", "ID объекта; пусто — ближайшая цель/контрольная точка"), EdShowIf(nameof(Kind), AltTargetKind.CaptureObject)] public string Object { get; set; } = "";
@@ -171,7 +171,7 @@ public enum ObjectStateChange
 }
 
 /// <summary>An event of the scenario as the triggers see it.</summary>
-public sealed class ScenarioEvent
+public sealed class ScenarioEvent : ContentPart
 {
     public ScenarioEventType Type { get; init; }
     /// <summary>The unit of the event (the one that appeared, died, reached…): «владелец» of the actions.</summary>

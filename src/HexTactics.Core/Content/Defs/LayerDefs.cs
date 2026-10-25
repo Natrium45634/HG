@@ -40,7 +40,7 @@ public sealed class LayerDef : Def
     [Ed("Блокируется по умолчанию", "Существа слоя могут быть заблокированы", Group = "Бой")] public bool Blockable { get; set; } = true;
 }
 
-public sealed class LayerRules
+public sealed class LayerRules : ContentPart
 {
     [Ed("Слой по умолчанию"), EdRef(DefCategory.Layer, AllowEmpty = false)] public string Default { get; set; } = Layers.Ground;
     [Ed("Цели ближнего боя", "Если у навыка не задано: ближний бой (дальность ≤ 1, не дистанционный)"), EdRef(DefCategory.Layer)]
@@ -68,7 +68,7 @@ public enum StackLayout
 }
 
 /// <summary>Sharing a hex with other creatures (docs/DECISIONS_2.md §26).</summary>
-public sealed class StackingDef
+public sealed class StackingDef : ContentPart
 {
     [Ed("Можно делить клетку", "Совместное нахождение с другими существами (никогда — с враждебными)")] public bool CanShare { get; set; }
     [Ed("Предел на гексе", "Сколько существ всего может стоять на клетке"), EdRange(1, 12), EdShowIf(nameof(CanShare), true)]

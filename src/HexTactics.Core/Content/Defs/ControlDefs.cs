@@ -11,7 +11,7 @@ public enum RouteMode
 }
 
 /// <summary>Weights of a route edge: w·cost + w·1 (step) + w·turn + w·hazard + w·threat.</summary>
-public sealed class RouteWeights
+public sealed class RouteWeights : ContentPart
 {
     [Ed("Стоимость движения"), EdRange(0, 100)] public double Cost { get; set; } = 1;
     [Ed("Число шагов"), EdRange(0, 100)] public double Steps { get; set; }

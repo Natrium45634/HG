@@ -39,7 +39,7 @@ public enum CurveKind
     [Ed("Логарифм", "1 + ln x")] Log,
 }
 
-public sealed class ComponentCurveDef
+public sealed class ComponentCurveDef : ContentPart
 {
     [Ed("Зависимость")] public CurveKind Kind { get; set; } = CurveKind.Linear;
     [Ed("Степень"), EdRange(0.1, 2), EdShowIf(nameof(Kind), CurveKind.Power)] public double Exponent { get; set; } = 0.85;
@@ -61,7 +61,7 @@ public sealed class ComponentCurveDef
 }
 
 /// <summary>Weights of the components for a role: H, D, R, M are shares (summed to 1), C and S add on top.</summary>
-public sealed class RoleWeightsDef
+public sealed class RoleWeightsDef : ContentPart
 {
     [Ed("Роль")] public PowerRole Role { get; set; } = PowerRole.Universal;
     [Ed("Здоровье и защита (H)"), EdRange(0, 10)] public double H { get; set; } = 0.4;
@@ -82,7 +82,7 @@ public enum LevelScaleKind
     [Ed("Степенная", "Сила = уровень ^ степень")] Power,
 }
 
-public sealed class LevelPointDef
+public sealed class LevelPointDef : ContentPart
 {
     [Ed("Уровень"), EdRange(0, 1000)] public double Level { get; set; } = 1;
     [Ed("Сила", "Относительно эталона (эталон = 1)"), EdRange(0, 100_000)] public double Power { get; set; } = 1;
@@ -90,7 +90,7 @@ public sealed class LevelPointDef
     public override string ToString() => $"ур. {Level:0.#} = {Power:0.##}";
 }
 
-public sealed class LevelScaleDef
+public sealed class LevelScaleDef : ContentPart
 {
     [Ed("Вид шкалы")] public LevelScaleKind Kind { get; set; } = LevelScaleKind.Table;
     [Ed("Точки", "Уровень и сила; между точками — линейно, за последней — по наклону последнего отрезка"), EdShowIf(nameof(Kind), LevelScaleKind.Table)]
@@ -155,13 +155,13 @@ public sealed class LevelScaleDef
     public override string ToString() => Kind == LevelScaleKind.Table ? string.Join(", ", Points) : Kind.ToString();
 }
 
-public sealed class RoleScaleDef
+public sealed class RoleScaleDef : ContentPart
 {
     [Ed("Роль")] public PowerRole Role { get; set; } = PowerRole.Support;
     [Ed("Шкала")] public LevelScaleDef Scale { get; set; } = new();
 }
 
-public sealed class DamageTypeWeightDef
+public sealed class DamageTypeWeightDef : ContentPart
 {
     [Ed("Тип урона"), EdRef(DefCategory.DamageType, AllowEmpty = false)] public string Type { get; set; } = "physical";
     [Ed("Доля", "Насколько часто этот урон встречается в проекте"), EdRange(0, 100)] public double Weight { get; set; } = 1;
@@ -173,7 +173,7 @@ public sealed class DamageTypeWeightDef
 /// The project profile «Оценка силы» (docs/DECISIONS_4.md §65): the reference unit of level 1, the main damage
 /// types, the weights of the roles, the curves, the scales of level. Changing the reference changes every level.
 /// </summary>
-public sealed class PowerRulesDef
+public sealed class PowerRulesDef : ContentPart
 {
     [Ed("Эталон уровня 1", "Шаблон, относительно которого считаются все составляющие; пусто — встроенный эталон (100 здоровья, удар 10)"), EdRef(DefCategory.Unit)]
     public string ReferenceUnit { get; set; } = "";
@@ -226,7 +226,7 @@ public enum ScaleTarget
 }
 
 /// <summary>A parameter a scaling profile may change, with its weight and limits (docs/DECISIONS_4.md §66).</summary>
-public sealed class ScaleParamDef
+public sealed class ScaleParamDef : ContentPart
 {
     [Ed("Что меняется")] public ScaleTarget Target { get; set; } = ScaleTarget.Stat;
     [Ed("Характеристика"), EdRef(DefCategory.Stat), EdShowIf(nameof(Target), ScaleTarget.Stat)] public string Stat { get; set; } = Stats.HpMax;

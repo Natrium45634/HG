@@ -37,8 +37,17 @@ public enum DefCategory
     ScalingProfile,
 }
 
+/// <summary>
+/// Base of every part of the content (definitions and their nested objects): fields this version does not know —
+/// written by a newer version or by hand — are kept as they are and written back on save (docs/DECISIONS_5.md §84).
+/// </summary>
+public abstract class ContentPart
+{
+    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement>? Extra { get; set; }
+}
+
 /// <summary>Base class of every content definition.</summary>
-public abstract class Def
+public abstract class Def : ContentPart
 {
     [Ed("ID", "Уникальный идентификатор (латиница, цифры, _)", Order = -100), JsonPropertyOrder(-10)]
     public string Id { get; set; } = "";
@@ -77,7 +86,7 @@ public abstract class Def
 }
 
 /// <summary>Stat modifier: final = (base + ΣAdd) × (1 + ΣMul).</summary>
-public sealed class StatModDef
+public sealed class StatModDef : ContentPart
 {
     [Ed("Характеристика"), EdRef(DefCategory.Stat, AllowEmpty = false)]
     public string Stat { get; set; } = "";
@@ -92,7 +101,7 @@ public sealed class StatModDef
 }
 
 /// <summary>Which units an effect or targeting can affect, relative to the source.</summary>
-public sealed class TargetFilterDef
+public sealed class TargetFilterDef : ContentPart
 {
     [Ed("Враги")] public bool Enemies { get; set; } = true;
     [Ed("Союзники")] public bool Allies { get; set; }
@@ -117,7 +126,7 @@ public sealed class TargetFilterDef
 }
 
 /// <summary>Control flags granted by a status level (generic: no per-status code).</summary>
-public sealed class ControlFlagsDef
+public sealed class ControlFlagsDef : ContentPart
 {
     [Ed("Нельзя двигаться", "Обездвиживание")] public bool BlocksMovement { get; set; }
     [Ed("Нельзя лечить", "Лечение не действует")] public bool BlocksHealing { get; set; }
@@ -159,7 +168,7 @@ public sealed class ControlFlagsDef
     }
 }
 
-public sealed class ResourceCostDef
+public sealed class ResourceCostDef : ContentPart
 {
     [Ed("Ресурс"), EdRef(DefCategory.Resource, AllowEmpty = false)]
     public string Resource { get; set; } = "";

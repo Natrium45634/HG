@@ -30,7 +30,7 @@ public enum RouteForkRule
 }
 
 /// <summary>A loop: an edge back to an earlier node (docs/DECISIONS_4.md §57).</summary>
-public sealed class RouteLoopDef
+public sealed class RouteLoopDef : ContentPart
 {
     [Ed("Повторений", "Сколько раз враг проходит петлю; 0 — без ограничения (только у патруля)"), EdRange(0, 1000)] public int MaxRepeats { get; set; } = 2;
     [Ed("Условие выхода", "Выполнено — петля больше не выбирается")] public ConditionDef? ExitCondition { get; set; }
@@ -47,7 +47,7 @@ public enum RouteEndKind
     [Ed("Остановиться в конце")] Hold,
 }
 
-public sealed class RouteNodeDef
+public sealed class RouteNodeDef : ContentPart
 {
     [Ed("ID")] public string Id { get; set; } = "";
     [Ed("Гекс"), EdHidden] public HexCoord C { get; set; }
@@ -60,7 +60,7 @@ public sealed class RouteNodeDef
     public override string ToString() => $"{(Name == "" ? Id : Name)} {C} ({Kind})";
 }
 
-public sealed class RouteEdgeDef
+public sealed class RouteEdgeDef : ContentPart
 {
     [Ed("ID")] public string Id { get; set; } = "";
     [Ed("Из узла")] public string From { get; set; } = "";
@@ -79,7 +79,7 @@ public sealed class RouteEdgeDef
 /// A route of enemies: a graph from a spawn base to a target (or an end rule). Groups refer to it by ID; several
 /// routes may share hexes and stay independent (a crossing is not a junction).
 /// </summary>
-public sealed class RouteDef
+public sealed class RouteDef : ContentPart
 {
     [Ed("ID")] public string Id { get; set; } = "";
     [Ed("Название")] public string Name { get; set; } = "";

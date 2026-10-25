@@ -25,7 +25,7 @@ public enum CellStackPolicy
     Replace,
 }
 
-public sealed class SpreadDef
+public sealed class SpreadDef : ContentPart
 {
     [Ed("Распространяется")] public bool Enabled { get; set; }
     [Ed("Интервал, с"), EdRange(0.05, 3600), EdShowIf(nameof(Enabled), true)] public double Interval { get; set; } = 1;
@@ -91,7 +91,7 @@ public enum SynergyOperandKind
     TerrainTag,
 }
 
-public sealed class SynergyOperandDef
+public sealed class SynergyOperandDef : ContentPart
 {
     [Ed("Тип операнда")] public SynergyOperandKind Kind { get; set; } = SynergyOperandKind.CellEffect;
     [Ed("Значение", "Id эффекта клетки или тег")] public string Value { get; set; } = "";
@@ -139,7 +139,7 @@ public enum StatusRemoveTrigger
     [Ed("Источник погиб")] SourceDied,
 }
 
-public sealed class StatusRemoveDef
+public sealed class StatusRemoveDef : ContentPart
 {
     [Ed("Условие")] public StatusRemoveTrigger When { get; set; } = StatusRemoveTrigger.Moved;
     [Ed("Тип урона / элемент", "Для «получен урон типа»"), EdDamageMatch, EdShowIf(nameof(When), StatusRemoveTrigger.DamagedBy)] public string Damage { get; set; } = "*";
@@ -162,7 +162,7 @@ public enum ReapplyPolicy
     ReplaceIfStronger,
 }
 
-public sealed class StatusLevelDef
+public sealed class StatusLevelDef : ContentPart
 {
     [Ed("Название уровня")] public string Name { get; set; } = "";
     [Ed("Порог очков", "Для накопительных; для временных — номер стака"), EdRange(0, 100000)] public double Threshold { get; set; }

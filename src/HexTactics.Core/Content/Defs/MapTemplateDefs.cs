@@ -5,7 +5,7 @@ using HexTactics.Core.Hex;
 namespace HexTactics.Core.Content;
 
 /// <summary>Which parts of a map a template stores (the shape and size are always stored).</summary>
-public sealed class TemplatePartsDef
+public sealed class TemplatePartsDef : ContentPart
 {
     [Ed("Типы местности", "Иначе — пол по умолчанию")] public bool Terrain { get; set; } = true;
     [Ed("Высоты", "Иначе — высота 0")] public bool Heights { get; set; } = true;
@@ -58,7 +58,7 @@ public sealed class MapTemplateDef : Def
 }
 
 /// <summary>A route on the map: ordered waypoints; the walking path between them is computed by movement rules.</summary>
-public sealed class MapRouteDef
+public sealed class MapRouteDef : ContentPart
 {
     [Ed("ID маршрута")] public string Id { get; set; } = "";
     [Ed("Название")] public string Name { get; set; } = "";

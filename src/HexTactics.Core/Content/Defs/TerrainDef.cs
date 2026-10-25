@@ -67,7 +67,7 @@ public enum TerrainAnimation
 /// Visual parameters of a terrain type (docs/DECISIONS_2.md §20). Purely presentational: the
 /// simulation never reads them. Colour is never the only cue — patterns, symbols, outline, depth.
 /// </summary>
-public sealed class TerrainLookDef
+public sealed class TerrainLookDef : ContentPart
 {
     [Ed("Материал")] public TerrainMaterial Material { get; set; } = TerrainMaterial.Matte;
     [Ed("Цвет боковых граней", "Пусто — темнее верха"), EdColor] public string SideColor { get; set; } = "";
@@ -109,7 +109,7 @@ public enum FallAnimation
 }
 
 /// <summary>Pit / chasm behaviour (docs/DECISIONS_2.md §21).</summary>
-public sealed class PitRulesDef
+public sealed class PitRulesDef : ContentPart
 {
     [Ed("Можно войти", "Существо может оказаться в клетке (и упасть); иначе клетка просто непроходима")] public bool Enterable { get; set; } = true;
     [Ed("Последствие падения")] public FallConsequence Consequence { get; set; } = FallConsequence.Death;

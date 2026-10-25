@@ -65,7 +65,7 @@ public enum ModifierMode
 /// A modifier: what changes, by how much and how it is summed. Damage, cost, hits and the rest use the same
 /// summing modes as stats; texts are generated from the data («Получает на 75 % меньше урона от магии воды»).
 /// </summary>
-public sealed class ModifierDef
+public sealed class ModifierDef : ContentPart
 {
     [Ed("Что меняется")] public ModifierTarget Target { get; set; } = ModifierTarget.Stat;
     [Ed("Характеристика"), EdRef(DefCategory.Stat), EdShowIf(nameof(Target), ModifierTarget.Stat)] public string Stat { get; set; } = "";
@@ -215,7 +215,7 @@ public sealed class OriginDef : Def
 }
 
 /// <summary>A passive given by the scenario to the units of a side or with a tag.</summary>
-public sealed class ScenarioPassiveDef
+public sealed class ScenarioPassiveDef : ContentPart
 {
     [Ed("Пассив"), EdRef(DefCategory.Passive, AllowEmpty = false)] public string Passive { get; set; } = "";
     [Ed("Фракция", "Пусто — все"), EdRef(DefCategory.Faction)] public string Faction { get; set; } = "";
@@ -225,7 +225,7 @@ public sealed class ScenarioPassiveDef
 }
 
 /// <summary>The scenario switches off a passive (talent of a race…) or replaces it with another one.</summary>
-public sealed class PassiveOverrideDef
+public sealed class PassiveOverrideDef : ContentPart
 {
     [Ed("Пассив"), EdRef(DefCategory.Passive, AllowEmpty = false)] public string Passive { get; set; } = "";
     [Ed("Заменить на", "Пусто — отключить"), EdRef(DefCategory.Passive)] public string ReplaceWith { get; set; } = "";

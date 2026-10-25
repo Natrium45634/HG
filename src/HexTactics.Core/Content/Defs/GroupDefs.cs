@@ -25,7 +25,7 @@ public enum FormationKind
     [Ed("Оборонительный периметр")] Perimeter,
 }
 
-public sealed class FormationSlotDef
+public sealed class FormationSlotDef : ContentPart
 {
     [Ed("Смещение", "Относительно точки приказа при движении на восток")] public HexCoord Offset { get; set; }
     [Ed("Роль", "Авто — любой юнит")] public UnitRole Role { get; set; } = UnitRole.Auto;

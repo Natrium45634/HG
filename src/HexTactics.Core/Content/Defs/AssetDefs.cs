@@ -35,7 +35,7 @@ public enum AnimRole
     [Ed("Победа / эмоция")] Victory,
 }
 
-public sealed class AnimationMapDef
+public sealed class AnimationMapDef : ContentPart
 {
     [Ed("Роль")] public AnimRole Role { get; set; } = AnimRole.Idle;
     [Ed("Клип модели", "Имя анимации в файле модели")] public string Clip { get; set; } = "";
@@ -190,7 +190,7 @@ public sealed class VfxDef : Def
 }
 
 /// <summary>Effects of environment events (TZ §3.5): appearing effects, traps, destruction, terrain change, fall…</summary>
-public sealed class EnvironmentVisualsDef
+public sealed class EnvironmentVisualsDef : ContentPart
 {
     [Ed("Появление эффекта клетки", "Если у эффекта клетки не задан свой"), EdRef(DefCategory.Vfx)] public string EffectAppear { get; set; } = "";
     [Ed("Срабатывание ловушки"), EdRef(DefCategory.Vfx)] public string TrapTriggered { get; set; } = "";

@@ -6,7 +6,7 @@ using HexTactics.Core.Hex;
 namespace HexTactics.Core.Content;
 
 /// <summary>A single cell of a map definition. Nullable fields override the terrain type.</summary>
-public sealed class MapCellDef
+public sealed class MapCellDef : ContentPart
 {
     [Ed("Координаты")] public HexCoord C { get; set; }
     [Ed("Местность"), EdRef(DefCategory.Terrain, AllowEmpty = false)] public string T { get; set; } = "grass";
@@ -45,7 +45,7 @@ public enum MarkerType
     Exit,
 }
 
-public sealed class MapMarkerDef
+public sealed class MapMarkerDef : ContentPart
 {
     [Ed("ID метки")] public string Id { get; set; } = "";
     [Ed("Тип")] public MarkerType Type { get; set; } = MarkerType.PlayerStart;
@@ -55,7 +55,7 @@ public sealed class MapMarkerDef
     [Ed("Маркер предупреждения", "Показывать линию пути перед появлением врагов из этой точки")] public bool SpawnWarning { get; set; } = true;
 }
 
-public sealed class MapRulesDef
+public sealed class MapRulesDef : ContentPart
 {
     [Ed("Темнота", "0..1: снижает дальность обнаружения и шанс заметить атаку"), EdRange(0, 1)] public double Darkness { get; set; }
     [Ed("Местность за краем", "Для информации редактора")] public string Notes { get; set; } = "";
@@ -122,13 +122,13 @@ public enum SideController
     Ai,
 }
 
-public sealed class ScenarioSideDef
+public sealed class ScenarioSideDef : ContentPart
 {
     [Ed("Фракция"), EdRef(DefCategory.Faction, AllowEmpty = false)] public string Faction { get; set; } = "player";
     [Ed("Управление")] public SideController Controller { get; set; } = SideController.Player;
 }
 
-public sealed class ScenarioUnitDef
+public sealed class ScenarioUnitDef : ContentPart
 {
     [Ed("Шаблон юнита"), EdRef(DefCategory.Unit, AllowEmpty = false)] public string Unit { get; set; } = "";
     [Ed("Фракция", "Пусто — из шаблона"), EdRef(DefCategory.Faction)] public string Faction { get; set; } = "";
@@ -140,7 +140,7 @@ public sealed class ScenarioUnitDef
     [Ed("Уровень", "0 — уровень шаблона; иначе характеристики экземпляра подгоняются")] public int Level { get; set; }
 }
 
-public sealed class WaveUnitDef
+public sealed class WaveUnitDef : ContentPart
 {
     [Ed("Шаблон юнита"), EdRef(DefCategory.Unit, AllowEmpty = false)] public string Unit { get; set; } = "";
     [Ed("Количество"), EdRange(1, 100)] public int Count { get; set; } = 1;
@@ -160,7 +160,7 @@ public enum GroupRouteSelect
 /// A group of appearance (docs/DECISIONS_4.md §58): identical instances of one template on one schedule, from a spawn
 /// base along a route to a target. The wave stores groups, not every enemy.
 /// </summary>
-public sealed class SpawnGroupDef
+public sealed class SpawnGroupDef : ContentPart
 {
     [Ed("ID")] public string Id { get; set; } = "";
     [Ed("Название", "Пусто — по шаблону")] public string Name { get; set; } = "";
@@ -227,7 +227,7 @@ public sealed class SpawnGroupDef
 }
 
 /// <summary>Difficulty of a wave (docs/DECISIONS_4.md §58): multipliers on its enemies, the templates stay.</summary>
-public sealed class WaveDifficultyDef
+public sealed class WaveDifficultyDef : ContentPart
 {
     [Ed("Здоровье ×"), EdRange(0.1, 100)] public double Health { get; set; } = 1;
     [Ed("Сила и магия ×", "Сила и сила магии врагов волны"), EdRange(0.1, 100)] public double Power { get; set; } = 1;
@@ -243,7 +243,7 @@ public sealed class WaveDifficultyDef
 /// A wave composed by a threat budget (docs/DECISIONS_4.md §58): the author sets the budget and the limits; the
 /// composition is picked deterministically by the seed and can be pinned — then it no longer changes.
 /// </summary>
-public sealed class WaveBudgetDef
+public sealed class WaveBudgetDef : ContentPart
 {
     [Ed("Подбирать состав по бюджету")] public bool Enabled { get; set; }
     [Ed("Бюджет угрозы", "Сумма стоимостей угрозы врагов"), EdRange(0, 1_000_000)] public double Budget { get; set; } = 20;
@@ -273,7 +273,7 @@ public enum WaveStart
     [Ed("Только действием триггера")] Manual,
 }
 
-public sealed class WaveDef
+public sealed class WaveDef : ContentPart
 {
     [Ed("Название")] public string Name { get; set; } = "Волна";
     [Ed("Начало")] public WaveStart Start { get; set; } = WaveStart.Time;
@@ -366,7 +366,7 @@ public enum AreaSide
     [Ed("Любая")] Any,
 }
 
-public sealed class ConditionDef
+public sealed class ConditionDef : ContentPart
 {
     [Ed("Условие")] public ConditionType Type { get; set; } = ConditionType.AllEnemiesDead;
     [Ed("Вложенные условия"), EdShowIf(nameof(Type), ConditionType.All, ConditionType.Any, ConditionType.Not, ConditionType.InOrder)]
@@ -491,7 +491,7 @@ public enum ActionTarget
     [Ed("Все юниты игрока")] PlayerUnits,
 }
 
-public sealed class TriggerActionDef
+public sealed class TriggerActionDef : ContentPart
 {
     [Ed("Действие")] public TriggerActionType Type { get; set; } = TriggerActionType.Message;
     [Ed("Текст / ID", "Сообщение; имя триггера; ID визуального или звукового эффекта"),
@@ -577,7 +577,7 @@ public sealed class TriggerActionDef
     };
 }
 
-public sealed class TriggerDef
+public sealed class TriggerDef : ContentPart
 {
     [Ed("Название")] public string Name { get; set; } = "Триггер";
     // Part 4 (docs/DECISIONS_4.md §68): event → conditions → actions; without an event — the condition every tick.
@@ -650,7 +650,7 @@ public sealed class ScenarioDef : Def
     public RouteDef? Route(string id) => Routes.FirstOrDefault(r => r.Id == id);
 }
 
-public sealed class ScenarioLimitsDef
+public sealed class ScenarioLimitsDef : ContentPart
 {
     [Ed("Совместное нахождение на гексе", "По настройкам типов юнитов / запрещено / разрешено всем")] public StackingMode Stacking { get; set; } = StackingMode.ByUnitType;
     [Ed("Туман войны")] public bool FogOfWar { get; set; } = true;

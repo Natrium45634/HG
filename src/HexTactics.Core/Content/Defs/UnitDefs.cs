@@ -126,7 +126,7 @@ public enum UnitShape
     Totem,
 }
 
-public sealed class UnitVisualDef
+public sealed class UnitVisualDef : ContentPart
 {
     [Ed("Фигура")] public UnitShape Shape { get; set; } = UnitShape.Pawn;
     [Ed("Цвет фигуры", "Пусто — цвет фракции"), EdColor] public string Color { get; set; } = "";
@@ -147,7 +147,7 @@ public sealed class UnitVisualDef
     [Ed("Эффект получения урона"), EdRef(DefCategory.Vfx)] public string HitVfx { get; set; } = "";
 }
 
-public sealed class UnitResourceDef
+public sealed class UnitResourceDef : ContentPart
 {
     [Ed("Ресурс"), EdRef(DefCategory.Resource, AllowEmpty = false)] public string Resource { get; set; } = "";
     [Ed("Максимум"), EdRange(0, 100000)] public double Max { get; set; } = 100;
@@ -155,7 +155,7 @@ public sealed class UnitResourceDef
     [Ed("Восстановление/с"), EdRange(-1000, 1000)] public double Regen { get; set; }
 }
 
-public sealed class StartingStatusDef
+public sealed class StartingStatusDef : ContentPart
 {
     [Ed("Состояние"), EdRef(DefCategory.Status, AllowEmpty = false)] public string Status { get; set; } = "";
     [Ed("Очки/стаки", "Для накопительных — очки, для временных — число стаков")] public double Amount { get; set; } = 1;
@@ -329,7 +329,7 @@ public enum AiTargetPriority
 }
 
 /// <summary>A behaviour rule of an AI profile: a condition (self = the unit) and actions (actor = the unit).</summary>
-public sealed class AiRuleDef
+public sealed class AiRuleDef : ContentPart
 {
     [Ed("Название")] public string Name { get; set; } = "Правило";
     [Ed("Приоритет", "Правила проверяются от большего приоритета; поведение задаёт первое сработавшее"), EdRange(-100, 100)] public int Priority { get; set; }

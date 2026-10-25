@@ -33,7 +33,7 @@ public enum AutoTargetRule
     [Ed("Больше всего противников рядом")] MostEnemiesNearby,
 }
 
-public sealed class AutoTargetRuleDef
+public sealed class AutoTargetRuleDef : ContentPart
 {
     [Ed("Правило")] public AutoTargetRule Rule { get; set; } = AutoTargetRule.Nearest;
     [Ed("Тег", "Тег типа юнита или тег сценария"), EdShowIf(nameof(Rule), AutoTargetRule.WithTag)] public string Tag { get; set; } = "";
@@ -72,14 +72,14 @@ public enum AutoAttackStopKind
     [Ed("Юнит в защитной стойке")] Defending,
 }
 
-public sealed class AutoAttackStopDef
+public sealed class AutoAttackStopDef : ContentPart
 {
     [Ed("Условие")] public AutoAttackStopKind When { get; set; } = AutoAttackStopKind.PlayerCommand;
     [Ed("Доля здоровья"), EdRange(0, 1), EdShowIf(nameof(When), AutoAttackStopKind.HpBelow)] public double HpFraction { get; set; } = 0.25;
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(When), AutoAttackStopKind.HasStatus)] public string Status { get; set; } = "";
 }
 
-public sealed class AutoAttackDef
+public sealed class AutoAttackDef : ContentPart
 {
     [Ed("Включена")] public bool Enabled { get; set; } = true;
     [Ed("Навык", "Пусто — обычная атака юнита"), EdRef(DefCategory.Skill)] public string Skill { get; set; } = "";
@@ -101,7 +101,7 @@ public sealed class AutoAttackDef
     [Ed("При нехватке ОД/ресурсов")] public ResourceShortage OnShortage { get; set; } = ResourceShortage.Skip;
 }
 
-public sealed class AutoAttackRules
+public sealed class AutoAttackRules : ContentPart
 {
     [Ed("Автоатаки включены")] public bool Enabled { get; set; } = true;
     [Ed("Для юнитов игрока")] public bool PlayerUnits { get; set; } = true;
@@ -115,7 +115,7 @@ public sealed class AutoAttackRules
 /// Rules of automatic target choice of a skill (docs/DECISIONS_3.md §43): criteria in order (or weighted),
 /// filters, random choice among equals through the simulation's generator.
 /// </summary>
-public sealed class TargetSelectorDef
+public sealed class TargetSelectorDef : ContentPart
 {
     [Ed("Правила выбора", "По порядку: каждое следующее решает ничьи предыдущего; пусто — ближайшая цель")]
     public List<AutoTargetRuleDef> Rules { get; set; } = new();

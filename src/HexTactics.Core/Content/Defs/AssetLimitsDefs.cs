@@ -19,7 +19,7 @@ public enum TexturePurpose
     [Ed("Прочее")] Other,
 }
 
-public sealed class TextureLimitDef
+public sealed class TextureLimitDef : ContentPart
 {
     [Ed("Назначение")] public TexturePurpose Purpose { get; set; }
     [Ed("Рекомендуемый минимум, пикс."), EdRange(1, 16384)] public int RecommendedMin { get; set; } = 512;
@@ -34,7 +34,7 @@ public sealed class TextureLimitDef
 /// Starting limits of resources (TZ §11–13, 15): stored with the rules, shown in the editor and on the requirements
 /// page; changing them needs no code.
 /// </summary>
-public sealed class AssetLimitsDef
+public sealed class AssetLimitsDef : ContentPart
 {
     [Ed("Текстуры по назначению")]
     public List<TextureLimitDef> Textures { get; set; } = new()
@@ -87,7 +87,7 @@ public enum AttachmentPoint
     [Ed("Направление взгляда")] Facing,
 }
 
-public sealed class AttachmentDef
+public sealed class AttachmentDef : ContentPart
 {
     [Ed("Точка")] public AttachmentPoint Point { get; set; } = AttachmentPoint.Weapon;
     [Ed("Узел модели", "Имя узла в файле; пусто — смещение от опоры")] public string Node { get; set; } = "";
@@ -112,7 +112,7 @@ public enum AnimMarker
     [Ed("Конец защиты")] DefenseEnd,
 }
 
-public sealed class AnimMarkerDef
+public sealed class AnimMarkerDef : ContentPart
 {
     [Ed("Маркер")] public AnimMarker Kind { get; set; } = AnimMarker.HitCheck;
     [Ed("Время в клипе, с"), EdRange(0, 600)] public double Time { get; set; } = 0.3;
@@ -166,7 +166,7 @@ public enum ProjectileVanish
 /// The look of the projectile of a skill stage (TZ §17.3). Display only: the stage computes the hit; the flight time
 /// is the visual part of the stage's delay, never the reason of the damage.
 /// </summary>
-public sealed class ProjectileDef
+public sealed class ProjectileDef : ContentPart
 {
     [Ed("Есть снаряд")] public bool Enabled { get; set; }
     [Ed("Модель", "Ресурс «Модель»; пусто — светящаяся капля цвета навыка"), EdRef(DefCategory.Asset), EdShowIf(nameof(Enabled), true)] public string Model { get; set; } = "";
@@ -184,7 +184,7 @@ public sealed class ProjectileDef
 }
 
 /// <summary>A visual variant of a terrain (chosen by the cell's coordinates — deterministic, never changes the rules).</summary>
-public sealed class TerrainVariantDef
+public sealed class TerrainVariantDef : ContentPart
 {
     [Ed("Текстура верха"), EdRef(DefCategory.Asset)] public string TopTexture { get; set; } = "";
     [Ed("Материал верха"), EdRef(DefCategory.Asset)] public string TopMaterial { get; set; } = "";
