@@ -80,6 +80,9 @@ public partial class EditorScreen : Control
         var draft = app.Content.BeginEdit();
         _ctx = new EditorContext(draft);
         PropertyGrid.IdLocked = d => app.Content.Published.Exists(d.Category, d.Id) && app.Content.Published.Table(d.Category).Get(d.Id)?.GetType() == d.GetType();
+        // Reference lists search the draft and create missing objects in it (docs/DECISIONS_5.md §77).
+        PropertyGrid.SearchIndex = db => db == _ctx.Db ? _ctx.Search : null;
+        PropertyGrid.CreateRef = (db, c, name) => db == _ctx.Db ? _ctx.CreateByName(c, name) : null;
         if (app.Content.DraftDirty) _ctx.MarkDirty();
         _ctx.DirtyChanged += UpdateState;
         _ctx.Validated += UpdateState;
@@ -410,6 +413,12 @@ public partial class EditorScreen : Control
                 ShowSection(_currentKey);
                 Dialogs.Info(this, "Готово", "Копия пользовательского пакета: " + backup);
             }, "Сбросить");
+    }
+
+    public override void _ExitTree()
+    {
+        PropertyGrid.SearchIndex = null;
+        PropertyGrid.CreateRef = null;
     }
 
     private void Exit()

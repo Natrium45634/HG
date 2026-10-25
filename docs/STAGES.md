@@ -2433,3 +2433,25 @@ Windows-сборка проверена самопроверкой на Windows 
   установленной игры → тихое удаление. Локально под Wine — одиночный exe
   с окном: меню с версией, UI-тесты `battle_select_and_move` и
   `editor_create_delete`.
+
+---
+
+# Перед частью 5: быстрый ввод со связями
+
+* **Сделано** ([DECISIONS_5.md §77](DECISIONS_5.md)): поиск по черновику с
+  русскими окончаниями, беглыми гласными, синонимами (`aliases`), другой
+  раскладкой и отметками «новое / изменено / неполный»; все поля-ссылки и
+  поле «Тип урона» — списки с поиском и «＋ Создать «…»» (в «Тип урона» —
+  связанные элемент и тип урона); «⚡ Быстрый ввод» в пассивах, талантах,
+  категориях существ, юнитах и врагах: правило словами → модификаторы со
+  ссылками на уже добавленное, подсказки к слову под курсором, предпросмотр
+  связей, создание недостающего одной кнопкой, новый пассив категории или
+  юнита одной операцией истории; синонимы во встроенном контенте;
+  исправлены тексты модификаторов (названия вместо ID).
+* **Файлы**: `src/HexTactics.Core/Content/{ContentSearch,QuickRule}.cs`,
+  `ContentJson.cs` (`[JsonOmitEmpty]`), `Defs/Common.cs` (`Aliases`),
+  `Defs/PassiveDefs.cs`; `game/src/UI/{SearchableOption,PropertyGrid}.cs`,
+  `game/src/Editor/{QuickRuleBar,PassivePanel,MiscPanels,EditorContext,EditorScreen,DefListPanel}.cs`;
+  `game/content/{elements,damage_types,stats}.json`.
+* **Тесты**: `QuickEntryTests` (25), UI-тест
+  `editor_quick_input_links_creates_and_search_lists`.

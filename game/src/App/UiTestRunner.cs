@@ -77,6 +77,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_power_level_context_fit_threat", EditorPowerLevel));
         _tests.Add(("editor_undo_log_mass_overrides_reports_compare", EditorProjectTools));
         _tests.Add(("editor_td_context_menus_route_group_base", EditorTdMenus));
+        _tests.Add(("editor_quick_input_links_creates_and_search_lists", EditorQuickInput));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2695,6 +2696,92 @@ public partial class UiTestRunner : Node
             draft.Rules.Power.ReferenceUnit = refBackup;
         }
     }
+    /// <summary>
+    /// «Быстрый ввод со связями» (docs/DECISIONS_5.md §77): a racial trait of «Нежить» typed in words; the missing element
+    /// is created with one click and linked; suggestions find the new element while typing; the trait is one undo;
+    /// a reference list opens with a search that understands word forms.
+    /// </summary>
+    private async Task EditorQuickInput()
+    {
+        var ed = await OpenEditor("origins");
+        var ctx = ed.Context;
+        var panel = Find<OriginPanel>(GetTree().Root).First();
+        panel.Select("undead");
+        await Frames(6);
+        var bar = Find<QuickRuleBar>(panel).First();
+        await ClickVisible(Find<LineEdit>(bar).First(l => l.Name == "QuickRuleText"));
+        await Type("+25% входящего урона от лунной магии");
+        // Nothing is called «лунная магия» yet: the bar offers to create it and does not add a rule for «any damage».
+        var both = Find<Button>(bar).FirstOrDefault(b => b.Name == "QuickCreate_Both");
+        Check(both != null && both.Text.Contains("Лунная магия"), "нет предложения создать элемент и тип урона «Лунная магия»");
+        Check(Find<Button>(bar).First(b => b.Name == "QuickRuleAdd").Disabled, "«Добавить» доступна, пока слово ничего не называет");
+        await ClickVisible(both!);
+        await Frames(3);
+        var el = ctx.Db.All<ElementDef>().FirstOrDefault(e => e.Name == "Лунная магия");
+        Check(el != null, "элемент не создан");
+        Check(ctx.Db.All<DamageTypeDef>().Any(t => t.Element == el!.Id), "тип урона не связан с новым элементом");
+        var ok = Find<Label>(bar).FirstOrDefault(l => l.Name == "QuickRuleOk");
+        Check(ok != null && ok.Text.StartsWith("✓") && ok.Text.Contains("Лунная магия"), "правило не связалось с новым элементом: " + ok?.Text);
+        var links = Find<Label>(bar).FirstOrDefault(l => l.Name == "QuickRuleLinks");
+        Check(links != null && links.Text.Contains("новое"), "связь не отмечена как новое в черновике: " + links?.Text);
+        Find<LineEdit>(bar).First(l => l.Name == "QuickRuleName").Text = "Уязвимость к лунной магии";
+        await ClickVisible(Find<Button>(bar).First(b => b.Name == "QuickRuleAdd"));
+        await Frames(6);
+        PassiveDef? Trait() => ctx.Db.Get<OriginDef>("undead")!.Passives.Select(id => ctx.Db.Get<PassiveDef>(id)).FirstOrDefault(x => x?.Name == "Уязвимость к лунной магии");
+        var p = Trait();
+        Check(p != null, "особенность не добавлена в «Нежить»");
+        Check(p!.Source == PassiveSource.Species && p.Modifiers.Count == 1 && p.Modifiers[0].Target == ModifierTarget.IncomingDamage
+              && p.Modifiers[0].Match == "el:" + el!.Id && p.Modifiers[0].Value == 25, "модификатор особенности не тот");
+        string pid = p.Id;
+
+        // While typing, the word under the caret finds the element just created.
+        bar = Find<QuickRuleBar>(panel).First();
+        await ClickVisible(Find<LineEdit>(bar).First(l => l.Name == "QuickRuleText"));
+        await Type("иммунитет к лун");
+        var sug = Find<Button>(bar).FirstOrDefault(b => b.Name == "Suggest_" + el.Id);
+        Check(sug != null && sug.Text.Contains("новое"), "подсказка не нашла новый элемент");
+        await ClickVisible(sug!);
+        Check(Find<LineEdit>(bar).First(l => l.Name == "QuickRuleText").Text == "иммунитет к лунная магия", "подсказка не подставила название");
+        Check(Find<Label>(bar).Any(l => l.Name == "QuickRuleOk" && l.Text.Contains("Невосприимчив") && l.Text.Contains("Лунная магия")), "иммунитет не распознан");
+        Find<LineEdit>(bar).First(l => l.Name == "QuickRuleText").Text = "";
+
+        // The trait is one operation of the history.
+        await ClickVisible(Find<Button>(ed).First(b => b.Name == "EdUndo"));
+        await Frames(4);
+        Check(ctx.Db.Get<PassiveDef>(pid) == null && !ctx.Db.Get<OriginDef>("undead")!.Passives.Contains(pid), "отмена не убрала особенность одним шагом");
+        Check(ctx.Db.Element(el.Id) != null, "отмена особенности убрала и элемент (это была отдельная операция)");
+        await ClickVisible(Find<Button>(ed).First(b => b.Name == "EdRedo"));
+        await Frames(4);
+        Check(Trait() != null, "повтор не вернул особенность");
+
+        // A reference list opens with a search: «огня» finds the element «Огонь» by its word form.
+        ctx.Navigate(DefCategory.Passive, pid);
+        await Frames(8);
+        var pp = Find<PassivePanel>(GetTree().Root).First();
+        var match = Find<HexTactics.Game.UI.SearchableOption>(pp).FirstOrDefault(o => o.IsVisibleInTree() && o.Selected >= 0 && o.GetItemText(o.Selected).Contains("Лунная магия"));
+        Check(match != null, "поле «Тип урона» модификатора не показывает новый элемент");
+        await ClickVisible(match!);
+        var popup = Find<PopupPanel>(match!).FirstOrDefault(x => x.Name == "SearchPopup");
+        Check(popup != null && popup.Visible, "клик по списку не открыл поиск");
+        await Type("огня");
+        var rows = match!.Rows;
+        Check(rows.Count > 0 && rows[0].StartsWith("Огонь [fire]"), "поиск «огня» не нашёл «Огонь» первым: " + string.Join(" | ", rows.Take(3)));
+        await Key(Godot.Key.Enter);
+        await Frames(3);
+        Check(ctx.Db.Get<PassiveDef>(pid)!.Modifiers[0].Match == "el:fire", "выбор в списке с поиском не записал значение");
+    }
+
+    /// <summary>Types the text into the focused control as key presses with characters.</summary>
+    private async Task Type(string s)
+    {
+        foreach (var ch in s)
+        {
+            Input.ParseInputEvent(new InputEventKey { Pressed = true, Unicode = ch });
+            Input.ParseInputEvent(new InputEventKey { Pressed = false, Unicode = ch });
+        }
+        await Frames(4);
+    }
+
     /// <summary>Scrolls the nearest scroll container to the control, then clicks its centre.</summary>
     private async Task ClickVisible(Control c)
     {

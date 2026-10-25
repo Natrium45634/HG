@@ -25,6 +25,21 @@ public sealed class EditorContext
 
     public ContentDatabase Db { get; private set; }
     public List<ContentIssue> Issues { get; private set; }
+
+    private ContentSearch? _search;
+    /// <summary>
+    /// Search over the draft — new, changed and incomplete objects included (docs/DECISIONS_5.md §77); rebuilt on the
+    /// first use after a change.
+    /// </summary>
+    public ContentSearch Search => _search ??= ContentSearch.Build(Db, App.Main.Instance.Content.Published);
+
+    /// <summary>Creates an object by name in the draft (from a reference list or the quick input) and returns it.</summary>
+    public Def CreateByName(DefCategory c, string name, bool withElement = false)
+    {
+        var d = QuickRuleParser.Create(Db, c, name, withElement);
+        MarkDirty();
+        return d;
+    }
     public bool Dirty { get; private set; }
     private bool _validatePending;
 
@@ -52,6 +67,7 @@ public sealed class EditorContext
 
     private void SetDirty()
     {
+        _search = null;
         bool was = Dirty;
         Dirty = true;
         _validatePending = true;
@@ -77,6 +93,7 @@ public sealed class EditorContext
     /// <summary>After several undo steps done directly on the history (the log's «вернуть к этой точке»).</summary>
     public void MarkDirtyAfterHistory()
     {
+        _search = null;
         bool was = Dirty;
         Dirty = true;
         App.Main.Instance.Content.DraftDirty = true;
@@ -93,6 +110,7 @@ public sealed class EditorContext
         _commitAt = 0;
         int before = History.Log.Count;
         var e = redo ? History.Redo() : History.Undo();
+        _search = null;
         if (History.Log.Count > before) EditLog.Append(History.Log[^1], "");
         if (e == null) return null;
         EditLog.Append(e, redo ? "повторено" : "отменено");
@@ -131,6 +149,7 @@ public sealed class EditorContext
     public void Replace(ContentDatabase db)
     {
         Db = db;
+        _search = null;
         _commitAt = 0;
         History.Reset(db);
         Validate();

@@ -37,6 +37,27 @@ public partial class PropertyGrid : VBoxContainer
     /// docs/DECISIONS_2.md §31). Set by the editor context.
     /// </summary>
     public static Func<Def, bool>? IdLocked { get; set; }
+    /// <summary>
+    /// The search index of a database (docs/DECISIONS_5.md §77): the editor gives its draft's, null — the grid builds its
+    /// own. Reference lists search it.
+    /// </summary>
+    public static Func<ContentDatabase, ContentSearch?>? SearchIndex { get; set; }
+    /// <summary>Creates an object by name in the database, from a reference list («＋ Создать «…»»); null — no creation.</summary>
+    public static Func<ContentDatabase, DefCategory, string, Def?>? CreateRef { get; set; }
+    /// <summary>Categories a reference list may create by name: simple objects that make sense with default values.</summary>
+    public static readonly HashSet<DefCategory> CreatableByName = new()
+    {
+        DefCategory.Element, DefCategory.DamageType, DefCategory.Stat, DefCategory.Status, DefCategory.Resource, DefCategory.Passive,
+        DefCategory.Origin, DefCategory.Faction, DefCategory.Formation, DefCategory.AiProfile,
+    };
+    private ContentSearch? _ownIndex;
+
+    private ContentSearch Index()
+    {
+        var db = _db ?? new ContentDatabase();
+        return SearchIndex?.Invoke(db) ?? (_ownIndex ??= ContentSearch.Build(db));
+    }
+
     /// <summary>Properties to skip (by name) at the top level (edited by a custom tool).</summary>
     public HashSet<string> Skip { get; } = new();
     /// <summary>
@@ -134,7 +155,7 @@ public partial class PropertyGrid : VBoxContainer
 
     public OptionButton MatchOption(string current, Action<string> set)
     {
-        var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
+        var ob = new SearchableOption { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
         var options = _db != null ? DamageTaxonomy.MatchOptions(_db) : new List<(string, string)> { ("*", "любой урон") };
         var ids = options.Select(o => o.Item1).ToList();
         foreach (var (_, label) in options) ob.AddItem(label);
@@ -144,9 +165,34 @@ public partial class PropertyGrid : VBoxContainer
             ob.AddItem(current.StartsWith("tag:", StringComparison.Ordinal) ? $"тег: {current[4..]}" : $"⚠ {current} (не найден)");
         }
         ob.Selected = Math.Max(0, ids.IndexOf(string.IsNullOrEmpty(current) ? "*" : current));
-        ob.TooltipText = "Любой урон, тип урона (и его потомки), элемент (и его потомки) или категория";
+        ob.TooltipText = "Любой урон, тип урона (и его потомки), элемент (и его потомки) или категория · клик — поиск";
         ob.ItemSelected += idx => set(ids[(int)idx]);
+        ob.EntryOf = i => i < ids.Count ? MatchEntry(ids[i]) : null;
+        if (_db != null && CreateRef != null)
+        {
+            // A damage not in the content yet: its element and a damage type of it, linked; the match takes the element.
+            ob.CreateKind = "элемент и тип урона";
+            ob.Create = q =>
+            {
+                var t = CreateRef(_db, DefCategory.DamageType, q) as DamageTypeDef;
+                if (t == null) return -1;
+                if (string.IsNullOrEmpty(t.Element) && CreateRef(_db, DefCategory.Element, q) is ElementDef el) t.Element = el.Id;
+                var v = string.IsNullOrEmpty(t.Element) ? t.Id : DamageTaxonomy.ElementPrefix + t.Element;
+                ids.Add(v);
+                ob.AddItem(string.IsNullOrEmpty(t.Element) ? $"тип: {t.DisplayName}" : $"элемент: {_db.Element(t.Element)?.DisplayName ?? t.Element}");
+                return ob.ItemCount - 1;
+            };
+        }
         return ob;
+    }
+
+    private SearchEntry? MatchEntry(string v)
+    {
+        var index = Index();
+        if (v == DamageTaxonomy.Any || v == "") return ContentSearch.TextEntry("любой урон", DamageTaxonomy.Any, "любой");
+        if (v.StartsWith(DamageTaxonomy.ElementPrefix, StringComparison.Ordinal)) return index.Get(DefCategory.Element, v[DamageTaxonomy.ElementPrefix.Length..]);
+        if (v.StartsWith(DamageTaxonomy.CategoryPrefix, StringComparison.Ordinal) || v.StartsWith(DamageTaxonomy.TagPrefix, StringComparison.Ordinal)) return index.Get(null, v);
+        return index.Get(DefCategory.DamageType, v);
     }
 
     private Control MatchList(VBoxContainer parent, object owner, PropertyInfo prop, EdAttribute ed, List<string> list)
@@ -517,7 +563,7 @@ public partial class PropertyGrid : VBoxContainer
 
     public OptionButton RefOption(EdRefAttribute refAttr, string current, Action<string> set, bool allowEmptyOverride = false)
     {
-        var ob = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
+        var ob = new SearchableOption { FocusMode = FocusModeEnum.None, FitToLongestItem = false, ClipText = true, CustomMinimumSize = new Vector2(90, 0) };
         var ids = new List<string>();
         if (refAttr.AllowEmpty || allowEmptyOverride || string.IsNullOrEmpty(current))
         {
@@ -556,6 +602,20 @@ public partial class PropertyGrid : VBoxContainer
         }
         ob.Selected = Math.Max(0, ids.IndexOf(current));
         ob.ItemSelected += idx => set(ids[(int)idx]);
+        // Search over the draft: pinned old versions («id@N») are found by their item text.
+        ob.EntryOf = i => i < ids.Count && ids[i] != "" && ids[i].IndexOf('@') < 0 ? Index().Get(refAttr.Category, ids[i]) : null;
+        if (_db != null && CreateRef != null && CreatableByName.Contains(refAttr.Category))
+        {
+            ob.CreateKind = ContentSearch.KindOf(refAttr.Category);
+            ob.Create = q =>
+            {
+                var d = CreateRef(_db, refAttr.Category, q);
+                if (d == null) return -1;
+                ids.Add(d.Id);
+                ob.AddItem(LabelOf(refAttr.Category, d.Id));
+                return ob.ItemCount - 1;
+            };
+        }
         return ob;
     }
 

@@ -35,7 +35,17 @@ public partial class PassivePanel : DefListPanel
             OnEdited(p);
             Side(p);
         };
-        root.AddChild(grid.Expand(true));
+        // Rules in words, linked to the draft's elements, stats… (docs/DECISIONS_5.md §77).
+        var left = Ui.VBox(6).Expand(true);
+        left.AddChild(new QuickRuleBar(Ctx, (mods, text, _) =>
+        {
+            p.Modifiers.AddRange(mods);
+            OnEdited(p);
+            Ctx.Commit("Быстрый ввод: " + text);
+            Select(p);
+        }));
+        left.AddChild(grid.Expand(true));
+        root.AddChild(left);
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(400, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _side = Ui.VBox(6).Expand(true);
         scroll.AddChild(_side);
@@ -134,7 +144,24 @@ public partial class OriginPanel : DefListPanel
             OnEdited(o);
             Side(o);
         };
-        root.AddChild(grid.Expand(true));
+        // A racial trait in words: a new passive of the category, linked to the draft's elements, stats… (§77).
+        var left = Ui.VBox(6).Expand(true);
+        left.AddChild(new QuickRuleBar(Ctx, (mods, text, name) =>
+        {
+            var p = QuickPassives.Create(Ctx.Db, name.Length > 0 ? name : QuickRuleBar.NameFrom(text), mods, QuickPassives.SourceOf(o));
+            o.Passives.Add(p.Id);
+            Ctx.MarkDirty();
+            Ctx.Commit($"Быстрый ввод: «{p.DisplayName}» для «{o.DisplayName}»");
+            Select(o);
+        }, p =>
+        {
+            if (!o.Passives.Contains(p.Id)) o.Passives.Add(p.Id);
+            OnEdited(o);
+            Ctx.Commit($"Подключён «{p.DisplayName}» к «{o.DisplayName}»");
+            Select(o);
+        }, withName: true, addText: "Добавить особенность"));
+        left.AddChild(grid.Expand(true));
+        root.AddChild(left);
         _side = Ui.VBox(6).MinSize(380);
         root.AddChild(_side);
         Side(o);
@@ -196,4 +223,24 @@ public partial class OriginPanel : DefListPanel
             foreach (var s in scen) _side.AddChild(Ui.Button(s.DisplayName, () => Ctx.Navigate(DefCategory.Scenario, s.Id)));
         }
     }
+}
+
+/// <summary>Passives made by the quick input of a category or a unit.</summary>
+public static class QuickPassives
+{
+    public static PassiveDef Create(ContentDatabase db, string name, List<ModifierDef> mods, PassiveSource source)
+    {
+        var p = new PassiveDef { Name = name, Kind = PassiveKind.Passive, Source = source, Modifiers = mods };
+        p.Id = ContentIO.UniqueId(db, DefCategory.Passive, RuText.ToId(name));
+        db.Add(p);
+        return p;
+    }
+
+    public static PassiveSource SourceOf(OriginDef o) => o.Kind switch
+    {
+        OriginKind.Race => PassiveSource.Race,
+        OriginKind.Species => PassiveSource.Species,
+        OriginKind.Class or OriginKind.Role => PassiveSource.ClassRole,
+        _ => PassiveSource.CustomTag,
+    };
 }

@@ -246,7 +246,24 @@ public partial class UnitEditorPanel : DefListPanel
             OnEdited(u);
             RebuildPreview(u);
         };
-        root.AddChild(grid.Expand());
+        // A unit's own trait in words (docs/DECISIONS_5.md §77).
+        var left = Ui.VBox(6).Expand();
+        left.AddChild(new QuickRuleBar(Ctx, (mods, text, name) =>
+        {
+            var p = QuickPassives.Create(Ctx.Db, name.Length > 0 ? name : QuickRuleBar.NameFrom(text), mods, PassiveSource.Unit);
+            u.Passives.Add(p.Id);
+            Ctx.MarkDirty();
+            Ctx.Commit($"Быстрый ввод: «{p.DisplayName}» для «{u.DisplayName}»");
+            Select(u);
+        }, p =>
+        {
+            if (!u.Passives.Contains(p.Id)) u.Passives.Add(p.Id);
+            OnEdited(u);
+            Ctx.Commit($"Подключён «{p.DisplayName}» к «{u.DisplayName}»");
+            Select(u);
+        }, withName: true, addText: "Добавить пассив"));
+        left.AddChild(grid.Expand());
+        root.AddChild(left);
         var side = Ui.VBox(6).MinSize(340);
         var container = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(260, 260) };
         _vp = new SubViewport { OwnWorld3D = true, TransparentBg = false, Msaa3D = Viewport.Msaa.Msaa4X };

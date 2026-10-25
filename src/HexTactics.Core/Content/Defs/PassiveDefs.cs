@@ -109,7 +109,7 @@ public sealed class ModifierDef
     /// <summary>Unambiguous text of the modifier; names come from the content when given.</summary>
     public string Describe(ContentDatabase? db = null)
     {
-        string Name(DefCategory c, string id) => db?.Get<Def>(id)?.DisplayName ?? id;
+        string Name(DefCategory c, string id) => db?.Table(c).Get(id)?.DisplayName ?? id;
         string Dmg(string m) => "урона " + DamageWhat(db, m);
         string Skills()
         {
@@ -119,7 +119,8 @@ public sealed class ModifierDef
             if (!string.IsNullOrEmpty(HitTag)) parts.Add($"ударами с тегом «{HitTag}»");
             return parts.Count == 0 ? "" : " " + string.Join(" и ", parts);
         }
-        string Vs(bool incoming) => VsTypes.Count == 0 ? "" : (incoming ? " от атак существ: " : " по существам: ") + string.Join(", ", VsTypes);
+        string VsName(string v) => db?.Table(DefCategory.Origin).Get(v)?.DisplayName ?? db?.Table(DefCategory.Unit).Get(v)?.DisplayName ?? v;
+        string Vs(bool incoming) => VsTypes.Count == 0 ? "" : (incoming ? " от атак существ: " : " по существам: ") + string.Join(", ", VsTypes.Select(VsName));
         string More(string verb, string what) => Mode switch
         {
             ModifierMode.Multiplier => $"{verb} {what} ×{N(Value)}",
@@ -147,7 +148,7 @@ public sealed class ModifierDef
             ModifierTarget.SkillCost => (Mode is ModifierMode.FlatBefore or ModifierMode.FlatAfter
                 ? $"Стоимость навыков {Value.ToString("+0.##;−0.##", Ru)} ОД"
                 : Value >= 0 ? $"Навыки стоят на {N(Value)} % больше ОД" : $"Навыки стоят на {N(-Value)} % меньше ОД") + Skills(),
-            ModifierTarget.Immunity => !string.IsNullOrEmpty(Status) ? $"Невосприимчив к состоянию «{(Status.StartsWith("tag:") ? Status : Name(DefCategory.Status, Status))}»" : $"Невосприимчив к {Dmg(Match)}",
+            ModifierTarget.Immunity => !string.IsNullOrEmpty(Status) ? $"Невосприимчив к состоянию «{(Status.StartsWith("tag:") ? Status : Name(DefCategory.Status, Status))}»" : $"Невосприимчив к урону {DamageWhat(db, Match)}",
             ModifierTarget.TargetChoice => $"Автоматический выбор цели: сначала «{Rule}{(string.IsNullOrEmpty(RuleTag) ? "" : " " + RuleTag)}»",
             ModifierTarget.TerrainCost => Value >= 0 ? $"Движение по «{Terrain}» на {N(Value)} % дороже" : $"Движение по «{Terrain}» на {N(-Value)} % дешевле",
             ModifierTarget.Reflection => $"Отражает атакующему {N(Value)} % {Dmg(Match)}",
@@ -177,7 +178,7 @@ public sealed class ModifierDef
     private static string DamageWhat(ContentDatabase? db, string m)
     {
         if (string.IsNullOrEmpty(m) || m == "*") return "из любых источников";
-        if (m.StartsWith("el:")) return $"стихии «{db?.Get<Def>(m[3..])?.DisplayName ?? m[3..]}»";
+        if (m.StartsWith("el:")) return $"стихии «{db?.Element(m[3..])?.DisplayName ?? m[3..]}»";
         if (m.StartsWith("cat:")) return $"категории «{m[4..]}»";
         if (m.StartsWith("tag:")) return $"с тегом «{m[4..]}»";
         return $"типа «{db?.DamageType(m)?.DisplayName ?? m}»";

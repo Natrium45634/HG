@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using HexTactics.Core.Hex;
 
 namespace HexTactics.Core.Content;
@@ -28,6 +30,19 @@ public static class ContentJson
         };
         o.Converters.Add(new JsonStringEnumConverter());
         o.Converters.Add(new HexCoordJsonConverter());
+        // Optional lists added later ([JsonOmitEmpty]) are not written while empty: old files and hashes stay as they were.
+        o.TypeInfoResolver = new DefaultJsonTypeInfoResolver
+        {
+            Modifiers =
+            {
+                ti =>
+                {
+                    foreach (var p in ti.Properties)
+                        if (p.AttributeProvider?.IsDefined(typeof(JsonOmitEmptyAttribute), true) == true)
+                            p.ShouldSerialize = (_, v) => v is not ICollection c || c.Count > 0;
+                },
+            },
+        };
         return o;
     }
 
@@ -45,6 +60,12 @@ public static class ContentJson
         var json = JsonSerializer.Serialize(value, value.GetType(), Options);
         return (T)JsonSerializer.Deserialize(json, value.GetType(), Options)!;
     }
+}
+
+/// <summary>The collection is not written to JSON while it is empty.</summary>
+[AttributeUsage(AttributeTargets.Property)]
+public sealed class JsonOmitEmptyAttribute : Attribute
+{
 }
 
 /// <summary>HexCoord is stored compactly as [q, r].</summary>

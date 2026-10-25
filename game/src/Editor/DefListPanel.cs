@@ -207,8 +207,10 @@ public partial class DefListPanel : HSplitContainer
 
     private bool PassesFilters(Def d, string q)
     {
+        // Word forms, synonyms and the other keyboard layout count too (docs/DECISIONS_5.md §77).
         if (q.Length > 0 && !(d.Id.ToLowerInvariant().Contains(q) || d.Name.ToLowerInvariant().Contains(q) || d.Group.ToLowerInvariant().Contains(q)
-                              || d.Tags.Any(t => t.ToLowerInvariant().Contains(q))))
+                              || d.Tags.Any(t => t.ToLowerInvariant().Contains(q)) || ContentSearch.Score(ContentSearch.EntryOf(d), q) > 0
+                              || (RuText.SwapLayout(q) is { } sw && ContentSearch.Score(ContentSearch.EntryOf(d), sw) > 0)))
             return false;
         int g = _groupFilter.Selected;
         if (g > 0 && g <= _groups.Count && d.Group != _groups[g - 1]) return false;

@@ -55,6 +55,10 @@ public abstract class Def
     [Ed("Категория в библиотеке", "Группа для поиска и фильтров библиотеки (например «Боссы»)", Order = -96), JsonPropertyOrder(-6)]
     public string Group { get; set; } = "";
 
+    [Ed("Синонимы для поиска", "Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)", Order = -96),
+     JsonPropertyOrder(-6), JsonOmitEmpty]
+    public List<string> Aliases { get; set; } = new();
+
     [Ed("Версия", "Увеличивается автоматически при публикации изменений", Order = -95), EdReadOnly, JsonPropertyOrder(-5)]
     public int Version { get; set; } = 1;
 
