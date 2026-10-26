@@ -239,13 +239,39 @@ public partial class UnitEditorPanel : DefListPanel
     {
         var u = (UnitDef)d;
         var root = Ui.HBox(10).Expand();
-        var grid = new PropertyGrid();
-        grid.SetTarget(u, Ctx.Db);
-        grid.Changed += () =>
+        // ТЗ ч. 5, 25.3 (§89): the fields by tab — Base Stats / Movement / AI / Tags / Passive Rules / Active Skills / Visual /
+        // Level & Rating; the preview, the estimate of power and the categories stay beside them and follow every change.
+        var tabs = new TabContainer { Name = "UnitTabs", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var grids = new List<PropertyGrid>();
+        foreach (var (tab, title) in UnitEditorTabs.All)
         {
-            OnEdited(u);
-            RebuildPreview(u);
-        };
+            var g = new PropertyGrid { Name = "UnitTab_" + tab };
+            foreach (var f in UnitEditorTabs.SkipFor(tab)) g.Skip.Add(f);
+            g.SetTarget(u, Ctx.Db);
+            if (tab == UnitTab.Rating)
+            {
+                var box = Ui.VBox(6);
+                box.Name = "UnitTab_" + tab;
+                g.Name = "UnitTabGrid_" + tab;
+                box.AddChild(Ui.Label("Уровень и угроза вычисляются оценкой силы (справа) при каждой правке, там же — запись сборки; здесь — ранг, роль в оценке, " +
+                                      "стоимость угрозы и профиль масштабирования.", 12, Ui.TextDim, wrap: true));
+                box.AddChild(g);
+                tabs.AddChild(box);
+            }
+            else tabs.AddChild(g);
+            tabs.SetTabTitle(tabs.GetTabCount() - 1, title);
+            grids.Add(g);
+        }
+        tabs.CurrentTab = Math.Clamp(_tab, 0, tabs.GetTabCount() - 1);
+        tabs.TabChanged += t => _tab = (int)t;
+        foreach (var g in grids)
+            g.Changed += () =>
+            {
+                OnEdited(u);
+                RebuildPreview(u);
+                Categories(u);
+                if (_power != null && IsInstanceValid(_power)) _power.Refresh();
+            };
         // A unit's own trait in words (docs/DECISIONS_5.md §77).
         var left = Ui.VBox(6).Expand();
         left.AddChild(new QuickRuleBar(Ctx, (mods, text, name) =>
@@ -262,7 +288,7 @@ public partial class UnitEditorPanel : DefListPanel
             Ctx.Commit($"Подключён «{p.DisplayName}» к «{u.DisplayName}»");
             Select(u);
         }, withName: true, addText: "Добавить пассив"));
-        left.AddChild(grid.Expand());
+        left.AddChild(tabs);
         root.AddChild(left);
         var side = Ui.VBox(6).MinSize(340);
         var container = new SubViewportContainer { Stretch = true, CustomMinimumSize = new Vector2(260, 260) };
@@ -304,11 +330,6 @@ public partial class UnitEditorPanel : DefListPanel
         catScroll.AddChild(_cats);
         side.AddChild(catScroll);
         root.AddChild(side);
-        grid.Changed += () =>
-        {
-            Categories(u);
-            if (_power != null && IsInstanceValid(_power)) _power.Refresh();
-        };
         RebuildPreview(u);
         Categories(u);
         return root;
@@ -316,6 +337,19 @@ public partial class UnitEditorPanel : DefListPanel
 
     private VBoxContainer? _cats;
     private UnitPowerView? _power;
+    /// <summary>The tab shown last: another unit opens on the same tab.</summary>
+    private static int _tab;
+
+    /// <summary>The tabs of the form shown now (UI tests).</summary>
+    public TabContainer? Tabs => DetailRoot.GetChildCount() == 0 ? null : FindTabs(DetailRoot);
+
+    private static TabContainer? FindTabs(Node n)
+    {
+        if (n is TabContainer t && t.Name == "UnitTabs") return t;
+        foreach (var c in n.GetChildren())
+            if (FindTabs(c) is { } f) return f;
+        return null;
+    }
     private static bool _fitShown;
 
     /// <summary>

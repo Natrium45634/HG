@@ -274,3 +274,17 @@ HG/
 * `ProjectOverview` + `game/src/Editor/OverviewPanel.cs` — «Обзор
   проекта».
 
+* Этапы B–D: `MapOps` — инструменты карты; `ScenarioModes` — режимы и их
+  поля; `RouteNavigator` и `CommandSystem` — строгость маршрута,
+  блокировки, «туда-сюда»; `BattleSnapshot`/`SimDigest`, `BattleReplay`,
+  `UnsafeTest` — снимок, реплей, небезопасный тест; `BattleReport` и
+  `ReportCsv` — телеметрия; `CategoryTree` — граф категорий;
+  `PassiveSystem` — группы наложения; `CombatSystem.Displace` —
+  отталкивание и столкновения; `StatUsage` — метки характеристик.
+* Этап E: `LevelFit` (автосборка, запись сборки), `PowerCache` (кэш
+  оценки по хэшу), `Sim/Calibration.cs` (дуэли эталонов).
+* Этап F: `MaterialPreview` — участок «гекс / соседи / ступени» на
+  отдельной базе; `AssetValidator.PrepareReplace` и `AssetReplacement` —
+  замена файла ресурса; `Sim/RunResults.cs` + `game/src/Editor/ResultsPanel.cs`
+  — «Результаты»; `UnitEditorTabs` — раскладка полей юнита по вкладкам.
+* Итоговый отчёт части 5 — [DECISIONS_5.md §90](DECISIONS_5.md).

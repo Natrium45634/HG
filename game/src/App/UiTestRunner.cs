@@ -85,6 +85,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_autobuild_record_and_calibration", EditorAutoBuildAndCalibration));
         _tests.Add(("editor_material_steps_license_replace", EditorMaterialStepsLicenseReplace));
         _tests.Add(("editor_results_compare_export", EditorResultsCompareExport));
+        _tests.Add(("editor_unit_tabs", EditorUnitTabs));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -92,6 +93,20 @@ public partial class UiTestRunner : Node
         _tests.Add(("admin_part3_series_skill_talent_publish_play", AdminPart3Flow));
         _tests.Add(("admin_full_flow_create_save_export_import_play", AdminFullFlow));
         _ = Run();
+    }
+
+    /// <summary>
+    /// With --uishots=&lt;folder&gt;: the screen as it is now, as a JPEG 1280 px wide (the screenshots of docs/img/part5_*.jpg,
+    /// ТЗ ч. 5, §42.3). Without the option — nothing.
+    /// </summary>
+    private async Task Shot(string name)
+    {
+        if (!Main.Instance.Args.TryGetValue("uishots", out var dir) || dir == "") return;
+        await Frames(4);
+        var img = GetViewport().GetTexture().GetImage();
+        if (img.GetWidth() > 1280) img.Resize(1280, img.GetHeight() * 1280 / img.GetWidth(), Image.Interpolation.Lanczos);
+        Directory.CreateDirectory(dir);
+        img.SaveJpg(System.IO.Path.Combine(dir, name + ".jpg"), 0.82f);
     }
 
     /// <summary>Tests that drive a whole battle frame by frame: their limit, s (the rest — 120 s).</summary>
@@ -2598,6 +2613,7 @@ public partial class UiTestRunner : Node
             await Frames(3);
             var dlg = Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible);
             Check(dlg != null && dlg.DialogText.Contains("обязательно — базы игрока") && dlg.OkButtonText == "Небезопасный тест", "ошибка должна блокировать тест и предложить небезопасный");
+            await Shot("part5_c_unsafe_test");
             dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
             await Frames(3);
             Check(panel.TestResult.StartsWith("НЕБЕЗОПАСНЫЙ ТЕСТ") && panel.TestResult.Contains("обязательно — базы игрока"), "отчёт небезопасного теста: " + panel.TestResult);
@@ -2636,6 +2652,7 @@ public partial class UiTestRunner : Node
         Check(entity.Parent == "" && origins.LastRejected.Contains("цикл"), "цикл должен быть отклонён: родитель «" + entity.Parent + "», " + origins.LastRejected);
         var dlg = Find<AcceptDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == "Родитель отклонён");
         Check(dlg != null && dlg.DialogText.Contains("цикл"), "диалог отказа не показан");
+        await Shot("part5_d_category_cycle");
         dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
         await Frames(3);
 
@@ -2644,6 +2661,7 @@ public partial class UiTestRunner : Node
         stats.Select("hp_max");
         await Frames(4);
         Check(Find<Label>(stats).Any(l => l.Name == "StatUsage" && l.IsVisibleInTree() && l.Text.StartsWith("⚙ Подключено к ядру: максимум здоровья")), "метка ядра у здоровья не показана");
+        await Shot("part5_d_stat_marks");
         db.Add(new StatDef { Id = "ui_luck", Name = "Удача (тест)" });
         stats.Select("ui_luck");
         await Frames(4);
@@ -2698,6 +2716,7 @@ public partial class UiTestRunner : Node
             await Frames(3);
             var variants = Find<CheckBox>(dlg!).Where(c => c.Name.ToString().StartsWith("FitVariant_")).ToList();
             Check(variants.Count == 4 && variants[3].Text.StartsWith("Автосборка по бюджету (seed 5)"), "нет варианта автосборки: " + string.Join(" | ", variants.Select(v => v.Text)));
+            await Shot("part5_e_autobuild");
             variants[3].ButtonPressed = true;
             var mode = Find<OptionButton>(dlg!).First(o => o.Name == "FitApplyMode");
             mode.Select(1);
@@ -2723,6 +2742,7 @@ public partial class UiTestRunner : Node
         Check(System.IO.File.Exists(ov.CalibrationSaved), "CSV калибровки не сохранён");
         var info = Find<AcceptDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == "Калибровка оценки силы");
         Check(info != null && info.DialogText.Contains("Средняя ошибка прогноза"), "отчёт калибровки не показан");
+        await Shot("part5_e_calibration");
         info!.EmitSignal(AcceptDialog.SignalName.Confirmed);
     }
 
@@ -2747,6 +2767,7 @@ public partial class UiTestRunner : Node
         var steps = terrains.PreviewMap;
         Check(steps != null && steps.Cells.Count(c => c.T == target.Id) == 7, "ступени: 7 плиток местности");
         Check(steps!.Cells.Where(c => c.T == target.Id).Select(c => c.H - target.DefaultHeight).OrderBy(h => h).SequenceEqual(Enumerable.Range(0, 7)), "ступени: высоты 0…6");
+        await Shot("part5_f_terrain_steps");
         shape.Select((int)PreviewShape.Single);
         shape.EmitSignal(OptionButton.SignalName.ItemSelected, (int)PreviewShape.Single);
         await Frames(2);
@@ -2794,6 +2815,7 @@ public partial class UiTestRunner : Node
             Check(assets.HexPreview != null && assets.HexPreview.Cells.Count(c => c.T == MaterialPreview.TileId) == 7, "текстура не показана на группе гексов");
             Check(Find<BoardViewport>(assets).Any(v => v.Name == "AssetPreviewHexes" && v.IsVisibleInTree()), "поле гексов предпросмотра не видно");
             Check(db.Terrain(MaterialPreview.TileId) == null, "плитка предпросмотра попала в черновик");
+            await Shot("part5_f_asset_hexes");
 
             next = second;
             var replace = Find<Button>(assets).First(b => b.Name == "AssetReplaceFile");
@@ -2804,6 +2826,7 @@ public partial class UiTestRunner : Node
             var deps = Find<ItemList>(rd!).FirstOrDefault(l => l.Name == "AssetReplaceDependents");
             Check(deps != null && Enumerable.Range(0, deps.ItemCount).Any(i => deps.GetItemText(i).Contains($"[{floor}]")), "зависимые объекты не показаны");
             Check(Find<Label>(rd!).Any(l => l.Text.Contains("64×64 → 128×128")), "окно должно сказать, что меняется размер");
+            await Shot("part5_f_replace_file");
             string oldPath = asset.Path;
             rd!.EmitSignal(AcceptDialog.SignalName.Confirmed);
             await Frames(6);
@@ -2820,6 +2843,58 @@ public partial class UiTestRunner : Node
             if (asset != null) db.Table(DefCategory.Asset).Remove(asset.Id);
             var sh = Find<OptionButton>(GetTree().Root).FirstOrDefault(o => o.Name == "AssetPreviewShape");
             if (sh != null) sh.EmitSignal(OptionButton.SignalName.ItemSelected, 0);
+        }
+    }
+
+    /// <summary>
+    /// Part 5, stage F (ТЗ 25.3; §89): the unit form by tabs — the stats on the first, the AI profile on «ИИ», the threat cost on
+    /// «Уровень и рейтинг» (an edit there reaches the template); another unit opens on the same tab.
+    /// </summary>
+    private async Task EditorUnitTabs()
+    {
+        var ed = await OpenEditor("units");
+        var db = ed.Context.Db;
+        var knight = db.Unit("knight")!;
+        double threat = knight.ThreatCost;
+        try
+        {
+            var units = Find<UnitEditorPanel>(GetTree().Root).First();
+            units.Select("knight");
+            await Frames(6);
+            var tabs = units.Tabs;
+            Check(tabs != null && tabs.GetTabCount() == 8, "у формы юнита должно быть 8 вкладок");
+            var titles = Enumerable.Range(0, tabs!.GetTabCount()).Select(i => tabs.GetTabTitle(i)).ToList();
+            Check(titles.SequenceEqual(UnitEditorTabs.All.Select(t => t.Title)), "вкладки: " + string.Join(", ", titles));
+            string Rows(string name) => string.Join("|", Find<Label>(Find<Control>(tabs).First(c => c.Name == name)).Where(l => l.IsVisibleInTree()).Select(l => l.Text));
+            tabs.CurrentTab = 0;
+            await Frames(2);
+            Check(Rows("UnitTab_Base").Contains("Характеристики") && !Rows("UnitTab_Base").Contains("Профиль ИИ"), "первая вкладка — характеристики, без полей ИИ");
+            tabs.CurrentTab = 2;
+            await Frames(2);
+            Check(Rows("UnitTab_Ai").Contains("Профиль ИИ") && Rows("UnitTab_Base") == "", "вкладка «ИИ» показывает профиль, первая скрыта");
+            await Shot("part5_f_unit_tabs");
+            units.Select("archer");
+            await Frames(6);
+            tabs = units.Tabs!;
+            Check(tabs.CurrentTab == 2, "другой юнит открывается на той же вкладке");
+            units.Select("knight");
+            await Frames(6);
+            tabs = units.Tabs!;
+            tabs.CurrentTab = 7;
+            await Frames(2);
+            var rating = Find<Control>(tabs).First(c => c.Name == "UnitTab_Rating");
+            var row = Find<Label>(rating).First(l => l.IsVisibleInTree() && l.Text.StartsWith("Стоимость угрозы")).GetParent();
+            var spin = Find<SpinBox>(row).First();
+            spin.Value = 42;
+            await Frames(3);
+            Check(Math.Abs(knight.ThreatCost - 42) < 1e-9, "правка на вкладке «Уровень и рейтинг» не дошла до шаблона");
+            Check(Find<Label>(units).Any(l => l.Name == "PowerLevel" && l.IsVisibleInTree()), "оценка силы видна рядом с любой вкладкой");
+        }
+        finally
+        {
+            knight.ThreatCost = threat;
+            var t = Find<UnitEditorPanel>(GetTree().Root).FirstOrDefault()?.Tabs;
+            if (t != null) t.CurrentTab = 0;
         }
     }
 
@@ -2861,6 +2936,7 @@ public partial class UiTestRunner : Node
             Check(c != null && c.Rows.Count > 0 && c.Rows.All(r => r.Verdict == "без изменений"), "сравнение одинаковых пакетов: " + c?.ToText());
             Check(c!.Notes.Any(n => n.Contains("Одинаковые seed")), "сравнение должно сказать про одинаковые seed");
             Check(Find<GridContainer>(panel).Any(g => g.Name == "ResultsCompareGrid" && g.GetChildCount() == 5 * (c.Rows.Count + 1)), "таблица сравнения не показана");
+            await Shot("part5_f_results");
             Check(Find<TextEdit>(panel).First(t => t.Name == "ResultsDetail").Text.Contains("Пакетный прогон"), "отчёт пакета не показан");
             await ClickButton("Экспорт сравнения CSV");
             Check(System.IO.File.Exists(panel.Exported) && ReportCsv.Parse(System.IO.File.ReadAllText(panel.Exported)).Count == c.Rows.Count + 1, "CSV сравнения");
@@ -3150,6 +3226,7 @@ public partial class UiTestRunner : Node
         Check(Find<Label>(panel).Any(l => l.Name == "OverviewSummary" && l.Text.Contains($"новых в черновике {panel.Last.New}")), "сводка не показывает новое");
         var broken = Find<Button>(panel).FirstOrDefault(b => b.Name == "Broken_0");
         Check(broken != null && broken.Text.Contains("no_such_skill") && broken.Text.Contains(unit.DisplayName), "битая ссылка не показана: " + broken?.Text);
+        await Shot("part5_a_overview");
         await ClickVisible(broken!);
         await Frames(8);
         var units = Find<UnitEditorPanel>(GetTree().Root).FirstOrDefault();
@@ -3207,6 +3284,7 @@ public partial class UiTestRunner : Node
         await Frames(4);
         Check(panel.Selection.Count >= 6, "прямоугольник не выделил клетки: " + panel.Selection.Count);
         Check(Find<Label>(panel).Any(l => l.Name == "Mixed_T" && l.Text.EndsWith("≠")), "разные местности не отмечены «≠»");
+        await Shot("part5_b_map_rect_mixed");
 
         // Copy, turn by 60° and stamp in the lower right part.
         await ClickVisible(Find<Button>(panel).First(b => b.Name == "MapCopy"));
@@ -3246,6 +3324,7 @@ public partial class UiTestRunner : Node
         await Frames(2);
         var info = Find<Label>(dlg).First(l => l.Name == "ResizeInfo");
         Check(info.Text.Contains("Будет удалено клеток: 16"), "нет предпросмотра удаления: " + info.Text);
+        await Shot("part5_b_map_resize");
         dlg.EmitSignal(AcceptDialog.SignalName.Confirmed);
         await Frames(6);
         Check(Map().Cells.Count == 64, "размер не изменился: " + Map().Cells.Count);

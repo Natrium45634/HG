@@ -199,6 +199,18 @@ profile, profileVersion, ratingHash, choices[]`); у профиля
 step, maxPicks, skill, passive, weight, minLevel`); у пассива
 `auraMaxTargets`.
 
+Часть 5, этап F ([§89](DECISIONS_5.md)): у ресурса `license` —
+необязательный текст. Пустой текст не записывается, как и другие поля с
+`[JsonOmitEmpty]`: пустые списки и пустой текст в файл не пишутся.
+Отчёты в `user://reports`, которые читает «Результаты»:
+* `<сценарий>_<время>.json` — пакет (поле `runsCount`);
+* `<сценарий>_seed<N>_<время>.json` — бой (`outcome`, `seed`);
+* `calibration_<время>.csv` — калибровка (с `.txt` рядом).
+
+Экспорт раздела: `comparison_<время>.csv` (`metric, label, a, b, delta,
+verdict`) и `results_<время>.csv` (строка на результат, столбец на
+показатель).
+
 ## 7. Правила боя и формулы
 
 `rules.json` разбит на группы: `time`, `ap`, `turn`, `move`, `height`,
