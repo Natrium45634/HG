@@ -754,8 +754,16 @@ public partial class BattleScreen : Node
             int load = blocking.Load(u);
             if (limit > 0 && (load > 0 || u == Selected || u == _hoverUnit))
             {
-                v.BlockText = $"Блок {load}/{limit}";
-                v.BlockColor = load >= limit ? new Color(1f, 0.62f, 0.3f) : new Color(0.75f, 0.9f, 1f);
+                // Part 6 (ТЗ 4.8): «2/3», and who comes on with no slot left.
+                int over = blocking.Overflow(u);
+                v.BlockText = $"Блок {load}/{limit}" + (over > 0 ? $" · ещё {over} проходят" : "");
+                v.BlockColor = over > 0 ? new Color(1f, 0.4f, 0.3f) : load >= limit ? new Color(1f, 0.62f, 0.3f) : new Color(0.75f, 0.9f, 1f);
+                continue;
+            }
+            if (blocking.Passing(u) && u.Queue.Current?.Type == CommandType.Move)
+            {
+                v.BlockText = "обходит блок";
+                v.BlockColor = new Color(1f, 0.85f, 0.4f);
                 continue;
             }
             switch (blocking.HoldOf(u))
@@ -841,14 +849,19 @@ public partial class BattleScreen : Node
         }
     }
 
-    /// <summary>Chain between a blocker and every enemy it holds.</summary>
+    /// <summary>
+    /// Chain between a blocker and every enemy it holds — on request (ТЗ ч. 6, 4.8): of the selected and the hovered unit,
+    /// all of them with «Все связи блока» or the diagnostics (F3).
+    /// </summary>
     private void DrawBlocking(OverlayLayer o)
     {
+        bool all = Settings.AllBlockLinks || _diag;
         foreach (var e in Sim.Units)
         {
             if (!e.Alive || !UnitVisible(e)) continue;
             var b = Sim.Blocking.BlockerOf(e);
             if (b == null || !UnitVisible(b)) continue;
+            if (!all && e != Selected && b != Selected && e != _hoverUnit && b != _hoverUnit) continue;
             var a = Board.UnitPos(b) + new Vector3(0, 0.22f, 0);
             var z = Board.UnitPos(e) + new Vector3(0, 0.22f, 0);
             var col = new Color(1f, 0.62f, 0.3f, 0.95f);

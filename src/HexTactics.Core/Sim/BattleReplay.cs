@@ -31,7 +31,7 @@ public sealed class BattleSnapshot
         {
             // A scenario not (or not like this) in the database — a test of the editor's copy.
             fsc = ContentJson.Clone(sc);
-            frozen.Add(fsc);
+            frozen.Table(DefCategory.Scenario).Replace(fsc); // Add keeps an existing ID — the copy must win
         }
         var snap = new BattleSnapshot
         {

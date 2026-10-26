@@ -175,6 +175,8 @@ public static class ContentValidator
         DefCategory.GameRules => "правила режима",
         DefCategory.SquadPreset => "пресет отряда",
         DefCategory.ZonePreset => "пресет зоны",
+        DefCategory.ModifierSet => "набор модификаторов",
+        DefCategory.DifficultyVariant => "вариант сценария",
         _ => c.ToString(),
     };
 
@@ -382,6 +384,12 @@ public static class ContentValidator
         if (hp <= 0) issues.Add(Err(u, "Stats.hp_max", "Здоровье должно быть больше 0"));
         double sp = u.Stats.TryGetValue(Stats.MoveSpeed, out var s) ? s : db.StatDefault(Stats.MoveSpeed);
         if (sp <= 0) issues.Add(Warn(u, "Stats.move_speed", "Скорость 0 — юнит не сможет двигаться"));
+        // Part 6 (§98): the skill of breaking through must be the unit's own.
+        var able = u.Blockable;
+        if (able.WhenBlocked == BlockedBehavior.BreakThrough && able.BreakSkill != "" && !u.Skills.Contains(able.BreakSkill) && u.BasicAttack != able.BreakSkill)
+            issues.Add(Warn(u, "Blockable.BreakSkill", $"Навык прорыва «{able.BreakSkill}» не среди навыков юнита — будет обычная атака"));
+        if (u.Blocking.MaxDuration > 0 && u.Blocking.PassTime <= 0)
+            issues.Add(Info(u, "Blocking.PassTime", "Держит ограниченное время, но не пропускает: отпущенный враг тут же будет заблокирован снова"));
         foreach (var kv in u.Stats)
         {
             var sd = db.Stat(kv.Key);
@@ -724,6 +732,13 @@ public static class ContentValidator
             issues.Add(new ContentIssue(p.Severity, Src(s), p.Path, p.Message));
         var cells = map.Cells.ToDictionary(c => c.C);
         CheckDeploymentZones(db, s, cells, issues);
+        // Modifiers of the mission (part 6, §99): the scenario's own sets, then every variant of it — before any battle.
+        if (s.ModifierSets.Count > 0)
+            foreach (var p in MissionModifiers.Check(db, s, null))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Info, Src(s), "ModifierSets", "Модификаторы: " + p.Message));
+        foreach (var v in db.All<DifficultyVariantDef>().Where(v => v.Scenario == s.Id))
+            foreach (var p in MissionModifiers.Check(db, s, v).Where(p => p.Error || !s.ModifierSets.Any()))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Info, Src(v), "ModifierSets", $"Вариант «{v.DisplayName}»: " + p.Message));
         var occupied = new Dictionary<HexCoord, List<UnitDef>>();
         foreach (var u in s.Units)
         {

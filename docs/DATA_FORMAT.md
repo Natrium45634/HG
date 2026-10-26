@@ -253,6 +253,26 @@ verdict`) и `results_<время>.csv` (строка на результат, �
 * ресурс `dp` («Очки развёртывания») в `resources.json` — имя и цвет
   очков.
 
+Часть 6, этап 6.3 ([§98](DECISIONS_6.md)): у юнита в `blocking` — `range`
+(1–5), `exceptCategories[]`, `whileStunned`, `targetOrder` (`Nearest,
+Heaviest, Lightest, LowestHealth`), `priority`, `maxDuration`, `passTime`;
+в `blockable` — `ignoreBlockers[]`, `whenBlocked: BreakThrough`,
+`breakSkill`. Флаги уровня состояния — `ignoresBlocking`, `cannotBlock`.
+
+Часть 6, этап 6.4 ([§99](DECISIONS_6.md)):
+
+* `modifier_sets.json` — `modifiers[]`, `incompatibleWith[]`; модификатор:
+  `id, label, description, op (Stat, Status, Rule, Deployment, Squad,
+  Wave), selector {faction, units[], group, wave, spawnBase}, stat {stat,
+  add, mul}, status, statusPoints, activeFrom, activeUntil, rule,
+  ruleOn, deployField, squadField, delta, tags[], waveIndex, countMul,
+  countAdd, extraUnit, extraCount, delayAdd, stacking (Stack, Replace),
+  ownTags[], incompatibleTags[], showInBattle, editorNotes`;
+* `difficulty_variants.json` — `scenario, modifierSets[], unlockedBy,
+  recommendedPower, expectedThreat`;
+* у сценария — `modifierSets[]` (свои наборы); на копии боя — служебные
+  `appliedVariant`, `appliedModifiers[]`, `appliedNotes[]`.
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

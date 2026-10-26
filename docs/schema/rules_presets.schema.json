@@ -1505,7 +1505,9 @@
             "ScalingProfile",
             "GameRules",
             "SquadPreset",
-            "ZonePreset"
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant"
           ]
         },
         "displayName": {

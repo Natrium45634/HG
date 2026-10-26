@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
@@ -12,6 +14,17 @@ public partial class MainMenu : Control
     private Label _details = null!;
     private ScenarioDef? _chosen;
     private Button _play = null!;
+    private OptionButton _variant = null!;
+    private ScrollContainer _listScroll = null!;
+
+    public override void _Process(double delta)
+    {
+        // The list takes what is left of the height (the rest of the column stays visible).
+        float h = GetViewportRect().Size.Y;
+        float want = Math.Min(_scenarioList.GetCombinedMinimumSize().Y, Math.Max(160, h * 0.42f));
+        if (Math.Abs(_listScroll.CustomMinimumSize.Y - want) > 1) _listScroll.CustomMinimumSize = new Vector2(380, want);
+    }
+    private List<DifficultyVariantDef> _variants = new();
 
     public override void _Ready()
     {
@@ -68,9 +81,17 @@ public partial class MainMenu : Control
         var right = Ui.VBox(8);
         right.AddChild(Ui.Label("Сценарии", 20, Ui.Text));
         _scenarioList = Ui.VBox(6);
-        right.AddChild(_scenarioList);
+        // Many scenarios scroll: «Играть» and the variant stay on the screen at any size of the window.
+        var listScroll = new ScrollContainer { Name = "ScenarioScroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        listScroll.AddChild(_scenarioList.Expand());
+        right.AddChild(listScroll);
+        _listScroll = listScroll;
         _details = Ui.Label("", 14, Ui.TextDim, wrap: true).MinSize(380, 90);
         right.AddChild(_details);
+        // Part 6 (§99): the variants of the scenario — the same map with sets of modifiers on top.
+        _variant = new OptionButton { Name = "MenuVariant", CustomMinimumSize = new Vector2(380, 0), TooltipText = "Вариант сценария: обычная или с модификаторами" };
+        _variant.ItemSelected += _ => ShowVariant();
+        right.AddChild(_variant);
         _play = Ui.Button("▶ Играть", Play).MinSize(380, 48);
         _play.Disabled = true;
         right.AddChild(_play);
@@ -97,19 +118,59 @@ public partial class MainMenu : Control
         Main.Instance.ShowMainMenu();
     }
 
-    private void Choose(ScenarioDef sc)
+    private void Choose(ScenarioDef sc) => Choose(sc, keepVariant: false);
+
+    private void Choose(ScenarioDef sc, bool keepVariant)
     {
+        int keep = _variant.Selected;
         _chosen = sc;
         var map = Main.Instance.Content.Published.Get<MapDef>(sc.Map);
         _details.Text = $"{sc.Description}\nКарта: {map?.DisplayName ?? sc.Map} · юнитов: {sc.Units.Count} · волн: {sc.Waves.Count}\n" +
                         $"Победа: {string.Join("; ", sc.Victory.Select(v => v.Describe()))}";
         _play.Disabled = false;
+        var db = Main.Instance.Content.Published;
+        _variants = db.All<DifficultyVariantDef>().Where(v => v.Scenario == sc.Id).ToList();
+        _variant.Clear();
+        _variant.AddItem("Обычная");
+        foreach (var v in _variants) _variant.AddItem(v.DisplayName + (v.UnlockedBy != "" ? $" (после «{db.Get<ScenarioDef>(v.UnlockedBy)?.DisplayName ?? v.UnlockedBy}»)" : ""));
+        _variant.Visible = _variants.Count > 0;
+        _variant.Selected = keepVariant ? Math.Clamp(keep, 0, _variants.Count) : 0;
+        _variant.TooltipText = "Вариант сценария: обычная или с модификаторами";
+        if (Variant is { } vv)
+        {
+            // One line here (the menu must keep «Играть» on the screen); every value — in the hint of the list.
+            var rows = MissionModifiers.Preview(db, sc, vv);
+            _details.Text += $"\nВариант «{vv.DisplayName}»: изменений {rows.Count}" + (vv.RecommendedPower > 0 ? $" · рекомендуемая сила {vv.RecommendedPower:0.#}" : "") + " (подробно — в подсказке списка)";
+            _variant.TooltipText = string.Join("\n", rows.Select(r => $"{r.Field}: {r.Base} → {r.Effective}"));
+        }
+    }
+
+    private DifficultyVariantDef? Variant => _variant.Selected > 0 && _variant.Selected <= _variants.Count ? _variants[_variant.Selected - 1] : null;
+
+    private void ShowVariant()
+    {
+        if (_chosen == null) return;
+        Choose(_chosen, keepVariant: true);
     }
 
     private void Play()
     {
         if (_chosen == null) return;
-        Main.Instance.ShowBattle(_chosen, Main.Instance.Content.Published, false);
+        var db = Main.Instance.Content.Published;
+        if (Variant is { } v)
+        {
+            // The variant is checked before the battle (ТЗ ч. 6, 5.8) and applied to a copy: the scenario stays as it is.
+            var errors = MissionModifiers.Check(db, _chosen, v).Where(p => p.Error).ToList();
+            if (errors.Count > 0)
+            {
+                Editor.Dialogs.Info(this, "Вариант не запускается", string.Join("\n", errors.Select(p => "• " + p.Message)));
+                return;
+            }
+            var (vdb, vsc) = MissionModifiers.Prepare(db, _chosen, v);
+            Main.Instance.ShowBattle(vsc, vdb, false);
+            return;
+        }
+        Main.Instance.ShowBattle(_chosen, db, false);
     }
 
     private void OpenSettings()

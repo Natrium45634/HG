@@ -1,0 +1,21 @@
+{
+  "formatVersion": 5,
+  "kind": "difficulty_variants",
+  "items": [
+    {
+      "id": "td_pass_defense_siege",
+      "name": "Осада — усложнённая",
+      "description": "Тот же перевал: карта, базы и волны общие, сверху — набор «Осада — усложнённая».",
+      "tags": [],
+      "group": "Сложность",
+      "version": 1,
+      "scenario": "td_pass_defense",
+      "modifierSets": [
+        "siege_hard"
+      ],
+      "unlockedBy": "",
+      "recommendedPower": 0,
+      "expectedThreat": 0
+    }
+  ]
+}

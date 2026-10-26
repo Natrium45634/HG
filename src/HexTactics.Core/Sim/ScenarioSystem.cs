@@ -230,6 +230,7 @@ public sealed partial class ScenarioSystem
         // The player's squad (part 6, §96): after the scenario's own units, so their hexes are taken.
         _sim.Squad.Load(sc);
         _sim.Deployment.Load(_sim.Options.Deployment);
+        _sim.Mission.Load(sc);
         _hadPlayerUnits = _sim.Units.Any(u => _sim.IsPlayerFaction(u.FactionId));
         for (int i = 0; i < sc.Waves.Count; i++) _waves.Add(new WaveRuntime { Index = i, Def = sc.Waves[i] });
         foreach (var o in sc.Objectives.Select((d, i) => (d, i)).OrderBy(x => x.d.Priority).ThenBy(x => x.i))

@@ -124,6 +124,8 @@ public sealed class ContentDatabase
         (DefCategory.GameRules, typeof(GameRulesDef), "game_rules.json"),
         (DefCategory.SquadPreset, typeof(SquadPresetDef), "squad_presets.json"),
         (DefCategory.ZonePreset, typeof(ZonePresetDef), "zone_presets.json"),
+        (DefCategory.ModifierSet, typeof(ModifierSetDef), "modifier_sets.json"),
+        (DefCategory.DifficultyVariant, typeof(DifficultyVariantDef), "difficulty_variants.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),
         (DefCategory.Map, typeof(MapDef), "maps"),
         (DefCategory.Scenario, typeof(ScenarioDef), "scenarios"),

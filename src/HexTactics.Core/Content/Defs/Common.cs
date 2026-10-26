@@ -41,6 +41,10 @@ public enum DefCategory
     SquadPreset,
     /// <summary>Saved zones of deployment of a map, to reuse in its scenarios (docs/DECISIONS_6.md §97).</summary>
     ZonePreset,
+    /// <summary>Reusable sets of modifiers of a mission (docs/DECISIONS_6.md §99).</summary>
+    ModifierSet,
+    /// <summary>Variants of a scenario: «обычная», «сложная»… (docs/DECISIONS_6.md §99).</summary>
+    DifficultyVariant,
 }
 
 /// <summary>
@@ -146,10 +150,13 @@ public sealed class ControlFlagsDef : ContentPart
     [Ed("Страх", "ИИ отступает от источника")] public bool Fear { get; set; }
     [Ed("Контроль разума", "Юнит временно сражается за источник")] public bool MindControl { get; set; }
     [Ed("Прерывает подготовку", "При наложении прерывает подготовку навыка")] public bool InterruptsCast { get; set; }
+    // Part 6 (docs/DECISIONS_6.md §98): blocking through statuses and passives.
+    [Ed("Неудержим", "Не блокируется (стены и ямы — по-прежнему препятствие)")] public bool IgnoresBlocking { get; set; }
+    [Ed("Не может блокировать", "Снимает связи блока этого юнита")] public bool CannotBlock { get; set; }
 
     [JsonIgnore]
     public bool Any => BlocksHealing || BlocksMovement || BlocksActions || BlocksSkills || BlocksAttacks || BlocksTurning
-                       || BlocksApRegen || Blind || Invisible || Fear || MindControl || InterruptsCast;
+                       || BlocksApRegen || Blind || Invisible || Fear || MindControl || InterruptsCast || IgnoresBlocking || CannotBlock;
 
     public void OrWith(ControlFlagsDef o)
     {
@@ -165,12 +172,15 @@ public sealed class ControlFlagsDef : ContentPart
         MindControl |= o.MindControl;
         InterruptsCast |= o.InterruptsCast;
         BlocksHealing |= o.BlocksHealing;
+        IgnoresBlocking |= o.IgnoresBlocking;
+        CannotBlock |= o.CannotBlock;
     }
 
     public void Clear()
     {
         BlocksMovement = BlocksActions = BlocksSkills = BlocksAttacks = BlocksTurning = false;
         BlocksApRegen = Blind = Invisible = Fear = MindControl = InterruptsCast = BlocksHealing = false;
+        IgnoresBlocking = CannotBlock = false;
     }
 }
 

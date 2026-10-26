@@ -666,6 +666,15 @@ public sealed class ScenarioDef : Def
     public DeploymentRulesDef? DeploymentOverride { get; set; }
     [Ed("Зоны развёртывания", "Где сторона вызывает бойцов; пусто — зона расстановки", Group = "Режим"), EdHidden, JsonOmitEmpty]
     public List<DeploymentZoneDef> DeploymentZones { get; set; } = new();
+    // Part 6, stage 6.4 (docs/DECISIONS_6.md §99).
+    [Ed("Наборы модификаторов", "Свои наборы сценария — действуют всегда, до наборов варианта", Group = "Режим"), EdRef(DefCategory.ModifierSet), JsonOmitEmpty]
+    public List<string> ModifierSets { get; set; } = new();
+    /// <summary>The variant applied to this copy (set only on the copy a battle is made from).</summary>
+    [Ed("Применён вариант"), EdHidden, JsonOmitEmpty] public string AppliedVariant { get; set; } = "";
+    /// <summary>The changes of units of the applied sets (a copy only): the battle applies them through the engine of modifiers.</summary>
+    [Ed("Модификаторы юнитов варианта"), EdHidden, JsonOmitEmpty] public List<MissionModifierDef> AppliedModifiers { get; set; } = new();
+    /// <summary>What the applied sets change, for the sign of the variant in battle (the modifiers marked «Показывать в бою»).</summary>
+    [Ed("Изменения варианта"), EdHidden, JsonOmitEmpty] public List<string> AppliedNotes { get; set; } = new();
     [Ed("Подготовка и расстановка", "TD с расстановкой и автотест", Group = "Автобой")] public PlacementDef Placement { get; set; } = new();
     [Ed("Альтернативные цели врагов", "Если база уничтожена или недоступна и в профиле ИИ ничего не задано", Group = "Автобой")]
     public List<AltTargetDef> AltTargets { get; set; } = new() { new AltTargetDef { Kind = AltTargetKind.OtherBase }, new AltTargetDef { Kind = AltTargetKind.AttackDefenders } };

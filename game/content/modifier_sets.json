@@ -1,0 +1,97 @@
+{
+  "formatVersion": 5,
+  "kind": "modifier_sets",
+  "items": [
+    {
+      "id": "siege_hard",
+      "name": "Осада — усложнённая",
+      "description": "Пример ТЗ ч. 6, 5.7: враги быстрее, лечение слабее, в «Таране» ещё два гоблина, на поле на двоих меньше (если вызов за очки включён).",
+      "tags": [
+        "hard"
+      ],
+      "group": "Сложность",
+      "version": 1,
+      "modifiers": [
+        {
+          "id": "enemy_fast",
+          "label": "Враги быстрее на 20 %",
+          "description": "",
+          "op": "Stat",
+          "selector": {
+            "faction": "enemy",
+            "units": [],
+            "group": "",
+            "wave": 0,
+            "spawnBase": ""
+          },
+          "stat": {
+            "stat": "move_speed",
+            "add": 0,
+            "mul": 0.2
+          },
+          "stacking": "Stack",
+          "ownTags": [],
+          "incompatibleTags": [],
+          "showInBattle": true,
+          "editorNotes": ""
+        },
+        {
+          "id": "weak_heal",
+          "label": "Лечение слабее (×0,7)",
+          "description": "",
+          "op": "Stat",
+          "selector": {
+            "faction": "player",
+            "units": [],
+            "group": "",
+            "wave": 0,
+            "spawnBase": ""
+          },
+          "stat": {
+            "stat": "heal_received",
+            "add": 0,
+            "mul": -0.3
+          },
+          "stacking": "Stack",
+          "ownTags": [],
+          "incompatibleTags": [],
+          "showInBattle": true,
+          "editorNotes": ""
+        },
+        {
+          "id": "ram_escort",
+          "label": "«Таран»: ещё два гоблина",
+          "description": "",
+          "op": "Wave",
+          "waveIndex": 3,
+          "countMul": 1,
+          "countAdd": 0,
+          "extraUnit": "goblin",
+          "extraCount": 2,
+          "delayAdd": 0,
+          "stacking": "Stack",
+          "ownTags": [],
+          "incompatibleTags": [],
+          "showInBattle": true,
+          "editorNotes": ""
+        },
+        {
+          "id": "fewer_on_field",
+          "label": "На поле на двоих меньше",
+          "description": "",
+          "op": "Deployment",
+          "deployField": "MaxDeployed",
+          "delta": -2,
+          "stacking": "Stack",
+          "ownTags": [],
+          "incompatibleTags": [],
+          "showInBattle": true,
+          "editorNotes": "Действует только в сценариях с вызовом за очки"
+        }
+      ],
+      "incompatibleWith": [
+        "easy"
+      ]
+    }
+  ]
+}

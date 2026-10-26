@@ -361,7 +361,9 @@
             "ScalingProfile",
             "GameRules",
             "SquadPreset",
-            "ZonePreset"
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant"
           ]
         },
         "convertTerrain": {

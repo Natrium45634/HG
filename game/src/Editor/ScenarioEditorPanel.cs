@@ -102,6 +102,7 @@ public partial class ScenarioEditorPanel : DefListPanel
         _propsTab = TabIn(tabs, "Сценарий");
         _unitsTab = TabIn(tabs, "Юниты");
         _rulesTab = TabIn(tabs, "Правила режима");
+        _modsTab = TabIn(tabs, "Модификаторы");
         root.AddChild(tabs);
         AfterLayout(_view, () =>
         {
@@ -109,8 +110,108 @@ public partial class ScenarioEditorPanel : DefListPanel
             RefreshProps();
             RefreshUnits();
             RefreshRules();
+            RefreshMods();
         });
         return root;
+    }
+
+    private VBoxContainer _modsTab = null!;
+    /// <summary>The variant the tab compares with «обычная» (null — none chosen).</summary>
+    public DifficultyVariantDef? ModsVariant { get; private set; }
+    /// <summary>The effective values last shown (UI tests).</summary>
+    public List<ModifiedValue> ModsRows { get; private set; } = new();
+
+    /// <summary>
+    /// «Модификаторы» (ТЗ ч. 6, 12.3; §99): the scenario's own sets, a card per variant (sets, recommended power, threat of
+    /// the waves, problems), and «обычная / вариант» — every effective value with where it came from, the conflicts.
+    /// </summary>
+    private void RefreshMods()
+    {
+        if (!IsInstanceValid(_modsTab) || _sc == null) return;
+        Ui.ClearChildren(_modsTab);
+        var sc = _sc;
+        var db = Ctx.Db;
+        _modsTab.AddChild(Ui.Label("Модификаторы миссии и варианты", 15, Ui.Accent));
+        _modsTab.AddChild(Ui.Label(sc.ModifierSets.Count == 0 ? "Своих наборов у сценария нет (поле «Наборы модификаторов» на вкладке «Сценарий»)."
+            : "Свои наборы (всегда): " + string.Join(", ", sc.ModifierSets.Select(id => db.Get<ModifierSetDef>(id)?.DisplayName ?? id + " (нет)")), 12, Ui.TextDim, wrap: true));
+        var variants = db.All<DifficultyVariantDef>().Where(v => v.Scenario == sc.Id).ToList();
+        double baseThreat = MissionModifiers.Threat(db, sc);
+        _modsTab.AddChild(Ui.Label($"Обычная: угроза волн {baseThreat:0.#}", 13, Ui.Text));
+        foreach (var v in variants)
+        {
+            var (vdb, vsc) = MissionModifiers.Prepare(db, sc, v);
+            var problems = MissionModifiers.Check(db, sc, v);
+            int errors = problems.Count(p => p.Error);
+            double threat = v.ExpectedThreat > 0 ? v.ExpectedThreat : MissionModifiers.Threat(vdb, vsc);
+            var card = Ui.VBox(2);
+            card.Name = "ModsCard_" + v.Id;
+            card.AddChild(Ui.Label($"◆ {v.DisplayName}" + (errors > 0 ? $" — ошибок {errors}" : ""), 14, errors > 0 ? Ui.Bad : Ui.Accent));
+            card.AddChild(Ui.Label("Наборы: " + (v.ModifierSets.Count == 0 ? "нет" : string.Join(", ", v.ModifierSets.Select(id => db.Get<ModifierSetDef>(id)?.DisplayName ?? id + " (нет)"))) +
+                                   $" · угроза волн {threat:0.#} ({(baseThreat > 0 ? (threat / baseThreat - 1).ToString("+0%;-0%;0%") : "—")})" +
+                                   (v.RecommendedPower > 0 ? $" · рекомендуемая сила {v.RecommendedPower:0.#}" : "") + (v.UnlockedBy != "" ? $" · после «{v.UnlockedBy}»" : ""), 12, Ui.TextDim, wrap: true));
+            var row = new HFlowContainer();
+            var vv = v;
+            var cmp = Ui.Button("Сравнить с обычной", () =>
+            {
+                ModsVariant = vv;
+                RefreshMods();
+            });
+            cmp.Name = "ModsCompare_" + v.Id;
+            row.AddChild(cmp);
+            row.AddChild(Ui.Button("Открыть", () => Ctx.Navigate(DefCategory.DifficultyVariant, vv.Id)));
+            var test = Ui.Button("▶ Тест варианта", () => TestVariant(vv), errors > 0 ? "Сначала исправьте ошибки варианта" : "Бой на черновике с этим вариантом");
+            test.Disabled = errors > 0;
+            row.AddChild(test);
+            card.AddChild(row);
+            _modsTab.AddChild(Ui.PanelBox(card, Ui.PanelLight, 6));
+        }
+        var add = Ui.Button("+ Новый вариант", () =>
+        {
+            int n = 1;
+            string id;
+            do id = $"{sc.Id}_v{n++}"; while (db.Get<DifficultyVariantDef>(id) != null);
+            db.Add(new DifficultyVariantDef { Id = id, Name = "Сложная", Scenario = sc.Id });
+            Ctx.MarkDirty();
+            Ctx.Navigate(DefCategory.DifficultyVariant, id);
+        }, "Вариант того же сценария: карта, объекты и спавнеры общие, сверху — наборы модификаторов");
+        add.Name = "ModsAddVariant";
+        _modsTab.AddChild(add);
+
+        if (ModsVariant is not { } cur || cur.Scenario != sc.Id || db.Get<DifficultyVariantDef>(cur.Id) == null)
+        {
+            ModsVariant = null;
+            ModsRows = new();
+            return;
+        }
+        _modsTab.AddChild(Ui.Sep());
+        _modsTab.AddChild(Ui.Label($"Обычная → «{cur.DisplayName}»", 14, Ui.Accent));
+        ModsRows = MissionModifiers.Preview(db, sc, cur);
+        var grid = new GridContainer { Columns = 4, Name = "ModsValues" };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        foreach (var h in new[] { "Поле", "Обычная", "Вариант", "Откуда" }) grid.AddChild(Ui.Label(h, 12, Ui.TextDim));
+        foreach (var r in ModsRows)
+        {
+            grid.AddChild(Ui.Label(r.Field, 12, Ui.Text, wrap: true).MinSize(140));
+            grid.AddChild(Ui.Label(r.Base, 12, Ui.TextDim));
+            grid.AddChild(Ui.Label(r.Effective, 12, Ui.Accent));
+            grid.AddChild(Ui.Label(string.Join("; ", r.Sources), 11, Ui.TextDim, wrap: true).MinSize(160));
+        }
+        if (ModsRows.Count == 0) _modsTab.AddChild(Ui.Label("Вариант ничего не меняет.", 12, Ui.TextDim));
+        else _modsTab.AddChild(grid);
+        var check = MissionModifiers.Check(db, sc, cur);
+        var lbl = Ui.Label(check.Count == 0 ? "✓ Конфликтов и ошибок нет" : string.Join("\n", check.Select(p => (p.Error ? "⛔ " : "ℹ ") + p.Message)), 12, check.Any(p => p.Error) ? Ui.Bad : check.Count > 0 ? Ui.TextDim : Ui.Good, wrap: true);
+        lbl.Name = "ModsCheck";
+        _modsTab.AddChild(lbl);
+    }
+
+    private void TestVariant(DifficultyVariantDef v)
+    {
+        if (_sc == null) return;
+        var (vdb, vsc) = MissionModifiers.Prepare(Ctx.Db, _sc, v);
+        ContentValidator.Validate(vdb);
+        vsc.Seed = vsc.Seed == 0 ? 12345 : vsc.Seed;
+        HexTactics.Game.App.Main.Instance.Content.Autosave();
+        HexTactics.Game.App.Main.Instance.ShowBattle(vsc, vdb, admin: true, onExit: () => HexTactics.Game.App.Main.Instance.ShowEditor());
     }
 
     private VBoxContainer _rulesTab = null!;
@@ -405,6 +506,7 @@ public partial class ScenarioEditorPanel : DefListPanel
             FillMode(mode);
             var before = _lastRules;
             RefreshRules();
+            RefreshMods();
             // A change of the rules of the mode shows what it changes (ТЗ ч. 6, 1.4); the scenario's data stay.
             if (before != null && _lastRules != null && before.Preset != _lastRules.Preset)
             {

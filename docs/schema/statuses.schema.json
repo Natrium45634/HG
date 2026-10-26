@@ -253,9 +253,17 @@
           "type": "boolean",
           "description": "Нельзя поворачиваться"
         },
+        "cannotBlock": {
+          "type": "boolean",
+          "description": "Не может блокировать — Снимает связи блока этого юнита"
+        },
         "fear": {
           "type": "boolean",
           "description": "Страх — ИИ отступает от источника"
+        },
+        "ignoresBlocking": {
+          "type": "boolean",
+          "description": "Неудержим — Не блокируется (стены и ямы — по-прежнему препятствие)"
         },
         "interruptsCast": {
           "type": "boolean",
@@ -804,7 +812,9 @@
             "ScalingProfile",
             "GameRules",
             "SquadPreset",
-            "ZonePreset"
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant"
           ]
         },
         "color": {

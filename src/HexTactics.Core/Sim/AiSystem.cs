@@ -98,6 +98,14 @@ public sealed class AiSystem
                 case BlockedBehavior.Wait:
                     Explain(u, $"заблокирован {blocker.Name} — ждёт");
                     return;
+                case BlockedBehavior.BreakThrough:
+                    // Part 6 (ТЗ 4.4): the skill of breaking through; without it (cooldown, cost, range) — an ordinary attack.
+                    SetTarget(u, blocker);
+                    if (TryBreak(u, blocker)) return;
+                    if (TryAttack(u, blocker, p, "заблокирован — прорыв недоступен, атакует")) return;
+                    FaceTowards(u, blocker.Pos);
+                    Explain(u, $"заблокирован {blocker.Name} — прорыв и атака недоступны, ждёт");
+                    return;
             }
         }
 
@@ -1041,6 +1049,21 @@ public sealed class AiSystem
         double score = dmg * Math.Max(1, enemies) - dmg * 1.5 * allies;
         score -= s.ApCost * 0.5;
         return score;
+    }
+
+    /// <summary>The skill of breaking through a blocker (ТЗ ч. 6, 4.4), if it can be used on it now.</summary>
+    private bool TryBreak(Unit u, Unit blocker)
+    {
+        if (u.Def.Blockable.BreakSkill is not { Length: > 0 } id || _sim.Content.Skill(id) is not { } s) return false;
+        if (!u.Def.Skills.Contains(id) && u.Def.BasicAttack != id) return false;
+        if (!Affordable(u, s)) return false;
+        if (!_sim.Skills.Validate(u, s, blocker.Pos, blocker.Id, u.Pos.DirectionTo(blocker.Pos), u.Pos, u.Facing, checkCosts: false).Ok) return false;
+        foreach (var q in u.Queue.Items)
+            if (q.SkillId == s.Id && q.TargetUnitId == blocker.Id && q.Status != CommandStatus.Pending)
+                return true;
+        if (u.Casting != null) return true;
+        Issue(u, MakeSkillCommand(u, s, blocker), $"заблокирован {blocker.Name} — прорыв навыком «{s.DisplayName}»");
+        return true;
     }
 
     private bool TryAttack(Unit u, Unit target, AiProfileDef p, string why)

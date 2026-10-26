@@ -139,21 +139,43 @@ public enum BlockZone
     [Ed("Только своя клетка")] SameCell,
 }
 
-/// <summary>A unit that holds enemies back (docs/DECISIONS_2.md §27). The limit itself is the stat block_limit.</summary>
+/// <summary>Whom a blocker takes first when it cannot take everyone (ТЗ ч. 6, 4.2 «blockTargetPriority»).</summary>
+public enum BlockTargetOrder
+{
+    [Ed("Ближайших")] Nearest,
+    [Ed("Самых тяжёлых (больше слотов)")] Heaviest,
+    [Ed("Самых лёгких (меньше слотов)")] Lightest,
+    [Ed("С наименьшим здоровьем")] LowestHealth,
+}
+
+/// <summary>
+/// A unit that holds enemies back (docs/DECISIONS_2.md §27; part 6 — docs/DECISIONS_6.md §98). The limit itself is the
+/// stat block_limit, so passives and statuses change it like any stat.
+/// </summary>
 public sealed class BlockerDef : ContentPart
 {
     [Ed("Зона блокирования")] public BlockZone Zone { get; set; } = BlockZone.AllAdjacent;
+    [Ed("Дальность, гексов", "1 — соседние гексы; больше — длинное оружие, щит-поле (блок — контакт по правилу, не занятие клетки)"), EdRange(1, 5)]
+    public int Range { get; set; } = 1;
     [Ed("Блокирует категории", "Категории существ или tag:тег; пусто — любых")] public List<string> Categories { get; set; } = new();
+    [Ed("Не блокирует категории", "Категории существ или tag:тег — этих не держит, даже если подходят выше")] public List<string> ExceptCategories { get; set; } = new();
     [Ed("Блокирует слои", "Пусто — наземный"), EdRef(DefCategory.Layer)] public List<string> Layers { get; set; } = new();
     [Ed("Особые способности", "Теги удержания (например heavy_guard): нужны для врагов, требующих особой способности")] public List<string> Abilities { get; set; } = new();
     [Ed("Блокирует в движении", "Иначе блок начинается, только когда юнит стоит")] public bool WhileMoving { get; set; }
+    [Ed("Блокирует под оглушением", "Иначе оглушение снимает все его связи")] public bool WhileStunned { get; set; }
+    [Ed("Кого первым", "Когда слотов не хватает на всех")] public BlockTargetOrder TargetOrder { get; set; } = BlockTargetOrder.Nearest;
+    [Ed("Приоритет", "Два блокирующих на одного врага: больший приоритет, затем ближе, затем меньший ID"), EdRange(-100, 100)]
+    public int Priority { get; set; }
+    [Ed("Держит не дольше, с", "0 — сколько угодно; потом враг проходит"), EdRange(0, 600)] public double MaxDuration { get; set; }
+    [Ed("После этого пропускает на, с", "Сколько отпущенного по времени врага никто не блокирует"), EdRange(0, 60)] public double PassTime { get; set; } = 2;
 }
 
 public enum BlockedBehavior
 {
     [Ed("Атаковать блокирующего")] AttackBlocker,
-    [Ed("Ждать")] Wait,
+    [Ed("Только стоять")] Wait,
     [Ed("Искать обход")] FindDetour,
+    [Ed("Прорыв навыком", "Навык прорыва по блокирующему; если недоступен — обычная атака")] BreakThrough,
 }
 
 /// <summary>How a unit reacts to being blocked.</summary>
@@ -162,6 +184,10 @@ public sealed class BlockableDef : ContentPart
     [Ed("Может быть заблокирован")] public bool CanBeBlocked { get; set; } = true;
     [Ed("Нужна особая способность", "Тег, который должен быть у блокирующего (пусто — не нужна)"), EdShowIf(nameof(CanBeBlocked), true)] public string RequiredAbility { get; set; } = "";
     [Ed("Занимает слотов", "Сколько единиц лимита блокирования расходует"), EdRange(1, 10), EdShowIf(nameof(CanBeBlocked), true)] public int SlotCost { get; set; } = 1;
-    [Ed("Обходит блок", "Не блокируется и продолжает движение"), EdShowIf(nameof(CanBeBlocked), true)] public bool CanBypass { get; set; }
+    [Ed("Обходит блок", "Не блокируется и продолжает движение (стены и ямы — по-прежнему препятствие)"), EdShowIf(nameof(CanBeBlocked), true)] public bool CanBypass { get; set; }
+    [Ed("Не блокируется теми, кто", "Категории или tag:тег блокирующих, которых он не замечает"), EdShowIf(nameof(CanBeBlocked), true)]
+    public List<string> IgnoreBlockers { get; set; } = new();
     [Ed("Поведение при блоке"), EdShowIf(nameof(CanBeBlocked), true)] public BlockedBehavior WhenBlocked { get; set; } = BlockedBehavior.AttackBlocker;
+    [Ed("Навык прорыва", "Пусто — лучшая атака"), EdRef(DefCategory.Skill), EdShowIf(nameof(WhenBlocked), BlockedBehavior.BreakThrough)]
+    public string BreakSkill { get; set; } = "";
 }

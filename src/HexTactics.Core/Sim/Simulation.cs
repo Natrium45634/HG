@@ -95,6 +95,7 @@ public sealed class Simulation
         Placement = new PlacementSystem(this);
         Squad = new SquadSystem(this);
         Deployment = new DeploymentSystem(this);
+        Mission = new MissionModifierSystem(this);
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
         Categories = new CategoryCache(Content);
@@ -161,6 +162,8 @@ public sealed class Simulation
     public SquadSystem Squad { get; }
     /// <summary>Calling the squad onto the field for deployment points (part 6, §97).</summary>
     public DeploymentSystem Deployment { get; }
+    /// <summary>The modifiers of a mission for units (part 6, §99).</summary>
+    public MissionModifierSystem Mission { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }
@@ -552,6 +555,7 @@ public sealed class Simulation
         // Part 6 (ТЗ ч. 6, 13.5): the points and the pauses of the squad first, then everything that may spend them.
         Deployment.Update();
         Scenario.Update();
+        Mission.Update();
         p.End("Сценарий", t);
         t = p.Begin();
         Ai.Update();

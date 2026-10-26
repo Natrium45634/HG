@@ -273,13 +273,25 @@
     "BlockableDef": {
       "type": "object",
       "properties": {
+        "breakSkill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык прорыва — Пусто — лучшая атака"
+        },
         "canBeBlocked": {
           "type": "boolean",
           "description": "Может быть заблокирован"
         },
         "canBypass": {
           "type": "boolean",
-          "description": "Обходит блок — Не блокируется и продолжает движение"
+          "description": "Обходит блок — Не блокируется и продолжает движение (стены и ямы — по-прежнему препятствие)"
+        },
+        "ignoreBlockers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Не блокируется теми, кто — Категории или tag:тег блокирующих, которых он не замечает"
         },
         "requiredAbility": {
           "type": "string",
@@ -296,7 +308,8 @@
           "enum": [
             "AttackBlocker",
             "Wait",
-            "FindDetour"
+            "FindDetour",
+            "BreakThrough"
           ],
           "description": "Поведение при блоке"
         }
@@ -320,6 +333,13 @@
           },
           "description": "Блокирует категории — Категории существ или tag:тег; пусто — любых"
         },
+        "exceptCategories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Не блокирует категории — Категории существ или tag:тег — этих не держит, даже если подходят выше"
+        },
         "layers": {
           "type": "array",
           "items": {
@@ -328,9 +348,47 @@
           },
           "description": "Блокирует слои — Пусто — наземный"
         },
+        "maxDuration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Держит не дольше, с — 0 — сколько угодно; потом враг проходит"
+        },
+        "passTime": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60,
+          "description": "После этого пропускает на, с — Сколько отпущенного по времени врага никто не блокирует"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет — Два блокирующих на одного врага: больший приоритет, затем ближе, затем меньший ID"
+        },
+        "range": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Дальность, гексов — 1 — соседние гексы; больше — длинное оружие, щит-поле (блок — контакт по правилу, не занятие клетки)"
+        },
+        "targetOrder": {
+          "type": "string",
+          "enum": [
+            "Nearest",
+            "Heaviest",
+            "Lightest",
+            "LowestHealth"
+          ],
+          "description": "Кого первым — Когда слотов не хватает на всех"
+        },
         "whileMoving": {
           "type": "boolean",
           "description": "Блокирует в движении — Иначе блок начинается, только когда юнит стоит"
+        },
+        "whileStunned": {
+          "type": "boolean",
+          "description": "Блокирует под оглушением — Иначе оглушение снимает все его связи"
         },
         "zone": {
           "type": "string",
@@ -1794,7 +1852,9 @@
             "ScalingProfile",
             "GameRules",
             "SquadPreset",
-            "ZonePreset"
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant"
           ]
         },
         "creatureCategory": {

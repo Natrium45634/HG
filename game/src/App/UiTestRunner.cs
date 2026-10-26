@@ -89,6 +89,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("squad_screen_rules_and_battle", SquadScreenAndRules));
         _tests.Add(("deploy_ribbon_call_retreat_save_load", DeployRibbonCallRetreat));
         _tests.Add(("editor_deploy_zones_check_presets", EditorDeployZones));
+        _tests.Add(("variant_menu_battle_and_modifiers_tab", VariantMenuAndModifiersTab));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2095,6 +2096,22 @@ public partial class UiTestRunner : Node
         Check(bs.Board.ViewOf(knight).BlockText.StartsWith("Блок 1/3"), $"у рыцаря должна быть подпись «Блок 1/3», а не «{bs.Board.ViewOf(knight).BlockText}»");
         Check(bs.Board.ViewOf(goblin).BlockText == "заблокирован", "у гоблина должна быть подпись «заблокирован»");
         Check(LabelVisible("Блок 1/3 — держит: Гоблин"), "панель рыцаря должна показывать, кого он держит");
+
+        // Part 6 (ТЗ 4.8): more advancing enemies than slots — the warning «ещё N проходят». The knight is the only blocker here.
+        foreach (var other in bs.Sim.Units.Where(u => u != knight && bs.Sim.Blocking.Limit(u) > 0).ToList()) other.Stats.SetBase(Stats.BlockLimit, 0);
+        bs.Sim.Ai.Enabled = false; // the goblins keep walking (the AI would turn them on the knight)
+        var free = knight.Pos.Neighbors().Where(c => bs.Sim.Map.Get(c) is { } cell && cell.Occupants.Count == 0 && !cell.Blocked && bs.Sim.Map.Get(c)!.Terrain.IsPassableFor("walk")).Take(3).ToList();
+        Check(free.Count == 3, "у рыцаря должно быть три свободных соседних гекса");
+        foreach (var c in free)
+        {
+            var g = bs.Sim.Spawn(bs.Db.Unit("goblin")!, "enemy", c, HexDirection.W);
+            Check(bs.Sim.Enqueue(g, Command.Move(knight.Pos + new HexCoord(-3, 0)), -1, true) == null, "гоблин должен получить приказ идти мимо рыцаря");
+        }
+        bs.Sim.Step();
+        await Frames(10);
+        Check(bs.Sim.Blocking.Load(knight) == 3 && bs.Sim.Blocking.Overflow(knight) >= 1, $"переполнение: {bs.Sim.Blocking.Load(knight)}/3, сверх — {bs.Sim.Blocking.Overflow(knight)}");
+        Check(bs.Board.ViewOf(knight).BlockText.Contains("проходят"), "подпись переполнения: " + bs.Board.ViewOf(knight).BlockText);
+        await Shot("part6_block_overflow");
     }
 
     /// <summary>The priestess shields the knight: the HP bar shows the shield, a hit is absorbed by it first.</summary>
@@ -3115,6 +3132,57 @@ public partial class UiTestRunner : Node
             dsc.GameRules = oldRules;
             dsc.DeploymentOverride = oldDep;
         }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.4 (ТЗ ч. 6, 5.6, 12.3; T17–T18; §99): the main menu offers the variant of the scenario and tells what it
+    /// changes; the battle carries the sign of the variant and the faster enemies; the tab «Модификаторы» compares «обычная»
+    /// with the variant — every value with where it came from.
+    /// </summary>
+    private async Task VariantMenuAndModifiersTab()
+    {
+        Main.Instance.ShowMainMenu();
+        await Frames(6);
+        var menu = Find<MainMenu>(GetTree().Root).First();
+        var pick = Find<Button>(menu).First(b => b.Text == "Перевал: оборона с расстановкой");
+        pick.EmitSignal(BaseButton.SignalName.Pressed); // the list scrolls: the button may be below its edge
+        await Frames(3);
+        var variant = Find<OptionButton>(menu).First(o => o.Name == "MenuVariant");
+        Check(variant.Visible && variant.ItemCount == 2 && variant.GetItemText(1).StartsWith("Осада"), "у сценария должен быть вариант «Осада»");
+        variant.Select(1);
+        variant.EmitSignal(OptionButton.SignalName.ItemSelected, 1);
+        await Frames(3);
+        Check(Find<Label>(menu).Any(l => l.Text.Contains("Вариант «Осада — усложнённая»: изменений")) && variant.TooltipText.Contains("→"), "описание варианта со значениями");
+        var play = Find<Button>(menu).First(b => b.Text == "▶ Играть");
+        Check(GetViewport().GetVisibleRect().Encloses(play.GetGlobalRect()), "«Играть» не должна уходить за край экрана");
+        await Shot("part6_menu_variant");
+        await ClickButton("▶ Играть");
+        await Frames(8);
+        var bs = Battle();
+        Check(bs.Sim.Mission.Variant == "td_pass_defense_siege", "бой — с вариантом: " + bs.Sim.Mission.Variant);
+        var published = Main.Instance.Content.Published.Get<ScenarioDef>("td_pass_defense")!;
+        Check(published.AppliedModifiers.Count == 0 && published.Waves[2].Groups.Count == 1, "опубликованный сценарий не изменился");
+        Check(bs.Sim.Scenario.Def!.Waves[2].Groups.Count == 2, "в «Таране» бою — две группы");
+        await Frames(20);
+        var sign = Find<Label>(bs.Hud).FirstOrDefault(l => l.Name == "MissionVariant");
+        Check(sign != null && sign.Text.Contains("Осада") && sign.TooltipText.Contains("Враги быстрее"), "значок варианта в бою");
+
+        var ed = await OpenEditor("scenarios");
+        var sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+        sp.Select("td_pass_defense");
+        await Frames(10);
+        sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+        Check(Find<Control>(sp).Any(c => c.Name == "ModsCard_td_pass_defense_siege"), "карточка варианта на вкладке «Модификаторы»");
+        await PressNamed(sp, "ModsCompare_td_pass_defense_siege");
+        await Frames(3);
+        sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+        Check(sp.ModsRows.Any(r => r.Sources.Any(x => x.Contains("Враги быстрее")) && r.Effective != r.Base), "значения варианта с источником");
+        Check(Find<Label>(sp).Any(l => l.Name == "ModsCheck"), "проверка варианта показана");
+        var tabs = Find<TabContainer>(sp).First(t => Enumerable.Range(0, t.GetTabCount()).Any(i => t.GetTabTitle(i) == "Модификаторы"));
+        tabs.CurrentTab = Enumerable.Range(0, tabs.GetTabCount()).First(i => tabs.GetTabTitle(i) == "Модификаторы");
+        await Frames(4);
+        await Shot("part6_modifiers_tab");
+        _ = ed;
     }
 
     private async Task PressNamed(Node root, string name)

@@ -208,7 +208,10 @@ public partial class BattleHud : Control
         var waves = Sim.Scenario.Waves.Where(w => w.State is WaveState.Scheduled or WaveState.Active).ToList();
         // Variables of the scenario with a caption (docs/DECISIONS_4.md §62): «Время суток: night».
         var vars = (Sim.Scenario.Def?.Environment ?? new()).Where(v => v.Caption != "").ToList();
-        _objPanel.Visible = obs.Count > 0 || waves.Count > 0 || vars.Count > 0;
+        // Part 6 (§99): the variant of the mission and what it changes — one line, the list in the hint.
+        var notes = Sim.Scenario.Def?.AppliedNotes ?? new List<string>();
+        string variant = Sim.Mission.Variant;
+        _objPanel.Visible = obs.Count > 0 || waves.Count > 0 || vars.Count > 0 || notes.Count > 0 || variant != "";
         if (!_objPanel.Visible) return;
         string WaitOf(WaveRuntime w) => w.Planned.FirstOrDefault(p => !p.Done && p.WaitReason != "")?.WaitReason ?? "";
         string key = string.Join("|", obs.Select(o => $"{o.State}:{o.Progress}")) + "#" + string.Join("|", waves.Select(w => $"{w.Index}:{w.Spawned}/{w.Total}:{WaitOf(w)}"))
@@ -216,6 +219,15 @@ public partial class BattleHud : Control
         if (key == _objKey) return;
         _objKey = key;
         Ui.ClearChildren(_objList);
+        if (variant != "" || notes.Count > 0)
+        {
+            string vname = Sim.Content.Get<DifficultyVariantDef>(variant)?.DisplayName ?? variant;
+            var vl = Ui.Label($"⚑ {(vname != "" ? $"Вариант «{vname}»" : "Модификаторы миссии")}" + (notes.Count > 0 ? $": изменений {notes.Count}" : ""), 13, Ui.Warn, wrap: true);
+            vl.Name = "MissionVariant";
+            vl.MouseFilter = Control.MouseFilterEnum.Stop;
+            vl.TooltipText = string.Join("\n", notes.Select(n => "• " + n));
+            _objList.AddChild(vl);
+        }
         var logic = Sim.Scenario.Def?.ObjectiveLogic ?? ObjectiveLogic.AllRequired;
         if (logic != ObjectiveLogic.AllRequired) _objList.AddChild(Ui.Label(Names.Of(logic), 12, Ui.TextDim));
         foreach (var o in obs)
@@ -589,7 +601,7 @@ public partial class BattleHud : Control
             "V — вписать карту в экран · Ctrl+0 — стандартный масштаб",
             "ЛКМ по врагу — сведения о нём (только то, что видели или наблюдали)",
             "Несколько существ на гексе (×N): клик — полоска выбора, повторный клик или Tab — следующий, Esc — закрыть",
-            "Оранжевая цепь — блок: «Блок 2/3» у блокирующего, «заблокирован» / «удерживается» у врага",
+            "Оранжевая цепь — блок (у выбранного и наведённого; все — настройка или F3): «Блок 2/3» у блокирующего, «ещё N проходят» — переполнено, «заблокирован» / «обходит блок» у врага",
             "Стрелка у основания — взгляд; несколько стрелок — несколько направлений; кольцо — круговой обзор; нет стрелки — без направления",
             "I — характеристики · L — журнал · F3 — диагностика · Home — к выбранному юниту",
             "Лента отряда (вызов за очки): карточка → гекс зоны → направление (курсор или 1–6) → ЛКМ/Enter; Esc/ПКМ — шаг назад · O — отозвать",
@@ -1020,13 +1032,17 @@ public partial class BattleHud : Control
         if (limit > 0)
         {
             var held = bl.BlockedBy(u).Where(_bs.UnitVisible).Select(x => Sim.Knowledge.GetInfo(x).Name).ToList();
-            return $"Блок {bl.Load(u)}/{limit}" + (held.Count > 0 ? " — держит: " + string.Join(", ", held) : " — свободен");
+            int over = bl.Overflow(u);
+            return $"Блок {bl.Load(u)}/{limit}" + (held.Count > 0 ? " — держит: " + string.Join(", ", held) : " — свободен")
+                   + (over > 0 ? $"; переполнено: ещё {over} проходят" : "")
+                   + (u.Def.Blocking.MaxDuration > 0 ? $"; держит не дольше {u.Def.Blocking.MaxDuration:0.#} с" : "");
         }
         switch (bl.HoldOf(u))
         {
             case MovementHold.Blocked:
                 var by = bl.BlockerOf(u);
-                return $"Заблокирован: {(by != null ? Sim.Knowledge.GetInfo(by).Name : "?")} — не может продолжить движение";
+                return $"Заблокирован: {(by != null ? Sim.Knowledge.GetInfo(by).Name : "?")} — не может продолжить движение"
+                       + (u.Def.Blockable.WhenBlocked == BlockedBehavior.BreakThrough ? " (прорывается)" : "");
             case MovementHold.Held:
                 return u.Flags.BlocksMovement ? "Удерживается: обездвижен состоянием" : "Удерживается: замедлен";
         }

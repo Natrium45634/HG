@@ -51,6 +51,8 @@ public sealed class Settings
     [Ed("Режим маршрута", Group = "Управление")] public RouteMode RouteMode { get; set; } = RouteMode.MinCost;
     [Ed("Веса своего маршрута", Group = "Управление"), EdShowIf(nameof(RouteMode), RouteMode.Custom)] public RouteWeights RouteWeights { get; set; } = new();
     [Ed("Упрощённые визуальные эффекты", Group = "Управление")] public bool SimplifiedEffects { get; set; }
+    [Ed("Все связи блока", "Иначе цепь блока видна у выбранного и наведённого юнита (и в диагностике F3)", Group = "Управление")]
+    public bool AllBlockLinks { get; set; }
 
     /// <summary>Favourite library objects ("Category:id"): a personal mark, not part of the content.</summary>
     [EdHidden] public System.Collections.Generic.List<string> Favorites { get; set; } = new();

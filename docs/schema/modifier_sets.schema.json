@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/modifier_sets.schema.json",
+  "title": "набор модификаторов (modifier_sets.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "modifier_sets"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ModifierSetDef"
+      }
+    }
+  },
+  "$defs": {
+    "MissionModifierDef": {
+      "type": "object",
+      "properties": {
+        "activeFrom": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "С секунды боя — 0 — с начала"
+        },
+        "activeUntil": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "До секунды боя — 0 — до конца"
+        },
+        "countAdd": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Число врагов +"
+        },
+        "countMul": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Число врагов × — 1 — как есть"
+        },
+        "delayAdd": {
+          "type": "number",
+          "minimum": -600,
+          "maximum": 600,
+          "description": "Задержка волны +, с"
+        },
+        "delta": {
+          "type": "number",
+          "description": "Изменение — Прибавка (−2 — на два меньше)"
+        },
+        "deployField": {
+          "type": "string",
+          "enum": [
+            "StartingPoints",
+            "MaxPoints",
+            "MaxDeployed",
+            "GainAmount",
+            "GainInterval"
+          ],
+          "description": "Поле развёртывания"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "editorNotes": {
+          "type": "string",
+          "description": "Заметки редактора"
+        },
+        "extraCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Доп. группа: сколько"
+        },
+        "extraUnit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Доп. группа: юнит — Пусто — без дополнительной группы"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID — Для конфликтов и ссылок"
+        },
+        "incompatibleTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Несовместим с тегами — Набор или модификатор с таким тегом или ID — конфликт до запуска"
+        },
+        "label": {
+          "type": "string",
+          "description": "Название"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "Stat",
+            "Status",
+            "Rule",
+            "Deployment",
+            "Squad",
+            "Wave"
+          ],
+          "description": "Что меняет"
+        },
+        "ownTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Свои теги — По ним другие наборы объявляют несовместимость"
+        },
+        "rule": {
+          "type": "string",
+          "enum": [
+            "Blocking",
+            "FriendlyFire"
+          ],
+          "description": "Правило"
+        },
+        "ruleOn": {
+          "type": "boolean",
+          "description": "Включено"
+        },
+        "selector": {
+          "$ref": "#/$defs/MissionSelectorDef",
+          "description": "Кого — Юниты, на которых действует"
+        },
+        "showInBattle": {
+          "type": "boolean",
+          "description": "Показывать в бою — Значок варианта в бою перечисляет его"
+        },
+        "squadField": {
+          "type": "string",
+          "enum": [
+            "MaxSize",
+            "ForbidTags",
+            "AllowOnlyTags"
+          ],
+          "description": "Поле отряда"
+        },
+        "stacking": {
+          "type": "string",
+          "enum": [
+            "Stack",
+            "Replace"
+          ],
+          "description": "Наложение — Если другой модификатор меняет то же поле"
+        },
+        "stat": {
+          "$ref": "#/$defs/StatModDef",
+          "description": "Характеристика"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "statusPoints": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Очки состояния"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Для «Запретить / Разрешить только»"
+        },
+        "title": {
+          "type": "string"
+        },
+        "waveIndex": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Номер волны — С 1"
+        }
+      },
+      "additionalProperties": true
+    },
+    "MissionSelectorDef": {
+      "type": "object",
+      "properties": {
+        "faction": {
+          "type": "string",
+          "x-ref": "Faction",
+          "description": "Сторона — Пусто — любая"
+        },
+        "group": {
+          "type": "string",
+          "description": "Группа волны — ID группы; пусто — любая"
+        },
+        "isEmpty": {
+          "type": "boolean"
+        },
+        "spawnBase": {
+          "type": "string",
+          "description": "База спавна — ID объекта; пусто — любая"
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Юниты — Шаблон, категория или tag:тег; пусто — любые"
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Волна — Номер с 1; 0 — любая"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ModifierSetDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset",
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "incompatibleWith": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Несовместим с — ID или теги других наборов"
+        },
+        "modifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MissionModifierDef"
+          },
+          "description": "Модификаторы — По порядку: при «Последний заменяет» действует последний"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "StatModDef": {
+      "type": "object",
+      "properties": {
+        "add": {
+          "type": "number",
+          "description": "Прибавка — Добавляется к базовому значению"
+        },
+        "mul": {
+          "type": "number",
+          "description": "Множитель — Доля: 0.2 = +20%, -0.5 = -50%"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
