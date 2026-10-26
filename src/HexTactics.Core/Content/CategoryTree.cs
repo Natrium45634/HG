@@ -49,30 +49,86 @@ public sealed class CategoryResolution
 
 public static class CategoryTree
 {
-    /// <summary>The chain from the root to the category. A cycle or a missing parent ends the chain and is reported.</summary>
+    /// <summary>
+    /// The category with all its ancestors, parents before children (ТЗ ч. 5, 13.2: several parents, a graph without
+    /// cycles): the main parent's line first, then the others' in their order, each ancestor once; the category last. With
+    /// one parent per category it is the old chain root → leaf. A cycle or a missing parent is reported and skipped.
+    /// </summary>
     public static List<OriginDef> Chain(ContentDatabase db, OriginDef c, List<string>? problems = null)
     {
-        var list = new List<OriginDef> { c };
-        var seen = new HashSet<string>(StringComparer.Ordinal) { c.Id };
-        var cur = c;
-        while (cur.Parent != "")
+        var order = new List<OriginDef>();
+        var state = new Dictionary<string, bool>(StringComparer.Ordinal); // false — on the way, true — done
+        void Visit(OriginDef o)
         {
-            var p = db.Get<OriginDef>(cur.Parent);
-            if (p == null)
+            state[o.Id] = false;
+            foreach (var pid in o.ParentIds)
             {
-                problems?.Add($"категория «{cur.DisplayName}»: родитель «{cur.Parent}» не найден");
-                break;
+                var p = db.Get<OriginDef>(pid);
+                if (p == null)
+                {
+                    problems?.Add($"категория «{o.DisplayName}»: родитель «{pid}» не найден");
+                    continue;
+                }
+                if (state.TryGetValue(p.Id, out var done))
+                {
+                    if (!done) problems?.Add($"категория «{c.DisplayName}»: цикл в дереве через «{p.DisplayName}»");
+                    continue;
+                }
+                Visit(p);
             }
-            if (!seen.Add(p.Id))
-            {
-                problems?.Add($"категория «{c.DisplayName}»: цикл в дереве через «{p.DisplayName}»");
-                break;
-            }
-            list.Add(p);
-            cur = p;
+            state[o.Id] = true;
+            order.Add(o);
         }
-        list.Reverse();
-        return list;
+        Visit(c);
+        return order;
+    }
+
+    /// <summary>Every ancestor of a category (by any parent), without itself.</summary>
+    public static HashSet<string> Ancestors(ContentDatabase db, string id)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var stack = new Stack<string>();
+        stack.Push(id);
+        while (stack.Count > 0)
+            if (db.Get<OriginDef>(stack.Pop()) is { } o)
+                foreach (var p in o.ParentIds)
+                    if (seen.Add(p)) stack.Push(p);
+        seen.Remove(id);
+        return seen;
+    }
+
+    /// <summary>Would <paramref name="parent"/> as a parent of <paramref name="child"/> close a cycle? Then why.</summary>
+    public static string? CycleWith(ContentDatabase db, OriginDef child, string parent)
+    {
+        if (parent == "") return null;
+        if (parent == child.Id) return $"«{child.DisplayName}» не может быть родителем самой себя";
+        if (!Ancestors(db, parent).Contains(child.Id)) return null;
+        string name = db.Get<OriginDef>(parent)?.DisplayName ?? parent;
+        return $"цикл: «{name}» уже наследует «{child.DisplayName}» — родитель отклонён";
+    }
+
+    /// <summary>The parents a category may take now (no cycle).</summary>
+    public static IEnumerable<OriginDef> ParentChoices(ContentDatabase db, OriginDef child) =>
+        db.All<OriginDef>().Where(o => CycleWith(db, child, o.Id) == null);
+
+    /// <summary>
+    /// Sets the parents if they make no cycle (T05: the attempt to close a cycle is rejected); false — nothing changed,
+    /// <paramref name="why"/> says which parent closes it.
+    /// </summary>
+    public static bool TrySetParents(ContentDatabase db, OriginDef child, string parent, IEnumerable<string> extra, out string why)
+    {
+        var extras = extra.Where(x => x != "").Distinct(StringComparer.Ordinal).ToList();
+        // A cycle through the child needs a parent that already reaches the child: each is checked on its own.
+        foreach (var p in extras.Prepend(parent))
+            if (CycleWith(db, child, p) is { } cycle)
+            {
+                why = cycle;
+                return false;
+            }
+        child.Parent = parent;
+        child.ExtraParents = extras.Where(x => x != parent).ToList();
+        why = "";
+        return true;
     }
 
     /// <summary>The categories of a template: the main one, the additional ones (origins), those assigned by tags.</summary>

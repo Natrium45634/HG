@@ -181,10 +181,43 @@ public sealed class PassiveSystem
     {
         var list = Collect(u);
         foreach (var pi in list) Evaluate(u, pi);
+        ResolveGroups(list);
         u.PassiveInstances = list;
         u.Passives.Clear();
         u.Passives.AddRange(list.Select(x => x.Def).Distinct());
     }
+
+    /// <summary>
+    /// Stacking groups (ТЗ ч. 5, 13.4, 14.2): of the acting passives of one group only the strongest / the latest / the
+    /// first acts (by the group rule of the first member); the others are inactive with the reason — the panel shows it.
+    /// </summary>
+    private static void ResolveGroups(List<PassiveInstance> list)
+    {
+        // Only what acts on the unit competes: the owner's radiating copy of an aura stays (it is for the others).
+        foreach (var g in list.Where(x => x.Active && x.Def.StackGroup != "" && ActsOnOwner(x)).GroupBy(x => x.Def.StackGroup))
+        {
+            var members = g.ToList();
+            if (members.Count < 2) continue;
+            var rule = members[0].Def.GroupRule;
+            if (rule == StackGroupRule.All) continue;
+            var winner = rule switch
+            {
+                StackGroupRule.Latest => members[^1],
+                StackGroupRule.First => members[0],
+                // Ties: the earlier one (the collection order is stable: the unit, categories, statuses, …, auras by unit ID).
+                _ => members.Select((m, i) => (m, i)).OrderByDescending(x => Rank(x.m)).ThenBy(x => x.i).First().m,
+            };
+            foreach (var m in members.Where(m => m != winner))
+            {
+                m.Active = false;
+                m.Inactive = $"группа «{g.Key}»: действует «{winner.Def.DisplayName}» ({winner.Source})";
+            }
+        }
+    }
+
+    /// <summary>The strength of a member of a stacking group: its rank, or the size of its (scaled) modifiers.</summary>
+    public static double Rank(PassiveInstance pi) =>
+        pi.Def.StackRank > 0 ? pi.Def.StackRank : pi.Def.Modifiers.Sum(m => Math.Abs(pi.Effective(m).Value)) * Math.Max(1, pi.Stacks);
 
     private void Evaluate(Unit u, PassiveInstance pi)
     {
@@ -235,6 +268,7 @@ public sealed class PassiveSystem
             if (!u.Alive) continue;
             var list = Collect(u);
             foreach (var pi in list) Evaluate(u, pi);
+            ResolveGroups(list);
             string sig = string.Join(";", list.Select(x => $"{x.Def.Id}:{x.Stacks}:{(x.Active ? 1 : 0)}:{x.AuraOwner}:{string.Join(",", x.Scaled.Values.Select(v => v.Value))}"));
             if (_signature.TryGetValue(u.Id, out var old) && old == sig) continue;
             _signature[u.Id] = sig;

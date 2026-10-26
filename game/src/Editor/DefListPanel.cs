@@ -241,7 +241,9 @@ public partial class DefListPanel : HSplitContainer
         string mark = worst == IssueSeverity.Error ? "✗ " : worst == IssueSeverity.Warning ? "⚠ " : "";
         string fav = Main.Instance.Content.IsFavorite(d) ? "★ " : "";
         string draft = d.Incomplete ? " (неполный)" : "";
-        return mark + fav + (string.IsNullOrEmpty(d.Name) ? d.Id : $"{d.Name}  [{d.Id}]") + draft;
+        // ⚙ — the core reads the characteristic (ТЗ ч. 5, 12.5); the others act only through content.
+        string core = d is StatDef st && (StatUsage.Core.ContainsKey(st.Id) || st.Id.StartsWith("resist_", StringComparison.Ordinal)) ? "⚙ " : "";
+        return mark + fav + core + (string.IsNullOrEmpty(d.Name) ? d.Id : $"{d.Name}  [{d.Id}]") + draft;
     }
 
     private static string ItemTooltip(Def d) =>
@@ -323,7 +325,16 @@ public partial class DefListPanel : HSplitContainer
         var grid = new PropertyGrid();
         grid.SetTarget(d, Ctx.Db);
         grid.Changed += () => OnEdited(d);
-        return grid;
+        if (d is not StatDef stat) return grid;
+        // ТЗ ч. 5, 12.5: whether the core reads the characteristic or it is a field without behaviour.
+        var (use, text) = StatUsage.Of(Ctx.Db, stat.Id);
+        var box = Ui.VBox(6);
+        var mark = Ui.Label((use == StatUse.Core ? "⚙ " : use == StatUse.Content ? "◇ " : "○ ") + text, 13,
+            use == StatUse.Core ? Ui.Good : use == StatUse.Content ? Ui.Accent : Ui.Warn, wrap: true);
+        mark.Name = "StatUsage";
+        box.AddChild(mark);
+        box.AddChild(grid);
+        return box;
     }
 
     protected void OnEdited(Def d)

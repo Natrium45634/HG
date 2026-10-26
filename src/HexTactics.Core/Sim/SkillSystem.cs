@@ -139,6 +139,9 @@ public sealed class SkillSystem
         if (_sim.Content.DisabledSkills.TryGetValue(s.Id, out var why))
             return none with { Message = "навык отключён из-за ошибки данных: " + why };
         if (!LayerResolver.CanCastFrom(s, u)) return none with { Message = $"нельзя применить из слоя «{u.LayerDef.DisplayName}»" };
+        // «Не может нападать первым» (ТЗ ч. 5, 13.8): a harmful skill on someone who has not attacked the unit.
+        if (s.IsHarmful && targetUnitId >= 0 && _sim.InitiationBlock(u, _sim.GetUnit(targetUnitId)) is { } notFirst)
+            return new SkillCheck(FailureReason.Disabled, notFirst, fromPos, facing);
         if (checkState)
         {
             if (u.Flags.BlocksActions) return new SkillCheck(FailureReason.Disabled, "юнит оглушён", fromPos, facing);

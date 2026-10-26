@@ -1770,6 +1770,21 @@
       "effects": [],
       "skill": "",
       "apCost": 0
+    },
+    {
+      "id": "holy_weakness",
+      "name": "Уязвимость к святому",
+      "description": "Нежить получает на 25 % больше урона светом (святого).",
+      "tags": [],
+      "group": "Пассивы",
+      "version": 1,
+      "kind": "Passive",
+      "source": "Species",
+      "icon": "☩",
+      "modifiers": [
+        { "target": "IncomingDamage", "match": "el:light", "value": 25, "mode": "Percent" }
+      ],
+      "trigger": "Always"
     }
   ]
 }

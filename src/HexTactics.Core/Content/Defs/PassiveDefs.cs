@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -211,6 +212,13 @@ public sealed class OriginDef : Def
     [Ed("Цвет"), EdColor] public string Color { get; set; } = "#a0c070";
     // Part 4 (docs/DECISIONS_4.md §61): the tree and its rules.
     [Ed("Родительская категория", "Дерево любой глубины: правила родителя наследуются"), EdRef(DefCategory.Origin)] public string Parent { get; set; } = "";
+    [Ed("Другие родители", "Категория может наследовать нескольким (граф без циклов, ТЗ ч. 5, 13.2): правила всех родителей; " +
+        "при совпадении ID сильнее более поздний родитель и сама категория. Цикл не сохраняется"), EdRef(DefCategory.Origin), JsonOmitEmpty]
+    public List<string> ExtraParents { get; set; } = new();
+
+    /// <summary>The main parent first, then the others, each once.</summary>
+    [JsonIgnore] public IEnumerable<string> ParentIds =>
+        (Parent != "" ? new[] { Parent } : Array.Empty<string>()).Concat(ExtraParents.Where(x => x != "" && x != Parent)).Distinct(StringComparer.Ordinal);
     [Ed("Правила", "Пассивы, теги, перемещение, запреты, профиль ИИ — с режимом наследования")] public List<CategoryRuleDef> Rules { get; set; } = new();
 }
 

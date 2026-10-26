@@ -24,7 +24,7 @@ public static class ChangeImpact
         while (frontier.Count > 0)
         {
             var cur = frontier.Dequeue();
-            foreach (var c in db.All<OriginDef>().Where(o => o.Parent == cur && seen.Add(o.Id)))
+            foreach (var c in db.All<OriginDef>().Where(o => o.ParentIds.Contains(cur) && seen.Add(o.Id)))
             {
                 children.Add(c);
                 frontier.Enqueue(c.Id);

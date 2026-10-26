@@ -280,6 +280,13 @@ public sealed class PassiveDef : Def
     [Ed("Порядок применения", "Меньше — раньше (для одинаковых режимов суммирования не важен)", Group = "Эффект"), EdRange(-1000, 1000)] public int Order { get; set; }
     [Ed("Стекуемость", Group = "Эффект")] public PassiveStacking Stacking { get; set; } = PassiveStacking.Unique;
     [Ed("Макс. стаков"), EdRange(1, 100), EdShowIf(nameof(Stacking), PassiveStacking.Stack)] public int MaxStacks { get; set; } = 3;
+    // Part 5 (ТЗ ч. 5, 13.4, 14.2; docs/DECISIONS_5.md §87).
+    [Ed("Группа наложения", "Пассивы одной группы — одно и то же усиление из разных источников (вой разных вожаков, уровни одной ауры): " +
+        "действует по правилу группы; пусто — без группы", Group = "Эффект")]
+    public string StackGroup { get; set; } = "";
+    [Ed("Правило группы", "Если задана группа наложения", Group = "Эффект")] public StackGroupRule GroupRule { get; set; } = StackGroupRule.Highest;
+    [Ed("Сила в группе", "Для «сильнейший»: больше — сильнее; 0 — по величине модификаторов (с учётом «за каждого»)", Group = "Эффект"), EdRange(0, 100000)]
+    public double StackRank { get; set; }
     [Ed("Радиус ауры", "0 — не аура; иначе действует на юнитов вокруг владельца", Group = "Аура"), EdRange(0, 20)] public int AuraRadius { get; set; }
     [Ed("Аура действует на", Group = "Аура")] public AuraAffects AuraAffects { get; set; } = AuraAffects.Allies;
     [Ed("Аура и на владельца", Group = "Аура")] public bool AuraIncludesSelf { get; set; }
@@ -314,6 +321,31 @@ public sealed class PassiveDef : Def
     [Ed("Навык"), EdRef(DefCategory.Skill), EdShowIf(nameof(Action), PassiveAction.UseSkillOnSource)]
     public string Skill { get; set; } = "";
     [Ed("Стоимость ОД реакции"), EdRange(0, 100)] public double ApCost { get; set; }
+}
+
+/// <summary>Whether the AI starts a fight (ТЗ ч. 5, 13.8).</summary>
+public enum AiTemperament
+{
+    [Ed("Обычный", "Атакует по профилю")] Aggressive,
+    [Ed("Мирный, пока не атакуют", "Не нападает первым; на нападение отвечает по выбранной политике")] PassiveUntilAttacked,
+}
+
+/// <summary>What a peaceful unit does when attacked.</summary>
+public enum AiRetaliation
+{
+    [Ed("Отвечает напавшему", "Только тем, кто на него напал")] Attacker,
+    [Ed("Становится агрессивным", "Дальше — как обычный профиль")] Everyone,
+    [Ed("Убегает", "Отходит от напавших")] Flee,
+    [Ed("Не отвечает")] Ignore,
+}
+
+/// <summary>Which of the passives of one stacking group act (ТЗ ч. 5, 13.4).</summary>
+public enum StackGroupRule
+{
+    [Ed("Сильнейший", "Только самый сильный источник группы")] Highest,
+    [Ed("Последний источник заменяет", "Действует полученный последним (аура поверх своего, сценарий поверх категории)")] Latest,
+    [Ed("Первый источник", "Действует первый, остальные отмечены как неактивные")] First,
+    [Ed("Все действуют", "Складываются по своим режимам")] All,
 }
 
 public enum AiTargetPriority
@@ -366,6 +398,9 @@ public sealed class AiProfileDef : Def
     [Ed("Поднимать тревогу", "Сообщать союзникам о замеченном враге")] public bool Alert { get; set; } = true;
     [Ed("Наступать без обзора", "Если врагов не видно — идти к стартовой зоне игрока (или центру карты)")] public bool AdvanceWhenIdle { get; set; }
     [Ed("Идти по маршруту, не отвлекаясь", "Враг волны идёт к цели маршрута и атакует только тех, кто его блокирует")] public bool RouteFocus { get; set; }
+    // Part 5 (ТЗ ч. 5, 13.8): «не хочет» — temperament of the AI, apart from «не может» (a forbid of a category).
+    [Ed("Характер", "«Мирный, пока не атакуют» — не начинает бой сам; способность атаковать при этом остаётся")] public AiTemperament Temperament { get; set; } = AiTemperament.Aggressive;
+    [Ed("Если на мирного напали"), EdShowIf(nameof(Temperament), AiTemperament.PassiveUntilAttacked)] public AiRetaliation Retaliation { get; set; } = AiRetaliation.Attacker;
     [Ed("Только маршрут", "Никогда не переключается на охоту (ТЗ ч. 5, 17.7): не сходит с маршрута ради целей, не преследует, не ищет противника; " +
         "бьёт только тех, кого достаёт с места, и свою цель в конце маршрута. «Охотится» группы и альтернатива «атаковать защитников» не действуют — с записью в журнал")]
     public bool RouteOnly { get; set; }

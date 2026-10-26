@@ -184,6 +184,14 @@ LowestHp, Weighted`); у профиля ИИ `routeOnly`; в правилах `s
 startHash, endTick, endHash, entries[]` (тик, действие игрока, его
 параметры).
 
+Часть 5, этап D ([§87](DECISIONS_5.md)): у категории `extraParents[]`; у
+пассива `stackGroup`, `groupRule` (`Highest, Latest, First, All`),
+`stackRank`; у профиля ИИ `temperament` (`Aggressive,
+PassiveUntilAttacked`) и `retaliation` (`Attacker, Everyone, Flee, Ignore`);
+запрет категории `InitiateAttack`; в правилах `move.knockbackFormula`
+(`impulse, mass, reference, resist, cost`), `move.collision` (`Stop,
+ChainPush, ImpactDamage, DisplaceIfLegal`), `impactDamage`, `chainDepth`.
+
 ## 7. Правила боя и формулы
 
 `rules.json` разбит на группы: `time`, `ap`, `turn`, `move`, `height`,

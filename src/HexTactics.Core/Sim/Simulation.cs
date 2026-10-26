@@ -327,6 +327,17 @@ public sealed class Simulation
         return res;
     }
 
+    /// <summary>
+    /// Why the unit may not attack this target first («нападать первым» forbidden by its category), or null. The
+    /// forbid is a capability: whoever attacked the unit may be answered, by the player and by the AI alike.
+    /// </summary>
+    public string? InitiationBlock(Unit u, Unit? target)
+    {
+        if (target == null || u.Forbidden.Count == 0 || !u.Forbidden.TryGetValue(nameof(ForbidWhat.InitiateAttack), out var why)) return null;
+        if (!IsHostile(u, target) || u.Provokers.Contains(target.Id)) return null;
+        return $"{why}: {target.Name} не нападал";
+    }
+
     /// <summary>Category resolutions per template (the content does not change during a battle).</summary>
     public CategoryCache Categories { get; }
 

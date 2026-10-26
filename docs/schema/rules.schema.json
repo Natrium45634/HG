@@ -968,11 +968,37 @@
           "type": "boolean",
           "description": "Обмен местами — Два союзника, идущие навстречу друг другу, меняются гексами за один шаг (docs/DECISIONS_3.md §44)"
         },
+        "chainDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Глубина цепочки — «Толкнуть дальше»: сколько юнитов подряд можно сдвинуть"
+        },
+        "collision": {
+          "type": "string",
+          "enum": [
+            "Stop",
+            "ChainPush",
+            "ImpactDamage",
+            "DisplaceIfLegal"
+          ],
+          "description": "Столкновение при толчке — Если на пути занятый гекс"
+        },
         "hazardPenalty": {
           "type": "number",
           "minimum": 0,
           "maximum": 100,
           "description": "Штраф опасных клеток — Добавка к стоимости опасной клетки при поиске пути игрока (обход при почти равной цене)"
+        },
+        "impactDamage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Урон удара за гекс — «Урон от удара»: каждому из двоих за каждый непройденный гекс"
+        },
+        "knockbackFormula": {
+          "type": "string",
+          "description": "Формула отталкивания — Сколько гексов пройдёт цель (вниз, не больше импульса); пусто — impulse × reference / mass. Переменные: impulse (дистанция эффекта), mass, reference (эталон), resist (устойчивость к контролю, 0–1), cost (стоимость клетки цели). Пример «всё или ничего»: if(impulse * 40 >= mass, impulse, 0)"
         },
         "movementCategories": {
           "type": "array",

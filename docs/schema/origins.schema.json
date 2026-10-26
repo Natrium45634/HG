@@ -110,7 +110,8 @@
             "BasicAttack",
             "SkillsWithTag",
             "AllSkills",
-            "Movement"
+            "Movement",
+            "InitiateAttack"
           ],
           "description": "Действие"
         }
@@ -345,6 +346,14 @@
         "displayName": {
           "type": "string"
         },
+        "extraParents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Origin"
+          },
+          "description": "Другие родители — Категория может наследовать нескольким (граф без циклов, ТЗ ч. 5, 13.2): правила всех родителей; при совпадении ID сильнее более поздний родитель и сама категория. Цикл не сохраняется"
+        },
         "icon": {
           "type": "string",
           "description": "Значок — 1–2 символа"
@@ -364,6 +373,12 @@
           "type": "string",
           "x-ref": "Origin",
           "description": "Родительская категория — Дерево любой глубины: правила родителя наследуются"
+        },
+        "parentIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "passives": {
           "type": "array",

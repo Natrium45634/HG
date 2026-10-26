@@ -260,6 +260,8 @@ public sealed class Unit
     public int Wave { get; set; } = -1;
     /// <summary>The last unit that dealt damage to this one, and when.</summary>
     public int LastAttackerId { get; set; } = -1;
+    /// <summary>Everyone who attacked the unit in this battle (ТЗ ч. 5, 13.8: whom it may answer).</summary>
+    public HashSet<int> Provokers { get; } = new();
     public long LastAttackedTick { get; set; } = -1;
     // Part 4 (docs/DECISIONS_4.md §56–58).
     /// <summary>Route of the scenario the unit follows, its group and the object it goes to.</summary>

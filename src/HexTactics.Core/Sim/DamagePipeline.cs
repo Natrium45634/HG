@@ -648,6 +648,8 @@ public sealed class DamagePipeline
     {
         Recent.Add((_sim.Tick, q.Attacker?.Id ?? -1, q.Target.Id, r));
         if (Recent.Count > 64) Recent.RemoveAt(0);
+        // An attack, even a miss, makes the attacker one the target may answer.
+        if (q.Attacker != null && q.Attacker != q.Target) q.Target.Provokers.Add(q.Attacker.Id);
         if (q.Attacker != null && q.Attacker != q.Target && r.Dealt > 0)
         {
             // Who hit the unit last: «непосредственно угрожает» of the encounter (docs/DECISIONS_4.md §59).

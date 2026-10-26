@@ -139,6 +139,26 @@ public partial class OriginPanel : DefListPanel
         var root = Ui.HBox(10).Expand(true, true);
         var grid = new PropertyGrid();
         grid.SetTarget(o, Ctx.Db);
+        // Several parents without cycles (ТЗ ч. 5, 13.2, T05): a parent that closes a cycle is rejected at once.
+        string lastParent = o.Parent;
+        var lastExtra = o.ExtraParents.ToList();
+        grid.PropertyChanged += (owner, prop) =>
+        {
+            if (owner != o || prop is not (nameof(OriginDef.Parent) or nameof(OriginDef.ExtraParents))) return;
+            string wantParent = o.Parent;
+            var wantExtra = o.ExtraParents.ToList();
+            o.Parent = lastParent;
+            o.ExtraParents = lastExtra.ToList();
+            if (CategoryTree.TrySetParents(Ctx.Db, o, wantParent, wantExtra, out var why))
+            {
+                lastParent = o.Parent;
+                lastExtra = o.ExtraParents.ToList();
+                return;
+            }
+            LastRejected = why;
+            Dialogs.Info(this, "Родитель отклонён", why);
+            CallDeferred(nameof(Reselect), o.Id);
+        };
         grid.Changed += () =>
         {
             OnEdited(o);
@@ -168,13 +188,21 @@ public partial class OriginPanel : DefListPanel
         return root;
     }
 
+    /// <summary>The last parent rejected for a cycle (UI tests).</summary>
+    public string LastRejected { get; private set; } = "";
+
+    private void Reselect(string id)
+    {
+        if (Ctx.Db.Get<OriginDef>(id) is { } o) Select(o);
+    }
+
     private void Side(OriginDef o)
     {
         if (_side == null || !IsInstanceValid(_side)) return;
         Ui.ClearChildren(_side);
         var problems = new List<string>();
         var chain = CategoryTree.Chain(Ctx.Db, o, problems);
-        var path = Ui.Label("Дерево: " + string.Join(" → ", chain.Select(c => c.DisplayName)), 14, Ui.Text, wrap: true);
+        var path = Ui.Label((o.ExtraParents.Count > 0 ? "Предки: " : "Дерево: ") + string.Join(" → ", chain.Select(c => c.DisplayName)), 14, Ui.Text, wrap: true);
         path.Name = "CategoryPath";
         _side.AddChild(path);
         foreach (var p in problems) _side.AddChild(Ui.Label("⛔ " + p, 12, Ui.Bad, wrap: true));
@@ -185,7 +213,7 @@ public partial class OriginPanel : DefListPanel
             12, touched.Count > 0 ? Ui.Warn : Ui.TextDim, wrap: true);
         impact.Name = "CategoryImpact";
         _side.AddChild(impact);
-        var children = Ctx.Db.All<OriginDef>().Where(c => c.Parent == o.Id).ToList();
+        var children = Ctx.Db.All<OriginDef>().Where(c => c.ParentIds.Contains(o.Id)).ToList();
         if (children.Count > 0)
         {
             _side.AddChild(Ui.Label("Потомки:", 13, Ui.TextDim));

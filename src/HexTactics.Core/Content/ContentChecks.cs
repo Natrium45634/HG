@@ -52,6 +52,16 @@ public static class ContentChecks
         foreach (var st in db.All<StatusDef>()) CheckStatus(st, issues);
         foreach (var u in db.All<UnitDef>()) CheckUnit(db, u, issues);
         foreach (var p in db.All<PassiveDef>()) CheckPassive(p, issues);
+        // Stacking groups (docs/DECISIONS_5.md §87): one rule per group — the first member's acts, the others are told.
+        foreach (var g in db.All<PassiveDef>().Where(p => p.StackGroup != "").GroupBy(p => p.StackGroup))
+        {
+            var rules = g.Select(p => p.GroupRule).Distinct().ToList();
+            if (rules.Count > 1)
+                foreach (var p in g.Skip(1).Where(p => p.GroupRule != g.First().GroupRule))
+                    issues.Add(Warn(p, "GroupRule", $"Группа наложения «{g.Key}»: правило «{EdUtil.EnumLabel(p.GroupRule)}» отличается от «{EdUtil.EnumLabel(g.First().GroupRule)}» у «{g.First().DisplayName}» — действует правило первого в бою"));
+            if (g.Count() == 1 && g.First().Stacking != PassiveStacking.BySource)
+                issues.Add(Info(g.First(), "StackGroup", $"В группе наложения «{g.Key}» один пассив: группа действует между его источниками только с «по экземпляру от каждого источника»"));
+        }
         foreach (var a in db.All<AiProfileDef>()) CheckAiProfile(a, issues);
         CheckSynergyCycles(db, issues);
         // Part 4, stage 6 (docs/DECISIONS_4.md §70): warnings about too strong templates.

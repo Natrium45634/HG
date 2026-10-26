@@ -647,7 +647,10 @@ public sealed class CombatSystem
     }
 
     /// <summary>Push (away from origin) or pull (towards origin) a unit cell by cell; stops at obstacles.</summary>
-    public void Displace(Unit target, HexCoord origin, bool push, int distance, Unit? source, string cause)
+    public void Displace(Unit target, HexCoord origin, bool push, int distance, Unit? source, string cause) =>
+        Displace(target, origin, push, distance, source, cause, 0);
+
+    private void Displace(Unit target, HexCoord origin, bool push, int distance, Unit? source, string cause, int depth)
     {
         if (target.IsStructure) return; // structures of the scenario do not move
         if (target.Pos == origin && !push) return;
@@ -656,9 +659,13 @@ public sealed class CombatSystem
         var start = target.Pos;
         var cur = target.Pos;
         var mc = MoveContext.For(_sim, target);
-        // Mass (docs/DECISIONS_4.md §60): distance × reference / weight, rounded down — the heavy move less.
-        double weight = target.Stat(Stats.Weight);
-        if (weight > 0) distance = Math.Max(0, (int)Math.Floor(distance * _sim.Rules.Move.ReferenceWeight / weight + 1e-9));
+        int impulse = distance;
+        distance = KnockbackHexes(target, distance);
+        if (distance < impulse && depth == 0)
+            _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{target.Name}: масса {target.Stat(Stats.Weight):0.#} — сдвиг {distance} из {impulse}", source?.Id ?? -1, target.Id);
+        var mv = Rules.Move;
+        Unit? hit = null;
+        int lost = 0;
         for (int i = 0; i < distance; i++)
         {
             var next = cur.Neighbor(dir.Value);
@@ -667,17 +674,86 @@ public sealed class CombatSystem
             var to = _sim.Map.Get(next);
             // Forced movement: ledges can be descended, pits can be entered (and the unit falls).
             var st = MovementRules.Check(mc, from, to, false, out _, forced: true);
+            if (st == StepCheck.Occupied && to != null)
+            {
+                // A unit on the way (ТЗ ч. 5, 15.3): the collision policy of the rules.
+                var blocker = to.Occupants.FirstOrDefault(o => o.Alive && o != target);
+                if (blocker != null && mv.Collision == CollisionPolicy.ChainPush && depth < Math.Max(1, mv.ChainDepth))
+                {
+                    Displace(blocker, cur, true, distance - i, source, cause + " (цепочка)", depth + 1);
+                    st = MovementRules.Check(mc, from, to, false, out _, forced: true);
+                }
+                else if (blocker != null && mv.Collision == CollisionPolicy.ImpactDamage)
+                {
+                    hit = blocker;
+                    lost = distance - i;
+                }
+                else if (mv.Collision == CollisionPolicy.DisplaceIfLegal)
+                {
+                    foreach (var side in new[] { dir.Value.Rotate(1), dir.Value.Rotate(-1) })
+                    {
+                        var aside = cur.Neighbor(side);
+                        if (MovementRules.Check(mc, from, _sim.Map.Get(aside), false, out _, forced: true) != StepCheck.Ok) continue;
+                        cur = aside;
+                        break;
+                    }
+                    break;
+                }
+            }
             if (st != StepCheck.Ok) break;
             cur = next;
             if (to != null && _sim.Falls.Affects(target, to)) break;
         }
-        if (cur == start) return;
-        _sim.Commands.OnForcedMove(target);
-        _sim.Emit(SimEventType.Displaced, LogLevel.Normal, $"{target.Name} {(push ? "отброшен" : "притянут")} в {cur} — {cause}", source?.Id ?? -1, target.Id, cur);
-        if (!_sim.Relocate(target, cur, source, cause)) return;
-        if (target.Casting != null && !target.Casting.Released && target.Casting.Skill.Interrupt.ByForcedMove)
-            _sim.Skills.Interrupt(target, InterruptCause.ForcedMove, "перемещение");
-        _sim.CellEffects.OnUnitEntered(target, _sim.Map.Get(cur)!);
+        if (cur != start)
+        {
+            _sim.Commands.OnForcedMove(target);
+            _sim.Emit(SimEventType.Displaced, LogLevel.Normal, $"{target.Name} {(push ? "отброшен" : "притянут")} в {cur} — {cause}", source?.Id ?? -1, target.Id, cur);
+            if (!_sim.Relocate(target, cur, source, cause)) return;
+            if (target.Casting != null && !target.Casting.Released && target.Casting.Skill.Interrupt.ByForcedMove)
+                _sim.Skills.Interrupt(target, InterruptCause.ForcedMove, "перемещение");
+            _sim.CellEffects.OnUnitEntered(target, _sim.Map.Get(cur)!);
+        }
+        // «Урон от удара»: both take the impact of the hexes the push did not pass.
+        if (hit != null && lost > 0 && mv.ImpactDamage > 0)
+            foreach (var u in new[] { target, hit })
+                if (u.Alive)
+                    _sim.Damage.Apply(new DamageRequest { Attacker = source, Target = u, Amount = mv.ImpactDamage * lost, Cause = "удар при толчке: " + cause });
+    }
+
+    private SafeExpression? KnockbackFormula()
+    {
+        var src = Rules.Move.KnockbackFormula;
+        if (src != _knockFormulaSrc)
+        {
+            _knockFormulaSrc = src;
+            _knockFormula = string.IsNullOrWhiteSpace(src) ? null :
+                SafeExpression.TryParse(src, new[] { "impulse", "mass", "reference", "resist", "cost" }, out var e, out _) ? e : null;
+        }
+        return _knockFormula;
+    }
+
+    private string? _knockFormulaSrc;
+    private SafeExpression? _knockFormula;
+
+    /// <summary>
+    /// The hexes a push or pull of <paramref name="impulse"/> moves the unit (ТЗ ч. 5, 15.2): the formula of the rules, or
+    /// impulse × reference / mass (docs/DECISIONS_4.md §60); rounded down, from 0 to the impulse.
+    /// </summary>
+    public int KnockbackHexes(Unit target, int impulse)
+    {
+        double weight = target.Stat(Stats.Weight);
+        var f = KnockbackFormula();
+        if (f == null) return weight > 0 ? Math.Max(0, (int)Math.Floor(impulse * Rules.Move.ReferenceWeight / weight + 1e-9)) : impulse;
+        double v = f.Evaluate(name => name switch
+        {
+            "impulse" => impulse,
+            "mass" => weight,
+            "reference" => Rules.Move.ReferenceWeight,
+            "resist" => target.Stat(Stats.ControlResist),
+            "cost" => _sim.Map.Get(target.Pos) is { } here ? (here.MoveCostOverride ?? here.Terrain.MoveCost) + here.EffectMoveCost : 1,
+            _ => 0,
+        });
+        return Math.Clamp((int)Math.Floor(v + 1e-9), 0, impulse);
     }
 
     /// <summary>

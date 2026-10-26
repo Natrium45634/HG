@@ -2521,3 +2521,21 @@ Windows-сборка проверена самопроверкой на Windows 
 * **Тесты**: `Part5AiTests` (5), `Part5ModeTests` (3), `Part5RouteOnlyTests`
   (4), `Part5SimTests` (5), `Part5TelemetryTests` (5), UI-тест
   `battle_reset_replay_and_unsafe_test`. T11, T23, T26, T27 — приняты.
+
+## Ч5 · Этап D. Теги, стекуемость, характер, масса
+
+* **Сделано** ([§87](DECISIONS_5.md)): несколько родителей у категорий с
+  отказом в цикле при правке; группы наложения пассивов (сильнейший,
+  последний, первый, все); «мирный, пока не атакуют» и политика ответа
+  отдельно от запрета «нападать первым»; формула отталкивания и политика
+  столкновения; метки «подключено к ядру / контентом / без поведения» у
+  характеристик; уязвимость нежити к свету во встроенном контенте.
+* **Файлы**: `src/HexTactics.Core/Content/{CategoryTree,ChangeImpact,ContentChecks,StatUsage}.cs`,
+  `Defs/{PassiveDefs,UnitDefs,CategoryDefs,RulesDef}.cs`,
+  `Sim/{PassiveSystem,AiSystem,SkillSystem,CombatSystem,DamagePipeline,Simulation,Unit}.cs`;
+  `game/src/Editor/{PassivePanel,DefListPanel}.cs`;
+  `game/content/{passives,origins}.json`; `docs/schema/*`.
+* **Тесты**: `Part5TagTests` (2), `Part5PackTests` (3), `Part5TemperTests`
+  (2), `Part5MassTests` (3), `Part5ContentTests` (2), UI-тест
+  `editor_category_cycle_rejected_and_stat_marks`. T05, T14, T15, T16, T21 —
+  приняты.

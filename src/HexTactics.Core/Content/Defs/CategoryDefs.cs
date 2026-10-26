@@ -35,6 +35,8 @@ public enum ForbidWhat
     [Ed("Навыки с тегом")] SkillsWithTag,
     [Ed("Все навыки")] AllSkills,
     [Ed("Движение")] Movement,
+    // Part 5 (ТЗ ч. 5, 13.8; docs/DECISIONS_5.md §87): «не может» нападать первым — ответить напавшему может.
+    [Ed("Нападать первым", "Вредящие навыки и атаки — только по тем, кто сам напал на юнита; ответить может")] InitiateAttack,
 }
 
 public sealed class CategoryRuleDef : ContentPart
@@ -72,6 +74,7 @@ public sealed class CategoryRuleDef : ContentPart
         ForbidWhat.BasicAttack => "стандартная атака",
         ForbidWhat.SkillsWithTag => $"навыки с тегом «{SkillTag}»",
         ForbidWhat.AllSkills => "все навыки",
+        ForbidWhat.InitiateAttack => "нападать первым",
         _ => "движение",
     };
 

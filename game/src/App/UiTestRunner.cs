@@ -81,6 +81,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_project_overview_counts_and_jumps", EditorProjectOverview));
         _tests.Add(("editor_map_tools_stroke_undo_rect_stamp_resize", EditorMapTools));
         _tests.Add(("battle_reset_replay_and_unsafe_test", BattleResetReplayUnsafe));
+        _tests.Add(("editor_category_cycle_rejected_and_stat_marks", EditorCategoryCycleAndStats));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2605,6 +2606,42 @@ public partial class UiTestRunner : Node
             sc.Objects.Clear();
             sc.Objects.AddRange(oldObjects);
         }
+    }
+
+    /// <summary>
+    /// Part 5, stage D through the UI (docs/DECISIONS_5.md §87): a parent that closes a cycle of categories is rejected at
+    /// once with the reason (T05); the characteristics read by the core are marked «⚙ подключено к ядру», a custom one
+    /// without use — «без поведения» (ТЗ 12.5).
+    /// </summary>
+    private async Task EditorCategoryCycleAndStats()
+    {
+        var ed = await OpenEditor("origins");
+        var db = ed.Context.Db;
+        var origins = Find<OriginPanel>(GetTree().Root).First();
+        origins.Select("entity");
+        await Frames(6);
+        origins = Find<OriginPanel>(GetTree().Root).First();
+        var row = Find<Label>(origins).First(l => l.IsVisibleInTree() && l.Text == "Родительская категория").GetParent();
+        var parentPick = Find<HexTactics.Game.UI.SearchableOption>(row).First();
+        Check(parentPick.PickByQuery("Нежить"), "в списке родителей нет «Нежить»");
+        await Frames(4);
+        var entity = db.Get<OriginDef>("entity")!;
+        Check(entity.Parent == "" && origins.LastRejected.Contains("цикл"), "цикл должен быть отклонён: родитель «" + entity.Parent + "», " + origins.LastRejected);
+        var dlg = Find<AcceptDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == "Родитель отклонён");
+        Check(dlg != null && dlg.DialogText.Contains("цикл"), "диалог отказа не показан");
+        dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        await Frames(3);
+
+        await OpenEditor("stats");
+        var stats = Find<DefListPanel>(GetTree().Root).First(p => p.IsVisibleInTree());
+        stats.Select("hp_max");
+        await Frames(4);
+        Check(Find<Label>(stats).Any(l => l.Name == "StatUsage" && l.IsVisibleInTree() && l.Text.StartsWith("⚙ Подключено к ядру: максимум здоровья")), "метка ядра у здоровья не показана");
+        db.Add(new StatDef { Id = "ui_luck", Name = "Удача (тест)" });
+        stats.Select("ui_luck");
+        await Frames(4);
+        Check(Find<Label>(stats).Any(l => l.Name == "StatUsage" && l.IsVisibleInTree() && l.Text.Contains("без поведения")), "пользовательская характеристика должна быть помечена «без поведения»");
+        db.Table(DefCategory.Stat).Remove("ui_luck");
     }
 
     /// <summary>

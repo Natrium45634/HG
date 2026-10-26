@@ -91,6 +91,15 @@ public enum RouteTieBreak
     [Ed("Меньше шагов")] Steps,
 }
 
+/// <summary>A forced move into a taken hex (ТЗ ч. 5, 15.3).</summary>
+public enum CollisionPolicy
+{
+    [Ed("Остановиться", "Цель останавливается перед занятым гексом (как в 1.0)")] Stop,
+    [Ed("Толкнуть дальше", "Стоящий на пути сдвигается на остаток (с его массой), цепочкой до предела")] ChainPush,
+    [Ed("Урон от удара", "Остановка и урон обоим за каждый непройденный гекс")] ImpactDamage,
+    [Ed("Сдвинуть в сторону, если можно", "Цель уходит в свободный соседний гекс сбоку от пути, иначе останавливается")] DisplaceIfLegal,
+}
+
 public sealed class MoveRules : ContentPart
 {
     [Ed("Категории движения")] public List<string> MovementCategories { get; set; } = new() { "walk", "fly", "swim" };
@@ -102,6 +111,17 @@ public sealed class MoveRules : ContentPart
     public bool YieldToAllies { get; set; } = true;
     // Part 4 (docs/DECISIONS_4.md §60).
     [Ed("Эталонная масса", "Отбрасывание: дистанция × эталон / масса цели (вниз), не меньше 0"), EdRange(1, 100_000)] public double ReferenceWeight { get; set; } = 100;
+    // Part 5 (ТЗ ч. 5, 15.2–15.3; docs/DECISIONS_5.md §87).
+    [Ed("Формула отталкивания", "Сколько гексов пройдёт цель (вниз, не больше импульса); пусто — impulse × reference / mass. " +
+        "Переменные: impulse (дистанция эффекта), mass, reference (эталон), resist (устойчивость к контролю, 0–1), cost (стоимость клетки цели). " +
+        "Пример «всё или ничего»: if(impulse * 40 >= mass, impulse, 0)"),
+     EdFormula("impulse", "mass", "reference", "resist", "cost")]
+    public string KnockbackFormula { get; set; } = "";
+    [Ed("Столкновение при толчке", "Если на пути занятый гекс")] public CollisionPolicy Collision { get; set; } = CollisionPolicy.Stop;
+    [Ed("Урон удара за гекс", "«Урон от удара»: каждому из двоих за каждый непройденный гекс"), EdRange(0, 10_000), EdShowIf(nameof(Collision), CollisionPolicy.ImpactDamage)]
+    public double ImpactDamage { get; set; } = 5;
+    [Ed("Глубина цепочки", "«Толкнуть дальше»: сколько юнитов подряд можно сдвинуть"), EdRange(1, 10), EdShowIf(nameof(Collision), CollisionPolicy.ChainPush)]
+    public int ChainDepth { get; set; } = 2;
     [Ed("Размер для узких мест", "Существа такого размера и больше не проходят гекс между двумя непроходимыми соседями напротив друг друга"), EdRange(2, 100)]
     public double NarrowSize { get; set; } = 2;
     [Ed("Разрыв ничьих маршрута", "При равной стоимости маршрута игрока: по порядку критериев")]

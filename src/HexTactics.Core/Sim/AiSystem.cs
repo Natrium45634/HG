@@ -112,6 +112,7 @@ public sealed class AiSystem
 
         // «Штурм» and hunting groups of «Смешанный»: the player's units first, the route is only the way there.
         if (u.Ai.Hunts && p.RouteOnly) Problem(u, "route_only", "«только маршрут» — на охоту не переключается (профиль сильнее режима и группы)");
+        else if (u.Ai.Hunts && p.Temperament == AiTemperament.PassiveUntilAttacked && u.Provokers.Count == 0) { }
         else if (u.Ai.Hunts && dir is not (AiDirective.Hold or AiDirective.Retreat) && Hunt(u, p)) return;
 
         // Wave enemies with «идти по маршруту, не отвлекаясь» walk on (only blockers stop them, handled above).
@@ -138,6 +139,21 @@ public sealed class AiSystem
 
         // Only enemies some own skill can reach (layers: a melee brute ignores a high flyer it cannot hit).
         var attackable = visible.Where(e => CanHitLayer(u, e)).ToList();
+        // «Не хочет» and «не может» (ТЗ ч. 5, 13.8): a peaceful temperament starts no fight; the forbid of a category lets
+        // it answer only those who attacked it.
+        if (p.Temperament == AiTemperament.PassiveUntilAttacked)
+        {
+            var provokers = attackable.Where(e => u.Provokers.Contains(e.Id)).ToList();
+            if (u.Provokers.Count == 0 || p.Retaliation == AiRetaliation.Ignore)
+            {
+                if (attackable.Count > 0) Explain(u, u.Provokers.Count == 0 ? "мирный: не нападает первым" + rule : "мирный: на нападение не отвечает");
+                attackable.Clear();
+            }
+            else if (p.Retaliation == AiRetaliation.Attacker) attackable = provokers;
+            else if (p.Retaliation == AiRetaliation.Flee && provokers.Count > 0 && Retreat(u, provokers, p, "мирный: на него напали — убегает")) return;
+        }
+        if (u.Forbidden.Count > 0 && u.Forbidden.ContainsKey(nameof(ForbidWhat.InitiateAttack)))
+            attackable = attackable.Where(e => _sim.InitiationBlock(u, e) == null).ToList();
         if (attackable.Count == 0 && visible.Count > 0) Explain(u, "видит врагов, но не может их поразить (слой)");
         // A patrol reacts only inside its zone.
         if (p.Patrol && u.Ai.HoldCenter is HexCoord pc) attackable = attackable.Where(e => HexCoord.Distance(e.Pos, pc) <= p.PatrolRadius + 2).ToList();
@@ -197,7 +213,9 @@ public sealed class AiSystem
         if (u.Ai.Alternative != null && FollowAlternative(u, p)) return;
 
         // Pursue last known enemy position.
-        if (p.Pursue && !p.RouteOnly && u.Ai.KnownEnemies.Count > 0 && !hold)
+        bool peaceful = p.Temperament == AiTemperament.PassiveUntilAttacked && (u.Provokers.Count == 0 || p.Retaliation != AiRetaliation.Everyone)
+                        || u.Forbidden.Count > 0 && u.Forbidden.ContainsKey(nameof(ForbidWhat.InitiateAttack)) && u.Provokers.Count == 0;
+        if (p.Pursue && !p.RouteOnly && !peaceful && u.Ai.KnownEnemies.Count > 0 && !hold)
         {
             var last = u.Ai.KnownEnemies.OrderByDescending(k => k.Value.Tick).ThenBy(k => HexCoord.Distance(u.Pos, k.Value.Pos)).First();
             if (HexCoord.Distance(u.Pos, last.Value.Pos) <= 1)
@@ -223,7 +241,7 @@ public sealed class AiSystem
         if (p.Patrol && !p.RouteOnly && Patrol(u, p)) return;
 
         // «Свободный бой» and autotests: look for the other side (docs/DECISIONS_4.md §64).
-        if (!hold && !p.RouteOnly && (_sim.Scenario.Mode is BattleMode.FreeBattle || (_sim.Scenario.Mode is BattleMode.AutoTest && u.Route == null && u.Wave < 0)) && Seek(u)) return;
+        if (!hold && !p.RouteOnly && !peaceful && (_sim.Scenario.Mode is BattleMode.FreeBattle || (_sim.Scenario.Mode is BattleMode.AutoTest && u.Route == null && u.Wave < 0)) && Seek(u)) return;
 
         if (p.AdvanceWhenIdle && !p.RouteOnly && !hold && (cur == null || cur.Type == CommandType.Defend))
         {

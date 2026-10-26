@@ -197,6 +197,16 @@
           "type": "boolean",
           "description": "Преследовать — Идти к последней известной позиции цели"
         },
+        "retaliation": {
+          "type": "string",
+          "enum": [
+            "Attacker",
+            "Everyone",
+            "Flee",
+            "Ignore"
+          ],
+          "description": "Если на мирного напали"
+        },
         "retreatHpFraction": {
           "type": "number",
           "minimum": 0,
@@ -251,6 +261,14 @@
             "type": "string"
           },
           "description": "Предпочитаемые цели — Теги («tag:x»), категории, ID шаблонов — для приоритета «по тегам и типам»"
+        },
+        "temperament": {
+          "type": "string",
+          "enum": [
+            "Aggressive",
+            "PassiveUntilAttacked"
+          ],
+          "description": "Характер — «Мирный, пока не атакуют» — не начинает бой сам; способность атаковать при этом остаётся"
         }
       },
       "required": [
