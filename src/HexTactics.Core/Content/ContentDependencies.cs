@@ -136,6 +136,8 @@ public static class ContentDependencies
             DefCategory.CellEffect => ("эффекте клетки", "эффектах клеток"),
             DefCategory.Synergy => ("синергии", "синергиях"),
             DefCategory.GroupPreset => ("пресете группы", "пресетах групп"),
+            DefCategory.GameRules => ("правилах режима", "правилах режимов"),
+            DefCategory.SquadPreset => ("пресете отряда", "пресетах отряда"),
             DefCategory.Faction => ("фракции", "фракциях"),
             DefCategory.AiProfile => ("профиле ИИ", "профилях ИИ"),
             DefCategory.Asset => ("ресурсе", "ресурсах"),

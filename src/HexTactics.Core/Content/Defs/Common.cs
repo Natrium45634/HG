@@ -35,6 +35,10 @@ public enum DefCategory
     GroupPreset,
     /// <summary>Scaling profiles of «Подогнать под уровень» and of the level of instances (docs/DECISIONS_4.md §66).</summary>
     ScalingProfile,
+    /// <summary>Rules of a game mode: switches of the subsystems of part 6 (docs/DECISIONS_6.md §96).</summary>
+    GameRules,
+    /// <summary>Saved squads of the player (docs/DECISIONS_6.md §96).</summary>
+    SquadPreset,
 }
 
 /// <summary>

@@ -228,7 +228,9 @@
             "Formation",
             "Origin",
             "GroupPreset",
-            "ScalingProfile"
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset"
           ]
         },
         "cells": {

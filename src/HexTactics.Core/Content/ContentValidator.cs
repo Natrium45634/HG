@@ -169,6 +169,8 @@ public static class ContentValidator
         DefCategory.Origin => "происхождение",
         DefCategory.GroupPreset => "пресет группы",
         DefCategory.ScalingProfile => "профиль масштабирования",
+        DefCategory.GameRules => "правила режима",
+        DefCategory.SquadPreset => "пресет отряда",
         _ => c.ToString(),
     };
 
@@ -682,6 +684,11 @@ public static class ContentValidator
 
     private static void CheckScenario(ContentDatabase db, ScenarioDef s, List<ContentIssue> issues)
     {
+        // Part 6 (§96): the rules of the mode and the squad of the player.
+        var mode = EffectiveGameRules.Resolve(db, s);
+        foreach (var n in mode.Notes) issues.Add(Warn(s, "GameRules", "Правила режима: " + n));
+        foreach (var n in mode.Redundant) issues.Add(new ContentIssue(IssueSeverity.Info, Src(s), "GameRulesOverride", "Правила режима: " + n + " — можно снять «задано»"));
+        foreach (var p in SquadRules.Validate(db, s)) issues.Add(Err(s, "Squad", "Отряд: " + p));
         var map = db.Get<MapDef>(s.Map);
         if (map == null) return; // reference error already reported
         // Objects, routes and groups of the TD part (docs/DECISIONS_4.md §56–58).

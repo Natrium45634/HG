@@ -404,6 +404,50 @@
       },
       "additionalProperties": true
     },
+    "GameRulesOverrideDef": {
+      "type": "object",
+      "properties": {
+        "blocking": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Блокирование"
+        },
+        "friendlyFire": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Урон по союзникам в области"
+        },
+        "squadStart": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "AllOnField",
+                "StartDeployed",
+                "NoneOnField"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Отряд на поле в начале"
+        }
+      },
+      "additionalProperties": true
+    },
     "ObjectiveDef": {
       "type": "object",
       "properties": {
@@ -1119,7 +1163,9 @@
             "Formation",
             "Origin",
             "GroupPreset",
-            "ScalingProfile"
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset"
           ]
         },
         "defeat": {
@@ -1138,6 +1184,22 @@
             "$ref": "#/$defs/EnvironmentVarDef"
           },
           "description": "Переменные сценария — Время суток, погода…: меняются действием триггера, проверяются условиями (docs/DECISIONS_4.md §62)"
+        },
+        "gameRules": {
+          "type": "string",
+          "x-ref": "GameRules",
+          "description": "Правила режима — Свободная RTS, тактический TD, гибрид…: какие системы части 6 включены; пусто — как раньше"
+        },
+        "gameRulesOverride": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GameRulesOverrideDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Свои значения правил режима — Заданное поле сильнее пресета; незаданное наследуется"
         },
         "intro": {
           "type": "string",
@@ -1234,6 +1296,17 @@
         "spawnWarnings": {
           "$ref": "#/$defs/ScenarioWarningsDef",
           "description": "Маркеры появления"
+        },
+        "squad": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScenarioSquadDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Отряд игрока — Кого игрок берёт в бой: размер, теги, лимиты, обязательные бойцы"
         },
         "triggers": {
           "type": "array",
@@ -1459,6 +1532,93 @@
           "type": "string",
           "x-ref": "Faction",
           "description": "Фракция"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ScenarioSquadDef": {
+      "type": "object",
+      "properties": {
+        "allowedTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Разрешённые теги — Если заданы — боец должен подходить хотя бы под один (шаблон, категория, «tag:x» или тег)"
+        },
+        "defaultPreset": {
+          "type": "string",
+          "x-ref": "SquadPreset",
+          "description": "Пресет по умолчанию — Набирается при открытии экрана; для автобоя и фиксированного отряда"
+        },
+        "duplicatesAllowed": {
+          "type": "boolean",
+          "description": "Повторы разрешены — Два бойца одного шаблона"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Отряд игрока — Выключено — как раньше: только юниты сценария и расстановка"
+        },
+        "fixed": {
+          "type": "boolean",
+          "description": "Фиксированный отряд — Экран выбора не показывается: отряд — «Обязательные бойцы» (или пресет)"
+        },
+        "forbiddenTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Запрещённые теги — Боец с любым из них недоступен"
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SquadLimitDef"
+          },
+          "description": "Лимиты — Не более N бойцов шаблона, категории или тега"
+        },
+        "maxSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Не больше бойцов (размер отряда) — 0 — без ограничения"
+        },
+        "minSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Не меньше бойцов"
+        },
+        "pool": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Unit"
+          },
+          "description": "Доступные бойцы — Шаблоны, из которых набирается отряд; пусто — все шаблоны фракций игрока"
+        },
+        "requiredTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Обязательные теги — Каждый — хотя бы у одного бойца отряда"
+        },
+        "startDeployed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Unit"
+          },
+          "description": "Стартовый состав на поле — Для «Отряд на поле в начале: стартовый состав» — кто из отряда стоит на поле сразу"
+        },
+        "startingRoster": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Unit"
+          },
+          "description": "Обязательные бойцы — Всегда в отряде, убрать нельзя"
         }
       },
       "additionalProperties": true
@@ -2051,6 +2211,22 @@
           "type": "string",
           "x-ref": "Unit",
           "description": "Шаблон юнита"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SquadLimitDef": {
+      "type": "object",
+      "properties": {
+        "match": {
+          "type": "string",
+          "description": "Шаблон, категория или тег — ID шаблона, категория существ, «tag:x» или просто тег"
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Не более"
         }
       },
       "additionalProperties": true

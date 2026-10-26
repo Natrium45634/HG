@@ -161,7 +161,8 @@ public sealed partial class ScenarioSystem
     public ObjectiveRuntime? Objective(string id) => _objectives.FirstOrDefault(o => o.Def.Id == id);
 
     /// <summary>Creates a simulation for a scenario (sides → player/AI factions, units placed).</summary>
-    public static Simulation Create(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false)
+    public static Simulation Create(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false,
+        IReadOnlyList<string>? roster = null)
     {
         // «Автотест» (docs/DECISIONS_4.md §64): the player's side is driven by AI profiles as well.
         autoPlayer |= sc.Mode == BattleMode.AutoTest;
@@ -170,7 +171,14 @@ public sealed partial class ScenarioSystem
         var player = new HashSet<string>(sc.Sides.Where(s => s.Controller == SideController.Player).Select(s => s.Faction));
         var ai = new HashSet<string>(sc.Sides.Where(s => s.Controller == SideController.Ai).Select(s => s.Faction));
         ulong s0 = seed ?? (sc.Seed != 0 ? sc.Seed : (ulong)DateTime.UtcNow.Ticks);
-        var rules = db.Get<RulesPresetDef>(sc.RulesPreset)?.Rules ?? db.Rules;
+        // The rules of the mode (ТЗ ч. 6, 1.4–1.5; docs/DECISIONS_6.md §96): the battle rules they point to and the switches.
+        var mode = EffectiveGameRules.Resolve(db, sc);
+        var rules = db.Get<RulesPresetDef>(mode.RulesPreset)?.Rules ?? db.Rules;
+        if (mode.FriendlyFire is { } ff && ff != rules.Combat.FriendlyFire)
+        {
+            rules = ContentJson.Clone(rules);
+            rules.Combat.FriendlyFire = ff;
+        }
         var sim = new Simulation(db, map, new SimOptions
         {
             Rules = rules,
@@ -182,6 +190,9 @@ public sealed partial class ScenarioSystem
             AdminMode = admin,
             AutoPlayer = autoPlayer,
             DefaultPlayerProfile = defender,
+            Blocking = mode.Blocking,
+            Roster = roster,
+            SquadStart = mode.SquadStart,
         });
         sim.Scenario.Load(sc);
         return sim;
@@ -215,6 +226,8 @@ public sealed partial class ScenarioSystem
             if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
             if (su.Level > 0) ApplyLevel(u, su.Level);
         }
+        // The player's squad (part 6, §96): after the scenario's own units, so their hexes are taken.
+        _sim.Squad.Load(sc);
         _hadPlayerUnits = _sim.Units.Any(u => _sim.IsPlayerFaction(u.FactionId));
         for (int i = 0; i < sc.Waves.Count; i++) _waves.Add(new WaveRuntime { Index = i, Def = sc.Waves[i] });
         foreach (var o in sc.Objectives.Select((d, i) => (d, i)).OrderBy(x => x.d.Priority).ThenBy(x => x.i))

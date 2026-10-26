@@ -277,6 +277,8 @@ public sealed class ContentSearch
         DefCategory.GroupPreset => "пресет группы",
         DefCategory.ScalingProfile => "профиль масштабирования",
         DefCategory.RulesPreset => "пресет правил",
+        DefCategory.GameRules => "правила режима",
+        DefCategory.SquadPreset => "пресет отряда",
         _ => c.ToString(),
     };
 

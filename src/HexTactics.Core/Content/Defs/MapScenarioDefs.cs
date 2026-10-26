@@ -648,6 +648,14 @@ public sealed class ScenarioDef : Def
     [Ed("Переопределение правил", "Ограничения сценария", Group = "Ограничения")] public ScenarioLimitsDef Limits { get; set; } = new();
     // Part 4, stage 5 (docs/DECISIONS_4.md §64): modes, preparation, alternative targets of the enemies.
     [Ed("Режим боя", Group = "Автобой")] public BattleMode Mode { get; set; } = BattleMode.Normal;
+    // Part 6 (ТЗ ч. 6, 1–2; docs/DECISIONS_6.md §96).
+    [Ed("Правила режима", "Свободная RTS, тактический TD, гибрид…: какие системы части 6 включены; пусто — как раньше", Group = "Режим"),
+     EdRef(DefCategory.GameRules), JsonOmitEmpty]
+    public string GameRules { get; set; } = "";
+    [Ed("Свои значения правил режима", "Заданное поле сильнее пресета; незаданное наследуется", Group = "Режим")]
+    public GameRulesOverrideDef? GameRulesOverride { get; set; }
+    [Ed("Отряд игрока", "Кого игрок берёт в бой: размер, теги, лимиты, обязательные бойцы", Group = "Режим")]
+    public ScenarioSquadDef? Squad { get; set; }
     [Ed("Подготовка и расстановка", "TD с расстановкой и автотест", Group = "Автобой")] public PlacementDef Placement { get; set; } = new();
     [Ed("Альтернативные цели врагов", "Если база уничтожена или недоступна и в профиле ИИ ничего не задано", Group = "Автобой")]
     public List<AltTargetDef> AltTargets { get; set; } = new() { new AltTargetDef { Kind = AltTargetKind.OtherBase }, new AltTargetDef { Kind = AltTargetKind.AttackDefenders } };

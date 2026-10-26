@@ -46,7 +46,17 @@ public sealed class PlacementSystem
 
     public string Faction => _sim.Options.PlayerFactions.FirstOrDefault() ?? "player";
 
-    public PlacementUnitDef? Entry(string template) => Def?.Units.FirstOrDefault(u => u.Unit == template);
+    /// <summary>
+    /// What may be placed of a template: the scenario's list; with a squad of the player (part 6, §96) — the fighters of
+    /// the squad, priced as the list says (or by threat).
+    /// </summary>
+    public PlacementUnitDef? Entry(string template)
+    {
+        var listed = Def?.Units.FirstOrDefault(u => u.Unit == template);
+        if (!_sim.Squad.Enabled) return listed;
+        if (_sim.Squad.Entries.All(e => e.Template != template)) return null;
+        return listed ?? new PlacementUnitDef { Unit = template };
+    }
 
     public double CostOf(PlacementUnitDef e)
     {
@@ -77,6 +87,51 @@ public sealed class PlacementSystem
 
     private bool InZone(HexCoord c) => Zone.Count == 0 || Zone.Contains(c);
 
+    /// <summary>
+    /// The first free hex for a template at the start of a battle (part 6, «весь отряд на поле»): the zone of placement,
+    /// nearest to its middle first; without a zone — near the player's units of the scenario, else from the west edge.
+    /// The order is fixed: the same squad stands the same way every time.
+    /// </summary>
+    public HexCoord? AutoSpot(UnitDef def)
+    {
+        IEnumerable<HexCoord> candidates;
+        if (Zone.Count > 0)
+        {
+            var mid = Middle(Zone);
+            candidates = Zone.OrderBy(c => HexCoord.Distance(c, mid)).ThenBy(c => c.R).ThenBy(c => c.Q);
+        }
+        else
+        {
+            var own = _sim.Units.Where(x => x.Alive && _sim.IsPlayerFaction(x.FactionId)).Select(x => x.Pos).ToList();
+            var cells = _sim.Map.Cells.Select(x => x.Coord);
+            candidates = own.Count > 0
+                ? cells.OrderBy(c => own.Min(p => HexCoord.Distance(c, p))).ThenBy(c => c.R).ThenBy(c => c.Q)
+                : cells.OrderBy(c => c.Q + c.R / 2.0).ThenBy(c => c.R).ThenBy(c => c.Q);
+        }
+        foreach (var c in candidates)
+            if (CellProblem(def, c) == null)
+                return c;
+        return null;
+    }
+
+    private static HexCoord Middle(IEnumerable<HexCoord> cells)
+    {
+        var list = cells.ToList();
+        double q = list.Average(c => c.Q), r = list.Average(c => c.R);
+        return list.OrderBy(c => Math.Abs(c.Q - q) + Math.Abs(c.R - r)).ThenBy(c => c.R).ThenBy(c => c.Q).First();
+    }
+
+    /// <summary>The facing of a fighter placed automatically: toward the nearest enemy base or enemy, else east.</summary>
+    public HexDirection FacingFrom(HexCoord c)
+    {
+        var sc = _sim.Scenario.Def;
+        var targets = sc?.Objects.Where(o => o.Type == ScenarioObjectType.SpawnBase).Select(o => o.Anchor).ToList() ?? new List<HexCoord>();
+        if (targets.Count == 0) targets = _sim.Units.Where(x => x.Alive && !_sim.IsPlayerFaction(x.FactionId) && !x.IsStructure).Select(x => x.Pos).ToList();
+        if (targets.Count == 0) return HexDirection.E;
+        var t = targets.OrderBy(x => HexCoord.Distance(c, x)).ThenBy(x => x.R).ThenBy(x => x.Q).First();
+        return c.DirectionTo(t) ?? HexDirection.E;
+    }
+
     private string? CellProblem(UnitDef def, HexCoord c, Unit? moving = null)
     {
         var cell = _sim.Map.Get(c);
@@ -94,7 +149,9 @@ public sealed class PlacementSystem
         var e = Entry(template);
         var def = _sim.Content.Unit(template);
         if (def == null) return $"шаблон «{template}» не найден";
-        if (e == null) return $"«{def.DisplayName}» недоступен для расстановки";
+        if (e == null) return _sim.Squad.Enabled ? $"«{def.DisplayName}» нет в отряде" : $"«{def.DisplayName}» недоступен для расстановки";
+        if (_sim.Squad.Enabled && _sim.Squad.Ready(template) == null)
+            return _sim.Squad.Entries.Any(x => x.Template == template && x.State == RosterState.Deployed) ? $"все «{def.DisplayName}» отряда уже на поле" : $"«{def.DisplayName}» выбыл";
         if (e.MaxCount > 0 && CountOf(template) >= e.MaxCount) return $"не более {e.MaxCount} «{def.DisplayName}»";
         if (Def!.MaxUnits > 0 && _placed.Count(p => _sim.GetUnit(p.Unit)?.Alive == true) >= Def.MaxUnits) return $"не более {Def.MaxUnits} юнитов";
         double cost = CostOf(e);
@@ -125,6 +182,8 @@ public sealed class PlacementSystem
         string profile = aiProfile != "" ? aiProfile : e?.AiProfile ?? "";
         var u = _sim.Spawn(def, Faction, c, facing, null, null, profile == "" ? null : profile);
         _placed.Add(new PlacedUnit(u.Id, template, cost));
+        // A fighter of the squad: one entry — one instance (ТЗ ч. 6, 3.9).
+        if (_sim.Squad.Enabled && _sim.Squad.Ready(template) is { } entry) _sim.Squad.Bind(entry, u);
         _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Размещён «{def.DisplayName}» в {c}" + (cost > 0 ? $" (−{cost:0.#}, осталось {(Budget > 0 ? Left.ToString("0.#") : "∞")})" : ""), u.Id, cell: c);
         return u;
     }
@@ -136,6 +195,7 @@ public sealed class PlacementSystem
         int i = _placed.FindIndex(p => p.Unit == u.Id);
         if (i < 0) return false;
         _placed.RemoveAt(i);
+        _sim.Squad.OnRemoved(u, died: false);
         _sim.Remove(u);
         _sim.Emit(SimEventType.Info, LogLevel.Normal, $"«{u.Name}» снят с поля (бюджет возвращён)", -1, -1, u.Pos);
         return true;

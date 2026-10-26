@@ -49,6 +49,8 @@ public sealed class SimDigest
             .Concat(sc.Objectives.Select(o => $"o{o.Def.Id},{o.State}"))
             .Concat(sc.Flags.OrderBy(f => f, StringComparer.Ordinal).Select(f => "f" + f))
             .Concat(sc.Variables.OrderBy(v => v.Key, StringComparer.Ordinal).Select(v => $"v{v.Key}={v.Value}"))
+            // Part 6 (§96): the squad — only when the scenario has one, so the fingerprints of older battles stay the same.
+            .Concat(sim.Squad.Enabled ? sim.Squad.Entries.Select(e => $"s{e.Index},{e.Template},{e.State},{e.Unit}") : Enumerable.Empty<string>())
             .Append($"outcome={sim.Outcome}"));
         return new SimDigest { Tick = sim.Tick, Parts = parts };
     }

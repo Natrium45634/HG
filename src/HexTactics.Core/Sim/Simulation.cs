@@ -32,6 +32,12 @@ public sealed class SimOptions
     public bool AutoPlayer { get; init; }
     /// <summary>The profile of AI-driven player units without their own.</summary>
     public string DefaultPlayerProfile { get; init; } = "";
+    /// <summary>Part 6 (docs/DECISIONS_6.md §96): blocking by the rules of the mode; off — nobody holds anybody.</summary>
+    public bool Blocking { get; init; } = true;
+    /// <summary>The squad the player takes into battle (template IDs in order); null — the scenario's default squad.</summary>
+    public IReadOnlyList<string>? Roster { get; init; }
+    /// <summary>Who of the squad stands on the field at the start.</summary>
+    public SquadStart SquadStart { get; init; } = SquadStart.AllOnField;
 }
 
 /// <summary>
@@ -85,6 +91,7 @@ public sealed class Simulation
         AutoAttacks = new AutoAttackSystem(this);
         Scenario = new ScenarioSystem(this);
         Placement = new PlacementSystem(this);
+        Squad = new SquadSystem(this);
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
         Categories = new CategoryCache(Content);
@@ -147,6 +154,8 @@ public sealed class Simulation
     public ScenarioSystem Scenario { get; }
     /// <summary>The preparation phase: placing defenders (docs/DECISIONS_4.md §64).</summary>
     public PlacementSystem Placement { get; }
+    /// <summary>The player's squad (part 6, docs/DECISIONS_6.md §96).</summary>
+    public SquadSystem Squad { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }

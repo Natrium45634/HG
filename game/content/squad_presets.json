@@ -1,0 +1,16 @@
+{
+  "formatVersion": 5,
+  "kind": "squad_presets",
+  "items": [
+    {
+      "id": "squad_vanguard",
+      "name": "Авангард",
+      "description": "Пример: рыцарь, лучница, жрица.",
+      "tags": [],
+      "group": "Отряды",
+      "version": 1,
+      "units": [ "knight", "archer", "priestess" ],
+      "duplicatesAllowed": false
+    }
+  ]
+}

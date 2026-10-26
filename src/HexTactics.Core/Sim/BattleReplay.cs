@@ -18,10 +18,13 @@ public sealed class BattleSnapshot
     public ulong Seed { get; private init; }
     public bool Admin { get; private init; }
     public bool AutoPlayer { get; private init; }
+    /// <summary>The squad chosen before the battle (part 6, §96); null — the scenario's default.</summary>
+    public List<string>? Roster { get; private init; }
     public SimDigest Start { get; private set; } = new();
 
     /// <summary>Freezes the content and creates the battle from the copy.</summary>
-    public static (BattleSnapshot Snapshot, Simulation Sim) Begin(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false)
+    public static (BattleSnapshot Snapshot, Simulation Sim) Begin(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false,
+        IReadOnlyList<string>? roster = null)
     {
         var frozen = db.Clone();
         if (frozen.Get<ScenarioDef>(sc.Id) is not { } fsc || !ReferenceEquals(db.Get<ScenarioDef>(sc.Id), sc))
@@ -33,13 +36,14 @@ public sealed class BattleSnapshot
         var snap = new BattleSnapshot
         {
             Content = frozen, Scenario = fsc.Id, Seed = seed ?? (sc.Seed != 0 ? sc.Seed : (ulong)DateTime.UtcNow.Ticks), Admin = admin, AutoPlayer = autoPlayer,
+            Roster = roster?.ToList(),
         };
         var sim = snap.Create();
         snap.Start = sim.Digest();
         return (snap, sim);
     }
 
-    private Simulation Create() => ScenarioSystem.Create(Content, Content.Get<ScenarioDef>(Scenario)!, Seed, Admin, AutoPlayer);
+    private Simulation Create() => ScenarioSystem.Create(Content, Content.Get<ScenarioDef>(Scenario)!, Seed, Admin, AutoPlayer, Roster);
 
     /// <summary>The battle as it was at the start (the same content, scenario and seed).</summary>
     public Simulation Restore() => Create();
@@ -62,6 +66,8 @@ public sealed class BattleReplay
     public ulong Seed { get; set; }
     public bool Admin { get; set; }
     public bool AutoPlayer { get; set; }
+    /// <summary>The squad of the battle (part 6); null — the scenario's default.</summary>
+    public List<string>? Roster { get; set; }
     public int ContentFormat { get; set; } = ContentJson.CurrentFormatVersion;
     public int SimVersion { get; set; }
     /// <summary>«category:id» → version of every definition at the start.</summary>
@@ -80,7 +86,7 @@ public sealed class BattleReplay
     {
         var r = new BattleReplay
         {
-            Scenario = snap.Scenario, Seed = snap.Seed, Admin = snap.Admin, AutoPlayer = snap.AutoPlayer, SimVersion = sim.Rules.Time.SimVersion,
+            Scenario = snap.Scenario, Seed = snap.Seed, Admin = snap.Admin, AutoPlayer = snap.AutoPlayer, Roster = snap.Roster?.ToList(), SimVersion = sim.Rules.Time.SimVersion,
             Versions = VersionsOf(snap.Content), ContentHash = HashOf(snap.Content), StartHash = sim.Digest().Hash,
         };
         if (withContent)
@@ -147,7 +153,7 @@ public sealed class BattleReplay
             res.Problems.Add($"сценария «{Scenario}» нет");
             return res;
         }
-        var sim = ScenarioSystem.Create(content, sc, Seed, Admin, AutoPlayer);
+        var sim = ScenarioSystem.Create(content, sc, Seed, Admin, AutoPlayer, Roster);
         res.Sim = sim;
         int i = 0;
         while (true)

@@ -447,6 +447,7 @@ public sealed class CombatSystem
         cell?.Occupants.Remove(u);
         if (u.IsStructure) _sim.Structures.OnKilled(u);
         _sim.Blocking.OnRemoved(u);
+        _sim.Squad.OnRemoved(u, died: true);
         u.Shields.Clear();
         _sim.Map.Touch(false);
         _sim.Vision.MarkDirty(urgent: true);

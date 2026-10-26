@@ -147,6 +147,13 @@ public sealed class BlockingSystem
 
     public void Update()
     {
+        // The rules of the mode may switch blocking off (ТЗ ч. 6, 14.1).
+        if (!_sim.Options.Blocking)
+        {
+            _blockedBy.Clear();
+            _load.Clear();
+            return;
+        }
         // 1. Keep links that are still valid; drop the others (no stale blocking).
         var keep = new Dictionary<int, int>();
         var load = new Dictionary<int, int>();

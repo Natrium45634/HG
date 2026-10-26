@@ -1,0 +1,39 @@
+{
+  "formatVersion": 5,
+  "kind": "game_rules",
+  "items": [
+    {
+      "id": "rts_free",
+      "name": "Свободная RTS",
+      "description": "Весь отряд на поле с начала боя; приказы и пауза — как в частях 1–5. Развёртывания за ресурс нет.",
+      "tags": [],
+      "group": "Режимы",
+      "version": 1,
+      "rulesPreset": "",
+      "squadStart": "AllOnField",
+      "blocking": true
+    },
+    {
+      "id": "td_tactical",
+      "name": "Тактический TD",
+      "description": "Бойцы выходят на поле расстановкой (и, с этапа 6.2, вызовом за ресурс развёртывания); враги идут по маршрутам и волнам.",
+      "tags": [],
+      "group": "Режимы",
+      "version": 1,
+      "rulesPreset": "",
+      "squadStart": "NoneOnField",
+      "blocking": true
+    },
+    {
+      "id": "hybrid",
+      "name": "Гибрид",
+      "description": "Часть отряда стоит на поле с начала боя, остальные ждут вызова; все движутся свободно.",
+      "tags": [],
+      "group": "Режимы",
+      "version": 1,
+      "rulesPreset": "",
+      "squadStart": "StartDeployed",
+      "blocking": true
+    }
+  ]
+}
