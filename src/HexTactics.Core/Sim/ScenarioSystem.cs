@@ -1121,6 +1121,10 @@ public sealed partial class ScenarioSystem
             case TriggerActionType.DeactivateBase:
                 SetObjectActive(a.Object, false, source);
                 break;
+            case TriggerActionType.OpenDeploymentZone:
+            case TriggerActionType.CloseDeploymentZone:
+                SetZoneOpen(a.Object, a.Type == TriggerActionType.OpenDeploymentZone, source);
+                break;
             case TriggerActionType.SetGroupRoute:
                 SetGroupRoute(a.Group, a.Route, source);
                 break;

@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/zone_presets.schema.json",
+  "title": "пресет зоны (zone_presets.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "zone_presets"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ZonePresetDef"
+      }
+    }
+  },
+  "$defs": {
+    "DeploymentZoneDef": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "description": "Открыта — Закрытая зона не принимает бойцов; её открывает и закрывает событие (действия «Открыть/Закрыть зону развёртывания»)"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[q, r]"
+          },
+          "description": "Гексы — Отмечаются на карте"
+        },
+        "faction": {
+          "type": "string",
+          "x-ref": "Faction",
+          "description": "Сторона"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "Any",
+            "Preparation",
+            "Combat"
+          ],
+          "description": "Фаза — Когда в зону можно вызывать"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Приоритет — На пересечении действуют ограничения всех зон; зона с большим приоритетом проверяется первой и даёт причину отказа"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги зоны — Для «Теги зон» юнита: ближняя, дальняя, высота…"
+        },
+        "unitTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Кого можно — Шаблон, категория или тег; пусто — любого бойца"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ZonePresetDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset",
+            "ZonePreset"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "map": {
+          "type": "string",
+          "x-ref": "Map",
+          "description": "Карта — Гексы зоны — гексы этой карты"
+        },
+        "zone": {
+          "$ref": "#/$defs/DeploymentZoneDef",
+          "description": "Зона"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

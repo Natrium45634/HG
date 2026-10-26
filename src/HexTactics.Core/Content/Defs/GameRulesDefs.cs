@@ -52,6 +52,18 @@ public sealed class SquadPresetDef : Def
     [Ed("Повторы разрешены", "Иначе один шаблон — один боец")] public bool DuplicatesAllowed { get; set; }
 }
 
+/// <summary>
+/// A saved zone of deployment (ТЗ ч. 6, 12.2; §97): its hexes belong to a map, so it is offered to the scenarios of that
+/// map; taking it copies the zone into the scenario (later edits of either do not touch the other).
+/// </summary>
+public sealed class ZonePresetDef : Def
+{
+    [JsonIgnore] public override DefCategory Category => DefCategory.ZonePreset;
+
+    [Ed("Карта", "Гексы зоны — гексы этой карты"), EdRef(DefCategory.Map)] public string Map { get; set; } = "";
+    [Ed("Зона")] public DeploymentZoneDef Zone { get; set; } = new();
+}
+
 /// <summary>A limit of one template or tag in a squad.</summary>
 public sealed class SquadLimitDef : ContentPart
 {
@@ -134,6 +146,8 @@ public sealed class DeploymentRulesDef : ContentPart
     [Ed("Перерыв после гибели, с"), EdRange(0, 3600), EdShowIf(nameof(AfterDeath), AfterDeathPolicy.Cooldown)] public double DeathCooldown { get; set; } = 30;
     [Ed("Не ближе к врагу, гексов", "Нельзя вызвать в N гексах от видимого врага; 0 — можно"), EdRange(0, 20), EdShowIf(nameof(Enabled), true)]
     public int EnemyRadius { get; set; }
+    [Ed("Считать невидимых врагов", "Запрет у врага действует и для врагов, которых игрок не видит (иначе — только для видимых)"),
+     EdShowIf(nameof(Enabled), true)] public bool EnemyRadiusHidden { get; set; }
     [Ed("Не на опасной клетке", "Огонь, яд и прочие опасные эффекты клетки"), EdShowIf(nameof(Enabled), true)] public bool ForbidHazard { get; set; } = true;
     [Ed("Поводок, гексов", "Вызванный боец не отходит от места вызова дальше N гексов; 0 — ходит по обычным правилам"), EdRange(0, 50),
      EdShowIf(nameof(Enabled), true)]
@@ -180,9 +194,11 @@ public sealed class DeploymentZoneDef : ContentPart
     [Ed("Сторона"), EdRef(DefCategory.Faction)] public string Faction { get; set; } = "player";
     [Ed("Теги зоны", "Для «Теги зон» юнита: ближняя, дальняя, высота…")] public List<string> Tags { get; set; } = new();
     [Ed("Кого можно", "Шаблон, категория или тег; пусто — любого бойца")] public List<string> UnitTags { get; set; } = new();
-    [Ed("Открыта")] public ZonePhase Phase { get; set; } = ZonePhase.Any;
-    [Ed("Приоритет", "На пересечении решает зона с большим")] public int Priority { get; set; }
-    [Ed("Активна", "Выключенная зона закрыта (её может открыть событие)")] public bool Active { get; set; } = true;
+    [Ed("Фаза", "Когда в зону можно вызывать")] public ZonePhase Phase { get; set; } = ZonePhase.Any;
+    [Ed("Приоритет", "На пересечении действуют ограничения всех зон; зона с большим приоритетом проверяется первой и даёт причину отказа")]
+    public int Priority { get; set; }
+    [Ed("Открыта", "Закрытая зона не принимает бойцов; её открывает и закрывает событие (действия «Открыть/Закрыть зону развёртывания»)")]
+    public bool Active { get; set; } = true;
 
     public override string ToString() => (Name == "" ? Id : Name) + $" ({Cells.Count} гекс.)";
 }

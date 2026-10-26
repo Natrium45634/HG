@@ -99,7 +99,8 @@
             "GroupPreset",
             "ScalingProfile",
             "GameRules",
-            "SquadPreset"
+            "SquadPreset",
+            "ZonePreset"
           ]
         },
         "collidesWith": {

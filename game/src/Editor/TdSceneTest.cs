@@ -38,9 +38,78 @@ public partial class TdScenePanel
     private Label? _progress;
     private RichTextLabel? _resultText;
 
+    /// <summary>The zone of deployment a click paints (part 6, §97); null — the zone of placement of part 4.</summary>
+    public string? DeployZone { get; private set; }
+
+    private DeploymentZoneDef? SelectedDeployZone => _sc?.DeploymentZones.FirstOrDefault(z => z.Id == DeployZone);
+
+    /// <summary>The fighter the hexes of the zones are checked for (ТЗ ч. 6, 12.2); null — no check.</summary>
+    public string? ZoneCheckUnit { get; private set; }
+    private Dictionary<HexCoord, string?>? _zoneCheck;
+
+    /// <summary>Per hex of the zones: null — the chosen fighter may be called there, otherwise why not (as the battle starts).</summary>
+    public Dictionary<HexCoord, string?>? ZoneCheck
+    {
+        get
+        {
+            if (_zoneCheck != null || _sc == null || ZoneCheckUnit == null || Ctx.Db.Unit(ZoneCheckUnit) is not { } def) return _zoneCheck;
+            var sim = DeploymentCheck.Battle(Ctx.Db, _sc);
+            _zoneCheck = sim == null ? new Dictionary<HexCoord, string?>() : DeploymentCheck.For(sim, _sc, def);
+            return _zoneCheck;
+        }
+    }
+
+    public void SetZoneCheck(string? unit)
+    {
+        ZoneCheckUnit = unit;
+        _zoneCheck = null;
+        RefreshLibrary();
+    }
+
+    /// <summary>«Сохранить зону как пресет»: a copy into the library, offered to the scenarios of this map.</summary>
+    public ZonePresetDef? SaveZonePreset()
+    {
+        if (_sc == null || SelectedDeployZone is not { } z) return null;
+        int n = 1;
+        string id;
+        do id = $"zone_{_sc.Map}_{n++}"; while (Ctx.Db.Get<ZonePresetDef>(id) != null);
+        var p = new ZonePresetDef { Id = id, Name = z.Name != "" ? z.Name : z.Id, Map = _sc.Map, Zone = ContentJson.Clone(z) };
+        Ctx.Db.Add(p);
+        Ctx.MarkDirty();
+        _status.Text = $"Пресет зоны «{p.DisplayName}» [{p.Id}] сохранён в черновик (раздел «Пресеты зон»)";
+        RefreshLibrary();
+        return p;
+    }
+
+    /// <summary>A zone from a preset of this map: copied in, with an ID free in the scenario.</summary>
+    public DeploymentZoneDef? AddZoneFromPreset(ZonePresetDef p)
+    {
+        if (_sc == null) return null;
+        var z = ContentJson.Clone(p.Zone);
+        string baseId = z.Id != "" ? z.Id : "zone";
+        int n = 1;
+        z.Id = baseId;
+        while (_sc.DeploymentZones.Any(x => x.Id == z.Id)) z.Id = $"{baseId}_{++n}";
+        _sc.DeploymentZones.Add(z);
+        DeployZone = z.Id;
+        PresetUnit = null;
+        Edited();
+        RefreshLibrary();
+        RefreshProps();
+        return z;
+    }
+
     private void ToggleZone(HexCoord c)
     {
         if (_sc == null || _map == null || !_map.Cells.Any(x => x.C == c)) return;
+        if (SelectedDeployZone is { } dz)
+        {
+            if (!dz.Cells.Remove(c)) dz.Cells.Add(c);
+            _status.Text = $"Зона развёртывания «{dz.Name}»: {(dz.Cells.Contains(c) ? "+" : "−")}{c}; гексов {dz.Cells.Count}";
+            Edited();
+            RefreshLibrary();
+            return;
+        }
         var z = _sc.Placement.ZoneCells;
         if (!z.Remove(c)) z.Add(c);
         _status.Text = $"Зона расстановки: {(z.Contains(c) ? "+" : "−")}{c}; гексов в зоне (с объектами): {_sc.Placement.ZoneHexes(_sc).Count}";
@@ -75,9 +144,48 @@ public partial class TdScenePanel
         RefreshLibrary();
     }
 
+    /// <summary>The colour of a zone of deployment (by its place in the list).</summary>
+    private static Color ZoneColor(int i) => Color.FromHsv((0.47f + i * 0.13f) % 1f, 0.65f, 1f, 0.9f);
+
+    /// <summary>
+    /// The zones of deployment: a dashed outline in the colour of the zone that tells on the hex (the highest priority) —
+    /// never a fill, so they do not look like an area of an attack; the selected zone brighter, its name at its first hex.
+    /// </summary>
+    private void DrawDeployZones(OverlayLayer o)
+    {
+        if (_sc == null || _preview == null || _sc.DeploymentZones.Count == 0) return;
+        var zones = _sc.DeploymentZones;
+        var hexes = zones.SelectMany(z => z.Cells).Distinct();
+        foreach (var c in hexes)
+        {
+            var top = zones.Where(z => z.Cells.Contains(c)).OrderByDescending(z => z.Priority).First();
+            var col = ZoneColor(zones.IndexOf(top));
+            bool sel = top.Id == DeployZone;
+            o.DashedRing(c, new Color(col, top.Active ? (sel ? 1f : 0.7f) : 0.35f), sel ? 0.09f : 0.06f, 0.86f);
+            if (zones.Count(z => z.Cells.Contains(c)) > 1) o.Dot(c, new Color(col, 0.9f), 0.08f);
+        }
+        foreach (var z in zones.Where(z => z.Cells.Count > 0))
+        {
+            var cell = _preview.Map.Get(z.Cells[0]);
+            _view.Labels.Add(Board.Center(z.Cells[0], (cell == null ? 0 : Board.SurfaceY(cell)) + 0.6f),
+                (z.Name != "" ? z.Name : z.Id) + (z.Active ? "" : " (закрыта)"), ZoneColor(zones.IndexOf(z)), 15);
+        }
+    }
+
+    /// <summary>The check for a chosen fighter: a diamond — it may stand there; hatched — it may not (the reasons on the left).</summary>
+    private void DrawZoneCheck(OverlayLayer o)
+    {
+        if (ZoneCheck is not { } check) return;
+        foreach (var (c, why) in check)
+            if (why == null) o.Diamond(c, new Color(0.4f, 1f, 0.6f, 0.85f), 0.16f);
+            else o.HatchHex(c, new Color(1f, 0.4f, 0.3f, 0.6f), stripes: 4);
+    }
+
     private void DrawPlacement(OverlayLayer o)
     {
         if (_sc == null || _preview == null || Mode is not (TdMode.Placement or TdMode.Test)) return;
+        DrawDeployZones(o);
+        DrawZoneCheck(o);
         foreach (var c in _sc.Placement.ZoneHexes(_sc)) o.FillHex(c, new Color(0.35f, 0.65f, 1f, 0.2f), 0.9f);
         foreach (var c in _sc.Placement.ZoneCells) o.RingHex(c, new Color(0.5f, 0.8f, 1f, 0.7f), 0.05f);
         foreach (var p in _sc.Placement.Preset)
@@ -94,9 +202,94 @@ public partial class TdScenePanel
         if (_sc == null) return;
         var pl = _sc.Placement;
         _library.AddChild(Ui.Label("Клик по гексу:", 13, Ui.TextDim));
-        var zone = btn("▦ Зона расстановки", () => SetPreset(null), "ЛКМ добавляет или убирает гекс зоны", "TdZoneBrush");
+        var zone = btn("▦ Зона расстановки", () =>
+        {
+            DeployZone = null;
+            SetPreset(null);
+        }, "ЛКМ добавляет или убирает гекс зоны", "TdZoneBrush");
         zone.ToggleMode = true;
-        zone.ButtonPressed = PresetUnit == null;
+        zone.ButtonPressed = PresetUnit == null && DeployZone == null;
+        // Part 6 (§97): the zones of deployment for the calls during the battle — several, with tags, phase and priority.
+        _library.AddChild(Ui.Label("Зоны развёртывания (вызов за очки):", 13, Ui.TextDim));
+        for (int i = 0; i < _sc.DeploymentZones.Count; i++)
+        {
+            var dz = _sc.DeploymentZones[i];
+            string id = dz.Id;
+            var zb = btn($"◇ {(dz.Name != "" ? dz.Name : dz.Id)} ({dz.Cells.Count})" + (dz.Active ? "" : " · закрыта"), () =>
+            {
+                PresetUnit = null;
+                DeployZone = DeployZone == id ? null : id;
+                RefreshLibrary();
+                RefreshProps();
+                Hint();
+            }, "ЛКМ по гексу добавляет или убирает его в этой зоне; свойства зоны — справа", "TdDeployZone_" + id);
+            zb.ToggleMode = true;
+            zb.ButtonPressed = DeployZone == id;
+            zb.AddThemeColorOverride("font_color", ZoneColor(i));
+        }
+        btn("+ Зона развёртывания", () =>
+        {
+            int n = 1;
+            while (_sc.DeploymentZones.Any(z => z.Id == $"zone_{n}")) n++;
+            _sc.DeploymentZones.Add(new DeploymentZoneDef { Id = $"zone_{n}", Name = $"Зона {n}" });
+            DeployZone = $"zone_{n}";
+            PresetUnit = null;
+            Edited();
+            RefreshLibrary();
+            RefreshProps();
+            Hint();
+        }, "Новая зона; затем ЛКМ по гексам карты", "TdDeployZoneAdd");
+        if (SelectedDeployZone is { } selz)
+            btn($"✗ Удалить зону «{(selz.Name != "" ? selz.Name : selz.Id)}»", () =>
+            {
+                _sc.DeploymentZones.Remove(selz);
+                DeployZone = null;
+                Edited();
+                RefreshLibrary();
+                RefreshProps();
+                Hint();
+            }, "Ссылки триггеров на неё покажет проверка", "TdDeployZoneRemove");
+        if (SelectedDeployZone != null) btn("💾 Сохранить зону как пресет", () => SaveZonePreset(), "В библиотеку («Пресеты зон»): её можно взять в другой сценарий этой карты", "TdZoneSavePreset");
+        var presets = Ctx.Db.All<ZonePresetDef>().Where(p => p.Map == _sc.Map).ToList();
+        if (presets.Count > 0)
+        {
+            var pick = new OptionButton { Name = "TdZoneFromPreset", FocusMode = FocusModeEnum.None };
+            pick.AddItem("+ Зона из пресета…");
+            foreach (var p in presets) pick.AddItem($"{p.DisplayName} ({p.Zone.Cells.Count} гекс.)");
+            pick.ItemSelected += i =>
+            {
+                if (i > 0) AddZoneFromPreset(presets[(int)i - 1]);
+            };
+            _library.AddChild(pick);
+        }
+        var eff = EffectiveGameRules.Resolve(Ctx.Db, _sc);
+        if (_sc.DeploymentZones.Count > 0 && !eff.Deployment.Enabled)
+            _library.AddChild(Ui.Label("⚠ Вызов за очки выключен в правилах режима сценария — зоны развёртывания не действуют.", 12, Ui.Warn, wrap: true));
+        // Which hexes take a chosen fighter, and why not the others (ТЗ ч. 6, 12.2).
+        _library.AddChild(Ui.Label("Проверить гексы для бойца:", 13, Ui.TextDim));
+        var who = new OptionButton { Name = "TdZoneCheckUnit", FocusMode = FocusModeEnum.None };
+        who.AddItem("— не проверять");
+        var pool = (_sc.Squad is { Enabled: true } ? SquadRules.PoolOf(Ctx.Db, _sc) : Ctx.Db.All<UnitDef>().Where(u => u.Faction == "player")).ToList();
+        foreach (var u in pool) who.AddItem(u.DisplayName);
+        int at = pool.FindIndex(u => u.Id == ZoneCheckUnit);
+        who.Selected = at + 1;
+        who.ItemSelected += i => SetZoneCheck(i <= 0 ? null : pool[(int)i - 1].Id);
+        _library.AddChild(who);
+        if (ZoneCheck is { } check)
+        {
+            int ok = check.Values.Count(v => v == null);
+            var reasons = check.Values.Where(v => v != null).GroupBy(v => v!).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} ({g.Count()})");
+            var sum = Ui.Label($"Можно: {ok} гекс.; нельзя: {check.Count - ok}" + (check.Count > ok ? " — " + string.Join("; ", reasons) : ""), 12, ok > 0 ? Ui.Text : Ui.Bad, wrap: true);
+            sum.Name = "TdZoneCheckSummary";
+            _library.AddChild(sum);
+        }
+        var unreachable = DeploymentCheck.Unreachable(Ctx.Db, _sc);
+        if (_sc.DeploymentZones.Count > 0)
+        {
+            var reach = Ui.Label(unreachable.Count == 0 ? "✓ Из каждой зоны можно дойти до цели" : string.Join("\n", unreachable.Select(u => "⚠ " + u)), 12, unreachable.Count == 0 ? Ui.Good : Ui.Warn, wrap: true);
+            reach.Name = "TdZoneReach";
+            _library.AddChild(reach);
+        }
         _library.AddChild(Ui.Label("Расстановка по умолчанию (автотест):", 13, Ui.TextDim));
         var units = pl.Units.Select(u => u.Unit).Concat(Ctx.Db.All<UnitDef>().Where(u => u.Faction == "player").Select(u => u.Id)).Distinct().ToList();
         foreach (var id in units)
@@ -128,6 +321,7 @@ public partial class TdScenePanel
     private void SetPreset(string? unit)
     {
         PresetUnit = unit;
+        if (unit != null) DeployZone = null;
         RefreshLibrary();
         Hint();
     }
@@ -135,6 +329,17 @@ public partial class TdScenePanel
     private void BuildPlacementProps()
     {
         if (_sc == null) return;
+        // The selected zone of deployment first: its tags, phase and priority are what a click is about now.
+        if (SelectedDeployZone is { } dz)
+        {
+            _props.AddChild(Ui.Label($"Зона развёртывания «{(dz.Name != "" ? dz.Name : dz.Id)}»", 15, Ui.Accent));
+            var zg = Grid(dz, RefreshLibrary);
+            zg.Name = "TdDeployZoneGrid";
+            _props.AddChild(zg);
+            _props.AddChild(Ui.Label("На пересечении зон действуют ограничения всех; приоритет — порядок проверки и причина отказа. " +
+                                     "Открыть и закрыть зону в бою — действия триггера «Открыть/Закрыть зону развёртывания».", 12, Ui.TextDim, wrap: true));
+            _props.AddChild(Ui.Sep());
+        }
         _props.AddChild(Ui.Label("Режим боя и подготовка", 15, Ui.Accent));
         var mode = new OptionButton { Name = "TdBattleMode", FocusMode = FocusModeEnum.None };
         var modes = Enum.GetValues<BattleMode>();

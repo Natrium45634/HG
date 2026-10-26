@@ -158,7 +158,8 @@
             "GroupPreset",
             "ScalingProfile",
             "GameRules",
-            "SquadPreset"
+            "SquadPreset",
+            "ZonePreset"
           ]
         },
         "displayName": {

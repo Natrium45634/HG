@@ -2654,3 +2654,38 @@ Windows-сборка проверена самопроверкой на Windows 
 * **Тесты**: `Part6ModeTests` (8); UI — `squad_screen_rules_and_battle`.
   T01, T30 (часть «RTS / TD по настройкам») — приняты.
 
+
+## Ч6 · Этап 6.2. Развёртывание за очки во время боя
+
+* **Сделано** ([§97](DECISIONS_6.md)):
+  * блок «Развёртывание» в правилах режима: очки стороны с начислением по
+    тикам (время, убийства, волны, потолок), лимит на поле, отзыв с
+    возвратом, перерывы, политика после гибели, близость врага, опасные
+    клетки, поводок; «свои правила» сценария;
+  * профиль развёртывания у шаблона юнита (цена, перерыв, теги зон,
+    направление);
+  * несколько зон развёртывания с тегами, фазой, приоритетом,
+    открытием и закрытием триггером; рисуются в TD-сцене, проверяются
+    для выбранного бойца и на достижимость целей; пресеты зон;
+  * вызов в бою: лента отряда, режим вызова с выбором гекса и
+    направления, Esc без затрат, отзыв с подтверждением; всё — через
+    симуляцию и журнал ввода;
+  * сохранение и загрузка боя посреди схватки (реплей до тика +
+    отпечаток, в котором теперь есть триггеры, фазы босса и
+    переключения баз и зон).
+* **Исправлено попутно**: расстановка части 4 проверяла только занятость
+  гекса — теперь и проходимость местности для шаблона.
+* **Файлы**:
+  * ядро — `src/HexTactics.Core/Sim/{DeploymentSystem,DeploymentCheck,SquadSystem,BattleReplay,SimDigest,ScenarioEventSystem,Movement,PlacementSystem,PlayerInput}.cs`,
+    `Content/{GameRules,ContentValidator,ContentChecks,OperationCatalog}.cs`,
+    `Content/Defs/{GameRulesDefs,MapScenarioDefs,UnitDefs}.cs`;
+  * игра — `game/src/Battle/{BattleDeploy,RosterRibbon,SavedBattlesDialog,BattleScreen,BattleHud,PlacementPanel}.cs`,
+    `game/src/Editor/{TdSceneTest,TdScenePanel,ScenarioEditorPanel,EditorScreen}.cs`,
+    `game/src/App/MainMenu.cs`;
+  * контент — `game/content/{game_rules,resources,zone_presets}.json`;
+  * `docs/schema/*`.
+* **Тесты**: `Part6DeployTests` (17): T02–T12, T28; UI —
+  `deploy_ribbon_call_retreat_save_load`, `editor_deploy_zones_check_presets`.
+* **Осталось на другие этапы**: стадии интерактивных объектов в
+  отпечатке сохранения (6.5); переназначение клавиш вызова и отзыва
+  (6.9); демоуровень «Два прохода» с вызовом (6.9).

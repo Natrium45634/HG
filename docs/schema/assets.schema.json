@@ -242,7 +242,8 @@
             "GroupPreset",
             "ScalingProfile",
             "GameRules",
-            "SquadPreset"
+            "SquadPreset",
+            "ZonePreset"
           ]
         },
         "clipLengths": {

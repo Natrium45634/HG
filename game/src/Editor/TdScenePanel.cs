@@ -208,6 +208,7 @@ public partial class TdScenePanel : DefListPanel
             TdMode.Routes when Route(SelectedRoute) is { } r => $"«{r.DisplayName}»: протяжка от узла или линии — ветка (конец на маршруте — слияние или петля), от конца — продление; клик по узлу — его правило и выходы.",
             TdMode.Routes => "Выберите базу спавна (ЛКМ) и нажмите «Создать маршрут» — или сразу протяните ЛКМ от базы спавна.",
             TdMode.Placement when PresetUnit is { } pu => $"ЛКМ по гексу — поставить «{Ctx.Db.Unit(pu)?.DisplayName ?? pu}» в расстановку по умолчанию, по занятому — убрать; ПКМ — убрать.",
+            TdMode.Placement when DeployZone is { } dz => $"ЛКМ по гексу — добавить/убрать гекс зоны развёртывания «{dz}». Справа — её теги, фаза, приоритет.",
             TdMode.Placement => "ЛКМ по гексу — добавить/убрать гекс зоны расстановки (вместе с зонами объектов). Справа — режим боя и настройки подготовки.",
             TdMode.Test => "Автотест — один прогон без игрока; пакет — N прогонов с seed = база + i (от 10 — 95 % интервал доли побед). Отчёты — в user://reports: JSON, текст и CSV (прогоны, волны, юниты, сводка); контент не меняется.",
             _ => "Выберите волну и группу; «Добавить группу» привязывает её к выбранной базе спавна и её маршруту.",
@@ -233,6 +234,7 @@ public partial class TdScenePanel : DefListPanel
     {
         if (_sc == null) return;
         OnEdited(_sc);
+        _zoneCheck = null;
         if (preview) RebuildPreview(false);
         RunCheck(false);
     }

@@ -152,6 +152,8 @@ public static class OperationCatalog
         Act("group_route", "Изменить маршрут группы", "ИИ и маршруты", "Живые враги группы и её будущие появления идут по новому маршруту.", TriggerActionType.SetGroupRoute, null, "маршрут группы"),
         Act("set_target", "Установить цель", "ИИ и маршруты", "Объект, к которому идут, или юниты (метка, тег), которых атакуют.", TriggerActionType.SetTarget, null, "установить цель"),
         Act("end", "Завершить сценарий", "Волны и цели", "Победой или поражением, с текстом.", TriggerActionType.EndScenario, null, "завершить сценарий"),
+        Act("zone_open", "Открыть зону развёртывания", "Отряд и развёртывание", "В зону снова можно вызывать бойцов (часть 6).", TriggerActionType.OpenDeploymentZone, null, "открыть зону"),
+        Act("zone_close", "Закрыть зону развёртывания", "Отряд и развёртывание", "Бойцы на поле остаются; новых в зону не вызвать.", TriggerActionType.CloseDeploymentZone, null, "закрыть зону"),
         Act("diagnostic", "Записать диагностическое событие", "Сообщения и эффекты", "Строка в журнале диагностики и отчёте автобоя.", TriggerActionType.LogDiagnostic, null, "диагностика"),
     };
 

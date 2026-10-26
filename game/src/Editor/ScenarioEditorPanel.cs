@@ -168,6 +168,46 @@ public partial class ScenarioEditorPanel : DefListPanel
         };
         _rulesTab.AddChild(Ui.HBox(6, compare));
         _rulesTab.AddChild(diff);
+        // The deployment for points (ТЗ ч. 6, 3, 12.1; §97): the block of the preset or the scenario's own copy of it.
+        _rulesTab.AddChild(Ui.Sep());
+        _rulesTab.AddChild(Ui.Label("Развёртывание за очки", 14, Ui.Accent));
+        var dep = Ui.Label(EffectiveGameRules.Describe(eff.Deployment) + (_sc.DeploymentOverride != null ? " · свои значения сценария" : eff.Preset != null ? " · из пресета" : ""), 12, Ui.Text, wrap: true);
+        dep.Name = "RulesDeploy";
+        _rulesTab.AddChild(dep);
+        _rulesTab.AddChild(Ui.Label($"Зоны развёртывания: {_sc.DeploymentZones.Count}" + (_sc.DeploymentZones.Count == 0 ? " (вызов — в зону расстановки)" : "") +
+                                    ". Рисуются в TD-сцене, режим «Расстановка и зоны».", 12, Ui.TextDim, wrap: true));
+        if (_sc.DeploymentOverride == null)
+        {
+            var own = Ui.Button("Задать свои (копия текущих)", () =>
+            {
+                _sc.DeploymentOverride = ContentJson.Clone(eff.Deployment);
+                OnEdited(_sc);
+                RefreshRules();
+                RefreshProps();
+            }, "Блок правил развёртывания сценария вместо блока пресета; начинается с текущих значений");
+            own.Name = "RulesDeployOwn";
+            _rulesTab.AddChild(own);
+        }
+        else
+        {
+            var reset = Ui.Button("Вернуть значения пресета", () =>
+            {
+                _sc.DeploymentOverride = null;
+                OnEdited(_sc);
+                RefreshRules();
+                RefreshProps();
+            });
+            reset.Name = "RulesDeployReset";
+            _rulesTab.AddChild(reset);
+            var dg = new PropertyGrid { LabelWidth = 170, Name = "RulesDeployGrid" };
+            dg.SetTarget(_sc.DeploymentOverride, Ctx.Db);
+            dg.Changed += () =>
+            {
+                OnEdited(_sc);
+                dep.Text = EffectiveGameRules.Describe(_sc.DeploymentOverride ?? new DeploymentRulesDef()) + " · свои значения сценария";
+            };
+            _rulesTab.AddChild(dg);
+        }
         // The squad of the player.
         _rulesTab.AddChild(Ui.Sep());
         var squad = _sc.Squad;

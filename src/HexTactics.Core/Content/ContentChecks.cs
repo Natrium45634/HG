@@ -174,6 +174,8 @@ public static class ContentChecks
                 issues.Add(Err(s, "Actions", "«Сменить фазу босса»: в сценарии нет босса"));
             if (a.Type is TriggerActionType.ActivateBase or TriggerActionType.DeactivateBase && s.Object(a.Object)?.Spawn == null)
                 issues.Add(Err(s, "Actions", $"«{a.Describe()}»: базы спавна «{a.Object}» нет"));
+            if (a.Type is TriggerActionType.OpenDeploymentZone or TriggerActionType.CloseDeploymentZone && s.DeploymentZones.All(z => z.Id != a.Object))
+                issues.Add(Err(s, "Actions", $"«{a.Describe()}»: зоны развёртывания «{a.Object}» нет"));
             if (a.Type == TriggerActionType.SetObjectState && s.Object(a.Object) == null)
                 issues.Add(Err(s, "Actions", $"«{a.Describe()}»: объекта «{a.Object}» нет"));
             if (a.Type == TriggerActionType.SetTarget && a.TargetTag == "" && s.Object(a.Object) == null)

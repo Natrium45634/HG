@@ -803,7 +803,8 @@
             "GroupPreset",
             "ScalingProfile",
             "GameRules",
-            "SquadPreset"
+            "SquadPreset",
+            "ZonePreset"
           ]
         },
         "color": {

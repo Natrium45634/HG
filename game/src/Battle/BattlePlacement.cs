@@ -29,10 +29,16 @@ public partial class BattleScreen
     /// <summary>«Без визуальных эффектов»: events are logged, nothing flies, flashes or floats.</summary>
     public bool NoEffects { get; set; }
 
+    private void AttachReport(Simulation sim)
+    {
+        Report = BattleReport.Attach(sim, _scenario.DisplayName, sim.Options.Seed);
+        Breaks = Breakpoints.Attach(sim, new List<BreakpointDef>());
+    }
+
     private void InitAutobattle()
     {
-        Report = BattleReport.Attach(Sim, _scenario.DisplayName, Sim.Options.Seed);
-        Breaks = Breakpoints.Attach(Sim, new List<BreakpointDef>());
+        // A loaded battle has them attached before its playback (part 6, T28).
+        if (Report == null) AttachReport(Sim);
         // The preparation waits for the player: the battle starts paused until «начать бой».
         if (Sim.Scenario.Preparing) Driver.Paused = true;
     }

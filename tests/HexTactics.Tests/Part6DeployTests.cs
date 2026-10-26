@@ -177,6 +177,7 @@ public class Part6DeployTests
         Assert.Equal(16.5, sim.Deployment.Points); // 13 + 7 × 0.5
         Assert.Equal(units - 1, sim.Units.Count);
         Assert.Null(sim.GetUnit(knight.Id));
+        Assert.False(knight.Alive);
         Assert.Equal(RosterState.WithdrawnCooldown, sim.Squad.Entries[0].State);
         Assert.Empty(knight.Queue.Items.Where(c => c.Status is CommandStatus.Pending or CommandStatus.Active));
         Assert.Null(sim.Squad.EntryOf(knight));
@@ -317,6 +318,33 @@ public class Part6DeployTests
         Assert.Contains("закрыта", sim.Deployment.CellProblem(scout, new HexCoord(9, 4)));
         Assert.Equal("вне зон развёртывания", sim.Deployment.CellProblem(scout, new HexCoord(5, 5)));
         Assert.Contains("только в зоны: high", sim.Deployment.CellProblem(sim.Squad.Entries[2], new HexCoord(11, 3)));
+        // An event opens the closed zone and closes the rear one; the fighters already on the field stay.
+        var on = sim.Input.Deploy(0, new HexCoord(11, 3), HexDirection.W, out var why);
+        Assert.True(on != null, why);
+        sim.Scenario.SetZoneOpen("shut", true, "тест");
+        sim.Scenario.SetZoneOpen("rear", false, "тест");
+        Assert.DoesNotContain("закрыта", sim.Deployment.CellProblem(sim.Squad.Entries[1], new HexCoord(9, 4)) ?? "");
+        Assert.Contains("закрыта", sim.Deployment.CellProblem(sim.Squad.Entries[1], new HexCoord(10, 4)));
+        Assert.True(on!.Alive);
+        Assert.Contains("a zone:rear=False".Replace(" ", ""), string.Join("|", sim.Scenario.SwitchedObjects.Select(x => "a" + x)));
+    }
+
+    [Fact]
+    public void ZoneActions_OpenAndClose_FromATrigger_AndTheCheckFindsAMissingZone()
+    {
+        var (db, sc) = Scene(edit: d => d.StartingPoints = 50);
+        sc.DeploymentZones.Add(new DeploymentZoneDef { Id = "gate", Name = "Ворота", Cells = { new(11, 3) }, Active = false });
+        sc.Triggers.Add(new TriggerDef
+        {
+            Name = "Открыть ворота", Once = true, Condition = new ConditionDef { Type = ConditionType.TimeElapsed, Seconds = 1 },
+            Actions = { new TriggerActionDef { Type = TriggerActionType.OpenDeploymentZone, Object = "gate" } },
+        });
+        var sim = Battle(db, sc, "scout");
+        Assert.Contains("закрыта", sim.Deployment.CellProblem(sim.Squad.Entries[0], new HexCoord(11, 3)));
+        for (int i = 0; i < sim.TicksFor(1.5); i++) sim.Step();
+        Assert.Null(sim.Deployment.CellProblem(sim.Squad.Entries[0], new HexCoord(11, 3)));
+        sc.Triggers[^1].Actions[0].Object = "nowhere";
+        Assert.Contains(ContentValidator.Validate(db), i => i.Message.Contains("зоны развёртывания «nowhere» нет"));
     }
 
     [Fact]
@@ -331,5 +359,101 @@ public class Part6DeployTests
         var eff = EffectiveGameRules.Resolve(db, sc);
         Assert.True(eff.Deployment.Enabled);
         Assert.StartsWith("старт 10", eff.Values.Single(v => v.Field == "deployment").Value);
+    }
+
+    [Theory]
+    [InlineData("titan_lair")]
+    [InlineData("valley_ambush")]
+    public void T28_SavedInTheMiddle_LoadsToTheSameState_FiresNothingAgain_AndGoesOnTheSame(string id)
+    {
+        var db = TestUtil.Shipped();
+        var (snap, sim) = BattleSnapshot.Begin(db, db.Get<ScenarioDef>(id)!, 5, autoPlayer: true);
+        var rec = BattleReplay.Record(snap, sim);
+        for (int i = 0; i < sim.TicksFor(45) && sim.Outcome == BattleOutcome.None; i++) sim.Step();
+        var save = BattleReplay.FromJson(rec.SaveAt(snap, sim).ToJson())!;
+        var fired = sim.Scenario.TriggerFires.ToList();
+        var phases = sim.Scenario.BossPhasesEntered.ToList();
+        Assert.True(fired.Count + phases.Count > 0, "до сохранения не сработало ни одного триггера и фазы — тест ничего не проверяет");
+        var res = save.Resume();
+        Assert.True(res.Matches, res.Text);
+        var loaded = res.Sim!;
+        Assert.Equal(sim.Tick, loaded.Tick);
+        Assert.Equal(fired, loaded.Scenario.TriggerFires.ToList());
+        Assert.Equal(phases, loaded.Scenario.BossPhasesEntered.ToList());
+        for (int i = 0; i < sim.TicksFor(30); i++)
+        {
+            sim.Step();
+            loaded.Step();
+        }
+        Assert.Equal(sim.Digest().Hash, loaded.Digest().Hash);
+        Assert.Equal(sim.Scenario.TriggerFires.ToList(), loaded.Scenario.TriggerFires.ToList());
+    }
+
+    [Fact]
+    public void T28_Deployment_PointsCooldownsAndStates_SurviveSaveAndLoad_AndTheRecordGoesOn()
+    {
+        var (db, sc) = Scene(edit: d =>
+        {
+            d.StartingPoints = 12;
+            d.GainAmount = 1;
+            d.GainInterval = 0.7;
+            d.RedeployCooldown = 6;
+        });
+        var (snap, sim) = BattleSnapshot.Begin(db, sc, 9, roster: new[] { "archer", "scout", "knight" });
+        var rec = BattleReplay.Record(snap, sim);
+        for (int i = 0; i < 20; i++) sim.Step();
+        var a = sim.Input.Deploy(0, Spots(sim)[0], HexDirection.W, out _)!;
+        sim.Input.Deploy(1, Spots(sim, 1)[0], HexDirection.SW, out _);
+        for (int i = 0; i < 30; i++) sim.Step();
+        Assert.True(sim.Input.Retreat(a, out _));
+        for (int i = 0; i < 25; i++) sim.Step();
+        var save = BattleReplay.FromJson(rec.SaveAt(snap, sim).ToJson())!;
+        var res = save.Resume();
+        Assert.True(res.Matches, res.Text);
+        var loaded = res.Sim!;
+        Assert.Equal(sim.Deployment.Points, loaded.Deployment.Points);
+        Assert.Equal(RosterState.WithdrawnCooldown, loaded.Squad.Entries[0].State);
+        Assert.Equal(sim.Squad.Entries[0].ReadyAt, loaded.Squad.Entries[0].ReadyAt);
+        Assert.Equal(sim.Deployment.CooldownLeft(sim.Squad.Entries[0]), loaded.Deployment.CooldownLeft(loaded.Squad.Entries[0]));
+        // The same call after the load — the same battle; the loaded record writes it on.
+        int before = save.Entries.Count;
+        foreach (var s in new[] { sim, loaded })
+        {
+            Assert.NotNull(s.Input.Deploy(2, Spots(s, 2)[0], HexDirection.W, out var why));
+            for (int i = 0; i < s.TicksFor(8); i++) s.Step();
+        }
+        Assert.Equal(sim.Digest().Hash, loaded.Digest().Hash);
+        Assert.Equal(before + 1, save.Entries.Count);
+        // A save of the loaded battle loads again.
+        var again = save.SaveAt(BattleSnapshot.FromReplay(save, res.Content!), loaded).Resume();
+        Assert.True(again.Matches, again.Text);
+    }
+
+    [Fact]
+    public void EditorCheck_HexesForAChosenFighter_AndAZoneWalledOff_IsReported()
+    {
+        var (db, sc) = Scene(edit: d => d.StartingPoints = 50);
+        var pocket = new HexCoord(11, 3);
+        sc.DeploymentZones.Add(new DeploymentZoneDef { Id = "front", Name = "Фронт", Cells = { new(11, 4), new(10, 4) } });
+        var sim = DeploymentCheck.Battle(db, sc)!;
+        var check = DeploymentCheck.For(sim, sc, db.Unit("knight")!);
+        Assert.Equal(2, check.Count);
+        Assert.All(check.Values, Assert.Null);
+        Assert.Empty(DeploymentCheck.Unreachable(db, sc));
+
+        // A zone closed in by walls: nobody walks out of it to a target.
+        var map = db.Get<MapDef>(sc.Map)!;
+        foreach (var n in pocket.Neighbors())
+            if (map.Cells.FirstOrDefault(c => c.C == n) is { } mc) mc.T = "wall";
+        sc.DeploymentZones.Add(new DeploymentZoneDef { Id = "pocket", Name = "Карман", Cells = { pocket } });
+        var problems = DeploymentCheck.Unreachable(db, sc);
+        Assert.Single(problems);
+        Assert.Contains("Карман", problems[0]);
+        Assert.Contains(ContentValidator.Validate(db), i => i.Message.Contains("из зоны «Карман»"));
+        var wallHex = pocket.Neighbors().First(n => map.Cells.Any(c => c.C == n));
+        sc.DeploymentZones.Add(new DeploymentZoneDef { Id = "wall", Name = "Стена", Cells = { wallHex } });
+        var sim2 = DeploymentCheck.Battle(db, sc)!;
+        Assert.Equal("местность непроходима для бойца", DeploymentCheck.For(sim2, sc, db.Unit("knight")!)[wallHex]);
+        Assert.Contains(ContentValidator.Validate(db), i => i.Message.Contains("Зона «Стена»: все гексы — препятствия"));
     }
 }

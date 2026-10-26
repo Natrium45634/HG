@@ -70,6 +70,10 @@
           "maximum": 20,
           "description": "Не ближе к врагу, гексов — Нельзя вызвать в N гексах от видимого врага; 0 — можно"
         },
+        "enemyRadiusHidden": {
+          "type": "boolean",
+          "description": "Считать невидимых врагов — Запрет у врага действует и для врагов, которых игрок не видит (иначе — только для видимых)"
+        },
         "forbidHazard": {
           "type": "boolean",
           "description": "Не на опасной клетке — Огонь, яд и прочие опасные эффекты клетки"
@@ -232,7 +236,8 @@
             "GroupPreset",
             "ScalingProfile",
             "GameRules",
-            "SquadPreset"
+            "SquadPreset",
+            "ZonePreset"
           ]
         },
         "deployment": {

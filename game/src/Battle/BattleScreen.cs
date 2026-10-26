@@ -35,6 +35,7 @@ public partial class BattleScreen : Node
     public BattleSnapshot? Snapshot => _snapshot;
     public BattleReplay? Replay { get; private set; }
     private readonly Action? _onExit;
+    public Action? OnExit => _onExit;
 
     public Simulation Sim { get; private set; } = null!;
     public SimDriver Driver { get; private set; } = null!;
@@ -106,8 +107,16 @@ public partial class BattleScreen : Node
             _db = _snapshot.Content;
             _scenario = _db.Get<ScenarioDef>(_snapshot.Scenario)!;
         }
+        else if (Loaded != null)
+        {
+            // A saved battle (part 6, T28): played back to its tick — the report hears every event on the way.
+            var res = Loaded.Resume(AttachReport);
+            Sim = res.Sim ?? _snapshot.Restore();
+            Sim.Input.Journal = Loaded.Entries;
+            LoadText = res.Matches ? $"Бой загружен: {Ui.FormatTime(Sim.Time)}" : "Бой загружен, но состояние отличается от сохранённого: " + res.Text;
+        }
         else Sim = _snapshot.Restore();
-        Replay = BattleReplay.Record(_snapshot, Sim);
+        Replay = Loaded ?? BattleReplay.Record(_snapshot, Sim);
         if (Unsafe)
             Sim.Emit(SimEventType.Diagnostic, LogLevel.Normal, $"НЕБЕЗОПАСНЫЙ ТЕСТ: проигнорировано ошибок проверки — {UnsafeErrors.Count}" +
                 (UnsafeErrors.Count > 0 ? ": " + string.Join("; ", UnsafeErrors.Take(6)) : ""));
@@ -133,6 +142,11 @@ public partial class BattleScreen : Node
         var layer = new CanvasLayer { Layer = 1 };
         layer.AddChild(_hud);
         AddChild(layer);
+        if (Loaded != null)
+        {
+            Driver.Paused = true;
+            _hud.ShowBanner(LoadText, LoadText.StartsWith("Бой загружен:") ? Ui.Good : Ui.Warn, 5f);
+        }
         if (Unsafe) _hud.ShowBanner($"НЕБЕЗОПАСНЫЙ ТЕСТ: проигнорировано ошибок проверки — {UnsafeErrors.Count} (см. журнал)", Ui.Bad, 8f);
 
         Board.Rig.InsetsProvider = _hud.WorkInsets;
@@ -691,6 +705,7 @@ public partial class BattleScreen : Node
             }
         }
         foreach (var v in Board.Views.Values) v.Hovered = _hoverUnit != null && v.Unit == _hoverUnit;
+        UpdateDeployFacing();
     }
 
     /// <summary>Visible living creatures on the hex of a unit (all layers), in a stable order.</summary>
@@ -865,6 +880,7 @@ public partial class BattleScreen : Node
         DrawSpawnWarnings(o);
         DrawObjectives(o);
         DrawPlacement(o, pulse);
+        DrawDeploy(o, pulse);
         // Enemy routes of the scenario (docs/DECISIONS_4.md §57): faint, so the board stays readable.
         if (_scenario.Routes.Count > 0) Render.ScenarioObjectsView.DrawRoutes(o, _scenario, "", 0.55f);
 
@@ -1215,7 +1231,9 @@ public partial class BattleScreen : Node
                 if (mb.ButtonIndex == MouseButton.Left)
                 {
                     UpdateArrows();
-                    if (GroupMode != null) GroupClick();
+                    // Calling a fighter is a mode of its own: no gesture, no box — the click goes to the call (11.5).
+                    if (Deploying) DeployClick();
+                    else if (GroupMode != null) GroupClick();
                     else if (mb.ShiftPressed && Mode == InputMode.None && _hoverUnit != null && Sim.CanPlayerCommand(_hoverUnit)) ToggleInGroup(_hoverUnit);
                     else if (TryStartGesture(mb.Position)) { }
                     else if (Mode == InputMode.None && _hoverUnit == null)
@@ -1237,6 +1255,11 @@ public partial class BattleScreen : Node
 
     private void OnLeftClick(InputEventMouseButton mb)
     {
+        if (Deploying)
+        {
+            DeployClick();
+            return;
+        }
         if (TryPlacementClick()) return;
         var u = Selected;
         switch (Mode)
@@ -1359,6 +1382,7 @@ public partial class BattleScreen : Node
 
     private void OnRightClick()
     {
+        if (DeployStepBack()) return;
         if (TryPlacementRightClick()) return;
         // During a gesture or planning: cancel / one step back (docs/DECISIONS_3.md §39); otherwise the quick order of part 1.
         if (_gesture != null)
@@ -1436,6 +1460,7 @@ public partial class BattleScreen : Node
         var u = Selected;
         var actions = u != null ? Sim.Planner.Actions(u) : new List<ActionInfo>();
         ActionInfo? A(string key) => actions.FirstOrDefault(a => a.Key == key);
+        if (DeployKey(k)) return true;
         switch (k.Keycode)
         {
             case Key.Space:
@@ -1453,6 +1478,7 @@ public partial class BattleScreen : Node
                 // Cancel the operation → leave the planning mode → clear the selection → game menu (docs/DECISIONS_3.md §39).
                 if (_gesture != null) CancelGesture();
                 else if (_hud.CloseTransient()) { }
+                else if (DeployStepBack()) { }
                 else if (GroupMode != null) CancelGroupMode();
                 else if (GroupActive) ClearGroup();
                 else if (Mode != InputMode.None) ExitMode();
@@ -1487,6 +1513,9 @@ public partial class BattleScreen : Node
                 return true;
             case Key.L:
                 _hud.ToggleLog();
+                return true;
+            case Key.O when u != null && Sim.Deployment.Enabled && Sim.Squad.EntryOf(u) != null:
+                RetreatSelected();
                 return true;
             case Key.F1:
                 _hud.ToggleHelp();
@@ -1611,15 +1640,10 @@ public partial class BattleScreen : Node
     /// <summary>The replay so far, with the content of the start inside; written to user://replays.</summary>
     public string SaveReplay()
     {
-        var copy = BattleReplay.FromJson(Replay!.ToJson())!;
-        copy.EndTick = Sim.Tick;
-        copy.EndHash = Sim.Digest().Hash;
-        var mem = new MemoryStorage();
-        ContentIO.Save(_snapshot!.Content, mem);
-        copy.Content = new Dictionary<string, string>(mem.Files);
+        var copy = Replay!.SaveAt(_snapshot!, Sim);
         var dir = ProjectSettings.GlobalizePath("user://replays");
         System.IO.Directory.CreateDirectory(dir);
-        var path = System.IO.Path.Combine(dir, $"{_snapshot.Scenario}_{DateTime.Now:yyyyMMdd_HHmmss}.hexreplay");
+        var path = System.IO.Path.Combine(dir, $"{_snapshot!.Scenario}_{DateTime.Now:yyyyMMdd_HHmmss}.hexreplay");
         System.IO.File.WriteAllText(path, copy.ToJson());
         return path;
     }

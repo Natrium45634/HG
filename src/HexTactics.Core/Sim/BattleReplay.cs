@@ -45,6 +45,14 @@ public sealed class BattleSnapshot
 
     private Simulation Create() => ScenarioSystem.Create(Content, Content.Get<ScenarioDef>(Scenario)!, Seed, Admin, AutoPlayer, Roster);
 
+    /// <summary>The start of a battle saved in a replay (a loaded battle — «начать заново» goes back to its start).</summary>
+    public static BattleSnapshot FromReplay(BattleReplay r, ContentDatabase content)
+    {
+        var snap = new BattleSnapshot { Content = content, Scenario = r.Scenario, Seed = r.Seed, Admin = r.Admin, AutoPlayer = r.AutoPlayer, Roster = r.Roster?.ToList() };
+        snap.Start = snap.Create().Digest();
+        return snap;
+    }
+
     /// <summary>The battle as it was at the start (the same content, scenario and seed).</summary>
     public Simulation Restore() => Create();
 
@@ -130,6 +138,41 @@ public sealed class BattleReplay
         return list;
     }
 
+    /// <summary>
+    /// The battle saved in the middle (ТЗ ч. 6, T28; docs/DECISIONS_6.md §93.7, §97): a copy of the record so far, with the
+    /// content of <paramref name="snap"/>, ending at the current tick. The record itself goes on.
+    /// </summary>
+    public BattleReplay SaveAt(BattleSnapshot snap, Simulation sim)
+    {
+        var r = new BattleReplay
+        {
+            Scenario = Scenario, Seed = Seed, Admin = Admin, AutoPlayer = AutoPlayer, Roster = Roster?.ToList(), SimVersion = SimVersion,
+            Versions = new Dictionary<string, int>(Versions), ContentHash = ContentHash, StartHash = StartHash, Entries = Entries.ToList(),
+            Content = Content != null ? new Dictionary<string, string>(Content) : null,
+        };
+        if (r.Content == null)
+        {
+            var mem = new MemoryStorage();
+            ContentIO.Save(snap.Content, mem);
+            r.Content = new Dictionary<string, string>(mem.Files);
+        }
+        r.EndTick = sim.Tick;
+        r.EndHash = sim.Digest().Hash;
+        return r;
+    }
+
+    /// <summary>
+    /// Loads a battle saved with <see cref="SaveAt"/>: plays it back to its tick on its own content and checks the
+    /// fingerprint. When it matches, the battle goes on from there and its calls are written on into this record.
+    /// <paramref name="created"/> sees the battle before the first tick (to attach a report or breakpoints).
+    /// </summary>
+    public ReplayResult Resume(Action<Simulation>? created = null)
+    {
+        var res = Play(null, created);
+        if (res.Matches && res.Sim != null) res.Sim.Input.Journal = Entries;
+        return res;
+    }
+
     /// <summary>The content saved in the replay; null — not saved.</summary>
     public ContentDatabase? SavedContent()
     {
@@ -143,10 +186,10 @@ public sealed class BattleReplay
     /// Plays the battle back on <paramref name="db"/> (null — the saved content): the same seed, the same calls at the
     /// same ticks, up to the end tick. The result says whether the end matches and, if not, which parts differ.
     /// </summary>
-    public ReplayResult Play(ContentDatabase? db = null)
+    public ReplayResult Play(ContentDatabase? db = null, Action<Simulation>? created = null)
     {
         var content = db ?? SavedContent() ?? throw new InvalidOperationException("В реплее нет сохранённого контента — укажите проект");
-        var res = new ReplayResult { ContentChanges = Changes(content) };
+        var res = new ReplayResult { ContentChanges = Changes(content), Content = content };
         var sc = content.Get<ScenarioDef>(Scenario);
         if (sc == null)
         {
@@ -155,6 +198,7 @@ public sealed class BattleReplay
         }
         var sim = ScenarioSystem.Create(content, sc, Seed, Admin, AutoPlayer, Roster);
         res.Sim = sim;
+        created?.Invoke(sim);
         int i = 0;
         while (true)
         {
@@ -189,6 +233,8 @@ public sealed class BattleReplay
 public sealed class ReplayResult
 {
     public Simulation? Sim { get; set; }
+    /// <summary>The content the battle was played on.</summary>
+    public ContentDatabase? Content { get; set; }
     public bool Matches { get; set; }
     public int Skipped { get; set; }
     public List<string> ContentChanges { get; set; } = new();

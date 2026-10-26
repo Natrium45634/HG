@@ -138,6 +138,7 @@ public static class ContentDependencies
             DefCategory.GroupPreset => ("пресете группы", "пресетах групп"),
             DefCategory.GameRules => ("правилах режима", "правилах режимов"),
             DefCategory.SquadPreset => ("пресете отряда", "пресетах отряда"),
+            DefCategory.ZonePreset => ("пресете зоны", "пресетах зон"),
             DefCategory.Faction => ("фракции", "фракциях"),
             DefCategory.AiProfile => ("профиле ИИ", "профилях ИИ"),
             DefCategory.Asset => ("ресурсе", "ресурсах"),

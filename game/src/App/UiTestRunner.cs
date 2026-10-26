@@ -87,6 +87,8 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_results_compare_export", EditorResultsCompareExport));
         _tests.Add(("editor_unit_tabs", EditorUnitTabs));
         _tests.Add(("squad_screen_rules_and_battle", SquadScreenAndRules));
+        _tests.Add(("deploy_ribbon_call_retreat_save_load", DeployRibbonCallRetreat));
+        _tests.Add(("editor_deploy_zones_check_presets", EditorDeployZones));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2932,6 +2934,195 @@ public partial class UiTestRunner : Node
         {
             dsc.GameRules = oldRules;
         }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.2 (ТЗ ч. 6, 3.6–3.12, 11; T28; §97): the ribbon of the squad shows the points and the limit; a card →
+    /// a forbidden hex says why and spends nothing → an allowed hex → the facing by key → Enter calls the fighter; Esc leaves
+    /// the mode for free; «Отозвать» asks and refunds half; the battle saved in the middle loads with the same points and pause.
+    /// </summary>
+    private async Task DeployRibbonCallRetreat()
+    {
+        var db = Main.Instance.Content.Published.Clone();
+        var sc = db.Get<ScenarioDef>("td_pass_defense")!;
+        sc.Mode = BattleMode.TowerDefense;
+        sc.GameRules = "td_tactical";
+        sc.Squad = new ScenarioSquadDef { Enabled = true, Pool = { "knight", "archer", "scout" }, StartingRoster = { "knight", "archer", "scout" }, Fixed = true };
+        var dep = ContentJson.Clone(db.Get<GameRulesDef>("td_tactical")!.Deployment);
+        dep.StartingPoints = 20;
+        dep.GainAmount = 0;
+        dep.MaxDeployed = 2;
+        dep.ConfirmRetreat = true;
+        dep.RetreatRefund = 0.5;
+        dep.RedeployCooldown = 30;
+        dep.EnemyRadius = 0;
+        sc.DeploymentOverride = dep;
+        db.Unit("knight")!.Deployment = new UnitDeploymentDef { Cost = 7 };
+        db.Unit("archer")!.Deployment = new UnitDeploymentDef { Cost = 5 };
+        db.Unit("scout")!.Deployment = new UnitDeploymentDef { Cost = 2 };
+        Main.Instance.ShowBattle(sc, db, false);
+        await Frames(8);
+        var bs = Battle();
+        bs.Driver.Paused = true;
+        var hud = bs.Hud;
+        await Frames(3);
+        Check(hud.Roster.Visible && !hud.Placement.Visible, "лента отряда видна, панель расстановки части 4 скрыта");
+        string Points() => Find<Label>(hud.Roster).First(l => l.Name == "RosterPoints").Text;
+        Check(Points().Contains(": 20") && Points().Contains("на поле 0 из 2"), "ОР и лимит в ленте: " + Points());
+        Button Card(int i) => Find<Button>(hud.Roster).First(b => b.Name == "RosterCard_" + i);
+        Check(Card(0).Text.Contains("7") && Card(0).Text.Contains("готов"), "карточка рыцаря: цена и статус: " + Card(0).Text);
+
+        // A forbidden hex: the reason, nothing spent; then an allowed one, the facing by key, Enter.
+        await Click(Card(0).GetGlobalRect().GetCenter());
+        Check(bs.Deploying && bs.DeployEntry == 0, "клик по карточке — режим вызова");
+        var zone = bs.Sim.Placement.Zone;
+        var outside = bs.Sim.Map.Cells.Select(c => c.Coord).Where(c => !zone.Contains(c) && bs.Sim.Map.Get(c)!.Occupants.Count == 0)
+            .OrderBy(c => zone.Min(z => HexCoord.Distance(z, c))).First();
+        await Click(HexScreen(bs, outside));
+        Check(bs.Deploying && bs.DeployCell == null && bs.Sim.Deployment.Points == 20, "гекс вне зоны: отказ без затрат");
+        var spot = zone.Where(c => bs.Sim.Deployment.CellProblem(bs.Sim.Squad.Entries[0], c) == null).OrderBy(c => c.R).ThenBy(c => c.Q).First();
+        Input.ParseInputEvent(new InputEventMouseMotion { Position = HexScreen(bs, spot), GlobalPosition = HexScreen(bs, spot) });
+        await Frames(3);
+        Check(Find<Label>(hud.Roster).First(l => l.Name == "RosterHint").Text.Contains("ЛКМ — гекс зоны"), "подсказка инструмента видна");
+        await Shot("part6_deploy_mode");
+        await Click(HexScreen(bs, spot));
+        Check(bs.DeployCell == spot, "гекс выбран: " + bs.DeployCell);
+        await Key(Godot.Key.Key3);
+        Check(bs.DeployDirection == (HexDirection)2, "клавиша 3 — третье направление");
+        await Key(Godot.Key.Enter);
+        var knight = bs.Selected;
+        Check(!bs.Deploying && knight != null && knight.Def.Id == "knight" && knight.Pos == spot && knight.Facing == (HexDirection)2, "рыцарь вызван туда и так, как выбрано");
+        Check(bs.Sim.Deployment.Points == 13 && Points().Contains("на поле 1 из 2"), "списано 7: " + Points());
+        Check(bs.Replay!.Entries.Any(e => e.Op == ReplayOp.Deploy), "вызов записан в журнал ввода");
+
+        // Esc leaves the mode without any cost.
+        await Click(Card(2).GetGlobalRect().GetCenter());
+        Check(bs.Deploying, "разведчик — режим вызова");
+        await Key(Godot.Key.Escape);
+        Check(!bs.Deploying && bs.Sim.Deployment.Points == 13, "Esc — отмена без затрат");
+
+        // «Отозвать» with the confirmation: +3.5, the pause on the card.
+        bs.Select(knight, byPlayer: false);
+        await Frames(3);
+        var retreat = Find<Button>(hud.Roster).First(b => b.Name == "RosterRetreat");
+        Check(retreat.Text.Contains("+3.5"), "кнопка отзыва с возвратом: " + retreat.Text);
+        await Click(retreat.GetGlobalRect().GetCenter());
+        await Frames(2);
+        var confirm = Find<ConfirmationDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == "Отозвать бойца");
+        Check(confirm != null && knight!.Alive, "отзыв спрашивает подтверждение и до него ничего не делает");
+        confirm!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        await Frames(4);
+        Check(!knight!.Alive && bs.Sim.GetUnit(knight.Id) == null && bs.Sim.Deployment.Points == 16.5, "отозван, возвращено 3.5: " + bs.Sim.Deployment.Points);
+        Check(Card(0).Text.Contains("⟳") && Card(0).Disabled, "карточка — перерыв: " + Card(0).Text);
+        await Shot("part6_ribbon");
+
+        // The battle saved in the middle loads with the same points, pause and record.
+        for (int i = 0; i < 30; i++) bs.Sim.Step();
+        var path = bs.SaveBattle();
+        try
+        {
+            long tick = bs.Sim.Tick;
+            double left = bs.Sim.Deployment.CooldownLeft(bs.Sim.Squad.Entries[0]);
+            Main.Instance.ShowBattle(BattleScreen.Load(path, false, null));
+            await Frames(8);
+            var lb = Battle();
+            Check(lb != bs && lb.LoadText.StartsWith("Бой загружен:"), "загрузка: " + lb.LoadText);
+            Check(lb.Sim.Tick == tick && lb.Sim.Deployment.Points == 16.5 && lb.Sim.Squad.Entries[0].State == RosterState.WithdrawnCooldown
+                  && Math.Abs(lb.Sim.Deployment.CooldownLeft(lb.Sim.Squad.Entries[0]) - left) < 1e-9, "ОР, перерыв и тик восстановлены");
+            Check(lb.Driver.Paused && lb.Hud.Roster.Visible, "загруженный бой — на паузе, лента видна");
+            Check(BattleScreen.SavedBattles().Contains(path), "сохранение в списке");
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.2 in the editor (ТЗ ч. 6, 3.4–3.5, 12.1–12.2; §97): a zone of deployment is made and painted in the TD
+    /// scene, the hexes are checked for a chosen fighter, the zone is saved as a preset and taken back from it; the tab of
+    /// the rules gets the scenario's own block of deployment.
+    /// </summary>
+    private async Task EditorDeployZones()
+    {
+        var ed = await OpenEditor("td");
+        var draft = ed.Context.Db;
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass_defense");
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = panel.Scene!;
+        var keepZones = sc.DeploymentZones.ToList();
+        string keepRules = sc.GameRules;
+        var keepPresets = draft.All<ZonePresetDef>().Select(p => p.Id).ToHashSet();
+        try
+        {
+            sc.GameRules = "td_tactical";
+            await CameraSettled(panel.View.Board.Rig);
+            await Click(Find<Button>(panel).First(b => b.Name == "TdMode_Placement").GetGlobalRect().GetCenter());
+            await Frames(3);
+            await Click(Find<Button>(panel).First(b => b.Name == "TdDeployZoneAdd").GetGlobalRect().GetCenter());
+            Check(sc.DeploymentZones.Count == keepZones.Count + 1 && panel.DeployZone == sc.DeploymentZones[^1].Id, "зона создана и выбрана кистью");
+            var zone = sc.DeploymentZones[^1];
+            var hexes = new[] { new HexCoord(9, 6), new HexCoord(10, 6), new HexCoord(10, 5) };
+            foreach (var h in hexes) await ClickHex(panel.View, h);
+            Check(hexes.All(zone.Cells.Contains) && !sc.Placement.ZoneCells.Contains(hexes[0]), "клики красят зону развёртывания, не зону расстановки");
+            Check(Find<HexTactics.Game.UI.PropertyGrid>(panel).Any(g => g.Name == "TdDeployZoneGrid"), "свойства зоны справа");
+            var who = Find<OptionButton>(panel).First(o => o.Name == "TdZoneCheckUnit");
+            who.Select(1);
+            who.EmitSignal(OptionButton.SignalName.ItemSelected, 1);
+            await Frames(4);
+            Check(panel.ZoneCheck is { Count: 3 }, "проверка трёх гексов для бойца");
+            var sum = Find<Label>(panel).First(l => l.Name == "TdZoneCheckSummary").Text;
+            Check(sum.StartsWith("Можно:"), "сводка проверки: " + sum);
+            Check(Find<Label>(panel).Any(l => l.Name == "TdZoneReach"), "достижимость целей показана");
+            await Shot("part6_editor_zones");
+            var preset = panel.SaveZonePreset();
+            Check(preset != null && draft.Get<ZonePresetDef>(preset.Id)?.Zone.Cells.Count == 3 && preset.Map == sc.Map, "зона сохранена как пресет");
+            var copy = panel.AddZoneFromPreset(preset!);
+            Check(copy != null && copy.Id != zone.Id && copy.Cells.Count == 3, "зона из пресета — копия с новым ID");
+            Check(ContentValidator.Validate(draft).All(i => !i.Message.Contains("зоны развёртывания") || i.Severity != IssueSeverity.Error), "зоны без ошибок проверки");
+        }
+        finally
+        {
+            sc.DeploymentZones.Clear();
+            sc.DeploymentZones.AddRange(keepZones);
+            sc.GameRules = keepRules;
+            foreach (var p in draft.All<ZonePresetDef>().Where(p => !keepPresets.Contains(p.Id)).ToList()) draft.Table(DefCategory.ZonePreset).Remove(p.Id);
+        }
+
+        // The tab of the rules: the scenario's own block of deployment, starting from the preset's values.
+        var ed2 = await OpenEditor("scenarios");
+        var dsc = ed2.Context.Db.Get<ScenarioDef>("td_pass_defense")!;
+        string oldRules = dsc.GameRules;
+        var oldDep = dsc.DeploymentOverride;
+        try
+        {
+            dsc.GameRules = "hybrid";
+            dsc.DeploymentOverride = null;
+            var sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+            sp.Select("td_pass_defense");
+            await Frames(10);
+            sp = Find<ScenarioEditorPanel>(GetTree().Root).First();
+            await PressNamed(sp, "RulesDeployOwn");
+            Check(dsc.DeploymentOverride is { Enabled: true, StartingPoints: 8 }, "свои правила — копия пресета «Гибрид»");
+            Check(Find<HexTactics.Game.UI.PropertyGrid>(sp).Any(g => g.Name == "RulesDeployGrid") && Find<Label>(sp).Any(l => l.Name == "RulesDeploy" && l.Text.Contains("свои значения")), "сетка своих правил развёртывания");
+            await PressNamed(sp, "RulesDeployReset");
+            Check(dsc.DeploymentOverride == null, "сброс к пресету");
+        }
+        finally
+        {
+            dsc.GameRules = oldRules;
+            dsc.DeploymentOverride = oldDep;
+        }
+    }
+
+    private async Task PressNamed(Node root, string name)
+    {
+        var b = Find<Button>(root).FirstOrDefault(x => x.Name == name);
+        Check(b != null, $"кнопка {name} не найдена");
+        b!.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames(3);
     }
 
     /// <summary>

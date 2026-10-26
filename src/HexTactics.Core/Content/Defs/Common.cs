@@ -39,6 +39,8 @@ public enum DefCategory
     GameRules,
     /// <summary>Saved squads of the player (docs/DECISIONS_6.md §96).</summary>
     SquadPreset,
+    /// <summary>Saved zones of deployment of a map, to reuse in its scenarios (docs/DECISIONS_6.md §97).</summary>
+    ZonePreset,
 }
 
 /// <summary>

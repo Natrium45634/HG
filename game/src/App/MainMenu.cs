@@ -36,6 +36,9 @@ public partial class MainMenu : Control
         left.AddChild(version);
         left.AddChild(Ui.Spacer(0, 18));
         left.AddChild(Ui.Button("Редактор (админ-режим)", () => app.ShowEditor(), "Карты, юниты, навыки, эффекты, правила и сценарии без кода").MinSize(300, 44));
+        var load = Ui.Button("Загрузить бой", () => Battle.SavedBattlesDialog.Open(this, false, null), "Бои, сохранённые посреди схватки (часть 6)").MinSize(300, 40);
+        load.Name = "MenuLoadBattle";
+        left.AddChild(load);
         left.AddChild(Ui.Button("Настройки", OpenSettings).MinSize(300, 44));
         left.AddChild(Ui.Button("Папка пользовательского контента", () => app.Content.OpenUserFolder()).MinSize(300, 36));
         left.AddChild(Ui.Button("Выход", () => GetTree().Quit()).MinSize(300, 44));

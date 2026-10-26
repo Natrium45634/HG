@@ -135,38 +135,42 @@ public sealed class DeploymentSystem
     }
 
     /// <summary>
-    /// The zone that decides on a hex for a fighter (the highest priority, then the first); null — no zone of the scenario
-    /// takes the hex. Without zones of deployment the zone of placement of part 4 is used.
+    /// The zones of the player over a hex, the highest priority first (ТЗ ч. 6, 3.5): their restrictions all apply, the
+    /// order decides which reason is told. Empty — no zone takes the hex (or the scenario has none: then the zone of
+    /// placement of part 4 is used).
     /// </summary>
-    public DeploymentZoneDef? ZoneAt(HexCoord c)
+    public List<DeploymentZoneDef> ZonesAt(HexCoord c)
     {
         var zones = _sim.Scenario.Def?.DeploymentZones;
-        if (zones == null || zones.Count == 0) return null;
-        DeploymentZoneDef? best = null;
-        foreach (var z in zones)
-            if (z.Cells.Contains(c) && _sim.IsPlayerFaction(z.Faction) && (best == null || z.Priority > best.Priority))
-                best = z;
-        return best;
+        if (zones == null || zones.Count == 0) return new List<DeploymentZoneDef>();
+        return zones.Where(z => z.Cells.Contains(c) && _sim.IsPlayerFaction(z.Faction)).OrderByDescending(z => z.Priority).ToList();
     }
 
+    /// <summary>The zone that tells on a hex (the highest priority); null — none.</summary>
+    public DeploymentZoneDef? ZoneAt(HexCoord c) => ZonesAt(c).FirstOrDefault();
+
     /// <summary>Why a fighter cannot stand on a hex (out of a zone, taken, impassable, hazard, near an enemy); null — it can.</summary>
-    public string? CellProblem(RosterEntry e, HexCoord c)
+    public string? CellProblem(RosterEntry e, HexCoord c) => _sim.Content.Unit(e.Template) is { } def ? CellProblem(def, c) : "нет шаблона";
+
+    /// <summary>The same for a template (the editor checks the hexes of the zones for a chosen fighter, ТЗ ч. 6, 12.2).</summary>
+    public string? CellProblem(UnitDef def, HexCoord c)
     {
-        var def = _sim.Content.Unit(e.Template);
-        if (def == null) return "нет шаблона";
         var cell = _sim.Map.Get(c);
         if (cell == null) return "вне карты";
-        var zones = _sim.Scenario.Def?.DeploymentZones;
-        if (zones is { Count: > 0 })
+        if (_sim.Scenario.Def?.DeploymentZones is { Count: > 0 })
         {
-            var z = ZoneAt(c);
-            if (z == null) return "вне зон развёртывания";
-            if (!z.Active) return $"зона «{z}» закрыта";
+            var over = ZonesAt(c);
+            if (over.Count == 0) return "вне зон развёртывания";
             bool prep = _sim.Scenario.Preparing;
-            if (z.Phase == ZonePhase.Preparation && !prep) return $"зона «{z}» — только в подготовке";
-            if (z.Phase == ZonePhase.Combat && prep) return $"зона «{z}» — только в бою";
-            if (z.UnitTags.Count > 0 && !z.UnitTags.Any(t => SquadRules.Has(_sim.Content, def, t))) return $"в зону «{z}» этого бойца нельзя";
-            if (def.Deployment is { ZoneTags.Count: > 0 } prof && !prof.ZoneTags.Any(z.Tags.Contains)) return "боец встаёт только в зоны: " + string.Join(", ", prof.ZoneTags);
+            foreach (var z in over)
+            {
+                if (!_sim.Scenario.ZoneOpen(z)) return $"зона «{z}» закрыта";
+                if (z.Phase == ZonePhase.Preparation && !prep) return $"зона «{z}» — только в подготовке";
+                if (z.Phase == ZonePhase.Combat && prep) return $"зона «{z}» — только в бою";
+                if (z.UnitTags.Count > 0 && !z.UnitTags.Any(t => SquadRules.Has(_sim.Content, def, t))) return $"в зону «{z}» этого бойца нельзя";
+            }
+            if (def.Deployment is { ZoneTags.Count: > 0 } prof && !over.Any(z => prof.ZoneTags.Any(z.Tags.Contains)))
+                return "боец встаёт только в зоны: " + string.Join(", ", prof.ZoneTags);
         }
         else if (_sim.Placement.Zone.Count > 0 && !_sim.Placement.Zone.Contains(c)) return "вне зоны расстановки";
         if (cell.Occupants.Any(o => o.Alive)) return "гекс занят";
@@ -178,7 +182,7 @@ public sealed class DeploymentSystem
         if (Rules.EnemyRadius > 0)
             foreach (var u in _sim.Units)
                 if (u.Alive && !u.IsStructure && !_sim.IsPlayerFaction(u.FactionId) && _sim.Options.PlayerFactions.Any(f => _sim.Content.RelationOf(f, u.FactionId) == Relation.Enemy)
-                    && HexCoord.Distance(u.Pos, c) <= Rules.EnemyRadius && _sim.Vision.IsVisibleToPlayer(u))
+                    && HexCoord.Distance(u.Pos, c) <= Rules.EnemyRadius && (Rules.EnemyRadiusHidden || _sim.Vision.IsVisibleToPlayer(u)))
                     return $"враг ближе {Rules.EnemyRadius + 1} гексов";
         return null;
     }
@@ -229,6 +233,12 @@ public sealed class DeploymentSystem
         return u;
     }
 
+    /// <summary>The points a retreat of the unit returns now.</summary>
+    public double RefundOf(Unit u) => _sim.Squad.EntryOf(u) is { } e ? Math.Round(e.Cost * Rules.RetreatRefund, 2) : 0;
+
+    /// <summary>Seconds to the next gain by time (0 — no gain now: off, or the preparation without it).</summary>
+    public double NextGainIn => Enabled && Rules.GainAmount > 0 && (!_sim.Scenario.Preparing || Rules.GainInPreparation) ? _nextGain * _sim.Dt : 0;
+
     /// <summary>Why a unit cannot be taken back now; null — it can.</summary>
     public string? CanRetreat(Unit u)
     {
@@ -253,8 +263,10 @@ public sealed class DeploymentSystem
         var e = _sim.Squad.EntryOf(u)!;
         _sim.Commands.ClearQueue(u, "отозван", CommandStatus.Cancelled);
         _sim.Blocking.OnRemoved(u);
+        double refund = RefundOf(u);
         _sim.Remove(u);
-        double refund = Math.Round(e.Cost * Rules.RetreatRefund, 2);
+        u.Alive = false; // gone from the field: whoever still holds it (a target, the selection) sees it gone
+
         double before = Points;
         Points = Clamp(Points + refund);
         Refunded += Points - before;

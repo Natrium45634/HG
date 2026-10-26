@@ -49,7 +49,8 @@ public partial class PlacementPanel : PanelContainer
         var def = pl.Def;
         bool prep = Sim.Scenario.Preparing;
         bool between = !prep && Sim.Scenario.Mode == BattleMode.TdPlacement && pl.CanRelocateNow && pl.Placed.Count > 0;
-        Visible = def != null && Sim.Scenario.Mode == BattleMode.TdPlacement && (prep || between) && Sim.Outcome == BattleOutcome.None;
+        // With the deployment for points (part 6) the ribbon of the squad takes over the calls and «начать бой».
+        Visible = def != null && Sim.Scenario.Mode == BattleMode.TdPlacement && (prep || between) && Sim.Outcome == BattleOutcome.None && !Sim.Deployment.Enabled;
         if (!Visible) return;
         _title.Text = prep ? "Подготовка к бою" : "Между волнами: перестановка и улучшение";
         string time = prep && def!.End is PreparationEnd.Timer or PreparationEnd.ConfirmOrTimer && def.Duration > 0

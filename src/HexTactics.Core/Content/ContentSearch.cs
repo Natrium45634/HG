@@ -279,6 +279,7 @@ public sealed class ContentSearch
         DefCategory.RulesPreset => "пресет правил",
         DefCategory.GameRules => "правила режима",
         DefCategory.SquadPreset => "пресет отряда",
+        DefCategory.ZonePreset => "пресет зоны",
         _ => c.ToString(),
     };
 

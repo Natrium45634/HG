@@ -1389,7 +1389,7 @@
         },
         "object": {
           "type": "string",
-          "description": "Объект — ID базы или объекта сценария"
+          "description": "Объект — ID базы или объекта сценария; для зон — ID зоны развёртывания"
         },
         "objectState": {
           "type": "string",
@@ -1490,7 +1490,9 @@
             "SetTarget",
             "SetObjectState",
             "EndScenario",
-            "LogDiagnostic"
+            "LogDiagnostic",
+            "OpenDeploymentZone",
+            "CloseDeploymentZone"
           ],
           "description": "Действие"
         },
@@ -1791,7 +1793,8 @@
             "GroupPreset",
             "ScalingProfile",
             "GameRules",
-            "SquadPreset"
+            "SquadPreset",
+            "ZonePreset"
           ]
         },
         "creatureCategory": {

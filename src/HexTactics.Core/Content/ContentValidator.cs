@@ -72,6 +72,9 @@ public static class ContentValidator
             issues.Add(new ContentIssue(IssueSeverity.Warning, "Ресурсы", "Size", $"Ресурсы пакета занимают {totalMb:0} МБ — больше {db.Rules.Assets.WarnTotalMb:0} МБ"));
         foreach (var m in db.All<MapDef>()) CheckMap(db, m, issues);
         foreach (var s in db.All<ScenarioDef>()) CheckScenario(db, s, issues);
+        foreach (var z in db.All<ZonePresetDef>())
+            if (db.Get<MapDef>(z.Map) is { } zm && z.Zone.Cells.Where(c => zm.Cells.All(mc => mc.C != c)).ToList() is { Count: > 0 } off)
+                issues.Add(Err(z, "Zone", $"Гексы вне карты «{zm.DisplayName}»: {string.Join(", ", off.Take(5))}"));
 
         // Formulas anywhere.
         foreach (var d in db.AllDefs()) CheckFormulas(d, d, d.Id, issues, 0);
@@ -171,6 +174,7 @@ public static class ContentValidator
         DefCategory.ScalingProfile => "профиль масштабирования",
         DefCategory.GameRules => "правила режима",
         DefCategory.SquadPreset => "пресет отряда",
+        DefCategory.ZonePreset => "пресет зоны",
         _ => c.ToString(),
     };
 
@@ -682,6 +686,30 @@ public static class ContentValidator
         foreach (var issue in MapAnalysis.Analyze(db, m)) issues.Add(issue);
     }
 
+    /// <summary>The zones of deployment (part 6, §97): IDs, hexes on the map, hexes a fighter can stand on, the rules being on.</summary>
+    private static void CheckDeploymentZones(ContentDatabase db, ScenarioDef s, Dictionary<HexCoord, MapCellDef> cells, List<ContentIssue> issues)
+    {
+        if (s.DeploymentZones.Count == 0) return;
+        var ids = new HashSet<string>();
+        foreach (var z in s.DeploymentZones)
+        {
+            string name = z.Name != "" ? z.Name : z.Id;
+            if (z.Id == "") issues.Add(Err(s, "DeploymentZones", $"Зона развёртывания «{name}» без ID"));
+            else if (!ids.Add(z.Id)) issues.Add(Err(s, "DeploymentZones", $"ID зоны развёртывания «{z.Id}» повторяется"));
+            if (z.Cells.Count == 0) issues.Add(Warn(s, "DeploymentZones", $"Зона «{name}» без гексов — в неё никого не вызвать"));
+            var off = z.Cells.Where(c => !cells.ContainsKey(c)).ToList();
+            if (off.Count > 0) issues.Add(Err(s, "DeploymentZones", $"Зона «{name}»: гексы вне карты — {string.Join(", ", off.Take(5))}"));
+            var on = z.Cells.Where(cells.ContainsKey).ToList();
+            bool Closed(MapCellDef c) => c.Blocked == true || c.AllowPlacement == false
+                || db.Get<TerrainDef>(c.T) is { } t && (!(c.AllowPlacement ?? t.AllowsPlacement) || t.Kind is TerrainKind.Obstacle or TerrainKind.Pit);
+            if (on.Count > 0 && on.All(c => Closed(cells[c])))
+                issues.Add(Warn(s, "DeploymentZones", $"Зона «{name}»: все гексы — препятствия, ямы или запрещены для расстановки"));
+        }
+        if (!EffectiveGameRules.Resolve(db, s).Deployment.Enabled)
+            issues.Add(Info(s, "DeploymentZones", "Зоны развёртывания заданы, но вызов за очки выключен в правилах режима — зоны не действуют"));
+        foreach (var p in Sim.DeploymentCheck.Unreachable(db, s)) issues.Add(Warn(s, "DeploymentZones", "Зоны развёртывания: " + p));
+    }
+
     private static void CheckScenario(ContentDatabase db, ScenarioDef s, List<ContentIssue> issues)
     {
         // Part 6 (§96): the rules of the mode and the squad of the player.
@@ -695,6 +723,7 @@ public static class ContentValidator
         foreach (var p in ScenarioObjectsCheck.All(db, s, map))
             issues.Add(new ContentIssue(p.Severity, Src(s), p.Path, p.Message));
         var cells = map.Cells.ToDictionary(c => c.C);
+        CheckDeploymentZones(db, s, cells, issues);
         var occupied = new Dictionary<HexCoord, List<UnitDef>>();
         foreach (var u in s.Units)
         {

@@ -112,6 +112,9 @@ public partial class BattleHud : Control
         // Part 4, stage 5 (docs/DECISIONS_4.md §64): preparation, report, breakpoints.
         Placement = Track(new PlacementPanel(_bs));
         AddChild(Placement);
+        // Part 6, stage 6.2 (docs/DECISIONS_6.md §97): the squad and its points — only while the deployment is on.
+        Roster = Track(new RosterRibbon(_bs));
+        AddChild(Roster);
         Report = Track(new ReportPanel(_bs));
         AddChild(Report);
         Breakpoints = Track(new BreakpointsPanel(_bs));
@@ -146,6 +149,8 @@ public partial class BattleHud : Control
         // The preparation panel lies under the top bar: the board fits below it while it is open.
         if (Placement != null && Placement.Visible) top = Math.Max(top, Math.Min(size.Y * 0.4f, Placement.GetGlobalRect().End.Y + 6));
         if (bottom <= 0 || bottom > size.Y * 0.4f) bottom = formula.Bottom;
+        // The ribbon of the squad lies above the bar of actions: the board fits above it (folded — one line).
+        if (Roster != null && Roster.Visible) bottom = Math.Max(bottom, Math.Min(size.Y * 0.4f, size.Y - Roster.GetGlobalRect().Position.Y + 6));
         return new HexTactics.Core.Geometry.ScreenInsets(Math.Max(0, left), Math.Max(0, top), Math.Max(0, right), Math.Max(0, bottom));
     }
 
@@ -286,6 +291,7 @@ public partial class BattleHud : Control
     private Panel _boxRect = null!;
     public GroupPanel GroupPanel => _groupPanel;
     public PlacementPanel Placement { get; private set; } = null!;
+    public RosterRibbon Roster { get; private set; } = null!;
     public ReportPanel Report { get; private set; } = null!;
     public BreakpointsPanel Breakpoints { get; private set; } = null!;
     public PopupMenu TestMenu { get; private set; } = null!;
@@ -586,6 +592,7 @@ public partial class BattleHud : Control
             "Оранжевая цепь — блок: «Блок 2/3» у блокирующего, «заблокирован» / «удерживается» у врага",
             "Стрелка у основания — взгляд; несколько стрелок — несколько направлений; кольцо — круговой обзор; нет стрелки — без направления",
             "I — характеристики · L — журнал · F3 — диагностика · Home — к выбранному юниту",
+            "Лента отряда (вызов за очки): карточка → гекс зоны → направление (курсор или 1–6) → ЛКМ/Enter; Esc/ПКМ — шаг назад · O — отозвать",
             "",
             "Обозначения: синяя линия — запланированный маршрут; жёлтая — предпросмотр пути;",
             "серые точки — пройденный путь; заливка цвета навыка — область; штриховка + «!» — угроза врага;",
@@ -617,6 +624,23 @@ public partial class BattleHud : Control
         save.Name = "SaveReplay";
         save.TooltipText = "Seed, контент и действия игрока по тикам — бой воспроизводится в редакторе («Проверить реплей»)";
         v.AddChild(save);
+        // Part 6 (T28): the battle saved in the middle — loading plays it back to this tick and goes on paused.
+        var saveBattle = Ui.Button("Сохранить бой", () =>
+        {
+            try
+            {
+                ShowBanner("Бой сохранён: " + System.IO.Path.GetFileName(_bs.SaveBattle()), Ui.Good, 4f);
+            }
+            catch (System.Exception e)
+            {
+                ShowBanner("Бой не сохранён: " + e.Message, Ui.Bad, 5f);
+            }
+        }, "Очки развёртывания, перерывы, фазы босса и сработавшие триггеры восстановятся при загрузке").MinSize(240, 40);
+        saveBattle.Name = "SaveBattle";
+        v.AddChild(saveBattle);
+        var loadBattle = Ui.Button("Загрузить бой", () => SavedBattlesDialog.Open(this, _bs.Admin, _bs.OnExit), "Список сохранённых боёв").MinSize(240, 40);
+        loadBattle.Name = "LoadBattle";
+        v.AddChild(loadBattle);
         v.AddChild(Ui.Button("Настройки", () =>
         {
             var dlg = new SettingsDialog();
@@ -876,6 +900,14 @@ public partial class BattleHud : Control
         _outcome.Position = (vp - _outcome.Size) / 2;
         Placement.Refresh();
         Placement.Position = new Vector2((vp.X - Placement.Size.X) / 2, 112);
+        Roster.Refresh();
+        if (Roster.Visible)
+        {
+            // Above the bar of actions (or the group's), centred in the same free width; it folds to one line.
+            float above = _groupPanel.Visible ? _groupPanel.Position.Y : _actionPanel.Visible ? _actionPanel.Position.Y : vp.Y - 4;
+            Roster.Size = new Vector2(Math.Min(avail, 900), 0);
+            Roster.Position = new Vector2(left + Math.Max(0, (avail - Roster.Size.X) / 2), above - Roster.Size.Y - 6);
+        }
         Report.Position = (vp - Report.Size) / 2;
         Breakpoints.Position = new Vector2(vp.X - Breakpoints.Size.X - 10, 64);
         _help.Position = (vp - _help.Size) / 2;

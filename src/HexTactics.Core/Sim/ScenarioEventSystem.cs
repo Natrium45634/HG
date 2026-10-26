@@ -34,6 +34,12 @@ public sealed partial class ScenarioSystem
     /// <summary>How many times each trigger fired (by index).</summary>
     public int FiresOf(int trigger) => _triggerFires.GetValueOrDefault(trigger);
 
+    /// <summary>The triggers that fired and how many times (part 6, T28: a saved battle must not fire a «once» again).</summary>
+    public IEnumerable<(int Trigger, int Fires)> TriggerFires => _triggerFires.OrderBy(k => k.Key).Select(k => (k.Key, k.Value));
+
+    /// <summary>The boss phases entered, as «unit:phase» (part 6, T28).</summary>
+    public IEnumerable<string> BossPhasesEntered => _bossPhases.OrderBy(k => k.Key).SelectMany(k => k.Value.OrderBy(i => i).Select(i => $"{k.Key}:{i}"));
+
     /// <summary>The battle mode of the loaded scenario.</summary>
     public BattleMode Mode => Def?.Mode ?? BattleMode.Normal;
 
@@ -124,6 +130,26 @@ public sealed partial class ScenarioSystem
         _sim.Emit(SimEventType.Info, LogLevel.Normal, $"«{o.DisplayName}» {(on ? "включена" : "отключена")} ({source})");
         if (on) Raise(ScenarioEventType.ObjectActivated, null, id);
     }
+
+    /// <summary>Opens or closes a zone of deployment (part 6, §97); the fighters already on the field stay.</summary>
+    public void SetZoneOpen(string id, bool open, string source)
+    {
+        var z = Def?.DeploymentZones.FirstOrDefault(x => x.Id == id);
+        if (z == null)
+        {
+            _sim.Emit(SimEventType.Diagnostic, LogLevel.Diagnostic, $"{source}: зоны развёртывания «{id}» нет");
+            return;
+        }
+        bool was = ZoneOpen(z);
+        _objectActive["zone:" + id] = open;
+        if (was != open) _sim.Emit(SimEventType.Info, LogLevel.Normal, $"Зона «{(z.Name != "" ? z.Name : z.Id)}» {(open ? "открыта" : "закрыта")} ({source})");
+    }
+
+    /// <summary>Bases and zones switched by events, as «id=on» (the fingerprint: a loaded battle keeps them).</summary>
+    public IEnumerable<string> SwitchedObjects => _objectActive.OrderBy(k => k.Key, StringComparer.Ordinal).Select(k => $"{k.Key}={k.Value}");
+
+    /// <summary>Whether a zone of deployment is open now: as switched by an event, or as drawn.</summary>
+    public bool ZoneOpen(DeploymentZoneDef z) => _objectActive.TryGetValue("zone:" + z.Id, out var on) ? on : z.Active;
 
     /// <summary>The route a group was switched to by an event ("" — its own).</summary>
     public string GroupRoute(string group) => _groupRoutes.GetValueOrDefault(group, "");

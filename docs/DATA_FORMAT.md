@@ -231,6 +231,33 @@ verdict`) и `results_<время>.csv` (строка на результат, �
 * Пресеты отряда игрока — в данных пользователя, файл `player_squads.json`
   (список пресетов в том же формате).
 
+Часть 6, этап 6.2 ([§97](DECISIONS_6.md)):
+
+* у правил режима — `deployment`: `enabled, resource ("dp"),
+  inPreparation, inCombat, maxDeployed, startingPoints, maxPoints,
+  gainAmount, gainInterval, gainInPreparation, gainPerKill, gainPerWave,
+  defaultCost, allowRetreat, retreatRefund, retreatWhileControlled,
+  confirmRetreat, allowRedeploy, redeployCooldown, afterDeath (Gone,
+  Cooldown), deathCooldown, enemyRadius, enemyRadiusHidden, forbidHazard,
+  leash`;
+* у сценария — `deploymentOverride` (весь блок вместо блока пресета) и
+  `deploymentZones[]`: `id, name, cells[], faction, tags[], unitTags[],
+  phase (Any, Preparation, Combat), priority, active`;
+* у юнита — `deployment` (необязательно): `cost (−1 — из правил),
+  redeployCooldown (−1 — из правил), canDeploy, canRetreat, zoneTags[],
+  facing (Manual, Auto, Fixed), fixedFacing`;
+* `zone_presets.json` — пресеты зон: `map`, `zone` (как зона сценария);
+* действия триггера `OpenDeploymentZone`, `CloseDeploymentZone` (поле
+  `object` — ID зоны); события `UnitDeployed`, `UnitWithdrawn`;
+* в журнале реплея — операции `Deploy` и `Retreat`;
+* ресурс `dp` («Очки развёртывания») в `resources.json` — имя и цвет
+  очков.
+
+Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
+контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
+теперь включает срабатывания триггеров, пройденные фазы босса и
+переключённые базы и зоны.
+
 ## 7. Правила боя и формулы
 
 `rules.json` разбит на группы: `time`, `ap`, `turn`, `move`, `height`,

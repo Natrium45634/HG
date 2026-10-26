@@ -489,6 +489,9 @@ public enum TriggerActionType
     [Ed("Изменить состояние объекта")] SetObjectState,
     [Ed("Завершить сценарий")] EndScenario,
     [Ed("Записать диагностическое событие")] LogDiagnostic,
+    // Part 6, stage 6.2 (docs/DECISIONS_6.md §97): the zones of deployment open and close during the battle.
+    [Ed("Открыть зону развёртывания")] OpenDeploymentZone,
+    [Ed("Закрыть зону развёртывания")] CloseDeploymentZone,
 }
 
 public enum ActionTarget
@@ -506,8 +509,9 @@ public sealed class TriggerActionDef : ContentPart
      EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat, TriggerActionType.Autopause,
          TriggerActionType.ActivateTrigger, TriggerActionType.PlayVfx, TriggerActionType.PlaySound, TriggerActionType.EndScenario, TriggerActionType.LogDiagnostic)]
     public string Text { get; set; } = "";
-    [Ed("Объект", "ID базы или объекта сценария"),
-     EdShowIf(nameof(Type), TriggerActionType.ActivateBase, TriggerActionType.DeactivateBase, TriggerActionType.SetTarget, TriggerActionType.SetObjectState)]
+    [Ed("Объект", "ID базы или объекта сценария; для зон — ID зоны развёртывания"),
+     EdShowIf(nameof(Type), TriggerActionType.ActivateBase, TriggerActionType.DeactivateBase, TriggerActionType.SetTarget, TriggerActionType.SetObjectState,
+         TriggerActionType.OpenDeploymentZone, TriggerActionType.CloseDeploymentZone)]
     public string Object { get; set; } = "";
     [Ed("Группа волны", "ID группы"), EdShowIf(nameof(Type), TriggerActionType.SetGroupRoute)] public string Group { get; set; } = "";
     [Ed("Цель-юниты", "Метка или тег юнитов, которых атаковать (вместо объекта)"), EdShowIf(nameof(Type), TriggerActionType.SetTarget)] public string TargetTag { get; set; } = "";
@@ -581,6 +585,8 @@ public sealed class TriggerActionDef : ContentPart
         TriggerActionType.SetObjectState => $"Объект «{Object}»: {ObjectState}",
         TriggerActionType.EndScenario => (Win ? "Завершить победой" : "Завершить поражением") + (Text != "" ? $" «{Text}»" : ""),
         TriggerActionType.LogDiagnostic => $"Диагностика «{Text}»",
+        TriggerActionType.OpenDeploymentZone => $"Открыть зону «{Object}»",
+        TriggerActionType.CloseDeploymentZone => $"Закрыть зону «{Object}»",
         _ => Type.ToString(),
     };
 }

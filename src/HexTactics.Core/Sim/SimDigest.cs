@@ -52,6 +52,10 @@ public sealed class SimDigest
             // Part 6 (§96): the squad — only when the scenario has one, so the fingerprints of older battles stay the same.
             .Concat(sim.Squad.Enabled ? sim.Squad.Entries.Select(e => $"s{e.Index},{e.Template},{e.State},{e.Unit},{e.ReadyAt},{e.Deployments}") : Enumerable.Empty<string>())
             .Concat(sim.Deployment.Enabled ? new[] { "dp=" + N(sim.Deployment.Points) } : Enumerable.Empty<string>())
+            // Part 6 (T28): which triggers fired and which boss phases were entered — a loaded battle repeats neither.
+            .Concat(sc.TriggerFires.Select(t => $"t{t.Trigger}={t.Fires}"))
+            .Concat(sc.BossPhasesEntered.Select(b => "b" + b))
+            .Concat(sc.SwitchedObjects.Select(x => "a" + x))
             .Append($"outcome={sim.Outcome}"));
         return new SimDigest { Tick = sim.Tick, Parts = parts };
     }
