@@ -7,3 +7,5 @@
 # Files read on Windows (installer script, user guide) keep CRLF.
 installer/*.iss text eol=crlf
 installer/*.txt text eol=crlf
+# Exported reports: CSV as written (RFC 4180, CRLF, UTF-8 with BOM).
+docs/reports/*.csv -text
