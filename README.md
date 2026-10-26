@@ -511,7 +511,7 @@ Windows: `%APPDATA%\Godot\app_userdata\HexTactics\`
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | архитектура: слои, системы симуляции, контент, расширения частей 2–4 (§11 — модули части 4) |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | правила боя и значения по умолчанию (часть 1) |
-| [docs/DECISIONS_2.md](docs/DECISIONS_2.md) · [_3](docs/DECISIONS_3.md) · [_4](docs/DECISIONS_4.md) · [_5](docs/DECISIONS_5.md) | решения и противоречия частей 2–5 (часть 4: §55–§76; быстрый ввод — §77; аудит части 5 — §78–§83; этапы части 5 — §84–§89; итоговый отчёт части 5 — §90) |
+| [docs/DECISIONS_2.md](docs/DECISIONS_2.md) · [_3](docs/DECISIONS_3.md) · [_4](docs/DECISIONS_4.md) · [_5](docs/DECISIONS_5.md) · [_6](docs/DECISIONS_6.md) | решения и противоречия частей 2–6 (часть 4: §55–§76; быстрый ввод — §77; аудит части 5 — §78–§83; этапы части 5 — §84–§89; итоговый отчёт части 5 — §90; аудит и план части 6 — §91–§95) |
 | [docs/DATA_FORMAT.md](docs/DATA_FORMAT.md) | формат файлов контента, версии, миграции |
 | [docs/schema](docs/schema) | JSON Schema каждого файла контента (генерируются из определений, тест сверяет) |
 | [docs/STAGES.md](docs/STAGES.md) | отчёты по всем этапам и итоговые отчёты частей (требования ТЗ → тесты) |
