@@ -263,7 +263,23 @@ public partial class UnitEditorPanel : DefListPanel
             grids.Add(g);
         }
         tabs.CurrentTab = Math.Clamp(_tab, 0, tabs.GetTabCount() - 1);
-        tabs.TabChanged += t => _tab = (int)t;
+        // All eight titles at once: a row of buttons that wraps (the tab bar of a narrow column hides the rest behind arrows).
+        tabs.TabsVisible = false;
+        var tabButtons = new HFlowContainer { Name = "UnitTabButtons" };
+        var group = new ButtonGroup();
+        for (int i = 0; i < tabs.GetTabCount(); i++)
+        {
+            int index = i;
+            var b = new Button { Name = "UnitTabButton_" + UnitEditorTabs.All[i].Tab, Text = UnitEditorTabs.All[i].Title, ToggleMode = true, ButtonGroup = group,
+                ButtonPressed = i == tabs.CurrentTab, FocusMode = FocusModeEnum.None };
+            b.Pressed += () => tabs.CurrentTab = index;
+            tabButtons.AddChild(b);
+        }
+        tabs.TabChanged += t =>
+        {
+            _tab = (int)t;
+            if (tabButtons.GetChild((int)t) is Button b && !b.ButtonPressed) b.ButtonPressed = true;
+        };
         foreach (var g in grids)
             g.Changed += () =>
             {
@@ -288,6 +304,7 @@ public partial class UnitEditorPanel : DefListPanel
             Ctx.Commit($"Подключён «{p.DisplayName}» к «{u.DisplayName}»");
             Select(u);
         }, withName: true, addText: "Добавить пассив"));
+        left.AddChild(tabButtons);
         left.AddChild(tabs);
         root.AddChild(left);
         var side = Ui.VBox(6).MinSize(340);

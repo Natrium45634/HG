@@ -1,0 +1,4 @@
+﻿seed,wave,name,planned,spawned,failed,max_alive,killed,leaks,base_damage,started_s,ended_s,completion_ticks,stuck_units
+1084,1,Разведка,4,4,0,4,4,0,0,3,21.35,367,0
+1084,2,Стая,4,4,0,4,4,0,0,25,49.65,493,2
+1084,3,Таран,2,2,0,2,0,1,302,45,-1,-1,1

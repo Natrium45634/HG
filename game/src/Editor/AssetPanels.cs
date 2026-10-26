@@ -141,7 +141,7 @@ public partial class AssetPanel : DefListPanel
         if (a.Kind is AssetKind.Texture or AssetKind.Material)
         {
             // ТЗ ч. 5, 7.4: on a hex, on its neighbours and on steps — the battle renderer, a tile of its own (§89).
-            _hexes = new BoardViewport { Name = "AssetPreviewHexes", CustomMinimumSize = new Vector2(360, 300), Visible = false };
+            _hexes = new BoardViewport { Name = "AssetPreviewHexes", CustomMinimumSize = new Vector2(360, 300), SizeFlagsVertical = SizeFlags.ShrinkBegin, Visible = false };
             side.AddChild(_hexes);
             var shape = new OptionButton { Name = "AssetPreviewShape" };
             shape.AddItem(a.Kind == AssetKind.Material ? "Сфера" : "Плоскость", 100);
@@ -222,16 +222,17 @@ public partial class AssetPanel : DefListPanel
             return;
         }
         LastReplacement = r;
-        var box = Ui.VBox(6).MinSize(540);
-        box.AddChild(Ui.Label($"«{a.DisplayName}» [{a.Id}]: {a.Path} → {r.Fresh.Path}", 13, Ui.Text, wrap: true));
-        box.AddChild(Ui.Label(r.Dependents.Count == 0 ? "Ресурс ни к чему не назначен." : $"Используют этот ресурс ({r.Dependents.Count}) — после замены у них будет новый файл:", 13, Ui.Accent, wrap: true));
+        var box = Ui.VBox(6).MinSize(560);
+        // Wrapped labels get a width: their height is measured at it (else at zero width — a dialog as tall as the screen).
+        box.AddChild(Ui.Label($"«{a.DisplayName}» [{a.Id}]: {a.Path} → {r.Fresh.Path}", 13, Ui.Text, wrap: true).MinSize(560));
+        box.AddChild(Ui.Label(r.Dependents.Count == 0 ? "Ресурс ни к чему не назначен." : $"Используют этот ресурс ({r.Dependents.Count}) — после замены у них будет новый файл:", 13, Ui.Accent, wrap: true).MinSize(560));
         if (r.Dependents.Count > 0)
         {
             var list = new ItemList { Name = "AssetReplaceDependents", CustomMinimumSize = new Vector2(520, 130) };
             foreach (var d in r.Dependents) list.AddItem($"{ContentValidator.CatName(d.Category)}: {d.DisplayName} [{d.Id}]");
             box.AddChild(list);
         }
-        foreach (var n in r.Notes) box.AddChild(Ui.Label("ℹ " + n, 12, Ui.Warn, wrap: true));
+        foreach (var n in r.Notes) box.AddChild(Ui.Label("ℹ " + n, 12, Ui.Warn, wrap: true).MinSize(560));
         if (a.Kind is AssetKind.Texture or AssetKind.Sprite or AssetKind.Icon && Assets.LoadImage(bytes, Path.GetExtension(path).ToLowerInvariant(), out _) is { } img)
             box.AddChild(new TextureRect
             {
@@ -265,7 +266,7 @@ public partial class AssetPanel : DefListPanel
             OnEdited(a);
             Callable.From(() => Select(a)).CallDeferred();
             return true;
-        }, new Vector2I(600, 0));
+        }, new Vector2I(620, 0));
     }
 
     private void Preview(AssetDef a, HFlowContainer buttons)

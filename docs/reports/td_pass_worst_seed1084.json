@@ -1,0 +1,464 @@
+{
+  "scenario": "Оборона перевала (TD)",
+  "seed": 1084,
+  "outcome": "поражение",
+  "reason": "главная база «Застава» уничтожена",
+  "stopReason": "бой завершён",
+  "wavesTotal": 3,
+  "wavesCompleted": 2,
+  "seconds": 211.55,
+  "ticks": 4231,
+  "bases": [
+    {
+      "id": "base_1",
+      "name": "Застава",
+      "hp": 0,
+      "maxHp": 300,
+      "destroyed": true,
+      "fraction": 0
+    }
+  ],
+  "defendersLost": 3,
+  "enemiesKilledByDefenders": 8,
+  "enemiesKilled": 8,
+  "enemiesReachedGoal": 1,
+  "damageDealt": {
+    "игрок": 652,
+    "враги": 591
+  },
+  "damageTaken": {
+    "враги": 629,
+    "игрок": 614
+  },
+  "healing": 0,
+  "heals": 0,
+  "shielded": 12,
+  "absorbed": 0,
+  "skills": {
+    "shot": {
+      "casts": 14,
+      "hits": 12
+    },
+    "cleave": {
+      "casts": 17,
+      "hits": 8
+    },
+    "strike": {
+      "casts": 53,
+      "hits": 41
+    },
+    "aimed_shot": {
+      "casts": 5,
+      "hits": 3
+    },
+    "meteor": {
+      "casts": 1,
+      "hits": 2
+    },
+    "reckless_assault": {
+      "casts": 4,
+      "hits": 8
+    },
+    "piercing_shot": {
+      "casts": 1,
+      "hits": 0
+    },
+    "chain_lightning": {
+      "casts": 5,
+      "hits": 5
+    },
+    "frost_cone": {
+      "casts": 3,
+      "hits": 0
+    },
+    "water_wave": {
+      "casts": 3,
+      "hits": 0
+    },
+    "triple_strike": {
+      "casts": 4,
+      "hits": 8
+    },
+    "inferno": {
+      "casts": 1,
+      "hits": 1
+    },
+    "spark": {
+      "casts": 9,
+      "hits": 3
+    },
+    "bite": {
+      "casts": 4,
+      "hits": 3
+    },
+    "quake": {
+      "casts": 6,
+      "hits": 11
+    }
+  },
+  "passives": {
+    "bloodlust": 5,
+    "pack_howl": 4,
+    "counter": 2,
+    "last_ward": 1
+  },
+  "damageByType": {
+    "piercing": 202,
+    "slashing": 611,
+    "fire": 140,
+    "electric": 132,
+    "earth": 58,
+    "physical": 40,
+    "true": 60
+  },
+  "routeBlockedSeconds": 32.10000000000021,
+  "targetChanges": 0,
+  "aiErrors": {
+    "unreachable": 2,
+    "stuck": 5,
+    "detour": 3
+  },
+  "failureReasons": [
+    "главная база «Застава» уничтожена",
+    "«Застава» разрушена"
+  ],
+  "eventChainCuts": 0,
+  "waveStats": [
+    {
+      "index": 0,
+      "name": "Разведка",
+      "spawned": 4,
+      "killed": 4,
+      "reachedGoal": 0,
+      "baseDamage": 0,
+      "started": 3,
+      "ended": 21.35,
+      "planned": 4,
+      "failed": 0,
+      "maxAlive": 4,
+      "completionTicks": 367,
+      "stuckUnits": 0
+    },
+    {
+      "index": 1,
+      "name": "Стая",
+      "spawned": 4,
+      "killed": 4,
+      "reachedGoal": 0,
+      "baseDamage": 0,
+      "started": 25,
+      "ended": 49.65,
+      "planned": 4,
+      "failed": 0,
+      "maxAlive": 4,
+      "completionTicks": 493,
+      "stuckUnits": 2
+    },
+    {
+      "index": 2,
+      "name": "Таран",
+      "spawned": 2,
+      "killed": 0,
+      "reachedGoal": 1,
+      "baseDamage": 302,
+      "started": 45,
+      "ended": -1,
+      "planned": 2,
+      "failed": 0,
+      "maxAlive": 2,
+      "completionTicks": -1,
+      "stuckUnits": 1
+    }
+  ],
+  "routeBlocked": {
+    "route_1": 32.100000000000314
+  },
+  "defenderDamage": {
+    "Лучница": 193,
+    "Рыцарь": 141,
+    "Маг": 278
+  },
+  "defenderKills": {
+    "Рыцарь": 5,
+    "Маг": 1,
+    "Лучница": 2
+  },
+  "unitStats": [
+    {
+      "id": 2,
+      "name": "Рыцарь",
+      "template": "knight",
+      "side": "игрок",
+      "wave": -1,
+      "group": "",
+      "damageDealt": 141,
+      "damageTaken": 152,
+      "dps": 2.036,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 1,
+      "waitingTicks": 0,
+      "casts": 15,
+      "misses": 0,
+      "kills": 5,
+      "deathTick": 1386
+    },
+    {
+      "id": 3,
+      "name": "Лучница",
+      "template": "archer",
+      "side": "игрок",
+      "wave": -1,
+      "group": "",
+      "damageDealt": 193,
+      "damageTaken": 84,
+      "dps": 1.216,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 1,
+      "waitingTicks": 0,
+      "casts": 20,
+      "misses": 0,
+      "kills": 2,
+      "deathTick": 3176
+    },
+    {
+      "id": 4,
+      "name": "Маг",
+      "template": "mage",
+      "side": "игрок",
+      "wave": -1,
+      "group": "",
+      "damageDealt": 318,
+      "damageTaken": 76,
+      "dps": 2.496,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 3,
+      "waitingTicks": 0,
+      "casts": 43,
+      "misses": 0,
+      "kills": 1,
+      "deathTick": 2549
+    },
+    {
+      "id": 5,
+      "name": "Гоблин",
+      "template": "goblin",
+      "side": "враги",
+      "wave": 0,
+      "group": "scouts",
+      "damageDealt": 0,
+      "damageTaken": 51,
+      "dps": 0,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 14,
+      "waitingTicks": 6,
+      "casts": 1,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 339
+    },
+    {
+      "id": 6,
+      "name": "Гоблин",
+      "template": "goblin",
+      "side": "враги",
+      "wave": 0,
+      "group": "scouts",
+      "damageDealt": 6,
+      "damageTaken": 54,
+      "dps": 0.415,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 14,
+      "waitingTicks": 6,
+      "casts": 1,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 379
+    },
+    {
+      "id": 7,
+      "name": "Гоблин",
+      "template": "goblin",
+      "side": "враги",
+      "wave": 0,
+      "group": "scouts",
+      "damageDealt": 0,
+      "damageTaken": 51,
+      "dps": 0,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 14,
+      "waitingTicks": 0,
+      "casts": 0,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 372
+    },
+    {
+      "id": 8,
+      "name": "Гоблин",
+      "template": "goblin",
+      "side": "враги",
+      "wave": 0,
+      "group": "scouts",
+      "damageDealt": 6,
+      "damageTaken": 51,
+      "dps": 0.435,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 14,
+      "waitingTicks": 6,
+      "casts": 1,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 426
+    },
+    {
+      "id": 9,
+      "name": "Волк",
+      "template": "wolf",
+      "side": "враги",
+      "wave": 1,
+      "group": "pack",
+      "damageDealt": 0,
+      "damageTaken": 56,
+      "dps": 0,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 14,
+      "waitingTicks": 48,
+      "casts": 0,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 721
+    },
+    {
+      "id": 10,
+      "name": "Волк",
+      "template": "wolf",
+      "side": "враги",
+      "wave": 1,
+      "group": "pack",
+      "damageDealt": 0,
+      "damageTaken": 58,
+      "dps": 0,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 15,
+      "waitingTicks": 67,
+      "casts": 0,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 774
+    },
+    {
+      "id": 11,
+      "name": "Волк",
+      "template": "wolf",
+      "side": "враги",
+      "wave": 1,
+      "group": "pack",
+      "damageDealt": 9,
+      "damageTaken": 61,
+      "dps": 0.503,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 14,
+      "waitingTicks": 128,
+      "casts": 4,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 906
+    },
+    {
+      "id": 12,
+      "name": "Волк",
+      "template": "wolf",
+      "side": "враги",
+      "wave": 1,
+      "group": "pack",
+      "damageDealt": 0,
+      "damageTaken": 60,
+      "dps": 0,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 15,
+      "waitingTicks": 196,
+      "casts": 0,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 992
+    },
+    {
+      "id": 13,
+      "name": "Орк-громила",
+      "template": "orc_brute",
+      "side": "враги",
+      "wave": 2,
+      "group": "rams",
+      "damageDealt": 114,
+      "damageTaken": 100,
+      "dps": 3.891,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 17,
+      "waitingTicks": 18,
+      "casts": 5,
+      "misses": 0,
+      "kills": 0,
+      "deathTick": 1486
+    },
+    {
+      "id": 14,
+      "name": "Орк-громила",
+      "template": "orc_brute",
+      "side": "враги",
+      "wave": 2,
+      "group": "rams",
+      "damageDealt": 456,
+      "damageTaken": 87,
+      "dps": 2.788,
+      "healing": 0,
+      "overheal": 0,
+      "controlSeconds": 0,
+      "buffs": 0,
+      "pathHexes": 22,
+      "waitingTicks": 39,
+      "casts": 40,
+      "misses": 0,
+      "kills": 4,
+      "deathTick": -1
+    }
+  ],
+  "schemaVersion": 5,
+  "simVersion": 2,
+  "validationErrors": 0
+}

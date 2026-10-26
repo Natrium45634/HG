@@ -1,0 +1,24 @@
+﻿metric,value
+scenario,Оборона перевала (TD)
+runs,100
+base_seed,1000
+win_rate,0.98
+win_rate_low95,0.93
+win_rate_high95,0.9945
+mean_seconds,79.079
+median_seconds,73.7
+min_seconds,69.55
+max_seconds,212.2
+std_seconds,20.4719
+mean_waves,2.98
+mean_base_health,0.5877
+min_base_health,0
+mean_leaks,2.07
+max_leaks,4
+runs_with_1_leaks,8
+runs_with_2_leaks,80
+runs_with_3_leaks,9
+runs_with_4_leaks,3
+path_errors,287
+worst_run,85
+worst_seed,1084

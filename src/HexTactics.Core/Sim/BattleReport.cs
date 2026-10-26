@@ -484,6 +484,13 @@ public sealed class BattleReport
         "no_path" => "нет пути",
         "unreachable" => "цель недостижима",
         "route_blocked" => "маршрут заблокирован",
+        // The reactions to a block (ТЗ ч. 5, 11.3; §86): not errors, but counted with them.
+        "detour" => "обход затора",
+        "repath" => "новый путь",
+        "switch_route" => "смена маршрута",
+        "attack_blocker" => "атака мешающего",
+        "aborted" => "отказ от цели",
+        "route_only" => "только маршрут",
         _ => kind,
     };
 }
