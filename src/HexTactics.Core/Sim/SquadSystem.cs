@@ -11,8 +11,14 @@ public enum RosterState
     Ready,
     /// <summary>On the field.</summary>
     Deployed,
-    /// <summary>Fell in battle.</summary>
+    /// <summary>Fell in battle (and does not come back).</summary>
     Defeated,
+    /// <summary>Taken back from the field: waits out the pause (part 6, 3.9).</summary>
+    WithdrawnCooldown,
+    /// <summary>Fell, comes back after the pause of the rules (not healing, not rest).</summary>
+    DefeatedCooldown,
+    /// <summary>Cannot be called any more (taken back while a second call is forbidden).</summary>
+    Unavailable,
 }
 
 /// <summary>A fighter of the squad: one entry — one instance at most (ТЗ ч. 6, 3.9).</summary>
@@ -23,6 +29,11 @@ public sealed class RosterEntry
     public RosterState State { get; set; } = RosterState.Ready;
     /// <summary>The unit on the field (−1 — none).</summary>
     public int Unit { get; set; } = -1;
+    /// <summary>The tick the pause ends (for the cooldown states).</summary>
+    public long ReadyAt { get; set; }
+    /// <summary>How many times it was called for points; the price of the last call (the refund is a share of it).</summary>
+    public int Deployments { get; set; }
+    public double Cost { get; set; }
 
     public override string ToString() => $"#{Index + 1} {Template}: {State}" + (Unit >= 0 ? $" (юнит {Unit})" : "");
 }
@@ -107,5 +118,6 @@ public sealed class SquadSystem
         if (EntryOf(u) is not { } e) return;
         e.State = died ? RosterState.Defeated : RosterState.Ready;
         e.Unit = -1;
+        if (died) _sim.Deployment.OnFallen(e);
     }
 }

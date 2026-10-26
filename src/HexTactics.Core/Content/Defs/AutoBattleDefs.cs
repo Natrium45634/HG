@@ -166,6 +166,9 @@ public enum ScenarioEventType
     [Ed("Применён навык")] SkillUsed,
     [Ed("Сработал пассив")] PassiveTriggered,
     [Ed("Окончено появление волны", "Волна выпустила всех (её враги могут быть ещё живы) — не путать с завершением волны")] WaveSpawnFinished,
+    // Part 6 (§97).
+    [Ed("Вызван боец отряда", "За очки развёртывания")] UnitDeployed,
+    [Ed("Боец отряда отозван")] UnitWithdrawn,
 }
 
 /// <summary>«Изменить состояние объекта».</summary>

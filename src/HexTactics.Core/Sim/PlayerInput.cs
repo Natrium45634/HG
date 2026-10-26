@@ -99,6 +99,20 @@ public sealed class PlayerInput
         return _sim.Placement.PlacePreset(free);
     }
 
+    /// <summary>Calls a fighter of the squad for deployment points (part 6, §97).</summary>
+    public Unit? Deploy(int entryIndex, HexCoord c, HexDirection facing, out string why)
+    {
+        Write(new ReplayEntry { Op = ReplayOp.Deploy, Index = entryIndex, Cell = c, Dir = facing });
+        return _sim.Deployment.Deploy(entryIndex, c, facing, out why);
+    }
+
+    /// <summary>Takes a fighter of the squad back from the field.</summary>
+    public bool Retreat(Unit u, out string why)
+    {
+        Write(new ReplayEntry { Op = ReplayOp.Retreat, Unit = u.Id });
+        return _sim.Deployment.Retreat(u, out why);
+    }
+
     public bool Confirm()
     {
         Write(new ReplayEntry { Op = ReplayOp.Confirm });
@@ -131,6 +145,8 @@ public sealed class PlayerInput
             case ReplayOp.Upgrade: _sim.Placement.Upgrade(u!, out _); break;
             case ReplayOp.PlacePreset: _sim.Placement.PlacePreset(e.Flag); break;
             case ReplayOp.Confirm: _sim.Placement.Confirm(); break;
+            case ReplayOp.Deploy: _sim.Deployment.Deploy(e.Index, e.Cell!.Value, e.Dir ?? HexDirection.E, out _); break;
+            case ReplayOp.Retreat: _sim.Deployment.Retreat(u!, out _); break;
         }
         return true;
     }
@@ -151,6 +167,8 @@ public enum ReplayOp
     Upgrade,
     PlacePreset,
     Confirm,
+    Deploy,
+    Retreat,
 }
 
 /// <summary>One call of the player with its tick.</summary>

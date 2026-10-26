@@ -101,14 +101,89 @@ public partial class ScenarioEditorPanel : DefListPanel
         var tabs = new TabContainer { CustomMinimumSize = new Vector2(380, 0), SizeFlagsVertical = SizeFlags.ExpandFill };
         _propsTab = TabIn(tabs, "Сценарий");
         _unitsTab = TabIn(tabs, "Юниты");
+        _rulesTab = TabIn(tabs, "Правила режима");
         root.AddChild(tabs);
         AfterLayout(_view, () =>
         {
             RebuildPreview(true);
             RefreshProps();
             RefreshUnits();
+            RefreshRules();
         });
         return root;
+    }
+
+    private VBoxContainer _rulesTab = null!;
+    /// <summary>What the last change of the rules of the mode changed (UI tests).</summary>
+    public List<string> LastRulesDiff { get; private set; } = new();
+    private EffectiveGameRules? _lastRules;
+
+    /// <summary>The rules of the mode as the scenario gets them (ТЗ ч. 6, 12.1; §96): value, source, conflicts, the squad.</summary>
+    public EffectiveGameRules? Rules => _lastRules;
+
+    private void RefreshRules()
+    {
+        if (!IsInstanceValid(_rulesTab) || _sc == null) return;
+        Ui.ClearChildren(_rulesTab);
+        var eff = EffectiveGameRules.Resolve(Ctx.Db, _sc);
+        _lastRules = eff;
+        _rulesTab.AddChild(Ui.Label(eff.Preset == null ? "Правила режима не выбраны — как в частях 1–5" : $"Правила режима: «{eff.Preset.DisplayName}»", 15, Ui.Accent));
+        _rulesTab.AddChild(Ui.Label("Выбор и свои значения — на вкладке «Сценарий», группа «Режим». Незаданное наследуется из пресета.", 12, Ui.TextDim, wrap: true));
+        var grid = new GridContainer { Columns = 3, Name = "RulesValues" };
+        grid.AddThemeConstantOverride("h_separation", 12);
+        foreach (var h in new[] { "Правило", "Значение", "Откуда" }) grid.AddChild(Ui.Label(h, 12, Ui.TextDim));
+        foreach (var v in eff.Values)
+        {
+            grid.AddChild(Ui.Label(v.Label, 13));
+            grid.AddChild(Ui.Label(v.Value, 13, v.Source == "сценарий" ? Ui.Accent : Ui.Text));
+            grid.AddChild(Ui.Label(v.Source, 12, Ui.TextDim));
+        }
+        _rulesTab.AddChild(grid);
+        foreach (var n in eff.Notes) _rulesTab.AddChild(Ui.Label("⚠ " + n, 12, Ui.Warn, wrap: true));
+        foreach (var n in eff.Hints) _rulesTab.AddChild(Ui.Label("ℹ " + n, 12, Ui.TextDim, wrap: true));
+        var links = new HFlowContainer();
+        if (eff.Preset != null)
+        {
+            var open = Ui.Button("Открыть правила режима", () => Ctx.Navigate(DefCategory.GameRules, eff.Preset.Id), "Прежний редактор пресета, без копирования полей");
+            open.Name = "RulesOpenPreset";
+            links.AddChild(open);
+        }
+        if (eff.RulesPreset != "" && Ctx.Db.Get<RulesPresetDef>(eff.RulesPreset) != null)
+            links.AddChild(Ui.Button("Открыть пресет правил боя", () => Ctx.Navigate(DefCategory.RulesPreset, eff.RulesPreset)));
+        _rulesTab.AddChild(links);
+        // What another preset would change (ТЗ ч. 6, 1.4).
+        var compare = new OptionButton { Name = "RulesCompare" };
+        compare.AddItem("Сравнить с…");
+        var presets = Ctx.Db.All<GameRulesDef>().Where(p => p != eff.Preset).ToList();
+        foreach (var p in presets) compare.AddItem(p.DisplayName);
+        var diff = Ui.Label("", 12, Ui.Text, wrap: true);
+        diff.Name = "RulesDiff";
+        compare.ItemSelected += i =>
+        {
+            if (i <= 0) return;
+            var copy = ContentJson.Clone(_sc);
+            copy.GameRules = presets[(int)i - 1].Id;
+            var lines = EffectiveGameRules.Diff(eff, EffectiveGameRules.Resolve(Ctx.Db, copy));
+            diff.Text = lines.Count == 0 ? "Разницы нет." : string.Join("\n", lines);
+        };
+        _rulesTab.AddChild(Ui.HBox(6, compare));
+        _rulesTab.AddChild(diff);
+        // The squad of the player.
+        _rulesTab.AddChild(Ui.Sep());
+        var squad = _sc.Squad;
+        if (squad is not { Enabled: true })
+            _rulesTab.AddChild(Ui.Label("Отряд игрока не задан: в бою — юниты сценария и расстановка, как раньше.", 12, Ui.TextDim, wrap: true));
+        else
+        {
+            var roster = SquadRules.DefaultRoster(Ctx.Db, _sc);
+            _rulesTab.AddChild(Ui.Label($"Отряд: доступно бойцов {SquadRules.PoolOf(Ctx.Db, _sc).Count}, размер {squad.MinSize}–{(squad.MaxSize > 0 ? squad.MaxSize.ToString() : "∞")}" +
+                                        (squad.Fixed ? " · фиксированный" : " · выбор перед боем"), 13, Ui.Text, wrap: true));
+            _rulesTab.AddChild(Ui.Label("По умолчанию: " + (roster.Count == 0 ? "пусто" : string.Join(", ", roster.Select(id => Ctx.Db.Unit(id)?.DisplayName ?? id))), 12, Ui.TextDim, wrap: true));
+            var problems = SquadRules.Validate(Ctx.Db, _sc);
+            var lbl = Ui.Label(problems.Count == 0 ? "✓ Правила отряда без ошибок" : string.Join("\n", problems.Select(p => "⛔ " + p)), 12, problems.Count == 0 ? Ui.Good : Ui.Bad, wrap: true);
+            lbl.Name = "RulesSquadCheck";
+            _rulesTab.AddChild(lbl);
+        }
     }
 
     private static VBoxContainer TabIn(TabContainer tabs, string name)
@@ -288,6 +363,15 @@ public partial class ScenarioEditorPanel : DefListPanel
         {
             OnEdited(_sc);
             FillMode(mode);
+            var before = _lastRules;
+            RefreshRules();
+            // A change of the rules of the mode shows what it changes (ТЗ ч. 6, 1.4); the scenario's data stay.
+            if (before != null && _lastRules != null && before.Preset != _lastRules.Preset)
+            {
+                var lines = EffectiveGameRules.Diff(before, _lastRules);
+                LastRulesDiff = lines;
+                if (lines.Count > 0) Dialogs.Info(this, "Правила режима изменены", string.Join("\n", lines) + "\n\nДанные сценария (объекты, волны, отряд) не изменены.");
+            }
         };
         grid.PropertyChanged += (o, p) =>
         {

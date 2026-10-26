@@ -58,6 +58,23 @@ public sealed class PlacementSystem
         return listed ?? new PlacementUnitDef { Unit = template };
     }
 
+    /// <summary>What the placement offers: the scenario's list; with a squad — its templates in the squad's order.</summary>
+    public List<PlacementUnitDef> Offer() => !_sim.Squad.Enabled
+        ? Def?.Units.ToList() ?? new List<PlacementUnitDef>()
+        : _sim.Squad.Entries.Select(e => e.Template).Distinct().Select(t => Entry(t)!).ToList();
+
+    /// <summary>The count of a card: «placed/limit», with a squad — «waiting of the squad».</summary>
+    public string CountText(PlacementUnitDef e)
+    {
+        if (_sim.Squad.Enabled)
+        {
+            int all = _sim.Squad.Entries.Count(x => x.Template == e.Unit);
+            int ready = _sim.Squad.Entries.Count(x => x.Template == e.Unit && x.State == RosterState.Ready);
+            return $" (в отряде ждут {ready}/{all})";
+        }
+        return e.MaxCount > 0 ? $" ({CountOf(e.Unit)}/{e.MaxCount})" : "";
+    }
+
     public double CostOf(PlacementUnitDef e)
     {
         if (e.Cost > 0) return e.Cost;
@@ -139,7 +156,8 @@ public sealed class PlacementSystem
         if (!InZone(c)) return "вне зоны расстановки";
         if (!cell.AllowsPlacement) return "сюда нельзя ставить";
         if (cell.Occupants.Any(o => o.Alive && o != moving)) return "гекс занят";
-        if (!Occupancy.CanEnter(MoveContext.For(_sim, def, Faction), cell)) return "местность непроходима для юнита";
+        var mc = MoveContext.For(_sim, def, Faction);
+        if (!mc.Passable(cell.Terrain) || !Occupancy.CanEnter(mc, cell)) return "местность непроходима для юнита";
         return null;
     }
 

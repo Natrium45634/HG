@@ -211,6 +211,26 @@ step, maxPicks, skill, passive, weight, minLevel`); у пассива
 verdict`) и `results_<время>.csv` (строка на результат, столбец на
 показатель).
 
+Часть 6, этап 6.1 ([§96](DECISIONS_6.md)):
+
+* `game_rules.json` — правила режима: `rulesPreset`, `squadStart`
+  (`AllOnField, StartDeployed, NoneOnField`), `blocking`, `friendlyFire`
+  (необязательно);
+* `squad_presets.json` — пресеты отряда: `units[]`, `duplicatesAllowed`;
+* у сценария:
+  * `gameRules` — ссылка;
+  * `gameRulesOverride` — свои значения, необязательные поля как у
+    правил режима;
+  * `squad` — отряд игрока: `enabled, pool[], minSize, maxSize,
+    duplicatesAllowed, allowedTags[], forbiddenTags[], requiredTags[],
+    limits[] (match, max), startingRoster[], startDeployed[], fixed,
+    defaultPreset`.
+
+  Пустые поля не пишутся.
+* В реплее — `roster` (отряд боя).
+* Пресеты отряда игрока — в данных пользователя, файл `player_squads.json`
+  (список пресетов в том же формате).
+
 ## 7. Правила боя и формулы
 
 `rules.json` разбит на группы: `time`, `ap`, `turn`, `move`, `height`,

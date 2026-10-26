@@ -25,6 +25,139 @@
     }
   },
   "$defs": {
+    "DeploymentRulesDef": {
+      "type": "object",
+      "properties": {
+        "afterDeath": {
+          "type": "string",
+          "enum": [
+            "Gone",
+            "Cooldown"
+          ],
+          "description": "После гибели"
+        },
+        "allowRedeploy": {
+          "type": "boolean",
+          "description": "Повторный вызов — Отозванного бойца можно вызвать снова"
+        },
+        "allowRetreat": {
+          "type": "boolean",
+          "description": "Отзыв с поля"
+        },
+        "confirmRetreat": {
+          "type": "boolean",
+          "description": "Подтверждать отзыв — Окно подтверждения в бою"
+        },
+        "deathCooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перерыв после гибели, с"
+        },
+        "defaultCost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Цена по умолчанию — Если у юнита не задана: 0 — стоимость угрозы шаблона"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Вызов за очки развёртывания — Выключено — бойцы выходят только при старте и расстановкой"
+        },
+        "enemyRadius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Не ближе к врагу, гексов — Нельзя вызвать в N гексах от видимого врага; 0 — можно"
+        },
+        "forbidHazard": {
+          "type": "boolean",
+          "description": "Не на опасной клетке — Огонь, яд и прочие опасные эффекты клетки"
+        },
+        "gainAmount": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Начисление: очков — За каждый интервал; 0 — нет периодического начисления"
+        },
+        "gainInPreparation": {
+          "type": "boolean",
+          "description": "Начислять в подготовке"
+        },
+        "gainInterval": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 3600,
+          "description": "Начисление: интервал, с — Игровое время: не зависит от кадров и скорости, на паузе стоит"
+        },
+        "gainPerKill": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Очков за убитого врага"
+        },
+        "gainPerWave": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Очков за пройденную волну"
+        },
+        "inCombat": {
+          "type": "boolean",
+          "description": "Вызов в бою"
+        },
+        "inPreparation": {
+          "type": "boolean",
+          "description": "Вызов в подготовке"
+        },
+        "leash": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Поводок, гексов — Вызванный боец не отходит от места вызова дальше N гексов; 0 — ходит по обычным правилам"
+        },
+        "maxDeployed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Одновременно на поле — Бойцов отряда на поле разом; 0 — без ограничения (это не размер отряда)"
+        },
+        "maxPoints": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Не больше очков — 0 — без предела"
+        },
+        "redeployCooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перерыв после отзыва, с — Если у юнита не задан"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс (вид) — Имя, цвет и шкала очков; пусто — «Очки развёртывания»"
+        },
+        "retreatRefund": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Возврат при отзыве — Доля цены"
+        },
+        "retreatWhileControlled": {
+          "type": "boolean",
+          "description": "Отзыв под контролем — Оглушённого, обездвиженного, под чужим контролем можно отозвать"
+        },
+        "startingPoints": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Очков в начале"
+        }
+      },
+      "additionalProperties": true
+    },
     "GameRulesDef": {
       "type": "object",
       "properties": {
@@ -101,6 +234,10 @@
             "GameRules",
             "SquadPreset"
           ]
+        },
+        "deployment": {
+          "$ref": "#/$defs/DeploymentRulesDef",
+          "description": "Развёртывание — Вызов бойцов отряда во время боя за очки развёртывания (ТЗ ч. 6, 3)"
         },
         "displayName": {
           "type": "string"

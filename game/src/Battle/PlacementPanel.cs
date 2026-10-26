@@ -66,12 +66,12 @@ public partial class PlacementPanel : PanelContainer
         Ui.ClearChildren(_cards);
         Ui.ClearChildren(_actions);
         if (prep)
-            foreach (var e in def.Units)
+            foreach (var e in pl.Offer())
             {
                 var ud = Sim.Content.Unit(e.Unit);
                 if (ud == null) continue;
                 var why = pl.CanAfford(e.Unit);
-                string text = $"{ud.DisplayName} — {pl.CostOf(e):0.#}" + (e.MaxCount > 0 ? $" ({pl.CountOf(e.Unit)}/{e.MaxCount})" : "");
+                string text = $"{ud.DisplayName} — {pl.CostOf(e):0.#}" + pl.CountText(e);
                 string unit = e.Unit;
                 var b = Ui.Button(text, () => _bs.ChoosePlacement(_bs.PlaceTemplate == unit ? null : unit),
                     why ?? $"Выбрать и кликнуть по гексу зоны (подсвечена). Профиль ИИ: {(e.AiProfile != "" ? e.AiProfile : ud.AiProfile)}");

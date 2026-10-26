@@ -687,7 +687,7 @@ public static class ContentValidator
         // Part 6 (§96): the rules of the mode and the squad of the player.
         var mode = EffectiveGameRules.Resolve(db, s);
         foreach (var n in mode.Notes) issues.Add(Warn(s, "GameRules", "Правила режима: " + n));
-        foreach (var n in mode.Redundant) issues.Add(new ContentIssue(IssueSeverity.Info, Src(s), "GameRulesOverride", "Правила режима: " + n + " — можно снять «задано»"));
+        foreach (var n in mode.Hints) issues.Add(new ContentIssue(IssueSeverity.Info, Src(s), "GameRules", "Правила режима: " + n));
         foreach (var p in SquadRules.Validate(db, s)) issues.Add(Err(s, "Squad", "Отряд: " + p));
         var map = db.Get<MapDef>(s.Map);
         if (map == null) return; // reference error already reported

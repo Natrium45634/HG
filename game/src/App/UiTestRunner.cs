@@ -86,6 +86,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_material_steps_license_replace", EditorMaterialStepsLicenseReplace));
         _tests.Add(("editor_results_compare_export", EditorResultsCompareExport));
         _tests.Add(("editor_unit_tabs", EditorUnitTabs));
+        _tests.Add(("squad_screen_rules_and_battle", SquadScreenAndRules));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -2843,6 +2844,93 @@ public partial class UiTestRunner : Node
             if (asset != null) db.Table(DefCategory.Asset).Remove(asset.Id);
             var sh = Find<OptionButton>(GetTree().Root).FirstOrDefault(o => o.Name == "AssetPreviewShape");
             if (sh != null) sh.EmitSignal(OptionButton.SignalName.ItemSelected, 0);
+        }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.1 (ТЗ ч. 6, 1–2; docs/DECISIONS_6.md §96): the squad screen before a battle — an unavailable fighter is
+    /// disabled with its reason, the required one cannot be removed, «В бой» waits for a valid squad, presets are saved and
+    /// loaded; the battle gets the squad on the field. In the editor the tab «Правила режима» shows values with their
+    /// sources, and changing the preset shows the difference.
+    /// </summary>
+    private async Task SquadScreenAndRules()
+    {
+        var db = Main.Instance.Content.Published.Clone();
+        var sc = db.Get<ScenarioDef>("td_pass_defense")!;
+        sc.Mode = BattleMode.TowerDefense;
+        sc.GameRules = "rts_free";
+        sc.Squad = new ScenarioSquadDef
+        {
+            Enabled = true, Pool = { "knight", "archer", "mage", "priestess", "scout" }, MaxSize = 3, ForbiddenTags = { "mage" },
+            RequiredTags = { "priestess" }, StartingRoster = { "knight" },
+        };
+        string presets = SquadScreen.PlayerPresetsPath;
+        string? keep = File.Exists(presets) ? File.ReadAllText(presets) : null;
+        try
+        {
+            Main.Instance.ShowBattle(sc, db, false);
+            await Frames(6);
+            var screen = Find<SquadScreen>(GetTree().Root).FirstOrDefault();
+            Check(screen != null, "экран отряда не открылся");
+            Check(screen!.Squad.SequenceEqual(new[] { "knight" }), "обязательный боец должен быть в отряде сразу: " + string.Join(",", screen.Squad));
+            var mage = Find<Button>(screen).First(b => b.Name == "SquadAdd_mage");
+            Check(mage.Disabled && mage.Text.Contains("запрещён тег"), "маг недоступен с причиной: " + mage.Text);
+            Check(Find<Button>(screen).First(b => b.Name == "SquadRemove_0").Disabled, "обязательного бойца нельзя убрать");
+            var start = Find<Button>(screen).First(b => b.Name == "SquadStart");
+            Check(start.Disabled && Find<Label>(screen).First(l => l.Name == "SquadProblems").Text.Contains("priestess"), "без жрицы — нельзя в бой");
+            await Shot("part6_squad_screen");
+            await Click(Find<Button>(screen).First(b => b.Name == "SquadAdd_archer").GetGlobalRect().GetCenter());
+            await Click(Find<Button>(screen).First(b => b.Name == "SquadAdd_priestess").GetGlobalRect().GetCenter());
+            await Frames(2);
+            screen = Find<SquadScreen>(GetTree().Root).First();
+            Check(screen.Squad.SequenceEqual(new[] { "knight", "archer", "priestess" }), "отряд: " + string.Join(",", screen.Squad));
+            Check(Find<Button>(screen).First(b => b.Name == "SquadAdd_scout").Text.Contains("отряд полон"), "четвёртого не взять");
+            Check(!Find<Button>(screen).First(b => b.Name == "SquadStart").Disabled, "полный отряд — можно в бой");
+            screen.Move(2, -1);
+            Check(screen.Squad.SequenceEqual(new[] { "knight", "priestess", "archer" }), "порядок меняется");
+            screen.SavePreset("Тест отряда");
+            Check(SquadScreen.PlayerPresets().Any(p => p.Name == "Тест отряда" && p.Units.Count == 3), "пресет игрока не сохранён");
+            var skipped = screen.LoadPreset(new SquadPresetDef { Units = { "mage", "scout", "priestess" } });
+            Check(skipped.Count == 1 && skipped[0].Contains("запрещён") && screen.Squad.SequenceEqual(new[] { "knight", "scout", "priestess" }), "пресет набран с пропуском мага");
+            screen.Start();
+            await Frames(8);
+            var bs = Battle();
+            Check(bs.Sim.Squad.Enabled && bs.Sim.Squad.Entries.Select(e => e.Template).SequenceEqual(new[] { "knight", "scout", "priestess" }), "в бою другой отряд");
+            Check(bs.Sim.Squad.Count(RosterState.Deployed) == 3 && bs.Replay!.Entries.Count >= 0 && bs.Snapshot!.Roster!.Count == 3, "отряд на поле и в снимке");
+        }
+        finally
+        {
+            if (keep != null) File.WriteAllText(presets, keep);
+            else if (File.Exists(presets)) File.Delete(presets);
+        }
+
+        // The editor: the tab of the rules of the mode, and the change of the preset.
+        var ed = await OpenEditor("scenarios");
+        var draft = ed.Context.Db;
+        var dsc = draft.Get<ScenarioDef>("td_pass_defense")!;
+        string oldRules = dsc.GameRules;
+        try
+        {
+            dsc.GameRules = "rts_free";
+            var panel = Find<ScenarioEditorPanel>(GetTree().Root).First();
+            panel.Select("td_pass_defense");
+            await Frames(10);
+            panel = Find<ScenarioEditorPanel>(GetTree().Root).First();
+            Check(panel.Rules?.Preset?.Id == "rts_free", "вкладка правил не показывает пресет");
+            Check(Find<GridContainer>(panel).Any(g => g.Name == "RulesValues" && Find<Label>(g).Any(l => l.Text == "пресет «Свободная RTS»")), "у значений нет источника");
+            var row = Find<Label>(panel).First(l => l.Text == "Правила режима" && l.GetParent() is HBoxContainer).GetParent();
+            var pick = Find<HexTactics.Game.UI.SearchableOption>(row).First();
+            Check(pick.PickByQuery("Тактический TD"), "в списке нет «Тактический TD»");
+            await Frames(4);
+            Check(dsc.GameRules == "td_tactical" && panel.LastRulesDiff.Any(l => l.Contains("Отряд на поле в начале")), "смена пресета должна показать разницу: " + string.Join("; ", panel.LastRulesDiff));
+            var dlg = Find<AcceptDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == "Правила режима изменены");
+            Check(dlg != null && dlg.DialogText.Contains("не изменены"), "окно разницы не показано");
+            await Shot("part6_rules_tab");
+            dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+        }
+        finally
+        {
+            dsc.GameRules = oldRules;
         }
     }
 

@@ -1811,6 +1811,17 @@
           "x-ref": "Skill",
           "description": "Защитный навык — Центр радиального меню; пусто — защитная стойка из правил"
         },
+        "deployment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnitDeploymentDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Развёртывание — Цена вызова за очки развёртывания, перерыв, зоны, направление (часть 6); пусто — по правилам режима"
+        },
         "displayName": {
           "type": "string"
         },
@@ -1979,6 +1990,60 @@
       "required": [
         "id"
       ],
+      "additionalProperties": true
+    },
+    "UnitDeploymentDef": {
+      "type": "object",
+      "properties": {
+        "canDeploy": {
+          "type": "boolean",
+          "description": "Можно вызвать"
+        },
+        "canRetreat": {
+          "type": "boolean",
+          "description": "Можно отозвать"
+        },
+        "cost": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 100000,
+          "description": "Цена вызова — Очков развёртывания; −1 — по правилам (цена по умолчанию или стоимость угрозы)"
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "Manual",
+            "Auto",
+            "Fixed"
+          ],
+          "description": "Направление при вызове"
+        },
+        "fixedFacing": {
+          "type": "string",
+          "enum": [
+            "E",
+            "NE",
+            "NW",
+            "W",
+            "SW",
+            "SE"
+          ],
+          "description": "Заданное направление"
+        },
+        "redeployCooldown": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 3600,
+          "description": "Перерыв после отзыва, с — −1 — по правилам"
+        },
+        "zoneTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги зон — Только в зоны развёртывания с одним из этих тегов; пусто — в любую"
+        }
+      },
       "additionalProperties": true
     },
     "UnitResourceDef": {

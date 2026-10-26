@@ -16,13 +16,39 @@
     {
       "id": "td_tactical",
       "name": "Тактический TD",
-      "description": "Бойцы выходят на поле расстановкой (и, с этапа 6.2, вызовом за ресурс развёртывания); враги идут по маршрутам и волнам.",
+      "description": "Бойцы выходят на поле расстановкой и вызовом за очки развёртывания; враги идут по маршрутам и волнам.",
       "tags": [],
       "group": "Режимы",
       "version": 1,
       "rulesPreset": "",
       "squadStart": "NoneOnField",
-      "blocking": true
+      "blocking": true,
+      "deployment": {
+        "enabled": true,
+        "resource": "dp",
+        "inPreparation": true,
+        "inCombat": true,
+        "maxDeployed": 6,
+        "startingPoints": 10,
+        "maxPoints": 99,
+        "gainAmount": 1,
+        "gainInterval": 1,
+        "gainInPreparation": false,
+        "gainPerKill": 0,
+        "gainPerWave": 0,
+        "defaultCost": 0,
+        "allowRetreat": true,
+        "retreatRefund": 0.5,
+        "retreatWhileControlled": false,
+        "confirmRetreat": true,
+        "allowRedeploy": true,
+        "redeployCooldown": 10,
+        "afterDeath": "Gone",
+        "deathCooldown": 30,
+        "enemyRadius": 0,
+        "forbidHazard": true,
+        "leash": 0
+      }
     },
     {
       "id": "hybrid",
@@ -33,7 +59,33 @@
       "version": 1,
       "rulesPreset": "",
       "squadStart": "StartDeployed",
-      "blocking": true
+      "blocking": true,
+      "deployment": {
+        "enabled": true,
+        "resource": "dp",
+        "inPreparation": true,
+        "inCombat": true,
+        "maxDeployed": 6,
+        "startingPoints": 8,
+        "maxPoints": 99,
+        "gainAmount": 1,
+        "gainInterval": 1.5,
+        "gainInPreparation": false,
+        "gainPerKill": 1,
+        "gainPerWave": 0,
+        "defaultCost": 0,
+        "allowRetreat": true,
+        "retreatRefund": 0.5,
+        "retreatWhileControlled": false,
+        "confirmRetreat": true,
+        "allowRedeploy": true,
+        "redeployCooldown": 10,
+        "afterDeath": "Gone",
+        "deathCooldown": 30,
+        "enemyRadius": 1,
+        "forbidHazard": true,
+        "leash": 0
+      }
     }
   ]
 }

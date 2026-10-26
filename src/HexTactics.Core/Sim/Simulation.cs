@@ -38,6 +38,8 @@ public sealed class SimOptions
     public IReadOnlyList<string>? Roster { get; init; }
     /// <summary>Who of the squad stands on the field at the start.</summary>
     public SquadStart SquadStart { get; init; } = SquadStart.AllOnField;
+    /// <summary>The rules of the deployment during the battle (part 6, §97).</summary>
+    public DeploymentRulesDef Deployment { get; init; } = new();
 }
 
 /// <summary>
@@ -92,6 +94,7 @@ public sealed class Simulation
         Scenario = new ScenarioSystem(this);
         Placement = new PlacementSystem(this);
         Squad = new SquadSystem(this);
+        Deployment = new DeploymentSystem(this);
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
         Categories = new CategoryCache(Content);
@@ -156,6 +159,8 @@ public sealed class Simulation
     public PlacementSystem Placement { get; }
     /// <summary>The player's squad (part 6, docs/DECISIONS_6.md §96).</summary>
     public SquadSystem Squad { get; }
+    /// <summary>Calling the squad onto the field for deployment points (part 6, §97).</summary>
+    public DeploymentSystem Deployment { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }
@@ -544,6 +549,8 @@ public sealed class Simulation
 
         var p = Profiler;
         long t = p.Begin();
+        // Part 6 (ТЗ ч. 6, 13.5): the points and the pauses of the squad first, then everything that may spend them.
+        Deployment.Update();
         Scenario.Update();
         p.End("Сценарий", t);
         t = p.Begin();

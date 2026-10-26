@@ -656,6 +656,10 @@ public sealed class ScenarioDef : Def
     public GameRulesOverrideDef? GameRulesOverride { get; set; }
     [Ed("Отряд игрока", "Кого игрок берёт в бой: размер, теги, лимиты, обязательные бойцы", Group = "Режим")]
     public ScenarioSquadDef? Squad { get; set; }
+    [Ed("Свои правила развёртывания", "Задано — весь блок вместо блока правил режима", Group = "Режим")]
+    public DeploymentRulesDef? DeploymentOverride { get; set; }
+    [Ed("Зоны развёртывания", "Где сторона вызывает бойцов; пусто — зона расстановки", Group = "Режим"), EdHidden, JsonOmitEmpty]
+    public List<DeploymentZoneDef> DeploymentZones { get; set; } = new();
     [Ed("Подготовка и расстановка", "TD с расстановкой и автотест", Group = "Автобой")] public PlacementDef Placement { get; set; } = new();
     [Ed("Альтернативные цели врагов", "Если база уничтожена или недоступна и в профиле ИИ ничего не задано", Group = "Автобой")]
     public List<AltTargetDef> AltTargets { get; set; } = new() { new AltTargetDef { Kind = AltTargetKind.OtherBase }, new AltTargetDef { Kind = AltTargetKind.AttackDefenders } };

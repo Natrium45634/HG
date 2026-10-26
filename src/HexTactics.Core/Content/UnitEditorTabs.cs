@@ -68,6 +68,7 @@ public static class UnitEditorTabs
         [nameof(UnitDef.PowerRole)] = UnitTab.Rating,
         [nameof(UnitDef.Build)] = UnitTab.Rating,
         [nameof(UnitDef.ScalingProfile)] = UnitTab.Rating,
+        [nameof(UnitDef.Deployment)] = UnitTab.Rating,
     };
 
     /// <summary>The tab of a field of the template (by its property name).</summary>

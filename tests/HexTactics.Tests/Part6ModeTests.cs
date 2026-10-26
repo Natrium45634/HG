@@ -49,7 +49,7 @@ public class Part6ModeTests
         Assert.Contains(EffectiveGameRules.Resolve(db, sc).Notes, n => n.Contains("не найдены"));
         sc.GameRules = "rts_free";
         sc.GameRulesOverride = new GameRulesOverrideDef { Blocking = true };
-        Assert.Contains(EffectiveGameRules.Resolve(db, sc).Redundant, n => n.Contains("совпадает"));
+        Assert.Contains(EffectiveGameRules.Resolve(db, sc).Hints, n => n.Contains("совпадает"));
     }
 
     [Fact]

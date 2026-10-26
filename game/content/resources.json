@@ -53,6 +53,19 @@
       "defaultRegen": 1,
       "showBar": true,
       "minValue": -15
+    },
+    {
+      "id": "dp",
+      "name": "Очки развёртывания",
+      "description": "Пул стороны для вызова бойцов отряда во время боя (часть 6). Не ресурс юнита: юниты его не получают.",
+      "tags": [],
+      "group": "Развёртывание",
+      "version": 1,
+      "color": "#5fd4ff",
+      "defaultMax": 99,
+      "defaultRegen": 0,
+      "showBar": false,
+      "minValue": 0
     }
   ]
 }

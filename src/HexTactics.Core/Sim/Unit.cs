@@ -302,6 +302,9 @@ public sealed class Unit
     /// <summary>Damage leaves at least 1 health (an indestructible object).</summary>
     public bool Indestructible { get; internal set; }
     public long ExpiresAtTick { get; set; } = -1;
+    /// <summary>The leash of a called fighter (part 6, §97): the hex it was called to and the radius; 0 — none.</summary>
+    public HexCoord? LeashAnchor { get; set; }
+    public int LeashRadius { get; set; }
 
     public int Kills { get; internal set; }
     /// <summary>Highest HP fraction threshold already reported (autopause on critical damage once).</summary>

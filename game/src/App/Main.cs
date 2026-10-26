@@ -166,8 +166,13 @@ public partial class Main : Node
 
     public void ShowMainMenu() => SetScreen(new MainMenu());
 
-    public void ShowBattle(ScenarioDef scenario, ContentDatabase db, bool admin, Action? onExit = null) =>
-        SetScreen(new BattleScreen(scenario, db, admin, onExit));
+    /// <summary>A battle; a scenario with a squad to choose opens the squad screen first (part 6, §96).</summary>
+    public void ShowBattle(ScenarioDef scenario, ContentDatabase db, bool admin, Action? onExit = null)
+    {
+        if (scenario.Squad is { Enabled: true, Fixed: false } && !Args.ContainsKey("nosquadscreen"))
+            SetScreen(new SquadScreen(scenario, db, admin, onExit));
+        else SetScreen(new BattleScreen(scenario, db, admin, onExit));
+    }
 
     /// <summary>A prepared battle screen: a restart from its snapshot, an unsafe test.</summary>
     public void ShowBattle(BattleScreen screen) => SetScreen(screen);

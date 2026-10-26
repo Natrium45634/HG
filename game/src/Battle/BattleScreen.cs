@@ -84,6 +84,9 @@ public partial class BattleScreen : Node
     public BattleScreen(BattleSnapshot snapshot, bool admin, Action? onExit) : this(snapshot.Content.Get<ScenarioDef>(snapshot.Scenario)!, snapshot.Content, admin, onExit) =>
         _snapshot = snapshot;
 
+    /// <summary>The squad chosen before the battle (part 6, §96); null — the scenario's default.</summary>
+    public IReadOnlyList<string>? Roster { get; init; }
+
     public BattleScreen(ScenarioDef scenario, ContentDatabase db, bool admin, Action? onExit)
     {
         _scenario = scenario;
@@ -98,7 +101,7 @@ public partial class BattleScreen : Node
         ulong? seed = Main.Instance.Args.TryGetValue("seed", out var s) && ulong.TryParse(s, out var v) ? v : null;
         if (_snapshot == null)
         {
-            (_snapshot, var sim) = BattleSnapshot.Begin(_db, _scenario, seed, _admin);
+            (_snapshot, var sim) = BattleSnapshot.Begin(_db, _scenario, seed, _admin, roster: Roster);
             Sim = sim;
             _db = _snapshot.Content;
             _scenario = _db.Get<ScenarioDef>(_snapshot.Scenario)!;

@@ -18,6 +18,8 @@ public enum StepCheck
     Occupied,
     /// <summary>The cell is a pit that affects the mover (only forced movement may enter it).</summary>
     Pit,
+    /// <summary>Beyond the leash of a called fighter (part 6, 3.10).</summary>
+    Leash,
 }
 
 /// <summary>Layer helpers (docs/DECISIONS_2.md §22).</summary>
@@ -290,6 +292,8 @@ public static class MovementRules
         cost = 0;
         if (to == null) return StepCheck.Missing;
         if (to.Blocked) return StepCheck.Blocked;
+        // The leash of a called fighter (ТЗ ч. 6, 3.10): ordinary movement keeps within it; a push does not.
+        if (!forced && c.Self is { LeashRadius: > 0, LeashAnchor: { } anchor } && HexCoord.Distance(anchor, to.Coord) > c.Self.LeashRadius) return StepCheck.Leash;
         var t = to.Terrain;
         var layer = c.Layer;
         if (t.Kind == TerrainKind.Pit)
@@ -359,6 +363,7 @@ public static class MovementRules
         StepCheck.TooLow => "слишком крутой спуск",
         StepCheck.Occupied => $"клетка занята{(to?.Occupant != null ? ": " + to.Occupant.Name : "")}",
         StepCheck.Pit => $"пропасть ({to?.Terrain.DisplayName})",
+        StepCheck.Leash => "дальше поводка от места вызова",
         _ => s.ToString(),
     };
 }

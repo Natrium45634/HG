@@ -2632,3 +2632,25 @@ Windows-сборка проверена самопроверкой на Windows 
   * стабильные ID вместо UUID;
   * этап 6.9 (интеграция и демоуровень) — последним.
 * **План**: этапы 6.1–6.12 (§95), сопоставление T01–T55 (§94).
+
+## Ч6 · Этап 6.1. Правила режима и отряд
+
+* **Сделано** ([§96](DECISIONS_6.md)):
+  * «Правила режима» с тремя встроенными пресетами (свободная RTS,
+    тактический TD, гибрид) и «своими значениями» сценария с источником
+    каждого значения;
+  * вкладка сценария «Правила режима» с разницей при смене пресета;
+  * отряд игрока: правила, пресеты, экран выбора перед боем;
+  * отряд в бою (состояния бойцов, расстановка по правилам режима),
+    в снимке и в реплее.
+* **Файлы**:
+  * ядро — `src/HexTactics.Core/Content/{GameRules,Defs/GameRulesDefs}.cs`,
+    `Sim/{SquadSystem,PlacementSystem,ScenarioSystem,BlockingSystem,BattleReplay,SimDigest}.cs`;
+  * игра — `game/src/App/{SquadScreen,Main}.cs`,
+    `game/src/Editor/{ScenarioEditorPanel,EditorScreen}.cs`,
+    `game/src/Battle/{PlacementPanel,BattleScreen}.cs`;
+  * контент — `game/content/{game_rules,squad_presets}.json`;
+  * `docs/schema/*`.
+* **Тесты**: `Part6ModeTests` (8); UI — `squad_screen_rules_and_battle`.
+  T01, T30 (часть «RTS / TD по настройкам») — приняты.
+

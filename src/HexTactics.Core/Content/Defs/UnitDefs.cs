@@ -215,6 +215,8 @@ public sealed class UnitDef : Def
     [Ed("Блокирование (как цель)", Group = "Блокирование")] public BlockableDef Blockable { get; set; } = new();
 
     [Ed("Босс", "Фазы, смена навыков, особые условия", Group = "Босс")] public BossDef Boss { get; set; } = new();
+    [Ed("Развёртывание", "Цена вызова за очки развёртывания, перерыв, зоны, направление (часть 6); пусто — по правилам режима", Group = "Развёртывание")]
+    public UnitDeploymentDef? Deployment { get; set; }
     [Ed("Маркер предупреждения", "Показывать линию пути перед появлением этого типа", Group = "Вид")] public bool SpawnWarning { get; set; } = true;
     [Ed("Внешний вид", Group = "Вид")] public UnitVisualDef Visual { get; set; } = new();
     [Ed("Стоимость угрозы", "Для подбора волн по бюджету; 0 — модель угрозы (docs/DECISIONS_4.md §67)", Group = "Баланс"), EdRange(0, 100_000)]

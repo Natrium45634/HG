@@ -20,11 +20,13 @@ public sealed class EffectiveGameRules
     public bool Blocking { get; init; } = true;
     /// <summary>Null — as the battle rules say.</summary>
     public bool? FriendlyFire { get; init; }
+    /// <summary>The deployment during the battle (part 6, §97): the scenario's own block, else the preset's.</summary>
+    public DeploymentRulesDef Deployment { get; init; } = new();
     public List<GameRuleValue> Values { get; } = new();
     /// <summary>Problems of the choice: a missing preset, contradictions.</summary>
     public List<string> Notes { get; } = new();
-    /// <summary>Own values of the scenario equal to the preset's: harmless, but they stop inheriting.</summary>
-    public List<string> Redundant { get; } = new();
+    /// <summary>Hints, not problems: own values equal to the preset's (they stop inheriting), settings that act only with a squad.</summary>
+    public List<string> Hints { get; } = new();
 
     public static EffectiveGameRules Resolve(ContentDatabase db, ScenarioDef sc)
     {
@@ -62,26 +64,39 @@ public sealed class EffectiveGameRules
         }
         string rulesPreset = sc.RulesPreset != "" ? sc.RulesPreset : preset?.RulesPreset ?? "";
         string rulesSrc = sc.RulesPreset != "" ? "сценарий" : preset != null && preset.RulesPreset != "" ? fromPreset : "по умолчанию";
-        var e = new EffectiveGameRules { Preset = preset, RulesPreset = rulesPreset, SquadStart = start, Blocking = blocking, FriendlyFire = ff };
+        var deployment = sc.DeploymentOverride ?? preset?.Deployment ?? new DeploymentRulesDef();
+        string deploySrc = sc.DeploymentOverride != null ? "сценарий" : preset != null ? fromPreset : "по умолчанию";
+        var e = new EffectiveGameRules { Preset = preset, RulesPreset = rulesPreset, SquadStart = start, Blocking = blocking, FriendlyFire = ff, Deployment = deployment };
         e.Values.Add(new GameRuleValue("rules", "Правила боя", rulesPreset == "" ? "глобальные" : db.Get<RulesPresetDef>(rulesPreset)?.DisplayName ?? rulesPreset + " (нет)", rulesSrc));
         e.Values.Add(new GameRuleValue("squadStart", "Отряд на поле в начале", EdUtil.EnumLabel(start), startSrc));
         e.Values.Add(new GameRuleValue("blocking", "Блокирование", blocking ? "включено" : "выключено", blockSrc));
         bool ffNow = ff ?? (db.Get<RulesPresetDef>(rulesPreset)?.Rules ?? db.Rules).Combat.FriendlyFire;
         e.Values.Add(new GameRuleValue("friendlyFire", "Урон по союзникам в области", ffNow ? "включён" : "выключен", ffSrc));
+        e.Values.Add(new GameRuleValue("deployment", "Вызов за очки развёртывания", Describe(deployment), deploySrc));
         if (sc.GameRules != "" && preset == null) e.Notes.Add($"правила режима «{sc.GameRules}» не найдены — действуют значения по умолчанию");
         if (rulesPreset != "" && db.Get<RulesPresetDef>(rulesPreset) == null) e.Notes.Add($"пресет правил боя «{rulesPreset}» не найден — действуют глобальные правила");
         if (preset != null && o != null)
         {
-            if (o.SquadStart == preset.SquadStart) e.Redundant.Add("своё «Отряд на поле в начале» совпадает с пресетом");
-            if (o.Blocking == preset.Blocking) e.Redundant.Add("своё «Блокирование» совпадает с пресетом");
-            if (o.FriendlyFire.HasValue && o.FriendlyFire == preset.FriendlyFire) e.Redundant.Add("своё «Урон по союзникам» совпадает с пресетом");
+            if (o.SquadStart == preset.SquadStart) e.Hints.Add("своё «Отряд на поле в начале» совпадает с пресетом");
+            if (o.Blocking == preset.Blocking) e.Hints.Add("своё «Блокирование» совпадает с пресетом");
+            if (o.FriendlyFire.HasValue && o.FriendlyFire == preset.FriendlyFire) e.Hints.Add("своё «Урон по союзникам» совпадает с пресетом");
         }
         if (start == SquadStart.StartDeployed && sc.Squad is { Enabled: true, StartDeployed.Count: 0 })
             e.Notes.Add("«Отряд на поле: стартовый состав», но стартовый состав не задан — на поле никого из отряда");
+        if (deployment.Enabled && sc.Squad is not { Enabled: true })
+            e.Hints.Add("вызов за очки развёртывания действует только при включённом «Отряд игрока»");
+        if (deployment.Enabled && deployment.MaxPoints > 0 && deployment.StartingPoints > deployment.MaxPoints)
+            e.Notes.Add($"очков в начале ({deployment.StartingPoints:0.#}) больше предела ({deployment.MaxPoints:0.#})");
         if (sc.Squad is not { Enabled: true } && start != SquadStart.AllOnField)
-            e.Notes.Add("«Отряд на поле в начале» действует только при включённом «Отряд игрока»");
+            e.Hints.Add("«Отряд на поле в начале» действует только при включённом «Отряд игрока»");
         return e;
     }
+
+    /// <summary>The deployment in one line: off, or the start, the gain, the limit, the retreat.</summary>
+    public static string Describe(DeploymentRulesDef d) => !d.Enabled ? "выключен" :
+        $"старт {d.StartingPoints:0.#}" + (d.GainAmount > 0 ? $", +{d.GainAmount:0.#}/{d.GainInterval:0.#} с" : "") + (d.GainPerKill > 0 ? $", +{d.GainPerKill:0.#} за врага" : "") +
+        (d.MaxDeployed > 0 ? $", на поле ≤{d.MaxDeployed}" : "") + (d.AllowRetreat ? $", отзыв {d.RetreatRefund:P0}" : ", без отзыва") +
+        (d.AfterDeath == AfterDeathPolicy.Cooldown ? $", павший вернётся через {d.DeathCooldown:0.#} с" : "") + (d.Leash > 0 ? $", поводок {d.Leash}" : "");
 
     /// <summary>What changes between two sets of rules (ТЗ ч. 6, 1.4: the change of a preset shows the difference).</summary>
     public static List<string> Diff(EffectiveGameRules a, EffectiveGameRules b)
