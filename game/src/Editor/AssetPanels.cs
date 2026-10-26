@@ -128,14 +128,144 @@ public partial class AssetPanel : DefListPanel
         }
         _stats = Ui.Label("", 12, Ui.TextDim, wrap: true);
         side.AddChild(_stats);
+        if (a.HasFile)
+        {
+            var replace = Ui.Button("Заменить файл…", () => Dialogs.OpenFile(this, ReplaceTitle, path => ReplaceFrom(a, path), Formats),
+                "Новый файл того же вида; ID ресурса не меняется — все объекты, которые его используют, получат новый файл (список — перед заменой)");
+            replace.Name = "AssetReplaceFile";
+            side.AddChild(replace);
+        }
         _stage = new PreviewStage();
         side.AddChild(_stage);
+        _hexes = null;
+        if (a.Kind is AssetKind.Texture or AssetKind.Material)
+        {
+            // ТЗ ч. 5, 7.4: on a hex, on its neighbours and on steps — the battle renderer, a tile of its own (§89).
+            _hexes = new BoardViewport { Name = "AssetPreviewHexes", CustomMinimumSize = new Vector2(360, 300), Visible = false };
+            side.AddChild(_hexes);
+            var shape = new OptionButton { Name = "AssetPreviewShape" };
+            shape.AddItem(a.Kind == AssetKind.Material ? "Сфера" : "Плоскость", 100);
+            foreach (var v in Enum.GetValues<PreviewShape>()) shape.AddItem(Names.Of(v), (int)v);
+            shape.Select(shape.GetItemIndex(_shape));
+            shape.ItemSelected += i =>
+            {
+                _shape = shape.GetItemId((int)i);
+                ShowHexes(a);
+            };
+            side.AddChild(Ui.HBox(6, Ui.Label("Показать", 13, Ui.TextDim), shape.Expand()));
+        }
         var buttons = new HFlowContainer();
         side.AddChild(buttons);
         side.AddChild(Ui.Label("Предпросмотр. Сцены Godot и скрипты не импортируются; файлы проверяются по сигнатуре и контрольной сумме.", 12, Ui.TextDim, wrap: true));
         root.AddChild(side);
-        AfterLayout(_stage, () => Preview(a, buttons));
+        AfterLayout(_stage, () =>
+        {
+            Preview(a, buttons);
+            ShowHexes(a);
+        });
         return root;
+    }
+
+    public const string ReplaceTitle = "Заменить файл ресурса";
+
+    private BoardViewport? _hexes;
+    private static int _shape = 100;
+
+    /// <summary>The patch of hexes shown last (UI tests).</summary>
+    public MapDef? HexPreview { get; private set; }
+
+    private void ShowHexes(AssetDef a)
+    {
+        if (_hexes == null || _stage == null || !IsInstanceValid(_hexes)) return;
+        bool hexes = _shape != 100;
+        _hexes.Visible = hexes;
+        _stage.Visible = !hexes;
+        HexPreview = null;
+        if (!hexes || MaterialPreview.ForAsset(Ctx.Db, a) is not { } db) return;
+        try
+        {
+            var map = MaterialPreview.Map(MaterialPreview.FloorId, MaterialPreview.TileId, (PreviewShape)_shape);
+            _hexes.Bind(HexTactics.Core.Sim.BattleMap.Build(map, db), db, true);
+            HexPreview = map;
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning("Предпросмотр на гексах: " + e.Message);
+        }
+    }
+
+    /// <summary>The replacement being confirmed (UI tests) and its dialog.</summary>
+    public AssetReplacement? LastReplacement { get; private set; }
+    public ConfirmationDialog? ReplaceDialog { get; private set; }
+
+    /// <summary>
+    /// ТЗ ч. 5, 7.5 (§89): the new file is checked as an import of the same kind; before anything changes the dialog lists
+    /// who uses the resource and what changes (size, clips); on «Заменить» the file is written beside the old one and the
+    /// resource points to it — its ID and the author's settings stay.
+    /// </summary>
+    public void ReplaceFrom(AssetDef a, string path)
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+        }
+        catch (Exception e)
+        {
+            Dialogs.Info(this, ReplaceTitle, "Файл не прочитан: " + e.Message);
+            return;
+        }
+        var r = AssetValidator.PrepareReplace(Ctx.Db, a, Path.GetFileName(path), bytes, Assets.Read, out var error);
+        if (r == null)
+        {
+            Dialogs.Info(this, ReplaceTitle, "Файл не подходит: " + error);
+            return;
+        }
+        LastReplacement = r;
+        var box = Ui.VBox(6).MinSize(540);
+        box.AddChild(Ui.Label($"«{a.DisplayName}» [{a.Id}]: {a.Path} → {r.Fresh.Path}", 13, Ui.Text, wrap: true));
+        box.AddChild(Ui.Label(r.Dependents.Count == 0 ? "Ресурс ни к чему не назначен." : $"Используют этот ресурс ({r.Dependents.Count}) — после замены у них будет новый файл:", 13, Ui.Accent, wrap: true));
+        if (r.Dependents.Count > 0)
+        {
+            var list = new ItemList { Name = "AssetReplaceDependents", CustomMinimumSize = new Vector2(520, 130) };
+            foreach (var d in r.Dependents) list.AddItem($"{ContentValidator.CatName(d.Category)}: {d.DisplayName} [{d.Id}]");
+            box.AddChild(list);
+        }
+        foreach (var n in r.Notes) box.AddChild(Ui.Label("ℹ " + n, 12, Ui.Warn, wrap: true));
+        if (a.Kind is AssetKind.Texture or AssetKind.Sprite or AssetKind.Icon && Assets.LoadImage(bytes, Path.GetExtension(path).ToLowerInvariant(), out _) is { } img)
+            box.AddChild(new TextureRect
+            {
+                Name = "AssetReplacePreview", Texture = ImageTexture.CreateFromImage(img), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, CustomMinimumSize = new Vector2(220, 160),
+            });
+        string? sourceDir = Path.GetDirectoryName(path);
+        ReplaceDialog = Dialogs.Custom(this, ReplaceTitle, box, "Заменить", () =>
+        {
+            try
+            {
+                var full = Path.Combine(Main.Instance.Content.UserRoot, r.Fresh.Path.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                if (!File.Exists(full)) File.WriteAllBytes(full, bytes);
+                // A model's own files (buffers, textures, .mtl) — beside it, by the same relative path.
+                bool Exists(string rel) => sourceDir != null && ContentPackage.IsSafePath(rel) && File.Exists(Path.Combine(sourceDir, rel));
+                foreach (var rel in AssetAnalyzer.Analyze(bytes, path, Ctx.Db.Rules.Assets, a.Purpose, Exists).ExternalFiles.Where(Exists).Distinct())
+                {
+                    var dst = Path.Combine(Path.GetDirectoryName(full)!, rel.Replace('/', Path.DirectorySeparatorChar));
+                    Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+                    if (!File.Exists(dst)) File.Copy(Path.Combine(sourceDir!, rel), dst);
+                }
+            }
+            catch (Exception e)
+            {
+                Dialogs.Info(this, ReplaceTitle, "Файл не записан: " + e.Message);
+                return false;
+            }
+            r.Apply();
+            Assets.Problems.Remove(a.Id);
+            OnEdited(a);
+            Callable.From(() => Select(a)).CallDeferred();
+            return true;
+        }, new Vector2I(600, 0));
     }
 
     private void Preview(AssetDef a, HFlowContainer buttons)

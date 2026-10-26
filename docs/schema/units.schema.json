@@ -390,6 +390,52 @@
       },
       "additionalProperties": true
     },
+    "BuildRecordDef": {
+      "type": "object",
+      "properties": {
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Выбор — Что изменено или добавлено"
+        },
+        "computedLevel": {
+          "type": "number",
+          "description": "Вычисленный уровень — В момент сборки"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "Manual",
+            "ScaleStats",
+            "AutoBuild"
+          ],
+          "description": "Режим"
+        },
+        "profile": {
+          "type": "string",
+          "description": "Профиль масштабирования"
+        },
+        "profileVersion": {
+          "type": "integer",
+          "description": "Версия профиля"
+        },
+        "ratingHash": {
+          "type": "string",
+          "description": "Отпечаток правил оценки — Изменились правила оценки силы — уровень пересчитан по-новому"
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Seed"
+        },
+        "targetLevel": {
+          "type": "number",
+          "description": "Целевой уровень"
+        }
+      },
+      "additionalProperties": true
+    },
     "ConditionDef": {
       "type": "object",
       "properties": {
@@ -1704,6 +1750,17 @@
         "boss": {
           "$ref": "#/$defs/BossDef",
           "description": "Босс — Фазы, смена навыков, особые условия"
+        },
+        "build": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BuildRecordDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Сборка — Как получены характеристики: режим, целевой и вычисленный уровень, seed, профиль и его версия"
         },
         "category": {
           "type": "string",

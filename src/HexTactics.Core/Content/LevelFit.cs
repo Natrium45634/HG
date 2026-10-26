@@ -32,9 +32,14 @@ public sealed class FitResult
     public bool Reached { get; set; }
     public string Message { get; set; } = "";
     public string Profile { get; init; } = "";
+    /// <summary>«Подгонка характеристик» or «Автосборка по бюджету» (ТЗ ч. 5, 21).</summary>
+    public BuildMode Mode { get; init; } = BuildMode.ScaleStats;
+    public ulong Seed { get; init; }
+
+    public string Title => Mode == BuildMode.AutoBuild ? $"Автосборка по бюджету (seed {Seed})" : EdUtil.EnumLabel(Variant);
 
     public override string ToString() =>
-        $"{EdUtil.EnumLabel(Variant)}: уровень {LevelBefore:0.0} → {LevelAfter:0.0} (цель {TargetLevel:0.#})" +
+        $"{Title}: уровень {LevelBefore:0.0} → {LevelAfter:0.0} (цель {TargetLevel:0.#})" +
         (Changes.Any(c => c.Key != "role") ? "; " + string.Join(", ", Changes.Where(c => c.Key != "role").Select(c => $"{c.Label} {c.From:0.##} → {c.To:0.##}")) : "") + (Message != "" ? " — " + Message : "");
 }
 
@@ -210,6 +215,7 @@ public static class LevelFit
             Reached = Math.Abs(after.Level - targetLevel) <= 0.5 || Math.Abs(after.Power - target) <= 0.03 * Math.Max(1, target),
         };
         res.Changes.AddRange(changes);
+        Record(db, unit, BuildMode.ScaleStats, targetLevel, after.Level, 0, profile, changes.Where(c => c.Key != "role").Select(c => $"{c.Label} {c.From:0.##} → {c.To:0.##}"));
         if (!res.Reached)
         {
             bool up = targetLevel > after.Level;
@@ -225,9 +231,133 @@ public static class LevelFit
         return res;
     }
 
-    /// <summary>The three variants of TZ §14.6 for the author to choose from.</summary>
-    public static List<FitResult> Variants(ContentDatabase db, UnitDef def, double targetLevel, ScalingProfileDef? profile = null, PowerContext? ctx = null) =>
-        Enum.GetValues<FitVariant>().Select(v => Fit(db, def, targetLevel, profile, v, ctx)).ToList();
+    /// <summary>The three variants of TZ §14.6 for the author to choose from; with a pool of upgrades — the budget build too.</summary>
+    public static List<FitResult> Variants(ContentDatabase db, UnitDef def, double targetLevel, ScalingProfileDef? profile = null, PowerContext? ctx = null, ulong seed = 1)
+    {
+        var list = Enum.GetValues<FitVariant>().Select(v => Fit(db, def, targetLevel, profile, v, ctx)).ToList();
+        var prof = profile ?? ProfileFor(db, def);
+        if (prof.Upgrades.Count > 0) list.Add(AutoBuild(db, def, targetLevel, prof, seed, ctx));
+        return list;
+    }
+
+    /// <summary>The record of a build on the copy (ТЗ ч. 5, 21.5).</summary>
+    private static void Record(ContentDatabase db, UnitDef unit, BuildMode mode, double target, double computed, ulong seed, ScalingProfileDef profile, IEnumerable<string> choices) =>
+        unit.Build = new BuildRecordDef
+        {
+            Mode = mode, TargetLevel = target, ComputedLevel = Math.Round(computed, 3), Seed = seed, Profile = profile.Id, ProfileVersion = profile.Version,
+            RatingHash = RatingHash(db), Choices = choices.ToList(),
+        };
+
+    /// <summary>The fingerprint of the rules of the power estimate (a change re-levels everything).</summary>
+    public static string RatingHash(ContentDatabase db) =>
+        HexTactics.Core.Sim.Simulation.StableHash(ContentJson.Serialize(db.Rules.Power) + (db.Unit(db.Rules.Power.ReferenceUnit) is { } r ? ContentJson.Serialize(r) : "")).ToString("X");
+
+    /// <summary>
+    /// «Автосборка по бюджету» (ТЗ ч. 5, 21.3, T19): upgrades of the profile's pool only, chosen by the weights of the
+    /// archetype with the random stream of <paramref name="seed"/>, one by one until the power of the target level; an
+    /// upgrade not available (its level, its limit, a missing or disabled skill, one already known, a locked stat) is
+    /// never chosen. The same template, seed and profile version give the same build. The result is a copy.
+    /// </summary>
+    public static FitResult AutoBuild(ContentDatabase db, UnitDef def, double targetLevel, ScalingProfileDef profile, ulong seed, PowerContext? ctx = null)
+    {
+        var before = PowerModel.Evaluate(db, def, ctx);
+        double target = PowerModel.PowerOf(db, targetLevel, before.Role, def.Rank);
+        var unit = ContentJson.Clone(def);
+        if (def.PowerRole == PowerRole.Auto) unit.PowerRole = before.Role; // the role of the estimate stays the same while it grows
+        var rng = new HexTactics.Core.Sim.SimRng(seed);
+        var pool = profile.Upgrades;
+        var picks = new int[pool.Count];
+        var locked = profile.Params.Where(p => p.Locked && p.Target == ScaleTarget.Stat).Select(p => p.Stat).ToHashSet(StringComparer.Ordinal);
+        var chosen = new List<string>();
+        var power = before;
+        string why = "";
+        bool Available(int i)
+        {
+            var o = pool[i];
+            if (o.Weight <= 0 || o.MinLevel > targetLevel + 1e-9) return false;
+            return o.Kind switch
+            {
+                UpgradeKind.Stat => o.Step != 0 && db.Stat(o.Stat) != null && !locked.Contains(o.Stat) && (o.MaxPicks <= 0 || picks[i] < o.MaxPicks),
+                UpgradeKind.Skill => picks[i] == 0 && db.Skill(o.Skill) != null && !db.DisabledSkills.ContainsKey(o.Skill) && !unit.Skills.Contains(o.Skill) && unit.BasicAttack != o.Skill,
+                _ => picks[i] == 0 && db.Get<PassiveDef>(o.Passive) != null && !unit.Passives.Contains(o.Passive),
+            };
+        }
+        for (int step = 0; step < 400; step++)
+        {
+            if (power.Power >= target * 0.995) break;
+            var avail = Enumerable.Range(0, pool.Count).Where(Available).ToList();
+            if (avail.Count == 0)
+            {
+                why = "пул исчерпан";
+                break;
+            }
+            double roll = rng.NextDouble() * avail.Sum(i => pool[i].Weight);
+            int pick = avail[^1];
+            foreach (var i in avail)
+            {
+                roll -= pool[i].Weight;
+                if (roll < 0)
+                {
+                    pick = i;
+                    break;
+                }
+            }
+            var o = pool[pick];
+            picks[pick]++;
+            switch (o.Kind)
+            {
+                case UpgradeKind.Stat:
+                    unit.Stats[o.Stat] = (unit.Stats.TryGetValue(o.Stat, out var v) ? v : db.StatDefault(o.Stat)) + o.Step;
+                    break;
+                case UpgradeKind.Skill:
+                    unit.Skills.Add(o.Skill);
+                    chosen.Add($"навык «{db.Skill(o.Skill)!.DisplayName}»");
+                    break;
+                default:
+                    unit.Passives.Add(o.Passive);
+                    chosen.Add($"пассив «{db.Get<PassiveDef>(o.Passive)!.DisplayName}»");
+                    break;
+            }
+            power = PowerModel.Evaluate(db, unit, ctx);
+        }
+        var res = new FitResult
+        {
+            Variant = FitVariant.Combined, Mode = BuildMode.AutoBuild, Seed = seed, TargetLevel = targetLevel, TargetPower = target, PowerBefore = before.Power,
+            LevelBefore = before.Level, Profile = profile.DisplayName, Unit = unit, PowerAfter = power.Power, LevelAfter = power.Level,
+            Reached = power.Power >= target * 0.995 || Math.Abs(power.Level - targetLevel) <= 0.5,
+        };
+        for (int i = 0; i < pool.Count; i++)
+        {
+            if (picks[i] == 0) continue;
+            var o = pool[i];
+            if (o.Kind == UpgradeKind.Stat)
+            {
+                double from = def.Stats.TryGetValue(o.Stat, out var f) ? f : db.StatDefault(o.Stat);
+                string label = db.Stat(o.Stat)?.DisplayName ?? o.Stat;
+                res.Changes.Add(new FitChange("stat:" + o.Stat, label, from, unit.Stats[o.Stat], $"выбрано {picks[i]} раз(а)"));
+                chosen.Insert(0, $"{label} {from:0.##} → {unit.Stats[o.Stat]:0.##}");
+            }
+            else res.Changes.Add(new FitChange(o.Kind == UpgradeKind.Skill ? "skill:" + o.Skill : "passive:" + o.Passive,
+                o.Kind == UpgradeKind.Skill ? $"навык «{db.Skill(o.Skill)?.DisplayName}»" : $"пассив «{db.Get<PassiveDef>(o.Passive)?.DisplayName}»", 0, 1, "из пула"));
+        }
+        Record(db, unit, BuildMode.AutoBuild, targetLevel, power.Level, seed, profile, chosen);
+        res.Message = res.Reached ? $"выборов из пула: {picks.Sum()}" :
+            $"Целевой уровень {targetLevel:0.#} не достигнут: {why}{(why != "" ? "; " : "")}достигнуто {power.Level:0.0}. Добавьте улучшения в пул профиля «{profile.DisplayName}» или поднимите пределы.";
+        return res;
+    }
+
+    /// <summary>What the panel says about the build record (ТЗ ч. 5, 21.5): the mismatch of target and computed is shown.</summary>
+    public static string? BuildNote(ContentDatabase db, UnitDef def, double levelNow)
+    {
+        if (def.Build is not { } b || b.Mode == BuildMode.Manual) return null;
+        string text = $"{EdUtil.EnumLabel(b.Mode)}: цель {b.TargetLevel:0.#}, при сборке {b.ComputedLevel:0.00}, сейчас {levelNow:0.00}" +
+                      (b.Seed != 0 ? $", seed {b.Seed}" : "") + (b.Profile != "" ? $", профиль «{db.Get<ScalingProfileDef>(b.Profile)?.DisplayName ?? b.Profile}» v{b.ProfileVersion}" : "");
+        var notes = new List<string>();
+        if (Math.Abs(levelNow - b.TargetLevel) > 0.5) notes.Add($"уровень не совпадает с целевым ({levelNow:0.0} ≠ {b.TargetLevel:0.#})");
+        if (db.Get<ScalingProfileDef>(b.Profile) is { } p && p.Version != b.ProfileVersion) notes.Add($"профиль изменён (v{b.ProfileVersion} → v{p.Version})");
+        if (b.RatingHash != "" && b.RatingHash != RatingHash(db)) notes.Add("изменились правила оценки силы");
+        return text + (notes.Count > 0 ? ". ⚠ " + string.Join("; ", notes) : "");
+    }
 
     /// <summary>
     /// The level of an instance (docs/DECISIONS_4.md §65): multipliers of the stats of the template so it fits the

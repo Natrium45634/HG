@@ -139,12 +139,28 @@ public sealed class PassiveSystem
                     _ => true,
                 };
                 if (!ok) continue;
+                // «Не более получателей» (ТЗ ч. 5, 14.2): only the nearest receivers of the owner (by distance, then ID).
+                if (p.AuraMaxTargets > 0 && o != u && !AmongNearest(o, p, u)) continue;
                 foreach (var id in p.AuraPassives.Count > 0 ? p.AuraPassives : new List<string> { p.Id })
                     if (id != p.Id || o != u)
                         Add(id, PassiveSource.AllyAura, $"аура «{p.DisplayName}» ({o.Name})", o.Id);
             }
         }
         return list;
+    }
+
+    private bool AmongNearest(Unit owner, PassiveDef p, Unit u)
+    {
+        var receivers = _sim.Units.Where(x => x.Alive && x != owner && HexCoord.Distance(owner.Pos, x.Pos) <= p.AuraRadius
+                                             && (p.AuraTypes.Count == 0 || p.AuraTypes.Any(t => _sim.Conditions.TypeMatches(x, t)))
+                                             && (p.AuraAffects switch
+                                             {
+                                                 AuraAffects.Allies => _sim.RelationOf(owner, x) == Relation.Ally,
+                                                 AuraAffects.Enemies => _sim.IsHostile(owner, x),
+                                                 _ => true,
+                                             }))
+            .OrderBy(x => HexCoord.Distance(owner.Pos, x.Pos)).ThenBy(x => x.Id).Take(p.AuraMaxTargets);
+        return receivers.Contains(u);
     }
 
     /// <summary>Categories of a unit with their ancestors: the main one, the additional ones, those assigned by tags.</summary>

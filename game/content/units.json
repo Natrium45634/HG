@@ -2800,6 +2800,22 @@
       "scalingProfile": "",
       "mainCategory": "slime_mimic_cat",
       "moveTypes": []
+    },
+    {
+      "id": "skeleton",
+      "name": "Скелет",
+      "description": "Нежить: костяной воин. Уязвим к святому свету (категория «Нежить»).",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "undead",
+      "moveCategory": "walk",
+      "stats": { "hp_max": 60, "move_speed": 1.5, "ap_max": 8, "ap_regen": 1, "detection_range": 7, "armor": 2 },
+      "basicAttack": "strike",
+      "aiProfile": "aggressive",
+      "mainCategory": "undead",
+      "visual": { "shape": "Pawn", "symbol": "с", "scale": 1 }
     }
   ]
 }

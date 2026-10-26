@@ -243,6 +243,34 @@ public sealed class ScaleParamDef : ContentPart
     public override string ToString() => (Target == ScaleTarget.Stat ? Stat : Target.ToString()) + $" ^{Weight:0.##}" + (Locked ? " (запрет)" : "");
 }
 
+/// <summary>What an upgrade of the pool adds (ТЗ ч. 5, 21.3).</summary>
+public enum UpgradeKind
+{
+    [Ed("Характеристика", "+шаг за выбор")] Stat,
+    [Ed("Навык из пула")] Skill,
+    [Ed("Пассив из пула")] Passive,
+}
+
+/// <summary>An upgrade «Автосборка по бюджету» may choose — nothing outside the pool is ever added.</summary>
+public sealed class UpgradeOptionDef : ContentPart
+{
+    [Ed("Что даёт")] public UpgradeKind Kind { get; set; } = UpgradeKind.Stat;
+    [Ed("Характеристика"), EdRef(DefCategory.Stat), EdShowIf(nameof(Kind), UpgradeKind.Stat)] public string Stat { get; set; } = Stats.HpMax;
+    [Ed("Шаг", "Прибавка за один выбор"), EdRange(-10_000, 10_000), EdShowIf(nameof(Kind), UpgradeKind.Stat)] public double Step { get; set; } = 10;
+    [Ed("Не более выборов", "0 — без предела (по бюджету)"), EdRange(0, 1000), EdShowIf(nameof(Kind), UpgradeKind.Stat)] public int MaxPicks { get; set; } = 10;
+    [Ed("Навык"), EdRef(DefCategory.Skill), EdShowIf(nameof(Kind), UpgradeKind.Skill)] public string Skill { get; set; } = "";
+    [Ed("Пассив"), EdRef(DefCategory.Passive), EdShowIf(nameof(Kind), UpgradeKind.Passive)] public string Passive { get; set; } = "";
+    [Ed("Вес архетипа", "Чем больше, тем чаще выбирается; 0 — никогда"), EdRange(0, 1000)] public double Weight { get; set; } = 1;
+    [Ed("С уровня", "Доступно, только если целевой уровень не ниже"), EdRange(0, 1000)] public double MinLevel { get; set; }
+
+    public override string ToString() => Kind switch
+    {
+        UpgradeKind.Skill => "навык " + Skill,
+        UpgradeKind.Passive => "пассив " + Passive,
+        _ => $"{Stat} {Step:+0.##;-0.##}",
+    } + $" ×{Weight:0.##}" + (MinLevel > 0 ? $" с ур. {MinLevel:0.#}" : "");
+}
+
 /// <summary>A scaling profile: which parameters «Подогнать под уровень» and the level of an instance may change.</summary>
 public sealed class ScalingProfileDef : Def
 {
@@ -250,4 +278,6 @@ public sealed class ScalingProfileDef : Def
 
     [Ed("Роль", "Для какой роли профиль подходит (подсказка)")] public PowerRole Role { get; set; } = PowerRole.Universal;
     [Ed("Параметры")] public List<ScaleParamDef> Params { get; set; } = new();
+    [Ed("Пул автосборки", "Улучшения для «Автосборки по бюджету» (ТЗ ч. 5, 21.3): только они, по весам архетипа и seed; пусто — автосборки нет"), JsonOmitEmpty]
+    public List<UpgradeOptionDef> Upgrades { get; set; } = new();
 }

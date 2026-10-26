@@ -331,6 +331,10 @@
           ],
           "description": "Вид"
         },
+        "license": {
+          "type": "string",
+          "description": "Лицензия — Необязательно: автор, источник и условия использования (CC0, CC-BY 4.0 — автор…, собственная работа)"
+        },
         "lodDistance": {
           "type": "number",
           "minimum": 0,

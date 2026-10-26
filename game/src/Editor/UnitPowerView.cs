@@ -93,8 +93,9 @@ public partial class UnitPowerView : VBoxContainer
         PowerReport r, solo;
         try
         {
-            r = PowerModel.Evaluate(db, _unit, make());
-            solo = _context.Selected <= 0 ? r : PowerModel.Evaluate(db, _unit);
+            // Through the cache (ТЗ ч. 5, 23.6): any change of what the estimate reads gives a new key.
+            r = PowerCache.Evaluate(db, _unit, make());
+            solo = _context.Selected <= 0 ? r : PowerCache.Evaluate(db, _unit);
         }
         catch (Exception e)
         {
@@ -106,6 +107,22 @@ public partial class UnitPowerView : VBoxContainer
         level.TooltipText = "Отображается целое; в скобках — точное значение (небольшие изменения пассивов видны в нём)";
         _body.AddChild(level);
         _body.AddChild(Ui.Label($"сила {r.Power:0.000} к эталону · роль {EdUtil.EnumLabel(r.Role)}{(r.RoleAuto ? " (авто)" : "")} · ранг {EdUtil.EnumLabel(r.Rank)}", 12, Ui.TextDim, wrap: true));
+        // The record of the last build (ТЗ ч. 5, 21.5): target and computed side by side, a mismatch is not hidden.
+        if (LevelFit.BuildNote(db, _unit, solo.Level) is { } note)
+        {
+            var bl = Ui.Label("Сборка — " + note, 12, note.Contains('⚠') ? Ui.Warn : Ui.TextDim, wrap: true);
+            bl.Name = "PowerBuild";
+            _body.AddChild(bl);
+        }
+        else _body.AddChild(Ui.Label("Сборка ручная: уровень только вычисляется, характеристики сами не меняются.", 11, Ui.TextDim, wrap: true));
+        // Solo and group (ТЗ ч. 5, 22.9): one main estimate on the panel, a warning when they differ a lot.
+        var group = PowerCache.Evaluate(db, _unit, PowerContext.Typical(db));
+        if (solo.Power > 0 && Math.Abs(group.Power - solo.Power) / solo.Power > 0.3)
+        {
+            var gl = Ui.Label($"⚠ Один и в типичной группе оценки сильно расходятся: уровень {solo.LevelText} один, {group.LevelText} в группе — синергия велика, выберите основной контекст", 12, Ui.Warn, wrap: true);
+            gl.Name = "PowerSoloGroup";
+            _body.AddChild(gl);
+        }
         if (r.Rank != UnitRank.Normal) _body.AddChild(Ui.Label("Ранг не меняет уровень: он влияет на подбор волн, награды и вид.", 11, Ui.TextDim, wrap: true));
 
         foreach (var line in r.Lines)
@@ -215,6 +232,10 @@ public static class UnitFitDialog
         profile.AddItem($"по шаблону: «{auto.DisplayName}»");
         foreach (var p in profiles) profile.AddItem($"{p.DisplayName} ({EdUtil.EnumLabel(p.Role)})");
         row.AddChild(profile.Expand());
+        // «Автосборка по бюджету» (ТЗ ч. 5, 21.3): with a pool in the profile; the same seed — the same build.
+        var seed = new SpinBox { Name = "FitSeed", MinValue = 1, MaxValue = 1_000_000, Value = unit.Build?.Seed is > 0 and var s0 ? s0 : 1, Prefix = "seed", CustomMinimumSize = new Vector2(120, 0) };
+        seed.TooltipText = "Для автосборки по бюджету: одинаковые шаблон, seed и версия профиля дают одинаковую сборку";
+        row.AddChild(seed);
         var results = Ui.VBox(6);
         results.Name = "FitResults";
         var group = new ButtonGroup();
@@ -224,15 +245,15 @@ public static class UnitFitDialog
             Ui.ClearChildren(results);
             current.Clear();
             var prof = profile.Selected <= 0 ? auto : profiles[profile.Selected - 1];
-            current.AddRange(LevelFit.Variants(db, unit, target.Value, prof));
+            current.AddRange(LevelFit.Variants(db, unit, target.Value, prof, null, (ulong)seed.Value));
             for (int i = 0; i < current.Count; i++)
             {
                 var fr = current[i];
                 var box = Ui.VBox(2);
                 var pick = new CheckBox
                 {
-                    Name = "FitVariant_" + i, ButtonGroup = group, ButtonPressed = i == current.Count - 1,
-                    Text = $"{EdUtil.EnumLabel(fr.Variant)}: уровень {fr.LevelBefore:0.0} → {fr.LevelAfter:0.0} (цель {fr.TargetLevel:0.#})" + (fr.Reached ? "" : " — не достигнут"),
+                    Name = "FitVariant_" + i, ButtonGroup = group, ButtonPressed = fr.Mode == BuildMode.ScaleStats && fr.Variant == FitVariant.Combined,
+                    Text = $"{fr.Title}: уровень {fr.LevelBefore:0.0} → {fr.LevelAfter:0.0} (цель {fr.TargetLevel:0.#})" + (fr.Reached ? "" : " — не достигнут"),
                 };
                 pick.AddThemeColorOverride("font_color", fr.Reached ? Ui.Text : Ui.Warn);
                 box.AddChild(pick);

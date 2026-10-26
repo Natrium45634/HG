@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using HexTactics.Core.Hex;
@@ -222,6 +223,9 @@ public sealed class UnitDef : Def
     [Ed("Ранг", "Не влияет на уровень: появление, награды, вид, подбор волн", Group = "Баланс")] public UnitRank Rank { get; set; } = UnitRank.Normal;
     [Ed("Свой ранг", Group = "Баланс"), EdShowIf(nameof(Rank), UnitRank.Custom)] public string CustomRank { get; set; } = "";
     [Ed("Роль в оценке силы", "Веса оценки силы и профиль масштабирования; «авто» — по вкладам", Group = "Баланс")] public PowerRole PowerRole { get; set; } = PowerRole.Auto;
+    // Part 5 (ТЗ ч. 5, 21.5; docs/DECISIONS_5.md §88): how the stats were built — shown next to the level, edited by the tools only.
+    [Ed("Сборка", "Как получены характеристики: режим, целевой и вычисленный уровень, seed, профиль и его версия", Group = "Баланс"), EdHidden]
+    public BuildRecordDef? Build { get; set; }
     [Ed("Профиль масштабирования", "Для «Подогнать под уровень» и уровня экземпляра; пусто — по роли", Group = "Баланс"), EdRef(DefCategory.ScalingProfile)]
     public string ScalingProfile { get; set; } = "";
     // Part 4 (docs/DECISIONS_4.md §60–61).
@@ -291,6 +295,15 @@ public sealed class PassiveDef : Def
     [Ed("Аура действует на", Group = "Аура")] public AuraAffects AuraAffects { get; set; } = AuraAffects.Allies;
     [Ed("Аура и на владельца", Group = "Аура")] public bool AuraIncludesSelf { get; set; }
     [Ed("Аура только для", "Теги или категории получателей («tag:стая», ID категории); пусто — все", Group = "Аура")] public List<string> AuraTypes { get; set; } = new();
+    [Ed("Не более получателей", "Ближайшие к владельцу (ТЗ ч. 5, 14.2); 0 — сколько поместится в радиусе", Group = "Аура"), EdRange(0, 1000)]
+    public int AuraMaxTargets { get; set; }
+
+    /// <summary>How many others an aura can reach at most: its limit, else the hexes within its radius.</summary>
+    public static int AuraCapacity(PassiveDef p)
+    {
+        int area = 3 * p.AuraRadius * (p.AuraRadius + 1);
+        return p.AuraMaxTargets > 0 ? Math.Min(p.AuraMaxTargets, area) : area;
+    }
     [Ed("Пассивы ауры", "Что получают юниты в ауре; пусто — модификаторы этого пассива", Group = "Аура"), EdRef(DefCategory.Passive)]
     public List<string> AuraPassives { get; set; } = new();
     [Ed("Действует после срабатывания, с", "Для срабатывающих: модификаторы действуют N с после события", Group = "Срабатывание"), EdRange(0, 3600)]
@@ -321,6 +334,27 @@ public sealed class PassiveDef : Def
     [Ed("Навык"), EdRef(DefCategory.Skill), EdShowIf(nameof(Action), PassiveAction.UseSkillOnSource)]
     public string Skill { get; set; } = "";
     [Ed("Стоимость ОД реакции"), EdRange(0, 100)] public double ApCost { get; set; }
+}
+
+/// <summary>How the stats of a template were made (ТЗ ч. 5, 21).</summary>
+public enum BuildMode
+{
+    [Ed("Ручная", "Автор правит всё сам; уровень только вычисляется")] Manual,
+    [Ed("Подгонка характеристик", "Меняются только поля профиля масштабирования; навыки те же")] ScaleStats,
+    [Ed("Автосборка по бюджету", "Улучшения из пула профиля, по весам и seed")] AutoBuild,
+}
+
+/// <summary>The record of the last build (ТЗ ч. 5, 21.5): kept with the template, a mismatch is shown, not hidden.</summary>
+public sealed class BuildRecordDef : ContentPart
+{
+    [Ed("Режим")] public BuildMode Mode { get; set; }
+    [Ed("Целевой уровень")] public double TargetLevel { get; set; }
+    [Ed("Вычисленный уровень", "В момент сборки")] public double ComputedLevel { get; set; }
+    [Ed("Seed")] public ulong Seed { get; set; }
+    [Ed("Профиль масштабирования")] public string Profile { get; set; } = "";
+    [Ed("Версия профиля")] public int ProfileVersion { get; set; }
+    [Ed("Отпечаток правил оценки", "Изменились правила оценки силы — уровень пересчитан по-новому")] public string RatingHash { get; set; } = "";
+    [Ed("Выбор", "Что изменено или добавлено")] public List<string> Choices { get; set; } = new();
 }
 
 /// <summary>Whether the AI starts a fight (ТЗ ч. 5, 13.8).</summary>

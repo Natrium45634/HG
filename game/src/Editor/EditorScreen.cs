@@ -69,6 +69,7 @@ public partial class EditorScreen : Control
         ("catalog", "Каталог операций", null),
         ("check", "Проверка", null),
         ("test", "Тестирование", null),
+        ("results", "Результаты", null),
     };
 
     /// <summary>The title of the section of a catalogue, as in the list on the left («Юниты и враги» for units).</summary>
@@ -314,6 +315,7 @@ public partial class EditorScreen : Control
             }),
             "check" => new ValidationPanel(_ctx),
             "overview" => new OverviewPanel(_ctx),
+            "results" => new ResultsPanel(),
             "catalog" => new CatalogPanel(),
             _ => new TestPanel(_ctx, (sc, seed) => RunTest(sc, seed)),
         };

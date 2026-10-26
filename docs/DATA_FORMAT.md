@@ -192,6 +192,13 @@ PassiveUntilAttacked`) и `retaliation` (`Attacker, Everyone, Flee, Ignore`);
 (`impulse, mass, reference, resist, cost`), `move.collision` (`Stop,
 ChainPush, ImpactDamage, DisplaceIfLegal`), `impactDamage`, `chainDepth`.
 
+Часть 5, этап E ([§88](DECISIONS_5.md)): у шаблона `build` (`mode` —
+`Manual, ScaleStats, AutoBuild`; `targetLevel, computedLevel, seed,
+profile, profileVersion, ratingHash, choices[]`); у профиля
+масштабирования `upgrades[]` (`kind` — `Stat, Skill, Passive`; `stat,
+step, maxPicks, skill, passive, weight, minLevel`); у пассива
+`auraMaxTargets`.
+
 ## 7. Правила боя и формулы
 
 `rules.json` разбит на группы: `time`, `ap`, `turn`, `move`, `height`,

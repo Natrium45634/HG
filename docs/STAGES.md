@@ -2539,3 +2539,17 @@ Windows-сборка проверена самопроверкой на Windows 
   (2), `Part5MassTests` (3), `Part5ContentTests` (2), UI-тест
   `editor_category_cycle_rejected_and_stat_marks`. T05, T14, T15, T16, T21 —
   приняты.
+
+## Ч5 · Этап E. Уровень и баланс
+
+* **Сделано** ([§88](DECISIONS_5.md)): автосборка по бюджету из пула
+  профиля (seed, веса, пороги, недоступное не выбирается); запись сборки у
+  шаблона с показом несовпадения цели и вычисленного уровня; кэш оценки
+  силы по хэшу; предел синергии аур (и «не более получателей» в бою);
+  предупреждение «один / в группе»; калибровка по дуэлям эталонов.
+* **Файлы**: `src/HexTactics.Core/Content/{LevelFit,PowerCache,PowerModel}.cs`,
+  `Defs/{UnitDefs,PowerDefs}.cs`, `Sim/{Calibration,PassiveSystem}.cs`;
+  `game/src/Editor/{UnitPowerView,OverviewPanel}.cs`;
+  `game/content/units.json` («Скелет»); `docs/schema/*`.
+* **Тесты**: `Part5LevelTests` (4), `Part5RatingTests` (3). T17–T20, T24 —
+  приняты.

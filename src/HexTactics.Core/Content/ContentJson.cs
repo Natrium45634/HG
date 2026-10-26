@@ -30,7 +30,7 @@ public static class ContentJson
         };
         o.Converters.Add(new JsonStringEnumConverter());
         o.Converters.Add(new HexCoordJsonConverter());
-        // Optional lists added later ([JsonOmitEmpty]) are not written while empty: old files and hashes stay as they were.
+        // Optional lists and texts added later ([JsonOmitEmpty]) are not written while empty: old files and hashes stay as they were.
         o.TypeInfoResolver = new DefaultJsonTypeInfoResolver
         {
             Modifiers =
@@ -39,7 +39,7 @@ public static class ContentJson
                 {
                     foreach (var p in ti.Properties)
                         if (p.AttributeProvider?.IsDefined(typeof(JsonOmitEmptyAttribute), true) == true)
-                            p.ShouldSerialize = (_, v) => v is not ICollection c || c.Count > 0;
+                            p.ShouldSerialize = (_, v) => v is string s ? s.Length > 0 : v is not ICollection c || c.Count > 0;
                 },
             },
         };

@@ -183,11 +183,72 @@
             "Boss"
           ],
           "description": "Роль — Для какой роли профиль подходит (подсказка)"
+        },
+        "upgrades": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UpgradeOptionDef"
+          },
+          "description": "Пул автосборки — Улучшения для «Автосборки по бюджету» (ТЗ ч. 5, 21.3): только они, по весам архетипа и seed; пусто — автосборки нет"
         }
       },
       "required": [
         "id"
       ],
+      "additionalProperties": true
+    },
+    "UpgradeOptionDef": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Stat",
+            "Skill",
+            "Passive"
+          ],
+          "description": "Что даёт"
+        },
+        "maxPicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Не более выборов — 0 — без предела (по бюджету)"
+        },
+        "minLevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "С уровня — Доступно, только если целевой уровень не ниже"
+        },
+        "passive": {
+          "type": "string",
+          "x-ref": "Passive",
+          "description": "Пассив"
+        },
+        "skill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        },
+        "step": {
+          "type": "number",
+          "minimum": -10000,
+          "maximum": 10000,
+          "description": "Шаг — Прибавка за один выбор"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Вес архетипа — Чем больше, тем чаще выбирается; 0 — никогда"
+        }
+      },
       "additionalProperties": true
     }
   }

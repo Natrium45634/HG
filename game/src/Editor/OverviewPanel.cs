@@ -1,6 +1,9 @@
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 using HexTactics.Core.Content;
+using HexTactics.Core.Sim;
 using HexTactics.Game.App;
 using HexTactics.Game.UI;
 
@@ -28,6 +31,13 @@ public partial class OverviewPanel : VBoxContainer
         var head = Ui.HBox(8);
         head.AddChild(Ui.Label("Обзор проекта", 18, Ui.Accent));
         head.AddChild(Ui.Button("Проверить сейчас", () => _ctx.Validate()));
+        var cal = Ui.Button("Калибровка оценки силы…", () => StartCalibration(),
+            "ТЗ ч. 5, 24: эталоны (воин, танк, рейдер, стрелок, лекарь, контролёр, нежить, вожак один и со стаей) дерутся попарно на нескольких seed; " +
+            "прогноз по силе сравнивается с долей побед, плохо предсказанные пары — в начале отчёта. Черновик не меняется.");
+        cal.Name = "OverviewCalibration";
+        head.AddChild(cal);
+        _calStatus = Ui.Label("", 12, Ui.TextDim);
+        head.AddChild(_calStatus);
         AddChild(head);
         var scroll = new ScrollContainer { SizeFlagsVertical = SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _body = Ui.VBox(6).Expand();
@@ -38,6 +48,59 @@ public partial class OverviewPanel : VBoxContainer
     }
 
     public override void _ExitTree() => _ctx.Validated -= Refresh;
+
+    private Label _calStatus = null!;
+    private Task<CalibrationReport>? _calibration;
+    private int _calDone, _calTotal;
+
+    /// <summary>The last calibration (UI tests) and where its CSV was saved.</summary>
+    public CalibrationReport? LastCalibration { get; private set; }
+    public string CalibrationSaved { get; private set; } = "";
+
+    /// <summary>Starts the calibration in the background on a copy of the draft.</summary>
+    public void StartCalibration(int runs = 6)
+    {
+        if (_calibration is { IsCompleted: false }) return;
+        var db = _ctx.Db.Clone();
+        var refs = Calibration.DefaultSet(db);
+        if (refs.Count < 2)
+        {
+            _calStatus.Text = "Эталонов меньше двух — калибровать нечего";
+            return;
+        }
+        _calDone = 0;
+        _calibration = Task.Run(() => Calibration.Run(db, refs, runs, 1000, progress: (d, t) =>
+        {
+            _calDone = d;
+            _calTotal = t;
+        }));
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_calibration == null) return;
+        if (!_calibration.IsCompleted)
+        {
+            _calStatus.Text = $"Калибровка: {_calDone}/{_calTotal}";
+            return;
+        }
+        var t = _calibration;
+        _calibration = null;
+        if (t.IsFaulted)
+        {
+            _calStatus.Text = "Калибровка прервана: " + t.Exception?.GetBaseException().Message;
+            return;
+        }
+        LastCalibration = t.Result;
+        var dir = ProjectSettings.GlobalizePath("user://reports");
+        System.IO.Directory.CreateDirectory(dir);
+        CalibrationSaved = System.IO.Path.Combine(dir, $"calibration_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+        ReportCsv.Write(CalibrationSaved, t.Result.ToCsv());
+        // The text beside the table: the screen «Результаты» shows it (§89).
+        System.IO.File.WriteAllText(System.IO.Path.ChangeExtension(CalibrationSaved, ".txt"), t.Result.ToText());
+        _calStatus.Text = $"Калибровка: средняя ошибка {t.Result.MeanAbsError:P0}, плохих пар {t.Result.Bad.Count()}";
+        Dialogs.Info(this, "Калибровка оценки силы", t.Result.ToText() + "\nCSV: " + CalibrationSaved);
+    }
 
     public ProjectOverview? Last { get; private set; }
 

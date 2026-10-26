@@ -71,6 +71,9 @@ public sealed class AssetDef : Def
     [Ed("Исходное имя файла", Group = "Файл"), EdReadOnly] public string SourceFile { get; set; } = "";
     [Ed("Дата импорта", Group = "Файл"), EdReadOnly] public string ImportedAt { get; set; } = "";
     [Ed("Заметки автора", Group = "Файл"), EdMultiline] public string Notes { get; set; } = "";
+    // Part 5 (ТЗ 7.5; docs/DECISIONS_5.md §89): where the file comes from and on what terms — optional text, never checked.
+    [Ed("Лицензия", "Необязательно: автор, источник и условия использования (CC0, CC-BY 4.0 — автор…, собственная работа)", Group = "Файл"), EdMultiline, JsonOmitEmpty]
+    public string License { get; set; } = "";
     [Ed("Анализ файла", "Размеры, треугольники, кости, анимации — при импорте", Group = "Файл"), EdReadOnly] public string Analysis { get; set; } = "";
     [Ed("Ширина, пикс.", Group = "Файл"), EdReadOnly] public int Width { get; set; }
     [Ed("Высота, пикс.", Group = "Файл"), EdReadOnly] public int Height { get; set; }

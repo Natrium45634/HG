@@ -82,6 +82,9 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_map_tools_stroke_undo_rect_stamp_resize", EditorMapTools));
         _tests.Add(("battle_reset_replay_and_unsafe_test", BattleResetReplayUnsafe));
         _tests.Add(("editor_category_cycle_rejected_and_stat_marks", EditorCategoryCycleAndStats));
+        _tests.Add(("editor_autobuild_record_and_calibration", EditorAutoBuildAndCalibration));
+        _tests.Add(("editor_material_steps_license_replace", EditorMaterialStepsLicenseReplace));
+        _tests.Add(("editor_results_compare_export", EditorResultsCompareExport));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -90,6 +93,9 @@ public partial class UiTestRunner : Node
         _tests.Add(("admin_full_flow_create_save_export_import_play", AdminFullFlow));
         _ = Run();
     }
+
+    /// <summary>Tests that drive a whole battle frame by frame: their limit, s (the rest — 120 s).</summary>
+    private static readonly Dictionary<string, int> SlowTests = new() { ["battle_speeds_and_pause_keep_every_event"] = 300 };
 
     private async Task Run()
     {
@@ -103,12 +109,13 @@ public partial class UiTestRunner : Node
             _current = name;
             try
             {
-                // A test that stops progressing fails instead of hanging the run.
+                // A test that stops progressing fails instead of hanging the run (a long battle on a software renderer gets more time).
                 var task = body();
                 ulong started = Time.GetTicksMsec();
+                int budget = SlowTests.GetValueOrDefault(name, 120);
                 while (!task.IsCompleted)
                 {
-                    if (Time.GetTicksMsec() - started > 120_000) throw new TimeoutException("тест не завершился за 120 с");
+                    if (Time.GetTicksMsec() - started > (ulong)budget * 1000) throw new TimeoutException($"тест не завершился за {budget} с");
                     await Frames(1);
                 }
                 await task;
@@ -2642,6 +2649,244 @@ public partial class UiTestRunner : Node
         await Frames(4);
         Check(Find<Label>(stats).Any(l => l.Name == "StatUsage" && l.IsVisibleInTree() && l.Text.Contains("без поведения")), "пользовательская характеристика должна быть помечена «без поведения»");
         db.Table(DefCategory.Stat).Remove("ui_luck");
+    }
+
+    /// <summary>
+    /// Part 5, stage E through the UI (docs/DECISIONS_5.md §88): a profile with a pool offers «Автосборка по бюджету» in
+    /// «Подогнать под уровень»; applied as a new version, the template keeps its build record and the panel shows it; the
+    /// calibration of the estimate runs from «Обзор проекта» and saves its CSV.
+    /// </summary>
+    private async Task EditorAutoBuildAndCalibration()
+    {
+        var ed = await OpenEditor("enemies");
+        var draft = ed.Context.Db;
+        var backup = ContentJson.Clone(draft.Unit("goblin")!);
+        draft.Add(new ScalingProfileDef
+        {
+            Id = "ui_pool", Name = "Пул (тест)",
+            Upgrades =
+            {
+                new UpgradeOptionDef { Kind = UpgradeKind.Stat, Stat = Stats.HpMax, Step = 20, Weight = 2, MaxPicks = 20 },
+                new UpgradeOptionDef { Kind = UpgradeKind.Stat, Stat = Stats.BaseDamage, Step = 2, Weight = 1, MaxPicks = 20 },
+            },
+        });
+        try
+        {
+            var units = Find<UnitEditorPanel>(GetTree().Root).First();
+            units.Select("goblin");
+            await Frames(8);
+            units = Find<UnitEditorPanel>(GetTree().Root).First();
+            var fitButton = Find<Button>(units).First(b => b.Name == "PowerFit");
+            for (Node? n = fitButton; n != null; n = n.GetParent())
+                if (n is ScrollContainer scroll)
+                {
+                    scroll.EnsureControlVisible(fitButton);
+                    break;
+                }
+            await Frames(3);
+            await Click(fitButton.GetGlobalRect().GetCenter());
+            await Frames(3);
+            var dlg = Dialog(UnitFitDialog.Title);
+            Check(dlg != null, "окно «Подогнать под уровень» не открыто");
+            var prof = Find<OptionButton>(dlg!).First(o => o.Name == "FitProfile");
+            int idx = Enumerable.Range(0, prof.ItemCount).First(i => prof.GetItemText(i).StartsWith("Пул (тест)"));
+            prof.Select(idx);
+            double level = PowerModel.Evaluate(draft, draft.Unit("goblin")!).Level;
+            Find<SpinBox>(dlg!).First(b => b.Name == "FitTarget").Value = Math.Round(level) + 3;
+            Find<SpinBox>(dlg!).First(b => b.Name == "FitSeed").Value = 5;
+            Find<Button>(dlg!).First(b => b.Name == "FitRun").EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames(3);
+            var variants = Find<CheckBox>(dlg!).Where(c => c.Name.ToString().StartsWith("FitVariant_")).ToList();
+            Check(variants.Count == 4 && variants[3].Text.StartsWith("Автосборка по бюджету (seed 5)"), "нет варианта автосборки: " + string.Join(" | ", variants.Select(v => v.Text)));
+            variants[3].ButtonPressed = true;
+            var mode = Find<OptionButton>(dlg!).First(o => o.Name == "FitApplyMode");
+            mode.Select(1);
+            dlg!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+            await Frames(8);
+            var built = draft.Unit("goblin")!;
+            Check(built.Build is { Mode: BuildMode.AutoBuild, Seed: 5, Profile: "ui_pool" }, "запись сборки не сохранена");
+            units = Find<UnitEditorPanel>(GetTree().Root).First();
+            Check(Find<Label>(units).Any(l => l.Name == "PowerBuild" && l.IsVisibleInTree() && l.Text.Contains("Автосборка по бюджету: цель")), "панель не показала запись сборки");
+        }
+        finally
+        {
+            draft.Table(DefCategory.Unit).Replace(backup);
+            draft.Table(DefCategory.ScalingProfile).Remove("ui_pool");
+        }
+
+        await OpenEditor("overview");
+        var ov = Find<OverviewPanel>(GetTree().Root).First();
+        Check(Find<Button>(ov).Any(b => b.Name == "OverviewCalibration"), "нет кнопки калибровки");
+        ov.StartCalibration(1);
+        for (int i = 0; i < 3000 && ov.LastCalibration == null; i++) await Frames(1);
+        Check(ov.LastCalibration is { } cal && cal.Rows.Count == 36 && cal.Rows.All(r => r.Runs == 1), "калибровка не завершилась: " + ov.LastCalibration?.Rows.Count);
+        Check(System.IO.File.Exists(ov.CalibrationSaved), "CSV калибровки не сохранён");
+        var info = Find<AcceptDialog>(GetTree().Root).LastOrDefault(d => d.Visible && d.Title == "Калибровка оценки силы");
+        Check(info != null && info.DialogText.Contains("Средняя ошибка прогноза"), "отчёт калибровки не показан");
+        info!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+    }
+
+    /// <summary>
+    /// Part 5, stage F (ТЗ 7.4–7.5; docs/DECISIONS_5.md §89): a terrain on its neighbours and on steps; a texture imported with
+    /// its license, shown on a group of hexes, then its file replaced — the dialog lists the terrain that uses it, the
+    /// resource keeps its ID and gets the new file.
+    /// </summary>
+    private async Task EditorMaterialStepsLicenseReplace()
+    {
+        var ed = await OpenEditor("terrains");
+        var db = ed.Context.Db;
+        var terrains = Find<TerrainPanel>(GetTree().Root).First();
+        var floor = db.Terrain("floor") != null ? "floor" : db.All<TerrainDef>().First().Id;
+        var target = db.All<TerrainDef>().First(t => t.Id != floor);
+        terrains.Select(target.Id);
+        await Frames(8);
+        var shape = Find<OptionButton>(terrains).First(o => o.Name == "TerrainPreviewShape");
+        shape.Select((int)PreviewShape.Steps);
+        shape.EmitSignal(OptionButton.SignalName.ItemSelected, (int)PreviewShape.Steps);
+        await Frames(4);
+        var steps = terrains.PreviewMap;
+        Check(steps != null && steps.Cells.Count(c => c.T == target.Id) == 7, "ступени: 7 плиток местности");
+        Check(steps!.Cells.Where(c => c.T == target.Id).Select(c => c.H - target.DefaultHeight).OrderBy(h => h).SequenceEqual(Enumerable.Range(0, 7)), "ступени: высоты 0…6");
+        shape.Select((int)PreviewShape.Single);
+        shape.EmitSignal(OptionButton.SignalName.ItemSelected, (int)PreviewShape.Single);
+        await Frames(2);
+
+        string dir = ProjectSettings.GlobalizePath("user://uitest/replace5");
+        Directory.CreateDirectory(dir);
+        var img = Image.CreateEmpty(64, 64, false, Image.Format.Rgba8);
+        img.Fill(new Color(0.3f, 0.7f, 0.4f));
+        string first = System.IO.Path.Combine(dir, "moss_top.png");
+        img.SavePng(first);
+        img.Resize(128, 128);
+        img.Fill(new Color(0.7f, 0.4f, 0.3f));
+        string second = System.IO.Path.Combine(dir, "moss_top_v2.png");
+        img.SavePng(second);
+        var floorDef = db.Terrain(floor)!;
+        string oldTop = floorDef.Look.TopTexture;
+        string next = first;
+        Dialogs.AutoPath = _ => next;
+        AssetDef? asset = null;
+        try
+        {
+            await OpenEditor("assets");
+            await ClickButton("Импорт файла…");
+            var dlg = ImportDialog();
+            Check(dlg != null, "окно импорта не открылось");
+            Find<LineEdit>(dlg!).First(l => l.Name == "ImportLicense").Text = "CC0 — тест";
+            SelectOption(Find<OptionButton>(dlg!).First(o => o.Name == "ImportAssign"), t => t.StartsWith($"Местность «{floorDef.DisplayName}» — текстура верха"));
+            await Frames(2);
+            await ConfirmImport();
+            CloseDialogs();
+            await Frames(2);
+            asset = db.Get<AssetDef>(floorDef.Look.TopTexture);
+            Check(asset != null && asset.SourceFile == "moss_top.png", "текстура не назначена полу");
+            Check(asset!.License == "CC0 — тест", "лицензия не сохранена: " + asset.License);
+
+            var assets = Find<AssetPanel>(GetTree().Root).First();
+            assets.Select(asset);
+            await Frames(8);
+            assets = Find<AssetPanel>(GetTree().Root).First();
+            var ashape = Find<OptionButton>(assets).First(o => o.Name == "AssetPreviewShape");
+            int group = ashape.GetItemIndex((int)PreviewShape.Group);
+            ashape.Select(group);
+            ashape.EmitSignal(OptionButton.SignalName.ItemSelected, group);
+            await Frames(4);
+            Check(assets.HexPreview != null && assets.HexPreview.Cells.Count(c => c.T == MaterialPreview.TileId) == 7, "текстура не показана на группе гексов");
+            Check(Find<BoardViewport>(assets).Any(v => v.Name == "AssetPreviewHexes" && v.IsVisibleInTree()), "поле гексов предпросмотра не видно");
+            Check(db.Terrain(MaterialPreview.TileId) == null, "плитка предпросмотра попала в черновик");
+
+            next = second;
+            var replace = Find<Button>(assets).First(b => b.Name == "AssetReplaceFile");
+            await ClickInView(replace);
+            await Frames(3);
+            var rd = Dialog(AssetPanel.ReplaceTitle);
+            Check(rd != null, "окно замены файла не открылось");
+            var deps = Find<ItemList>(rd!).FirstOrDefault(l => l.Name == "AssetReplaceDependents");
+            Check(deps != null && Enumerable.Range(0, deps.ItemCount).Any(i => deps.GetItemText(i).Contains($"[{floor}]")), "зависимые объекты не показаны");
+            Check(Find<Label>(rd!).Any(l => l.Text.Contains("64×64 → 128×128")), "окно должно сказать, что меняется размер");
+            string oldPath = asset.Path;
+            rd!.EmitSignal(AcceptDialog.SignalName.Confirmed);
+            await Frames(6);
+            Check(asset.Width == 128 && asset.Path != oldPath && asset.SourceFile == "moss_top_v2.png", "файл ресурса не заменён: " + asset.Path);
+            Check(floorDef.Look.TopTexture == asset.Id && asset.License == "CC0 — тест", "ID и настройки автора должны сохраниться");
+            Check(Render.Assets.Texture(asset) is { } tex && tex.GetWidth() == 128, "новый файл не загружается");
+            Check(AssetValidator.FileProblem(asset, Render.Assets.Read(asset.Path)) == null, "контрольная сумма нового файла");
+        }
+        finally
+        {
+            Dialogs.AutoPath = null;
+            CloseDialogs();
+            floorDef.Look.TopTexture = oldTop;
+            if (asset != null) db.Table(DefCategory.Asset).Remove(asset.Id);
+            var sh = Find<OptionButton>(GetTree().Root).FirstOrDefault(o => o.Name == "AssetPreviewShape");
+            if (sh != null) sh.EmitSignal(OptionButton.SignalName.ItemSelected, 0);
+        }
+    }
+
+    /// <summary>
+    /// Part 5, stage F (ТЗ 25.7; §89): «Результаты» reads the saved batches and calibrations, filters them by kind, compares
+    /// two (the same seeds — «без изменений», said so) and exports the comparison and the summary as CSV.
+    /// </summary>
+    private async Task EditorResultsCompareExport()
+    {
+        var db = Main.Instance.Content.Published;
+        var sc = db.All<ScenarioDef>().First(s => s.Waves.Count > 0);
+        string folder = ResultsPanel.Folder;
+        var opts = new AutoBattleOptions { MaxSeconds = 60 };
+        var (b1, r1) = AutoBattle.Batch(db, sc, 3, 7, opts, 2);
+        var (b2, r2) = AutoBattle.Batch(db, sc, 3, 7, opts, 2);
+        var made = new List<string>
+        {
+            AutoBattle.Save(folder, b1, r1, "uitest_results_a"),
+            AutoBattle.Save(folder, b2, r2, "uitest_results_b"),
+        };
+        var cal = new CalibrationReport { Runs = 2 };
+        cal.Rows.Add(new CalibrationRow { A = "воин", B = "стая", Predicted = 0.3, Actual = 0.8, Runs = 2 });
+        string calPath = System.IO.Path.Combine(folder, "calibration_uitest_results.csv");
+        ReportCsv.Write(calPath, cal.ToCsv());
+        try
+        {
+            await OpenEditor("results");
+            var panel = Find<ResultsPanel>(GetTree().Root).First();
+            panel.Refresh();
+            await Frames(2);
+            int ia = panel.Entries.FindIndex(e => e.File.EndsWith("_uitest_results_a.json"));
+            int ib = panel.Entries.FindIndex(e => e.File.EndsWith("_uitest_results_b.json"));
+            int ic = panel.Entries.FindIndex(e => e.File.EndsWith("calibration_uitest_results.csv"));
+            Check(ia >= 0 && ib >= 0 && ic >= 0, $"результаты не прочитаны ({panel.Entries.Count}): " + string.Join(" | ", panel.Problems));
+            Check(panel.Entries[ia].Kind == ResultKind.Batch && panel.Entries[ia].Runs == 3, "пакет прочитан неверно");
+            panel.SelectShown(ia, ib);
+            await Frames(3);
+            var c = panel.LastComparison;
+            Check(c != null && c.Rows.Count > 0 && c.Rows.All(r => r.Verdict == "без изменений"), "сравнение одинаковых пакетов: " + c?.ToText());
+            Check(c!.Notes.Any(n => n.Contains("Одинаковые seed")), "сравнение должно сказать про одинаковые seed");
+            Check(Find<GridContainer>(panel).Any(g => g.Name == "ResultsCompareGrid" && g.GetChildCount() == 5 * (c.Rows.Count + 1)), "таблица сравнения не показана");
+            Check(Find<TextEdit>(panel).First(t => t.Name == "ResultsDetail").Text.Contains("Пакетный прогон"), "отчёт пакета не показан");
+            await ClickButton("Экспорт сравнения CSV");
+            Check(System.IO.File.Exists(panel.Exported) && ReportCsv.Parse(System.IO.File.ReadAllText(panel.Exported)).Count == c.Rows.Count + 1, "CSV сравнения");
+            made.Add(panel.Exported);
+            panel.SelectShown(ia, ib, ic);
+            await Frames(2);
+            Check(panel.LastComparison == null, "три отмеченных — без сравнения");
+            await ClickButton("Сводная таблица CSV");
+            Check(System.IO.File.Exists(panel.Exported) && ReportCsv.Parse(System.IO.File.ReadAllText(panel.Exported)).Count == 4, "сводная таблица: 3 строки и заголовок");
+            made.Add(panel.Exported);
+            var kind = Find<OptionButton>(panel).First(o => o.Name == "ResultsKind");
+            kind.Select(3);
+            kind.EmitSignal(OptionButton.SignalName.ItemSelected, 3);
+            await Frames(2);
+            var list = Find<ItemList>(panel).First(l => l.Name == "ResultsList");
+            Check(list.ItemCount == panel.Entries.Count(e => e.Kind == ResultKind.Calibration) && list.ItemCount >= 1, "фильтр «Калибровки»");
+            kind.Select(0);
+            kind.EmitSignal(OptionButton.SignalName.ItemSelected, 0);
+        }
+        finally
+        {
+            foreach (var m in made)
+                foreach (var f in System.IO.Directory.GetFiles(folder).Where(f => f.StartsWith(m, StringComparison.Ordinal)))
+                    System.IO.File.Delete(f);
+            System.IO.File.Delete(calPath);
+        }
     }
 
     /// <summary>

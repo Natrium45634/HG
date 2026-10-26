@@ -564,6 +564,12 @@
           "type": "boolean",
           "description": "Аура и на владельца"
         },
+        "auraMaxTargets": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Не более получателей — Ближайшие к владельцу (ТЗ ч. 5, 14.2); 0 — сколько поместится в радиусе"
+        },
         "auraPassives": {
           "type": "array",
           "items": {

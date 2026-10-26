@@ -72,6 +72,8 @@ public static class AssetImportDialog
         var nameEdit = new LineEdit { Name = "ImportName", Text = Path.GetFileNameWithoutExtension(fileName), PlaceholderText = "Отображаемое имя" };
         var fileEdit = new LineEdit { Name = "ImportFile", Text = baseName, PlaceholderText = "имя файла в пакете (латиница, цифры, _ и -)" };
         var pathLabel = Ui.Label("", 12, Ui.TextDim, wrap: true);
+        // ТЗ ч. 5, 7.5: optional — where the file comes from and on what terms (§89).
+        var licenseEdit = new LineEdit { Name = "ImportLicense", PlaceholderText = "необязательно: CC0, CC-BY 4.0 — автор…, собственная работа" };
         var assign = new OptionButton { Name = "ImportAssign" };
         // The same file already in the content (by checksum): offered instead of a duplicate.
         var sha = AssetValidator.Sha256(original);
@@ -86,6 +88,7 @@ public static class AssetImportDialog
             left.AddChild(Ui.HBox(6, Ui.Label("Имя ресурса", 13, Ui.TextDim).MinSize(130), nameEdit.Expand()));
             left.AddChild(Ui.HBox(6, Ui.Label("Файл в пакете", 13, Ui.TextDim).MinSize(130), fileEdit.Expand()));
             left.AddChild(pathLabel);
+            left.AddChild(Ui.HBox(6, Ui.Label("Лицензия", 13, Ui.TextDim).MinSize(130), licenseEdit.Expand()));
             left.AddChild(Ui.HBox(6, Ui.Label("Назначить объекту", 13, Ui.TextDim).MinSize(130), assign.Expand()));
             left.AddChild(reuse);
         }
@@ -221,6 +224,7 @@ public static class AssetImportDialog
                 def = made;
                 def.SourceFile = fileName;
                 if (nameEdit.Text.Trim().Length > 0) def.Name = nameEdit.Text.Trim();
+                def.License = licenseEdit.Text.Trim();
                 try
                 {
                     var full = Path.Combine(App.Main.Instance.Content.UserRoot, def.Path.Replace('/', Path.DirectorySeparatorChar));

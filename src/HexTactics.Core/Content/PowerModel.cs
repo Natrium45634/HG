@@ -952,6 +952,14 @@ public static class PowerModel
                     if (p == null || p.AuraRadius <= 0 || p.AuraAffects == AuraAffects.Enemies) continue;
                     var allyDefs = _ctx.AllyDefs.Count > 0 && allies == _ctx.Allies ? _ctx.AllyDefs : Enumerable.Repeat(def, allies).ToList();
                     int n = allyDefs.Count(a => p.AuraTypes.Count == 0 || p.AuraTypes.Any(t => CategoryTree.Matches(_db, a, t)));
+                    // The reach of an aura is bounded (ТЗ ч. 5, 14.2, T20): its own «не более получателей», else the hexes
+                    // around the owner — more allies than fit the aura add nothing.
+                    int fit = PassiveDef.AuraCapacity(p);
+                    if (n > fit)
+                    {
+                        if (notes) report.Notes.Add($"аура «{p.DisplayName}»: союзников {n}, получателей не больше {fit} — синергия ограничена");
+                        n = fit;
+                    }
                     if (n == 0) continue;
                     var rb = _refBuild.Clone();
                     var gives = p.AuraPassives.Count > 0 ? p.AuraPassives.Select(id => _db.Get<PassiveDef>(id)).Where(x => x != null).Select(x => x!).ToList() : new List<PassiveDef> { p };

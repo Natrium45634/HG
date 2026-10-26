@@ -291,6 +291,34 @@ public static class AssetValidator
         return issues;
     }
 
+    /// <summary>
+    /// Replacing the file of a resource (ТЗ ч. 5, 7.5; docs/DECISIONS_5.md §89): the new file is checked as an import of the
+    /// same kind; the resource keeps its ID, so every object that uses it gets the new file — those objects are listed before
+    /// the change, with what changes (size, clips lost by the role mapping). Null and an error when the file is rejected.
+    /// The old file stays in the pack (older versions of the resource may point to it).
+    /// </summary>
+    public static AssetReplacement? PrepareReplace(ContentDatabase db, AssetDef a, string fileName, byte[] bytes, Func<string, byte[]?> existing, out string? error)
+    {
+        var made = Import(db, fileName, bytes, existing, out error, a.Kind, a.Purpose);
+        if (made == null) return null;
+        if (made.Kind != a.Kind)
+        {
+            error = $"файл другого вида ({made.Kind}), а ресурс — {a.Kind}: замена не меняет вид ресурса";
+            return null;
+        }
+        var r = new AssetReplacement { Target = a, Fresh = made, Dependents = ContentDependencies.UsedBy(db, a) };
+        if (made.Sha256 == a.Sha256) r.Notes.Add("Файл тот же (контрольная сумма совпадает) — замена ничего не изменит.");
+        if (a.Width > 0 && (made.Width != a.Width || made.Height != a.Height)) r.Notes.Add($"Размер изображения: {a.Width}×{a.Height} → {made.Width}×{made.Height}.");
+        if (a.Triangles > 0 && made.Triangles != a.Triangles) r.Notes.Add($"Треугольников: {a.Triangles:N0} → {made.Triangles:N0}.");
+        foreach (var m in a.Animations.Where(m => m.Clip != "" && !made.Clips.Contains(m.Clip)))
+        {
+            var guess = made.Animations.FirstOrDefault(x => x.Role == m.Role)?.Clip;
+            r.Notes.Add($"Клипа «{m.Clip}» (роль {m.Role}) в новом файле нет" + (guess != null ? $" — будет «{guess}»." : " — роль будет анимироваться процедурно."));
+        }
+        if (r.Dependents.Count == 0) r.Notes.Add("Ресурс ещё ни к чему не назначен.");
+        return r;
+    }
+
     /// <summary>What is wrong with the file of a resource (null — fine).</summary>
     public static string? FileProblem(AssetDef a, byte[]? bytes)
     {
@@ -301,5 +329,40 @@ public static class AssetValidator
         if (!info.Ok) return $"файл «{a.Path}»: {info.Error}";
         if (!Compatible(info.Kind!.Value, a.Kind)) return $"файл «{a.Path}» не подходит для вида «{a.Kind}»";
         return null;
+    }
+}
+
+/// <summary>A prepared replacement of a resource file: what it changes and who uses the resource; <see cref="Apply"/> makes it.</summary>
+public sealed class AssetReplacement
+{
+    public AssetDef Target { get; init; } = null!;
+    /// <summary>The new file described as an import (its path in the pack, checksum, analysis).</summary>
+    public AssetDef Fresh { get; init; } = null!;
+    public List<Def> Dependents { get; init; } = new();
+    public List<string> Notes { get; } = new();
+
+    /// <summary>The file fields of the resource take those of the new file; the author's settings (scale, UV, roles that still exist, license) stay.</summary>
+    public void Apply()
+    {
+        var a = Target;
+        var f = Fresh;
+        a.Path = f.Path;
+        a.Sha256 = f.Sha256;
+        a.Size = f.Size;
+        a.SourceFile = f.SourceFile;
+        a.ImportedAt = f.ImportedAt;
+        a.Analysis = f.Analysis;
+        a.Width = f.Width;
+        a.Height = f.Height;
+        a.HasAlpha = f.HasAlpha;
+        a.Triangles = f.Triangles;
+        a.Bones = f.Bones;
+        a.Duration = f.Duration;
+        a.Clips = new List<string>(f.Clips);
+        a.ClipLengths = new List<double>(f.ClipLengths);
+        // Roles: the author's mapping where the clip is still there, else the guess by the clip names.
+        var kept = a.Animations.Where(m => m.Clip == "" || f.Clips.Contains(m.Clip)).ToList();
+        kept.AddRange(f.Animations.Where(m => kept.All(k => k.Role != m.Role)));
+        a.Animations = kept;
     }
 }
