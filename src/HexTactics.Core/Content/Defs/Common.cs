@@ -45,6 +45,8 @@ public enum DefCategory
     ModifierSet,
     /// <summary>Variants of a scenario: «обычная», «сложная»… (docs/DECISIONS_6.md §99).</summary>
     DifficultyVariant,
+    /// <summary>Interactive objects assembled from components, to put on any map (docs/DECISIONS_6.md §100).</summary>
+    ObjectPreset,
 }
 
 /// <summary>

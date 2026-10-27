@@ -239,6 +239,49 @@ public partial class BattleScreen
         _hud.ShowBanner($"«{u.Name}» отозван (+{refund:0.#})", Ui.Text, 2.5f);
     }
 
+    // ------------------------------------------------------------------ interactive objects (part 6, §100)
+
+    /// <summary>The selected unit uses an object (ПКМ by the object's hex or the button of the unit panel).</summary>
+    public bool InteractWith(string objectId)
+    {
+        if (Selected is not { } u) return false;
+        if (!Sim.Input.Interact(u, objectId, out var why))
+        {
+            _hud.ShowBanner("Нельзя: " + why, Ui.Bad, 2.5f);
+            return false;
+        }
+        var o = _scenario.Object(objectId);
+        _hud.ShowBanner($"{u.Name}: «{o?.Interaction?.Prompt}» — {o?.DisplayName}", Ui.Text, 2f);
+        return true;
+    }
+
+    /// <summary>ПКМ by a hex of an object with an interaction, the selected unit of the player within reach: uses it. True — handled.</summary>
+    private bool TryInteractClick()
+    {
+        if (_hover == null || Selected is not { } u || !Sim.CanPlayerCommand(u)) return false;
+        var o = _scenario.Objects.FirstOrDefault(x => x.Interaction != null && x.Occupies(_hover.Coord));
+        if (o == null || Sim.Interactive.CanInteract(u, o.Id) != null) return false;
+        return InteractWith(o.Id);
+    }
+
+    /// <summary>The state of the objects with states over them, and «⚙» over those the selected unit can use.</summary>
+    private void DrawObjectLabels()
+    {
+        var u = Selected;
+        foreach (var o in _scenario.Objects)
+        {
+            if (!Sim.Map.Contains(o.Anchor)) continue;
+            string text = "";
+            if (o.States != null && Sim.Interactive.CurrentState(o.Id) is { } st)
+                text = $"{o.DisplayName}: {st.DisplayName}" + (Sim.Interactive.PendingOf(o.Id) is { Length: > 0 } p ? $" → {o.States.Get(p)?.DisplayName ?? p} (ждёт)" : "");
+            if (u != null && o.Interaction != null && Sim.CanPlayerCommand(u) && Sim.Interactive.CanInteract(u, o.Id) == null)
+                text = (text == "" ? o.DisplayName : text) + $"\n⚙ {o.Interaction.Prompt} (ПКМ)";
+            if (text == "") continue;
+            if (Sim.FogOfWar && !_admin && !Sim.Vision.IsCellVisibleToPlayer(o.Anchor)) continue;
+            _labels.Add(LabelPos(o.Anchor, 1.1f), text, new Color(0.8f, 0.95f, 1f), 20);
+        }
+    }
+
     // ------------------------------------------------------------------ the battle saved in the middle (T28)
 
     public static string SavesDir => ProjectSettings.GlobalizePath("user://saves");

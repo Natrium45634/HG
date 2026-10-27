@@ -177,6 +177,7 @@ public static class ContentValidator
         DefCategory.ZonePreset => "пресет зоны",
         DefCategory.ModifierSet => "набор модификаторов",
         DefCategory.DifficultyVariant => "вариант сценария",
+        DefCategory.ObjectPreset => "пресет объекта",
         _ => c.ToString(),
     };
 

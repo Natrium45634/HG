@@ -181,6 +181,14 @@
           "type": "string",
           "description": "Метка карты — Для разрушения и комбинаций — пусто: где угодно"
         },
+        "objectId": {
+          "type": "string",
+          "description": "Объект (ID)"
+        },
+        "objectState": {
+          "type": "string",
+          "description": "Состояние (ID)"
+        },
         "objective": {
           "type": "string",
           "description": "Цель (ID)"
@@ -249,7 +257,8 @@
             "ObstacleDestroyed",
             "BossPhase",
             "SynergyOccurred",
-            "Environment"
+            "Environment",
+            "ObjectInState"
           ],
           "description": "Условие"
         },
@@ -648,6 +657,82 @@
       },
       "additionalProperties": true
     },
+    "InteractionDef": {
+      "type": "object",
+      "properties": {
+        "apCost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Стоимость ОД"
+        },
+        "cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перезарядка, с"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60,
+          "description": "Длительность, с — Юнит занят; оглушение или гибель прерывают"
+        },
+        "effect": {
+          "type": "string",
+          "enum": [
+            "SetState",
+            "NextState",
+            "Signal"
+          ],
+          "description": "Что делает"
+        },
+        "once": {
+          "type": "boolean",
+          "description": "Один раз"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Надпись — Что видит игрок: «Опустить мост», «Нажать рычаг»"
+        },
+        "range": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Дистанция, гексов — От любого гекса объекта"
+        },
+        "requiredStates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Только в состояниях — ID; пусто — в любом"
+        },
+        "state": {
+          "type": "string",
+          "description": "Состояние — Для «Перевести в состояние»"
+        },
+        "target": {
+          "type": "string",
+          "description": "Объект-получатель — ID объекта сценария"
+        },
+        "targetState": {
+          "type": "string",
+          "description": "Его состояние — Пусто — следующее"
+        },
+        "who": {
+          "type": "string",
+          "enum": [
+            "Player",
+            "Allies",
+            "Enemies",
+            "Anyone"
+          ],
+          "description": "Кто"
+        }
+      },
+      "additionalProperties": true
+    },
     "MissionModifierDef": {
       "type": "object",
       "properties": {
@@ -851,6 +936,83 @@
           "minimum": 0,
           "maximum": 1000,
           "description": "Волна — Номер с 1; 0 — любая"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ObjectStateDef": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID — open, closed, broken…"
+        },
+        "model": {
+          "type": "string",
+          "x-ref": "Asset",
+          "description": "Модель — Пусто — модель объекта"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "onEnter": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TriggerActionDef"
+          },
+          "description": "При входе в состояние — Действия сценария (общая шина событий)"
+        },
+        "terrain": {
+          "type": "string",
+          "x-ref": "Terrain",
+          "description": "Местность гексов объекта — Пусто — местность карты"
+        },
+        "turretActive": {
+          "type": "boolean",
+          "description": "Турель работает — Для объекта с турелью"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ObjectStatesDef": {
+      "type": "object",
+      "properties": {
+        "first": {
+          "type": "string"
+        },
+        "initial": {
+          "type": "string",
+          "description": "Начальное — ID; пусто — первое"
+        },
+        "onDestroyed": {
+          "type": "string",
+          "description": "После разрушения — ID состояния, когда здоровье объекта кончилось; пусто — не меняется"
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObjectStateDef"
+          },
+          "description": "Состояния"
+        },
+        "whenOccupied": {
+          "type": "string",
+          "enum": [
+            "Defer",
+            "Evacuate",
+            "Fall",
+            "Forbid"
+          ],
+          "description": "Если на гексах юниты"
         }
       },
       "additionalProperties": true
@@ -1593,7 +1755,8 @@
             "SquadPreset",
             "ZonePreset",
             "ModifierSet",
-            "DifficultyVariant"
+            "DifficultyVariant",
+            "ObjectPreset"
           ]
         },
         "defeat": {
@@ -1902,6 +2065,17 @@
           "type": "string",
           "description": "ID — Стабильный; не меняется при переименовании и перемещении"
         },
+        "interaction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InteractionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Взаимодействие — Компонент: кто, дистанция, ОД, длительность, что делает"
+        },
         "marker": {
           "type": "string",
           "description": "Метка карты — Связь с маркером карты (для старых сценариев)"
@@ -1926,12 +2100,34 @@
           ],
           "description": "Спавн — Компонент: из объекта появляются юниты"
         },
+        "states": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectStatesDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Состояния — Компонент: открыто / закрыто / сломано; у состояния — местность гексов, вид, действия"
+        },
         "tags": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Теги"
+        },
+        "turret": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurretDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Турель — Компонент: навык по целям (через автоатаки); без «Здоровья» — неразрушимая"
         },
         "type": {
           "type": "string",
@@ -2840,6 +3036,10 @@
           ],
           "description": "Новое состояние"
         },
+        "objectStateId": {
+          "type": "string",
+          "description": "Состояние объекта — ID; пусто — следующее"
+        },
         "objective": {
           "type": "string",
           "description": "Цель (ID)"
@@ -2931,7 +3131,8 @@
             "EndScenario",
             "LogDiagnostic",
             "OpenDeploymentZone",
-            "CloseDeploymentZone"
+            "CloseDeploymentZone",
+            "SwitchObjectState"
           ],
           "description": "Действие"
         },
@@ -3008,7 +3209,8 @@
             "PassiveTriggered",
             "WaveSpawnFinished",
             "UnitDeployed",
-            "UnitWithdrawn"
+            "UnitWithdrawn",
+            "ObjectStateChanged"
           ],
           "description": "Событие — Нет — условие проверяется каждый тик (как раньше)"
         },
@@ -3049,6 +3251,39 @@
         "once": {
           "type": "boolean",
           "description": "Однократный"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TurretDef": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 60,
+          "description": "Интервал, с"
+        },
+        "range": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Дальность — 0 — из навыка"
+        },
+        "sight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Обзор, гексов — Кого турель видит"
+        },
+        "skill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык"
+        },
+        "targets": {
+          "$ref": "#/$defs/TargetFilterDef",
+          "description": "Цели"
         }
       },
       "additionalProperties": true

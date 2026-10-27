@@ -359,6 +359,8 @@ public enum ConditionType
     [Ed("Произошла комбинация эффектов")] SynergyOccurred,
     // Part 4.
     [Ed("Переменная сценария равна")] Environment,
+    // Part 6 (§100).
+    [Ed("Объект в состоянии")] ObjectInState,
 }
 
 public enum CompareMode
@@ -408,10 +410,13 @@ public sealed class ConditionDef : ContentPart
     [Ed("Переменная"), EdShowIf(nameof(Type), ConditionType.Environment)] public string Variable { get; set; } = "";
     [Ed("Значение", "Равно ли значение переменной этому"), EdShowIf(nameof(Type), ConditionType.Environment)] public string VariableValue { get; set; } = "";
     [Ed("Доля здоровья"), EdRange(0, 1), EdShowIf(nameof(Type), ConditionType.HpBelow)] public double Fraction { get; set; } = 0.5;
+    [Ed("Объект (ID)"), EdShowIf(nameof(Type), ConditionType.ObjectInState), JsonOmitEmpty] public string ObjectId { get; set; } = "";
+    [Ed("Состояние (ID)"), EdShowIf(nameof(Type), ConditionType.ObjectInState), JsonOmitEmpty] public string ObjectState { get; set; } = "";
 
     public string Describe() => Type switch
     {
         ConditionType.Environment => $"{Variable} = {VariableValue}",
+        ConditionType.ObjectInState => $"Объект «{ObjectId}» в состоянии «{ObjectState}»",
         ConditionType.AllEnemiesDead => "Уничтожить всех врагов",
         ConditionType.AllPlayerUnitsDead => "Все юниты игрока погибли",
         ConditionType.SurviveTime => $"Продержаться {Seconds:0} с",
@@ -492,6 +497,8 @@ public enum TriggerActionType
     // Part 6, stage 6.2 (docs/DECISIONS_6.md §97): the zones of deployment open and close during the battle.
     [Ed("Открыть зону развёртывания")] OpenDeploymentZone,
     [Ed("Закрыть зону развёртывания")] CloseDeploymentZone,
+    // Part 6, stage 6.5 (§100).
+    [Ed("Перевести объект в состояние", "Компонент «Состояния»")] SwitchObjectState,
 }
 
 public enum ActionTarget
@@ -511,8 +518,9 @@ public sealed class TriggerActionDef : ContentPart
     public string Text { get; set; } = "";
     [Ed("Объект", "ID базы или объекта сценария; для зон — ID зоны развёртывания"),
      EdShowIf(nameof(Type), TriggerActionType.ActivateBase, TriggerActionType.DeactivateBase, TriggerActionType.SetTarget, TriggerActionType.SetObjectState,
-         TriggerActionType.OpenDeploymentZone, TriggerActionType.CloseDeploymentZone)]
+         TriggerActionType.OpenDeploymentZone, TriggerActionType.CloseDeploymentZone, TriggerActionType.SwitchObjectState)]
     public string Object { get; set; } = "";
+    [Ed("Состояние объекта", "ID; пусто — следующее"), EdShowIf(nameof(Type), TriggerActionType.SwitchObjectState), JsonOmitEmpty] public string ObjectStateId { get; set; } = "";
     [Ed("Группа волны", "ID группы"), EdShowIf(nameof(Type), TriggerActionType.SetGroupRoute)] public string Group { get; set; } = "";
     [Ed("Цель-юниты", "Метка или тег юнитов, которых атаковать (вместо объекта)"), EdShowIf(nameof(Type), TriggerActionType.SetTarget)] public string TargetTag { get; set; } = "";
     [Ed("Новое состояние"), EdShowIf(nameof(Type), TriggerActionType.SetObjectState)] public ObjectStateChange ObjectState { get; set; } = ObjectStateChange.Activate;
@@ -585,6 +593,7 @@ public sealed class TriggerActionDef : ContentPart
         TriggerActionType.SetObjectState => $"Объект «{Object}»: {ObjectState}",
         TriggerActionType.EndScenario => (Win ? "Завершить победой" : "Завершить поражением") + (Text != "" ? $" «{Text}»" : ""),
         TriggerActionType.LogDiagnostic => $"Диагностика «{Text}»",
+        TriggerActionType.SwitchObjectState => $"Объект «{Object}» → {(ObjectStateId != "" ? $"«{ObjectStateId}»" : "следующее состояние")}",
         TriggerActionType.OpenDeploymentZone => $"Открыть зону «{Object}»",
         TriggerActionType.CloseDeploymentZone => $"Закрыть зону «{Object}»",
         _ => Type.ToString(),
@@ -599,7 +608,7 @@ public sealed class TriggerDef : ContentPart
     [Ed("Фильтр: объект или ID", "База, объект, узел-контрольная точка, состояние, навык, пассив; пусто — любой"),
      EdShowIf(nameof(Event), ScenarioEventType.UnitSpawned, ScenarioEventType.UnitDied, ScenarioEventType.GoalReached, ScenarioEventType.BaseDestroyed,
          ScenarioEventType.ObjectActivated, ScenarioEventType.CheckpointReached, ScenarioEventType.StatusApplied, ScenarioEventType.SkillUsed,
-         ScenarioEventType.PassiveTriggered)]
+         ScenarioEventType.PassiveTriggered, ScenarioEventType.ObjectStateChanged)]
     public string EventObject { get; set; } = "";
     [Ed("Фильтр: волна", "Номер волны с 1; 0 — любая"), EdRange(0, 1000),
      EdShowIf(nameof(Event), ScenarioEventType.WaveStarted, ScenarioEventType.WaveEnded, ScenarioEventType.UnitSpawned, ScenarioEventType.UnitDied,

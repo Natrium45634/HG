@@ -1,0 +1,360 @@
+{
+  "formatVersion": 5,
+  "kind": "object_presets",
+  "items": [
+    {
+      "id": "obj_gate",
+      "name": "Ворота",
+      "description": "Открыты — проход по местности карты; закрыты — стена. Стоящих в воротах ждут.",
+      "tags": [
+        "проход"
+      ],
+      "group": "Объекты",
+      "version": 1,
+      "object": {
+        "id": "",
+        "name": "Ворота",
+        "type": "Custom",
+        "faction": "neutral",
+        "facing": "E",
+        "footprint": [
+          [
+            0,
+            1
+          ]
+        ],
+        "marker": "",
+        "tags": [],
+        "description": "",
+        "model": "",
+        "color": "#9a8f7a",
+        "states": {
+          "states": [
+            {
+              "id": "open",
+              "name": "Открыты",
+              "terrain": "",
+              "color": "#7fc98a",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            },
+            {
+              "id": "closed",
+              "name": "Закрыты",
+              "terrain": "wall",
+              "color": "#c9a27f",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            }
+          ],
+          "initial": "open",
+          "onDestroyed": "",
+          "whenOccupied": "Defer"
+        },
+        "interaction": {
+          "prompt": "Открыть / закрыть",
+          "who": "Player",
+          "range": 1,
+          "apCost": 0,
+          "duration": 1,
+          "cooldown": 2,
+          "once": false,
+          "requiredStates": [],
+          "effect": "NextState",
+          "state": "",
+          "target": "",
+          "targetState": ""
+        }
+      }
+    },
+    {
+      "id": "obj_drawbridge",
+      "name": "Подъёмный мост",
+      "description": "Поднят — пропасть; опущен — настил. Стоящих на мосту при подъёме выводит на ближайший берег.",
+      "tags": [
+        "проход"
+      ],
+      "group": "Объекты",
+      "version": 1,
+      "object": {
+        "id": "",
+        "name": "Подъёмный мост",
+        "type": "Custom",
+        "faction": "neutral",
+        "facing": "E",
+        "footprint": [
+          [
+            1,
+            0
+          ]
+        ],
+        "marker": "",
+        "tags": [],
+        "description": "",
+        "model": "",
+        "color": "#a08060",
+        "states": {
+          "states": [
+            {
+              "id": "raised",
+              "name": "Поднят",
+              "terrain": "chasm",
+              "color": "#c07050",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            },
+            {
+              "id": "lowered",
+              "name": "Опущен",
+              "terrain": "floor",
+              "color": "#70b080",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            }
+          ],
+          "initial": "raised",
+          "onDestroyed": "",
+          "whenOccupied": "Evacuate"
+        },
+        "interaction": {
+          "prompt": "Опустить / поднять мост",
+          "who": "Player",
+          "range": 1,
+          "apCost": 1,
+          "duration": 2,
+          "cooldown": 3,
+          "once": false,
+          "requiredStates": [],
+          "effect": "NextState",
+          "state": "",
+          "target": "",
+          "targetState": ""
+        }
+      }
+    },
+    {
+      "id": "obj_lever",
+      "name": "Рычаг",
+      "description": "Сигнал другому объекту: укажите получателя (ID) в «Взаимодействие → Объект-получатель».",
+      "tags": [
+        "переключатель"
+      ],
+      "group": "Объекты",
+      "version": 1,
+      "object": {
+        "id": "",
+        "name": "Рычаг",
+        "type": "Interaction",
+        "faction": "neutral",
+        "facing": "E",
+        "footprint": [],
+        "marker": "",
+        "tags": [],
+        "description": "",
+        "model": "",
+        "color": "#d0c060",
+        "interaction": {
+          "prompt": "Потянуть рычаг",
+          "who": "Player",
+          "range": 1,
+          "apCost": 0,
+          "duration": 1,
+          "cooldown": 2,
+          "once": false,
+          "requiredStates": [],
+          "effect": "Signal",
+          "state": "",
+          "target": "",
+          "targetState": ""
+        }
+      }
+    },
+    {
+      "id": "obj_turret",
+      "name": "Турель",
+      "description": "Стреляет навыком «Разряд» по противникам; состояние «выключена» её останавливает.",
+      "tags": [
+        "турель"
+      ],
+      "group": "Объекты",
+      "version": 1,
+      "object": {
+        "id": "",
+        "name": "Турель",
+        "type": "Defense",
+        "faction": "enemy",
+        "facing": "E",
+        "footprint": [],
+        "marker": "",
+        "tags": [],
+        "description": "",
+        "model": "",
+        "color": "#c05050",
+        "states": {
+          "states": [
+            {
+              "id": "on",
+              "name": "Работает",
+              "terrain": "",
+              "color": "#e06060",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            },
+            {
+              "id": "off",
+              "name": "Выключена",
+              "terrain": "",
+              "color": "#707070",
+              "model": "",
+              "turretActive": false,
+              "onEnter": []
+            }
+          ],
+          "initial": "on",
+          "onDestroyed": "",
+          "whenOccupied": "Defer"
+        },
+        "turret": {
+          "skill": "zap",
+          "interval": 2,
+          "range": 0,
+          "targets": {
+            "enemies": true,
+            "allies": false,
+            "neutrals": false,
+            "self": false
+          },
+          "sight": 6
+        }
+      }
+    },
+    {
+      "id": "obj_trap",
+      "name": "Ловушка",
+      "description": "Взведена — опасная клетка (местность «ловушка»); взводит игрок.",
+      "tags": [
+        "ловушка"
+      ],
+      "group": "Объекты",
+      "version": 1,
+      "object": {
+        "id": "",
+        "name": "Ловушка",
+        "type": "Custom",
+        "faction": "neutral",
+        "facing": "E",
+        "footprint": [],
+        "marker": "",
+        "tags": [],
+        "description": "",
+        "model": "",
+        "color": "#a060c0",
+        "states": {
+          "states": [
+            {
+              "id": "idle",
+              "name": "Не взведена",
+              "terrain": "",
+              "color": "#808080",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            },
+            {
+              "id": "armed",
+              "name": "Взведена",
+              "terrain": "trap_floor",
+              "color": "#c060e0",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            }
+          ],
+          "initial": "idle",
+          "onDestroyed": "",
+          "whenOccupied": "Forbid"
+        },
+        "interaction": {
+          "prompt": "Взвести ловушку",
+          "who": "Player",
+          "range": 1,
+          "apCost": 1,
+          "duration": 1,
+          "cooldown": 0,
+          "once": true,
+          "requiredStates": [
+            "idle"
+          ],
+          "effect": "SetState",
+          "state": "armed",
+          "target": "",
+          "targetState": ""
+        }
+      }
+    },
+    {
+      "id": "obj_cover",
+      "name": "Укрытие",
+      "description": "Ящики: можно разрушить; после разрушения — обломки (проходимо).",
+      "tags": [
+        "укрытие"
+      ],
+      "group": "Объекты",
+      "version": 1,
+      "object": {
+        "id": "",
+        "name": "Укрытие",
+        "type": "Defense",
+        "faction": "neutral",
+        "facing": "E",
+        "footprint": [],
+        "marker": "",
+        "tags": [],
+        "description": "",
+        "model": "",
+        "color": "#b09060",
+        "health": {
+          "maxHp": 120,
+          "armor": 0,
+          "regen": 0,
+          "destructible": true,
+          "main": false,
+          "importance": 0.5,
+          "defensePriority": 0,
+          "defense": {},
+          "removeLeaked": true
+        },
+        "states": {
+          "states": [
+            {
+              "id": "whole",
+              "name": "Целое",
+              "terrain": "crates",
+              "color": "",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            },
+            {
+              "id": "broken",
+              "name": "Разрушено",
+              "terrain": "rubble",
+              "color": "#606060",
+              "model": "",
+              "turretActive": true,
+              "onEnter": []
+            }
+          ],
+          "initial": "whole",
+          "onDestroyed": "broken",
+          "whenOccupied": "Defer"
+        }
+      }
+    }
+  ]
+}

@@ -273,6 +273,18 @@ Heaviest, Lightest, LowestHealth`), `priority`, `maxDuration`, `passTime`;
 * у сценария — `modifierSets[]` (свои наборы); на копии боя — служебные
   `appliedVariant`, `appliedModifiers[]`, `appliedNotes[]`.
 
+Часть 6, этап 6.5 ([§100](DECISIONS_6.md)): у объекта сценария —
+необязательные компоненты `states {states[] (id, name, terrain, color,
+model, turretActive, onEnter[]), initial, onDestroyed, whenOccupied
+(Defer, Evacuate, Fall, Forbid)}`, `interaction {prompt, who (Player,
+Allies, Enemies, Anyone), range, apCost, duration, cooldown, once,
+requiredStates[], effect (SetState, NextState, Signal), state, target,
+targetState}`, `turret {skill, interval, range, targets, sight}`. Действие
+`SwitchObjectState` (`object`, `objectStateId`), условие `ObjectInState`
+(`objectId`, `objectState`), событие `ObjectStateChanged`. Операция реплея
+`Interact` (`unit`, `text` — ID объекта). `object_presets.json` —
+`object` (объект без места и ID).
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

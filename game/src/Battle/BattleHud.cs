@@ -45,6 +45,8 @@ public partial class BattleHud : Control
     private Label _blockInfo = null!;
     private Label _autoInfo = null!;
     private Button _autoToggle = null!;
+    private HFlowContainer _interactRow = null!;
+    private string _interactKey = "";
     private VBoxContainer _intel = null!;
 
     private PanelContainer _actionPanel = null!;
@@ -434,6 +436,10 @@ public partial class BattleHud : Control
         _unitBox.AddChild(_current);
         _blockInfo = Ui.Label("", 13, new Color(1f, 0.7f, 0.4f), wrap: true);
         _unitBox.AddChild(_blockInfo);
+        // Part 6 (§100): the objects within reach — a button per interaction (disabled with the reason).
+        _interactRow = new HFlowContainer { Name = "InteractRow", Visible = false };
+        _interactRow.AddThemeConstantOverride("h_separation", 4);
+        _unitBox.AddChild(_interactRow);
         var autoRow = Ui.HBox(6);
         _autoInfo = Ui.Label("", 12, new Color(0.75f, 0.9f, 1f), wrap: true).Expand();
         _autoToggle = Ui.Button("Автоатака: вкл", ToggleAutoAttack, "Включить/выключить автоатаки выбранного юнита");
@@ -1049,6 +1055,35 @@ public partial class BattleHud : Control
         return "";
     }
 
+    /// <summary>
+    /// The interactions within reach of the selected unit of the player (ТЗ ч. 6, 6.2 «Interaction»): an object whose reach
+    /// plus two hexes covers the unit is listed; the button is off with the reason while it cannot be used.
+    /// </summary>
+    private void RefreshInteractions(Unit u)
+    {
+        var sc = Sim.Scenario.Def;
+        var near = new List<(ScenarioObjectDef O, string? Why)>();
+        if (sc != null && u.Alive && Sim.CanPlayerCommand(u))
+            foreach (var o in sc.Objects)
+                if (o.Interaction is { } it && o.Cells().Min(c => HexCoord.Distance(c, u.Pos)) <= it.Range + 2)
+                    near.Add((o, Sim.Interactive.CanInteract(u, o.Id)));
+        string key = u.Id + "|" + string.Join(";", near.Select(n => n.O.Id + ":" + n.Why + ":" + Sim.Interactive.StateOf(n.O.Id)));
+        if (key == _interactKey) return;
+        _interactKey = key;
+        Ui.ClearChildren(_interactRow);
+        _interactRow.Visible = near.Count > 0;
+        foreach (var (o, why) in near)
+        {
+            var it = o.Interaction!;
+            string state = Sim.Interactive.CurrentState(o.Id)?.DisplayName ?? "";
+            var b = Ui.Button($"⚙ {it.Prompt} — {o.DisplayName}" + (state != "" ? $" ({state})" : ""), () => _bs.InteractWith(o.Id),
+                why ?? $"{(it.ApCost > 0 ? $"{it.ApCost:0.#} ОД, " : "")}{it.Duration:0.#} с" + (it.Cooldown > 0 ? $", перезарядка {it.Cooldown:0.#} с" : ""));
+            b.Name = "Interact_" + o.Id;
+            b.Disabled = why != null;
+            _interactRow.AddChild(b);
+        }
+    }
+
     private void RefreshUnit(bool slow)
     {
         var u = _bs.Selected;
@@ -1059,6 +1094,7 @@ public partial class BattleHud : Control
         {
             _blockInfo.Text = u.Alive ? BlockLine(u) : "";
             _blockInfo.Visible = _blockInfo.Text.Length > 0;
+            RefreshInteractions(u);
         }
         bool intel = !Sim.Knowledge.IsFullyKnown(u);
         if (intel) _autoInfo.GetParent<Control>().Visible = false;

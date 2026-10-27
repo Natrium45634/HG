@@ -245,7 +245,8 @@
             "SquadPreset",
             "ZonePreset",
             "ModifierSet",
-            "DifficultyVariant"
+            "DifficultyVariant",
+            "ObjectPreset"
           ]
         },
         "clipLengths": {

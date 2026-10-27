@@ -118,6 +118,14 @@
           "type": "string",
           "description": "Метка карты — Для разрушения и комбинаций — пусто: где угодно"
         },
+        "objectId": {
+          "type": "string",
+          "description": "Объект (ID)"
+        },
+        "objectState": {
+          "type": "string",
+          "description": "Состояние (ID)"
+        },
         "objective": {
           "type": "string",
           "description": "Цель (ID)"
@@ -186,7 +194,8 @@
             "ObstacleDestroyed",
             "BossPhase",
             "SynergyOccurred",
-            "Environment"
+            "Environment",
+            "ObjectInState"
           ],
           "description": "Условие"
         },
@@ -814,7 +823,8 @@
             "SquadPreset",
             "ZonePreset",
             "ModifierSet",
-            "DifficultyVariant"
+            "DifficultyVariant",
+            "ObjectPreset"
           ]
         },
         "color": {

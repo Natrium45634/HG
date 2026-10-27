@@ -50,14 +50,31 @@ public sealed class StructureSystem
             AiProfile = "",
             SpawnWarning = false,
             Visual = new UnitVisualDef { Model = o.Model, Color = o.Color },
-        };
+        }.Also(d => Turret(d, o));
+    }
+
+    /// <summary>Component «Турель» (part 6, §100): the skill of the structure as its auto-attack — the common hit, resistances and cooldowns.</summary>
+    private static void Turret(UnitDef d, ScenarioObjectDef o)
+    {
+        if (o.Turret is not { Skill.Length: > 0 } t) return;
+        d.Skills.Add(t.Skill);
+        d.BasicAttack = t.Skill;
+        d.Stats[Stats.DetectionRange] = t.Sight;
+        d.Stats[Stats.ApMax] = 100;
+        d.Stats[Stats.ApRegen] = 100;
+        d.Tags.Add("turret");
+        d.AutoAttacks.Add(new AutoAttackDef
+        {
+            Skill = t.Skill, Interval = t.Interval, Range = t.Range, Targets = ContentJson.Clone(t.Targets), RequireDetection = false, RequireLoS = true,
+            ApCost = 0, StopWhen = new(),
+        });
     }
 
     public void Load(ScenarioDef sc)
     {
         foreach (var o in sc.Objects)
         {
-            if (o.Health == null || string.IsNullOrEmpty(o.Id)) continue;
+            if (o.Health == null && o.Turret == null || string.IsNullOrEmpty(o.Id)) continue;
             var cells = o.Cells().Where(_sim.Map.Contains).ToList();
             if (cells.Count == 0 || !cells.Contains(o.Anchor))
             {
@@ -68,7 +85,7 @@ public sealed class StructureSystem
             u.IsStructure = true;
             u.ObjectId = o.Id;
             u.Footprint = cells;
-            u.Indestructible = !o.Health.Destructible;
+            u.Indestructible = o.Health is not { Destructible: true }; // a turret without «Здоровье» cannot be destroyed
             u.AiControlled = false;
             foreach (var c in cells.Skip(1)) _sim.Map.Get(c)?.Occupants.Add(u);
             _byObject[o.Id] = u;
@@ -195,5 +212,14 @@ public sealed class StructureSystem
                 return rule.Condition.Describe();
         }
         return null;
+    }
+}
+
+internal static class StructureDefExt
+{
+    public static T Also<T>(this T value, System.Action<T> a)
+    {
+        a(value);
+        return value;
     }
 }

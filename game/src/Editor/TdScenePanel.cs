@@ -228,6 +228,17 @@ public partial class TdScenePanel : DefListPanel
     private IEnumerable<(string, string)> ObjectChoices(Func<ScenarioObjectDef, bool> filter) =>
         (_sc?.Objects ?? new()).Where(filter).Select(o => (o.Id, $"{o.DisplayName} [{o.Id}]"));
 
+    /// <summary>The states of the objects (part 6, §100): of the selected object first, then of the others.</summary>
+    private IEnumerable<(string, string)> StateChoices()
+    {
+        var seen = new HashSet<string>();
+        var objects = (_sc?.Objects ?? new()).OrderBy(o => o.Id == SelectedObject ? 0 : 1);
+        foreach (var o in objects)
+            foreach (var s in o.States?.States ?? new())
+                if (s.Id != "" && seen.Add(s.Id))
+                    yield return (s.Id, $"{s.DisplayName} [{s.Id}] — {o.DisplayName}");
+    }
+
     private IEnumerable<(string, string)> RouteChoices() => (_sc?.Routes ?? new()).Select(r => (r.Id, $"{r.DisplayName} [{r.Id}]"));
 
     private void Edited(bool preview = false)
@@ -948,6 +959,21 @@ public partial class TdScenePanel : DefListPanel
                     Btn("⟳ Повернуть (R)", () => Rotate(so, 1));
                     Btn("⧉ Дублировать", () => Duplicate(so));
                     Btn("✗ Удалить (Delete)", () => Delete(so));
+                    // Part 6 (ТЗ 6.4, §100): the object as a preset, and a test of it alone on an empty map.
+                    Btn("💾 Сохранить как пресет объекта", () => SaveObjectPreset(so), "В библиотеку («Пресеты объектов»): компоненты и настройки, без места и ID", "TdObjSavePreset");
+                    Btn("▶ Тест объекта на пустой карте", () => TestObject(so), "Объект один на поле 9×6, рядом рыцарь игрока; контент не меняется", "TdObjTest");
+                }
+                var presets = Ctx.Db.All<ObjectPresetDef>().ToList();
+                if (presets.Count > 0)
+                {
+                    var pick = new OptionButton { Name = "TdObjFromPreset", FocusMode = FocusModeEnum.None };
+                    pick.AddItem("+ Объект из пресета…");
+                    foreach (var p in presets) pick.AddItem(p.DisplayName);
+                    pick.ItemSelected += i =>
+                    {
+                        if (i > 0) PlaceFromPreset(presets[(int)i - 1]);
+                    };
+                    _library.AddChild(pick);
                 }
                 break;
             }
@@ -1216,6 +1242,45 @@ public partial class TdScenePanel : DefListPanel
         _ => "•",
     };
 
+    /// <summary>«Сохранить как пресет объекта» (part 6, §100).</summary>
+    public ObjectPresetDef SaveObjectPreset(ScenarioObjectDef o)
+    {
+        int n = 1;
+        string id;
+        do id = $"obj_{(o.Id != "" ? o.Id : "object")}_{n++}"; while (Ctx.Db.Get<ObjectPresetDef>(id) != null);
+        var p = ObjectPresets.From(o, id);
+        Ctx.Db.Add(p);
+        Ctx.MarkDirty();
+        _status.Text = $"Пресет объекта «{p.DisplayName}» [{p.Id}] сохранён в черновик (раздел «Пресеты объектов»)";
+        RefreshLibrary();
+        return p;
+    }
+
+    /// <summary>A preset put on the first free hex near the middle of the map (then it is moved by dragging).</summary>
+    public ScenarioObjectDef? PlaceFromPreset(ObjectPresetDef p)
+    {
+        if (_sc == null || _map == null) return null;
+        var cells = _map.Cells.Select(c => c.C).ToList();
+        var mid = new HexCoord((int)Math.Round(cells.Average(c => c.Q)), (int)Math.Round(cells.Average(c => c.R)));
+        var free = cells.Where(c => ObjectAt(c) == null && _sc.Units.All(u => u.C != c)).OrderBy(c => HexCoord.Distance(c, mid)).ThenBy(c => c.R).ThenBy(c => c.Q).FirstOrDefault();
+        var o = ObjectPresets.Place(_sc, p, free);
+        SelectedObject = o.Id;
+        Edited(true);
+        RefreshLibrary();
+        RefreshProps();
+        _status.Text = $"Из пресета: «{o.DisplayName}» [{o.Id}] на {free} — перетащите на место";
+        return o;
+    }
+
+    /// <summary>«Тест объекта на пустой карте» (ТЗ 6.4): a battle of the sandbox; the content of the project is not changed.</summary>
+    private void TestObject(ScenarioObjectDef o)
+    {
+        var (db, sc) = ObjectPresets.Sandbox(Ctx.Db, o, _sc);
+        ContentValidator.Validate(db);
+        HexTactics.Game.App.Main.Instance.Content.Autosave();
+        HexTactics.Game.App.Main.Instance.ShowBattle(sc, db, admin: true, onExit: () => HexTactics.Game.App.Main.Instance.ShowEditor());
+    }
+
     private PropertyGrid Grid(object target, Action? changed = null, Action<string>? prop = null)
     {
         var grid = new PropertyGrid { LabelWidth = 170 };
@@ -1226,6 +1291,11 @@ public partial class TdScenePanel : DefListPanel
         grid.Choices[nameof(RouteDef.Fallback)] = RouteChoices;
         grid.Choices[nameof(BaseDefeatDef.MainBase)] = () => ObjectChoices(o => o.Type == ScenarioObjectType.PlayerBase);
         grid.Choices[nameof(TriggerActionDef.Object)] = () => ObjectChoices(_ => true);
+        grid.Choices[nameof(InteractionDef.State)] = StateChoices;
+        grid.Choices[nameof(InteractionDef.TargetState)] = StateChoices;
+        grid.Choices[nameof(ObjectStatesDef.Initial)] = StateChoices;
+        grid.Choices[nameof(ObjectStatesDef.OnDestroyed)] = StateChoices;
+        grid.Choices[nameof(TriggerActionDef.ObjectStateId)] = StateChoices;
         grid.SetTarget(target, Ctx.Db);
         grid.Changed += () =>
         {

@@ -96,6 +96,7 @@ public sealed class Simulation
         Squad = new SquadSystem(this);
         Deployment = new DeploymentSystem(this);
         Mission = new MissionModifierSystem(this);
+        Interactive = new ObjectSystem(this);
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
         Categories = new CategoryCache(Content);
@@ -164,6 +165,8 @@ public sealed class Simulation
     public DeploymentSystem Deployment { get; }
     /// <summary>The modifiers of a mission for units (part 6, §99).</summary>
     public MissionModifierSystem Mission { get; }
+    /// <summary>The states, interactions and signals of the objects of the scenario (part 6, §100).</summary>
+    public ObjectSystem Interactive { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }
@@ -556,6 +559,7 @@ public sealed class Simulation
         Deployment.Update();
         Scenario.Update();
         Mission.Update();
+        Interactive.Update();
         p.End("Сценарий", t);
         t = p.Begin();
         Ai.Update();

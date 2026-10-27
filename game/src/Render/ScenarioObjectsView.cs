@@ -22,10 +22,11 @@ public partial class ScenarioObjectsView : Node3D
     /// <summary>Also draws objects with health (the editor has no simulation for them).</summary>
     public bool IncludeStructures { get; set; }
 
-    public void Sync(ScenarioDef? sc, BattleMap? map, ContentDatabase db)
+    /// <param name="stateColor">The colour of the current state of an object (part 6, §100); null — its own colour.</param>
+    public void Sync(ScenarioDef? sc, BattleMap? map, ContentDatabase db, Func<ScenarioObjectDef, Color?>? stateColor = null)
     {
         string key = sc == null || map == null ? "" : string.Join(";", sc.Objects.Select(o =>
-            $"{o.Id}|{o.Type}|{o.Anchor}|{o.Facing}|{o.Faction}|{o.Color}|{o.Health != null}|{string.Join(",", o.Footprint)}")) + IncludeStructures;
+            $"{o.Id}|{o.Type}|{o.Anchor}|{o.Facing}|{o.Faction}|{o.Color}|{o.Health != null}|{o.Turret != null}|{string.Join(",", o.Footprint)}|{stateColor?.Invoke(o)}")) + IncludeStructures;
         if (key == _key) return;
         _key = key;
         foreach (var c in GetChildren()) c.QueueFree();
@@ -33,9 +34,9 @@ public partial class ScenarioObjectsView : Node3D
         if (sc == null || map == null) return;
         foreach (var o in sc.Objects)
         {
-            if (o.Health != null && !IncludeStructures) continue;
+            if ((o.Health != null || o.Turret != null) && !IncludeStructures) continue;
             if (!map.Contains(o.Anchor)) continue;
-            var fcol = Ui.Parse(o.Color, Ui.Parse(db.Faction(o.Faction)?.Color, new Color(0.7f, 0.7f, 0.7f)));
+            var fcol = stateColor?.Invoke(o) ?? Ui.Parse(o.Color, Ui.Parse(db.Faction(o.Faction)?.Color, new Color(0.7f, 0.7f, 0.7f)));
             var node = new Node3D { Name = "Obj_" + o.Id, Position = Board.Center(o.Anchor, Board.TopY(map.Get(o.Anchor))) };
             AddChild(node);
             foreach (var c in o.Cells().Where(map.Contains))

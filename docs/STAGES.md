@@ -2732,3 +2732,24 @@ Windows-сборка проверена самопроверкой на Windows 
   `game/content/{modifier_sets,difficulty_variants}.json`; `docs/schema/*`.
 * **Тесты**: `Part6ModifierTests` (5): T17, T18; UI —
   `variant_menu_battle_and_modifiers_tab`.
+
+## Ч6 · Этап 6.5. Интерактивные объекты
+
+* **Сделано** ([§100](DECISIONS_6.md)):
+  * компоненты объекта «Состояния» (местность, вид, действия, политика для
+    стоящих юнитов), «Взаимодействие» (кто, дистанция, ОД, длительность,
+    перезарядка, сигнал другому объекту), «Турель» (навык через автоатаки);
+  * действие «Перевести объект в состояние», условие «Объект в
+    состоянии», событие «Объект сменил состояние»; обрыв цепочек;
+  * проверка ссылок, сигналов и колец до запуска;
+  * пресеты объектов (шесть в контенте), «тест на пустой карте»,
+    постановка из пресета; кнопки взаимодействия и подписи состояний в бою;
+  * состояния объектов в отпечатке — сохранение боя их восстанавливает.
+* **Файлы**: ядро — `src/HexTactics.Core/Sim/{ObjectSystem,StructureSystem,ScenarioSystem,PlayerInput,SimDigest,Simulation}.cs`,
+  `Content/{ObjectPresets,ScenarioObjectsCheck,OperationCatalog…}.cs`,
+  `Content/Defs/{ScenarioObjectDefs,MapScenarioDefs,AutoBattleDefs,Common}.cs`;
+  игра — `game/src/Battle/{BattleDeploy,BattleHud,BattleScreen}.cs`,
+  `game/src/Render/ScenarioObjectsView.cs`, `game/src/Editor/{TdScenePanel,EditorScreen}.cs`;
+  контент — `game/content/object_presets.json`; `docs/schema/*`.
+* **Тесты**: `Part6ObjectTests` (8): T19, T20; UI —
+  `object_preset_sandbox_and_interaction`.

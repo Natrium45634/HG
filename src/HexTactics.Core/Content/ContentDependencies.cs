@@ -141,6 +141,7 @@ public static class ContentDependencies
             DefCategory.ZonePreset => ("пресете зоны", "пресетах зон"),
             DefCategory.ModifierSet => ("наборе модификаторов", "наборах модификаторов"),
             DefCategory.DifficultyVariant => ("варианте сценария", "вариантах сценариев"),
+            DefCategory.ObjectPreset => ("пресете объекта", "пресетах объектов"),
             DefCategory.Faction => ("фракции", "фракциях"),
             DefCategory.AiProfile => ("профиле ИИ", "профилях ИИ"),
             DefCategory.Asset => ("ресурсе", "ресурсах"),

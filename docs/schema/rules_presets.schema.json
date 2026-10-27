@@ -1507,7 +1507,8 @@
             "SquadPreset",
             "ZonePreset",
             "ModifierSet",
-            "DifficultyVariant"
+            "DifficultyVariant",
+            "ObjectPreset"
           ]
         },
         "displayName": {

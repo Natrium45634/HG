@@ -208,6 +208,8 @@ public sealed partial class ScenarioSystem
         ScenarioObjects.ResolveMarkers(sc, _sim.Map.Def);
         // Structures first: their hexes are taken before units are placed (docs/DECISIONS_4.md §56).
         _sim.Structures.Load(sc);
+        // The states of the objects (part 6, §100): their terrain is set before anyone is placed.
+        _sim.Interactive.Load(sc);
         foreach (var su in sc.Units)
         {
             var def = _sim.Content.Unit(su.Unit);
@@ -1122,6 +1124,9 @@ public sealed partial class ScenarioSystem
             case TriggerActionType.DeactivateBase:
                 SetObjectActive(a.Object, false, source);
                 break;
+            case TriggerActionType.SwitchObjectState:
+                _sim.Interactive.SetState(a.Object, a.ObjectStateId, source, out _);
+                break;
             case TriggerActionType.OpenDeploymentZone:
             case TriggerActionType.CloseDeploymentZone:
                 SetZoneOpen(a.Object, a.Type == TriggerActionType.OpenDeploymentZone, source);
@@ -1339,6 +1344,8 @@ public sealed partial class ScenarioSystem
                 return _flags.Contains(c.Flag);
             case ConditionType.Environment:
                 return Variable(c.Variable) == c.VariableValue;
+            case ConditionType.ObjectInState:
+                return _sim.Interactive.StateOf(c.ObjectId) == c.ObjectState;
             case ConditionType.HpBelow:
             {
                 if (string.IsNullOrEmpty(c.UnitTag)) return self != null && self.Alive && self.HpFraction < c.Fraction;

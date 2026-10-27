@@ -90,6 +90,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("deploy_ribbon_call_retreat_save_load", DeployRibbonCallRetreat));
         _tests.Add(("editor_deploy_zones_check_presets", EditorDeployZones));
         _tests.Add(("variant_menu_battle_and_modifiers_tab", VariantMenuAndModifiersTab));
+        _tests.Add(("object_preset_sandbox_and_interaction", ObjectPresetSandboxAndInteraction));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3183,6 +3184,60 @@ public partial class UiTestRunner : Node
         await Frames(4);
         await Shot("part6_modifiers_tab");
         _ = ed;
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.5 (ТЗ ч. 6, 6.2–6.5, 12.5; §100): in the TD scene a gate is put from a preset and saved as a preset of
+    /// its own; «тест на пустой карте» opens a battle with it; the knight next to it uses it from the unit panel — the gate
+    /// closes after its second, the terrain turns into a wall, the label over it says so.
+    /// </summary>
+    private async Task ObjectPresetSandboxAndInteraction()
+    {
+        var ed = await OpenEditor("td");
+        var draft = ed.Context.Db;
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass_defense");
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = panel.Scene!;
+        int objects = sc.Objects.Count;
+        var keepPresets = draft.All<ObjectPresetDef>().Select(p => p.Id).ToHashSet();
+        try
+        {
+            await CameraSettled(panel.View.Board.Rig);
+            var pick = Find<OptionButton>(panel).First(o => o.Name == "TdObjFromPreset");
+            int gate = Enumerable.Range(0, pick.ItemCount).First(i => pick.GetItemText(i) == "Ворота");
+            pick.Select(gate);
+            pick.EmitSignal(OptionButton.SignalName.ItemSelected, gate);
+            await Frames(4);
+            Check(sc.Objects.Count == objects + 1 && sc.Objects[^1].States != null && panel.SelectedObject == sc.Objects[^1].Id, "ворота из пресета поставлены и выбраны");
+            Check(Find<Button>(panel).Any(b => b.IsVisibleInTree() && (b.Text == "▾ Состояния" || b.Text == "▸ Состояния")), "в свойствах объекта — компонент «Состояния»");
+            await PressNamed(panel, "TdObjSavePreset");
+            Check(draft.All<ObjectPresetDef>().Count(p => !keepPresets.Contains(p.Id)) == 1, "объект сохранён как пресет");
+            await Shot("part6_object_editor");
+            await PressNamed(panel, "TdObjTest");
+            await Frames(10);
+        }
+        finally
+        {
+            sc.Objects.RemoveRange(objects, sc.Objects.Count - objects);
+            foreach (var p in draft.All<ObjectPresetDef>().Where(p => !keepPresets.Contains(p.Id)).ToList()) draft.Table(DefCategory.ObjectPreset).Remove(p.Id);
+        }
+        var bs = Battle();
+        Check(bs.Sim.Scenario.Def!.Id == "object_sandbox", "тест объекта — бой на пустой карте");
+        var o = bs.Sim.Scenario.Def.Objects[0];
+        var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+        bs.Select(knight, byPlayer: false);
+        bs.Driver.Paused = true;
+        await Frames(20);
+        var use = Find<Button>(bs.Hud).FirstOrDefault(b => b.Name == "Interact_" + o.Id);
+        Check(use != null && !use.Disabled && use.Text.Contains("Ворота"), "кнопка взаимодействия у рыцаря рядом с воротами");
+        await Click(use!.GetGlobalRect().GetCenter());
+        Check(bs.Sim.Interactive.InProgress.Count == 1, "взаимодействие началось");
+        for (int i = 0; i < bs.Sim.TicksFor(1.2); i++) bs.Sim.Step();
+        await Frames(10);
+        Check(bs.Sim.Interactive.StateOf(o.Id) == "closed" && bs.Sim.Map.Get(o.Anchor)!.Terrain.Id == "wall", "ворота закрылись: стена");
+        await Shot("part6_object_battle");
     }
 
     private async Task PressNamed(Node root, string name)

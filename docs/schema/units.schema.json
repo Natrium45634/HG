@@ -539,6 +539,14 @@
           "type": "string",
           "description": "Метка карты — Для разрушения и комбинаций — пусто: где угодно"
         },
+        "objectId": {
+          "type": "string",
+          "description": "Объект (ID)"
+        },
+        "objectState": {
+          "type": "string",
+          "description": "Состояние (ID)"
+        },
         "objective": {
           "type": "string",
           "description": "Цель (ID)"
@@ -607,7 +615,8 @@
             "ObstacleDestroyed",
             "BossPhase",
             "SynergyOccurred",
-            "Environment"
+            "Environment",
+            "ObjectInState"
           ],
           "description": "Условие"
         },
@@ -1459,6 +1468,10 @@
           ],
           "description": "Новое состояние"
         },
+        "objectStateId": {
+          "type": "string",
+          "description": "Состояние объекта — ID; пусто — следующее"
+        },
         "objective": {
           "type": "string",
           "description": "Цель (ID)"
@@ -1550,7 +1563,8 @@
             "EndScenario",
             "LogDiagnostic",
             "OpenDeploymentZone",
-            "CloseDeploymentZone"
+            "CloseDeploymentZone",
+            "SwitchObjectState"
           ],
           "description": "Действие"
         },
@@ -1854,7 +1868,8 @@
             "SquadPreset",
             "ZonePreset",
             "ModifierSet",
-            "DifficultyVariant"
+            "DifficultyVariant",
+            "ObjectPreset"
           ]
         },
         "creatureCategory": {

@@ -113,6 +113,13 @@ public sealed class PlayerInput
         return _sim.Deployment.Retreat(u, out why);
     }
 
+    /// <summary>Uses an object of the scenario (part 6, §100): the interaction of its component.</summary>
+    public bool Interact(Unit u, string objectId, out string why)
+    {
+        Write(new ReplayEntry { Op = ReplayOp.Interact, Unit = u.Id, Text = objectId });
+        return _sim.Interactive.Interact(u, objectId, out why);
+    }
+
     public bool Confirm()
     {
         Write(new ReplayEntry { Op = ReplayOp.Confirm });
@@ -147,6 +154,7 @@ public sealed class PlayerInput
             case ReplayOp.Confirm: _sim.Placement.Confirm(); break;
             case ReplayOp.Deploy: _sim.Deployment.Deploy(e.Index, e.Cell!.Value, e.Dir ?? HexDirection.E, out _); break;
             case ReplayOp.Retreat: _sim.Deployment.Retreat(u!, out _); break;
+            case ReplayOp.Interact: _sim.Interactive.Interact(u!, e.Text, out _); break;
         }
         return true;
     }
@@ -169,6 +177,7 @@ public enum ReplayOp
     Confirm,
     Deploy,
     Retreat,
+    Interact,
 }
 
 /// <summary>One call of the player with its tick.</summary>

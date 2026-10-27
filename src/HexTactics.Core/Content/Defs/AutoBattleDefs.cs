@@ -169,6 +169,8 @@ public enum ScenarioEventType
     // Part 6 (§97).
     [Ed("Вызван боец отряда", "За очки развёртывания")] UnitDeployed,
     [Ed("Боец отряда отозван")] UnitWithdrawn,
+    // Part 6, stage 6.5 (§100).
+    [Ed("Объект сменил состояние", "Фильтр: ID объекта")] ObjectStateChanged,
 }
 
 /// <summary>«Изменить состояние объекта».</summary>

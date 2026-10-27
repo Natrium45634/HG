@@ -452,7 +452,7 @@ public partial class BattleScreen : Node
         UpdateBlockCaptions();
         Board.TimeScale = (float)Driver.Speed;
         Board.SyncUnits(Sim, Driver.Alpha, UnitVisible, _ => false, dt);
-        Board.Objects.Sync(_scenario, Sim.Map, _db);
+        Board.Objects.Sync(_scenario, Sim.Map, _db, o => Sim.Interactive.CurrentState(o.Id) is { Color.Length: > 0 } st ? Ui.Parse(st.Color, Colors.White) : null);
         Board.SetNight(Sim.Scenario.Variable("time_of_day") == "night");
         foreach (var v in Board.Views.Values) v.ShowName = _diag && v.Unit.AiControlled;
         Board.SyncFog(Sim, fog);
@@ -890,6 +890,7 @@ public partial class BattleScreen : Node
         DrawRecentAreas(o);
         DrawGhosts(o);
         DrawBlocking(o);
+        DrawObjectLabels();
         DrawSpawnWarnings(o);
         DrawObjectives(o);
         DrawPlacement(o, pulse);
@@ -1396,6 +1397,7 @@ public partial class BattleScreen : Node
     private void OnRightClick()
     {
         if (DeployStepBack()) return;
+        if (TryInteractClick()) return;
         if (TryPlacementRightClick()) return;
         // During a gesture or planning: cancel / one step back (docs/DECISIONS_3.md §39); otherwise the quick order of part 1.
         if (_gesture != null)

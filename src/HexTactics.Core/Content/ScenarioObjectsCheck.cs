@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HexTactics.Core.Hex;
@@ -56,7 +57,7 @@ public static class ScenarioObjectsCheck
                 if (o.Health != null && t != null && (!t.IsPassableFor("walk") || cell.Blocked == true))
                     list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}» стоит на непроходимом гексе {c} ({t.DisplayName})", c, o.Id));
                 // Structures take their whole area; other objects (points, zones) may lie on it.
-                if (o.Health == null) continue;
+                if (o.Health == null && o.Turret == null) continue;
                 if (taken.TryGetValue(c, out var other))
                     list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}» и «{other.DisplayName}» занимают один гекс {c}", c, o.Id));
                 else taken[c] = o;
@@ -71,6 +72,7 @@ public static class ScenarioObjectsCheck
             if (o.Spawn != null && !sc.Waves.Any(w => w.Groups.Any(g => g.SpawnBase == o.Id)))
                 list.Add(new(IssueSeverity.Info, "Objects", $"Из «{o.DisplayName}» не появляется ни одна группа", o.Anchor, o.Id));
         }
+        list.AddRange(Interactive(db, sc));
         var bases = sc.Objects.Where(o => o.Type == ScenarioObjectType.PlayerBase && o.Health != null).ToList();
         var bd = sc.BaseDefeat;
         if (bd.Mode == BaseDefeatMode.MainBase && bases.Count > 0)
@@ -82,6 +84,87 @@ public static class ScenarioObjectsCheck
         }
         if (bd.Mode == BaseDefeatMode.LostCount && bases.Count > 0 && bd.Count > bases.Count)
             list.Add(new(IssueSeverity.Warning, "BaseDefeat", $"Поражение при потере {bd.Count} баз недостижимо: баз {bases.Count}"));
+        return list;
+    }
+
+    /// <summary>
+    /// The components of part 6 (ТЗ ч. 6, 6.7; T20; docs/DECISIONS_6.md §100): states and their references, interactions and
+    /// the receivers of signals, turrets; the actions and conditions of the scenario that name objects and states; a ring of
+    /// signals that would switch objects back and forth for ever.
+    /// </summary>
+    public static List<ScenarioProblem> Interactive(ContentDatabase db, ScenarioDef sc)
+    {
+        var list = new List<ScenarioProblem>();
+        string? StateProblem(string objectId, string state)
+        {
+            var o = sc.Object(objectId);
+            if (o == null) return $"объекта «{objectId}» нет";
+            if (o.States == null) return $"у «{o.DisplayName}» нет компонента «Состояния»";
+            if (state != "" && o.States.Get(state) == null) return $"у «{o.DisplayName}» нет состояния «{state}»";
+            return null;
+        }
+        foreach (var o in sc.Objects)
+        {
+            if (o.States is { } st)
+            {
+                if (st.States.Count == 0) list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}»: компонент «Состояния» без состояний", o.Anchor, o.Id));
+                foreach (var g in st.States.GroupBy(x => x.Id).Where(g => g.Count() > 1 || g.Key == ""))
+                    list.Add(new(IssueSeverity.Error, "Objects", g.Key == "" ? $"«{o.DisplayName}»: состояние без ID" : $"«{o.DisplayName}»: состояние «{g.Key}» повторяется", o.Anchor, o.Id));
+                if (st.Initial != "" && st.Get(st.Initial) == null) list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}»: начального состояния «{st.Initial}» нет", o.Anchor, o.Id));
+                if (st.OnDestroyed != "" && st.Get(st.OnDestroyed) == null) list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}»: состояния после разрушения «{st.OnDestroyed}» нет", o.Anchor, o.Id));
+                if (st.OnDestroyed != "" && o.Health == null) list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}»: «после разрушения» без компонента «Здоровье» — не наступит", o.Anchor, o.Id));
+                foreach (var s in st.States.Where(s => s.Terrain != "" && db.Terrain(s.Terrain) == null))
+                    list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}», состояние «{s.DisplayName}»: местности «{s.Terrain}» нет", o.Anchor, o.Id));
+                if (o.Health != null && st.States.Any(s => s.Terrain != "" && db.Terrain(s.Terrain) is { } t && t.IsPassableFor("walk")))
+                    list.Add(new(IssueSeverity.Info, "Objects", $"«{o.DisplayName}»: у объекта есть «Здоровье» — его гексы заняты сооружением, по ним не пройти в любом состоянии", o.Anchor, o.Id));
+            }
+            if (o.Interaction is { } it)
+            {
+                if (it.Effect == InteractionEffect.SetState && StateProblem(o.Id, it.State) is { } p1)
+                    list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}», взаимодействие: {p1}", o.Anchor, o.Id));
+                if (it.Effect == InteractionEffect.NextState && o.States == null)
+                    list.Add(new(IssueSeverity.Warning, "Objects", $"«{o.DisplayName}», взаимодействие «следующее состояние» без компонента «Состояния» — только событие «Активация объекта»", o.Anchor, o.Id));
+                if (it.Effect == InteractionEffect.Signal)
+                {
+                    if (it.Target == "") list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}»: сигнал без получателя", o.Anchor, o.Id));
+                    else if (StateProblem(it.Target, it.TargetState) is { } p2) list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}», сигнал: {p2}", o.Anchor, o.Id));
+                }
+                foreach (var r in it.RequiredStates.Where(r => o.States?.Get(r) == null))
+                    list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}», взаимодействие: «только в состояниях» — «{r}» нет", o.Anchor, o.Id));
+            }
+            if (o.Turret is { } tu && db.Skill(tu.Skill) == null)
+                list.Add(new(IssueSeverity.Error, "Objects", $"«{o.DisplayName}», турель: навыка «{tu.Skill}» нет", o.Anchor, o.Id));
+        }
+        // The actions and conditions that name an object and its state.
+        IEnumerable<TriggerActionDef> Actions() => sc.Triggers.SelectMany(t => t.Actions)
+            .Concat(sc.Objects.SelectMany(o => o.States?.States.SelectMany(s => s.OnEnter) ?? Enumerable.Empty<TriggerActionDef>()))
+            .Concat(sc.Waves.SelectMany(w => w.OnStart.Concat(w.OnEnd)));
+        foreach (var a in Actions().Where(a => a.Type == TriggerActionType.SwitchObjectState))
+            if (StateProblem(a.Object, a.ObjectStateId) is { } p3) list.Add(new(IssueSeverity.Error, "Triggers", $"«{a.Describe()}»: {p3}"));
+        static IEnumerable<ConditionDef> Flat(ConditionDef? c) => c == null ? Enumerable.Empty<ConditionDef>() : new[] { c }.Concat(c.Children.SelectMany(Flat));
+        foreach (var c in sc.Triggers.SelectMany(t => Flat(t.Condition)).Where(c => c.Type == ConditionType.ObjectInState))
+            if (StateProblem(c.ObjectId, c.ObjectState) is { } p4 || c.ObjectState == "" && (p4 = "не указано состояние") != null)
+                list.Add(new(IssueSeverity.Error, "Triggers", $"«{c.Describe()}»: {p4}"));
+        // A ring of signals: object A entering a state switches B, B switches A…
+        var edges = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var o in sc.Objects.Where(o => o.States != null))
+            foreach (var a in o.States!.States.SelectMany(s => s.OnEnter).Where(a => a.Type == TriggerActionType.SwitchObjectState && a.Object != ""))
+                (edges.TryGetValue(o.Id, out var set) ? set : edges[o.Id] = new HashSet<string>(StringComparer.Ordinal)).Add(a.Object);
+        foreach (var start in edges.Keys.OrderBy(k => k, StringComparer.Ordinal))
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var stack = new Stack<string>(edges[start]);
+            while (stack.Count > 0)
+            {
+                var n = stack.Pop();
+                if (n == start)
+                {
+                    list.Add(new(IssueSeverity.Warning, "Objects", $"Состояния объектов переключают друг друга по кругу (через «{start}») — цепочка оборвётся на {Sim.ObjectSystem.MaxChain} шагах", null, start));
+                    break;
+                }
+                if (seen.Add(n) && edges.TryGetValue(n, out var next)) foreach (var x in next) stack.Push(x);
+            }
+        }
         return list;
     }
 

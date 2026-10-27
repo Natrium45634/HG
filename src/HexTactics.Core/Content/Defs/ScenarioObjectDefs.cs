@@ -90,6 +90,97 @@ public sealed class SpawnComponentDef : ContentPart
     public SpawnerDestroyedPolicy OnDestroyed { get; set; } = SpawnerDestroyedPolicy.ContinueQueue;
 }
 
+/// <summary>
+/// What a change of the terrain of an object does with the units standing on its hexes (ТЗ ч. 6, 6.5): never a silent
+/// teleport — the policy is chosen by the author.
+/// </summary>
+public enum OccupiedCellPolicy
+{
+    [Ed("Отложить", "Состояние сменится, когда гексы освободятся")] Defer,
+    [Ed("Вывести на ближайший свободный гекс", "Если такого нет — отложить")] Evacuate,
+    [Ed("Падение / вывести", "В яму — падают по правилам ям; в стену — выводятся")] Fall,
+    [Ed("Запретить переключение", "Пока на гексах кто-то есть, состояние не меняется")] Forbid,
+}
+
+/// <summary>A state of an object (ТЗ ч. 6, 6.2 «StateMachine», «TerrainOverride», «VisualState»).</summary>
+public sealed class ObjectStateDef : ContentPart
+{
+    [Ed("ID", "open, closed, broken…")] public string Id { get; set; } = "";
+    [Ed("Название")] public string Name { get; set; } = "";
+    [Ed("Местность гексов объекта", "Пусто — местность карты"), EdRef(DefCategory.Terrain)] public string Terrain { get; set; } = "";
+    [Ed("Цвет"), EdColor] public string Color { get; set; } = "";
+    [Ed("Модель", "Пусто — модель объекта"), EdRef(DefCategory.Asset)] public string Model { get; set; } = "";
+    [Ed("Турель работает", "Для объекта с турелью")] public bool TurretActive { get; set; } = true;
+    [Ed("При входе в состояние", "Действия сценария (общая шина событий)")] public List<TriggerActionDef> OnEnter { get; set; } = new();
+
+    [JsonIgnore] public string DisplayName => Name != "" ? Name : Id;
+}
+
+/// <summary>Component «Состояния»: the states, the first one, the state after destruction, the policy for standing units.</summary>
+public sealed class ObjectStatesDef : ContentPart
+{
+    [Ed("Состояния")] public List<ObjectStateDef> States { get; set; } = new();
+    [Ed("Начальное", "ID; пусто — первое")] public string Initial { get; set; } = "";
+    [Ed("После разрушения", "ID состояния, когда здоровье объекта кончилось; пусто — не меняется")] public string OnDestroyed { get; set; } = "";
+    [Ed("Если на гексах юниты")] public OccupiedCellPolicy WhenOccupied { get; set; } = OccupiedCellPolicy.Defer;
+
+    public ObjectStateDef? Get(string id) => States.Find(s => s.Id == id);
+    [JsonIgnore] public string First => Initial != "" ? Initial : States.Count > 0 ? States[0].Id : "";
+}
+
+public enum InteractionWho
+{
+    [Ed("Юниты игрока")] Player,
+    [Ed("Союзники объекта")] Allies,
+    [Ed("Противники объекта")] Enemies,
+    [Ed("Любой")] Anyone,
+}
+
+public enum InteractionEffect
+{
+    [Ed("Перевести в состояние")] SetState,
+    [Ed("Следующее состояние", "По кругу")] NextState,
+    [Ed("Сигнал другому объекту", "Событие «Активация объекта» и смена состояния объекта по ID")] Signal,
+}
+
+/// <summary>Component «Взаимодействие» (ТЗ ч. 6, 6.2): who, how far, for how many ОД and seconds, and what it does.</summary>
+public sealed class InteractionDef : ContentPart
+{
+    [Ed("Надпись", "Что видит игрок: «Опустить мост», «Нажать рычаг»")] public string Prompt { get; set; } = "Взаимодействовать";
+    [Ed("Кто")] public InteractionWho Who { get; set; } = InteractionWho.Player;
+    [Ed("Дистанция, гексов", "От любого гекса объекта"), EdRange(0, 10)] public int Range { get; set; } = 1;
+    [Ed("Стоимость ОД"), EdRange(0, 100)] public double ApCost { get; set; }
+    [Ed("Длительность, с", "Юнит занят; оглушение или гибель прерывают"), EdRange(0, 60)] public double Duration { get; set; } = 1;
+    [Ed("Перезарядка, с"), EdRange(0, 3600)] public double Cooldown { get; set; }
+    [Ed("Один раз")] public bool Once { get; set; }
+    [Ed("Только в состояниях", "ID; пусто — в любом")] public List<string> RequiredStates { get; set; } = new();
+    [Ed("Что делает")] public InteractionEffect Effect { get; set; } = InteractionEffect.NextState;
+    [Ed("Состояние", "Для «Перевести в состояние»"), EdShowIf(nameof(Effect), InteractionEffect.SetState)] public string State { get; set; } = "";
+    [Ed("Объект-получатель", "ID объекта сценария"), EdShowIf(nameof(Effect), InteractionEffect.Signal)] public string Target { get; set; } = "";
+    [Ed("Его состояние", "Пусто — следующее"), EdShowIf(nameof(Effect), InteractionEffect.Signal)] public string TargetState { get; set; } = "";
+}
+
+/// <summary>Component «Турель» (ТЗ ч. 6, 6.6): a skill at targets through the auto-attacks — hit, resistances and cooldowns are the common ones.</summary>
+public sealed class TurretDef : ContentPart
+{
+    [Ed("Навык"), EdRef(DefCategory.Skill, AllowEmpty = false)] public string Skill { get; set; } = "";
+    [Ed("Интервал, с"), EdRange(0.1, 60)] public double Interval { get; set; } = 2;
+    [Ed("Дальность", "0 — из навыка"), EdRange(0, 50)] public int Range { get; set; }
+    [Ed("Цели")] public TargetFilterDef Targets { get; set; } = new() { Enemies = true, Neutrals = false };
+    [Ed("Обзор, гексов", "Кого турель видит"), EdRange(1, 50)] public double Sight { get; set; } = 6;
+}
+
+/// <summary>
+/// A saved object of a scenario (ТЗ ч. 6, 6.4 «сохранить пресет»): its components and settings; putting it on a map makes a
+/// copy with a free ID at the chosen hex.
+/// </summary>
+public sealed class ObjectPresetDef : Def
+{
+    [JsonIgnore] public override DefCategory Category => DefCategory.ObjectPreset;
+
+    [Ed("Объект", "Компоненты и их настройки; положение и ID задаются при установке")] public ScenarioObjectDef Object { get; set; } = new();
+}
+
 /// <summary>What a destroyed spawn base does with the appearances still planned (docs/DECISIONS_5.md §85).</summary>
 public enum SpawnerDestroyedPolicy
 {
@@ -116,6 +207,10 @@ public sealed class ScenarioObjectDef : ContentPart
     [Ed("Описание")] public string Description { get; set; } = "";
     [Ed("Здоровье и защита", "Компонент: объект становится сооружением, его можно атаковать")] public StructureDef? Health { get; set; }
     [Ed("Спавн", "Компонент: из объекта появляются юниты")] public SpawnComponentDef? Spawn { get; set; }
+    // Part 6, stage 6.5 (docs/DECISIONS_6.md §100).
+    [Ed("Состояния", "Компонент: открыто / закрыто / сломано; у состояния — местность гексов, вид, действия")] public ObjectStatesDef? States { get; set; }
+    [Ed("Взаимодействие", "Компонент: кто, дистанция, ОД, длительность, что делает")] public InteractionDef? Interaction { get; set; }
+    [Ed("Турель", "Компонент: навык по целям (через автоатаки); без «Здоровья» — неразрушимая")] public TurretDef? Turret { get; set; }
     [Ed("Модель"), EdRef(DefCategory.Asset)] public string Model { get; set; } = "";
     [Ed("Цвет"), EdColor] public string Color { get; set; } = "";
 
