@@ -240,6 +240,8 @@ public sealed partial class ScenarioSystem
         ScenarioObjects.ResolveMarkers(sc, _sim.Map.Def);
         // Structures first: their hexes are taken before units are placed (docs/DECISIONS_4.md §56).
         _sim.Structures.Load(sc);
+        // The rules of friendly fire of the mode and of the scenario (part 6, §105).
+        _sim.FriendlyFire.Load(_sim.Content, sc);
         // The states of the objects (part 6, §100): their terrain is set before anyone is placed.
         _sim.Interactive.Load(sc);
         foreach (var su in sc.Units)

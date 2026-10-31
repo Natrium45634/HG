@@ -451,6 +451,12 @@ public partial class SkillEditorPanel : DefListPanel
                     lines.Add($"   • клетка {off.Rotate((int)_dir)}: " + string.Join("; ", mask.Effects.Select(e => e.Describe())));
         }
         _previewTab.AddChild(Ui.Label(string.Join("\n", lines), 13, Ui.Text, wrap: true));
+        // ТЗ ч. 6, 19.5: who the skill reaches and why — the filter of each effect and the rule of friendly fire in force.
+        var ffKind = s.Targeting == TargetingMode.Unit && s.Stages.All(st => AreaResolver.CanonicalOffsets(st.Area).Count <= 1) ? FfKind.Direct : FfKind.Area;
+        var ff = FriendlyFireSystem.Preview(Ctx.Db, null, ffKind, s.Stages.SelectMany(st => st.Effects).ToList(), (s.FriendlyFire, "навык"));
+        var ffLabel = Ui.Label("Кого заденет:\n   " + string.Join("\n   ", ff), 13, Ui.TextDim, wrap: true);
+        ffLabel.Name = "FriendlyFirePreview";
+        _previewTab.AddChild(ffLabel);
         var issues = Ctx.IssuesOf(s).ToList();
         if (Ctx.Db.DisabledSkills.TryGetValue(s.Id, out var why))
             _previewTab.AddChild(Ui.Label("✗ Навык отключён до исправления ошибок: " + why, 13, Ui.Bad, wrap: true));

@@ -211,6 +211,8 @@ public sealed class ScenarioObjectDef : ContentPart
     [Ed("Состояния", "Компонент: открыто / закрыто / сломано; у состояния — местность гексов, вид, действия")] public ObjectStatesDef? States { get; set; }
     [Ed("Взаимодействие", "Компонент: кто, дистанция, ОД, длительность, что делает")] public InteractionDef? Interaction { get; set; }
     [Ed("Турель", "Компонент: навык по целям (через автоатаки); без «Здоровья» — неразрушимая")] public TurretDef? Turret { get; set; }
+    // Part 6, stage 6.11 (§105).
+    [Ed("Дружественный огонь", "Своё правило объекта (турель); пусто — из сценария и правил")] public FriendlyFireDef? FriendlyFire { get; set; }
     [Ed("Модель"), EdRef(DefCategory.Asset)] public string Model { get; set; } = "";
     [Ed("Цвет"), EdColor] public string Color { get; set; } = "";
 

@@ -99,6 +99,14 @@ public sealed class BattleReport
     public long Ticks { get; set; }
     public List<BaseState> Bases { get; set; } = new();
     public int DefendersLost { get; set; }
+    // Part 6, stage 6.11 (ТЗ 19.5): what the sides did to their own.
+    /// <summary>Damage dealt to allies (another unit of an allied side).</summary>
+    public double FriendlyDamage { get; set; }
+    public int FriendlyKills { get; set; }
+    /// <summary>Healing of allies (not of oneself).</summary>
+    public double AlliedHealing { get; set; }
+    /// <summary>Negative statuses put on allies.</summary>
+    public int FriendlyStatuses { get; set; }
     public int EnemiesKilledByDefenders { get; set; }
     public int EnemiesKilled { get; set; }
     public int EnemiesReachedGoal { get; set; }
@@ -224,6 +232,7 @@ public sealed class BattleReport
                 if (src is { IsStructure: false } && SideOf(src) == PlayerSide && SideOf(dst) == EnemySide) Add(DefenderDamage, src.Def.DisplayName, e.Value);
                 if (U(src) is { } us) us.DamageDealt += e.Value;
                 if (U(dst) is { } ud) ud.DamageTaken += e.Value;
+                if (src != null && dst != null && src != dst && sim.RelationOf(src, dst) == Relation.Ally) FriendlyDamage += e.Value;
                 break;
             }
             case SimEventType.StatusApplied when e.DamageType != "" && e.SourceUnit >= 0 && e.SourceUnit != e.TargetUnit:
@@ -231,6 +240,7 @@ public sealed class BattleReport
                 var src = sim.GetUnit(e.SourceUnit);
                 var dst = sim.GetUnit(e.TargetUnit);
                 if (src != null && dst != null && !sim.IsHostile(src, dst) && sim.Content.Get<StatusDef>(e.DamageType) is { Negative: false } && U(src) is { } ub) ub.Buffs++;
+                if (src != null && dst != null && sim.RelationOf(src, dst) == Relation.Ally && sim.Content.Get<StatusDef>(e.DamageType) is { Negative: true }) FriendlyStatuses++;
                 break;
             }
             case SimEventType.CastReleased when e.SourceUnit >= 0:
@@ -249,6 +259,8 @@ public sealed class BattleReport
             case SimEventType.Heal when e.Value > 0:
                 Healing += e.Value;
                 Heals++;
+                if (e.SourceUnit >= 0 && e.SourceUnit != e.TargetUnit && sim.GetUnit(e.SourceUnit) is { } hs && sim.GetUnit(e.TargetUnit) is { } ht && sim.RelationOf(hs, ht) == Relation.Ally)
+                    AlliedHealing += e.Value;
                 break;
             case SimEventType.CastReleased when e.DamageType != "" && e.SourceUnit < 0:
                 Stat(e.DamageType).Casts++;
@@ -281,6 +293,7 @@ public sealed class BattleReport
                 var killer = sim.GetUnit(e.SourceUnit);
                 if (U(dead) is { } ud) ud.DeathTick = sim.Tick;
                 if (killer != null && killer != dead && U(killer) is { } uk) uk.Kills++;
+                if (killer != null && killer != dead && sim.RelationOf(killer, dead) == Relation.Ally) FriendlyKills++;
                 string side = SideOf(dead);
                 if (side == PlayerSide && !dead.IsStructure) DefendersLost++;
                 if (side == EnemySide && !dead.IsStructure && dead.DeathCause != DeathCause.Removed)
@@ -448,6 +461,7 @@ public sealed class BattleReport
         sb.AppendLine("Урон по сторонам: " + string.Join(", ", DamageDealt.OrderByDescending(k => k.Value).Select(k => $"{k.Key} нанесли {F(k.Value)}"))
                       + (DamageTaken.Count > 0 ? "; получили: " + string.Join(", ", DamageTaken.OrderByDescending(k => k.Value).Select(k => $"{k.Key} {F(k.Value)}")) : ""));
         sb.AppendLine($"Лечение: {F(Healing)} ({Heals} раз); щиты приняли {F(Shielded)}, поглощено {F(Absorbed)}");
+        sb.AppendLine($"По своим: урон {F(FriendlyDamage)}, убийств {FriendlyKills}, ослаблений {FriendlyStatuses}; лечение союзников {F(AlliedHealing)}");
         if (DamageByType.Count > 0)
             sb.AppendLine("Урон по типам: " + string.Join(", ", DamageByType.OrderByDescending(k => k.Value).Select(k => $"{db?.DamageType(k.Key)?.DisplayName ?? k.Key} {F(k.Value)}")));
         if (Skills.Count > 0)

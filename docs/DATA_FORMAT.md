@@ -335,6 +335,17 @@ Multiply, Override), points[] {x, y}}`. У шаблона юнита — `scale
 (`amount`), модификатор миссии `Scale` (`delta`), условие юнита `Scale`
 (`compare`, `value`). Отпечаток боя: `z…` (шкалы), `p…` (паника).
 
+Часть 6, этап 6.11 ([§105](DECISIONS_6.md)): правило дружественного огня
+`friendlyFire {targets (Inherit, HostileOnly, HostileAndNeutral,
+AllExceptSource, AllIncludingSource, Custom), neutrals, self,
+alliesDamage, alliesHealing, alliesBuffs, alliesDebuffs, alliesControl,
+ownSummons, ignoreTags[], collateral, relationAt (Inherit, Live,
+Creation)}` — у навыка, эффекта клетки и объекта сценария. Правила по
+видам `friendlyFireRules {direct, area, fields, objects}` — у
+`rules.combat`, у правил режима и у `gameRulesOverride` сценария. У
+`rules.combat` — `teleportFields (DestinationOnly, Traversed)`. Старый
+флаг `combat.friendlyFire` действует, пока явных правил нет.
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

@@ -95,6 +95,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("boss_phases_tab_run_and_telegraph", BossPhasesTabRunTelegraph));
         _tests.Add(("campaign_screen_mission_rewards_once", CampaignScreenMissionRewardsOnce));
         _tests.Add(("scale_editor_chart_and_battle_bar", ScaleEditorChartAndBattleBar));
+        _tests.Add(("friendly_fire_preview_highlight_confirm", FriendlyFirePreviewHighlightConfirm));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -131,6 +132,8 @@ public partial class UiTestRunner : Node
             if (_which != "all" && !_which.Split(',', StringSplitOptions.TrimEntries).Contains(name)) continue;
             ran++;
             _current = name;
+            // The confirmation of friendly fire waits for a person; only its own test turns it on (part 6, §105).
+            Main.Instance.Settings.ConfirmFriendlyFire = false;
             try
             {
                 // A test that stops progressing fails instead of hanging the run (a long battle on a software renderer gets more time).
@@ -3511,6 +3514,83 @@ public partial class UiTestRunner : Node
         {
             knightDef.Scale = keep;
         }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.11 (ТЗ 19.5; §105): an area that hits allies by the rule of friendly fire rings them «⚠ союзник» in the preview
+    /// of the aim and asks before the order; the skill editor and the form of a field say whom they reach and why.
+    /// </summary>
+    private async Task FriendlyFirePreviewHighlightConfirm()
+    {
+        var pub = Main.Instance.Content.Published;
+        var ball = pub.Skill("fireball")!;
+        var (keepFf, keepMin, keepMax) = (ball.FriendlyFire, ball.RangeMin, ball.RangeMax);
+        ball.FriendlyFire = new FriendlyFireDef { Targets = FfTargets.AllExceptSource, Collateral = true };
+        ball.RangeMin = 0;
+        ball.RangeMax = 30;
+        try
+        {
+            var bs = await OpenBattle("sandbox");
+            var mage = bs.Sim.Units.First(u => u.Def.Id == "mage");
+            var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+            bs.Driver.Paused = true;
+            bs.Select(mage);
+            bs.Board.Rig.FocusOn((bs.Board.UnitPos(mage) + bs.Board.UnitPos(knight)) / 2);
+            await Frames(10);
+            bs.EnterSkill(ball);
+            var at = HexScreen(bs, knight.Pos);
+            Input.ParseInputEvent(new InputEventMouseMotion { Position = at, GlobalPosition = at });
+            await Frames(6);
+            var pv = bs.HoverSkillPreview;
+            Check(pv != null && pv.HarmedAllies.Contains(knight), $"превью области: рыцарь — задетый союзник (наведено на {bs.HoverCell?.Coord}, рыцарь {knight.Pos}, союзников в области {pv?.Allies.Count})");
+            await Shot("part6_ff_preview");
+            int queued = mage.Queue.Count;
+            Main.Instance.Settings.ConfirmFriendlyFire = true;
+            await Click(at);
+            var dlg = Dialog("Удар по своим");
+            Check(dlg != null && bs.PendingFriendlyFire.Contains(knight.Name) && mage.Queue.Count == queued, $"приказ по своим ждёт подтверждения ({bs.PendingFriendlyFire}, очередь {mage.Queue.Count})");
+            Check(dlg!.DialogText.Contains(knight.Name), "в вопросе названы задетые союзники");
+            await Shot("part6_ff_confirm");
+            dlg.EmitSignal(AcceptDialog.SignalName.Confirmed);
+            await Frames(3);
+            Check(mage.Queue.Count == queued + 1 && mage.Queue.Items[^1].SkillId == "fireball" && bs.PendingFriendlyFire == "", "подтверждение отдало приказ");
+        }
+        finally
+        {
+            Main.Instance.Settings.ConfirmFriendlyFire = false;
+            (ball.FriendlyFire, ball.RangeMin, ball.RangeMax) = (keepFf, keepMin, keepMax);
+        }
+
+        // The editor: whom the skill reaches by the filter of its effects — and by the rule of friendly fire once it is set.
+        var ed = await OpenEditor("skills");
+        var draft = ed.Context.Db.Skill("fireball")!;
+        var keepDraft = draft.FriendlyFire;
+        try
+        {
+            var panel = Find<SkillEditorPanel>(GetTree().Root).First();
+            panel.Select("fireball");
+            await Frames(6);
+            string Preview() => Find<Label>(panel).FirstOrDefault(l => l.Name == "FriendlyFirePreview")?.Text ?? "";
+            Check(Preview().Contains("союзник: урон — да") && Preview().Contains("по фильтру эффекта"), "превью навыка: без правила область задевает всех по фильтру — " + Preview());
+            draft.FriendlyFire = new FriendlyFireDef { Targets = FfTargets.HostileOnly };
+            panel.Select("meteor");
+            await Frames(3);
+            panel.Select("fireball");
+            await Frames(6);
+            Check(Preview().Contains("союзник: урон — нет (правило)") && Preview().Contains("враг: урон — да") && Preview().Contains("— навык"),
+                "превью навыка: правило навыка «только враждебные» бережёт союзника — " + Preview());
+        }
+        finally
+        {
+            draft.FriendlyFire = keepDraft;
+        }
+        await OpenEditor("cell_effects");
+        var fields = Find<DefListPanel>(GetTree().Root).First(p => p.Shows == DefCategory.CellEffect);
+        fields.Select("fire");
+        await Frames(6);
+        var fp = Find<Label>(fields).FirstOrDefault(l => l.Name == "FriendlyFirePreview")?.Text ?? "";
+        Check(fp.Contains("Правило (поля на гексах)") && fp.Contains("союзник:"), "форма поля: кого заденет — " + fp);
+        await Shot("part6_ff_field_editor");
     }
 
     private async Task PressNamed(Node root, string name)

@@ -495,6 +495,76 @@
       },
       "additionalProperties": true
     },
+    "FriendlyFireDef": {
+      "type": "object",
+      "properties": {
+        "alliesBuffs": {
+          "type": "boolean",
+          "description": "Союзников усилениями"
+        },
+        "alliesControl": {
+          "type": "boolean",
+          "description": "Союзников контролем — Толчок, притяжение, состояния контроля"
+        },
+        "alliesDamage": {
+          "type": "boolean",
+          "description": "Союзников уроном"
+        },
+        "alliesDebuffs": {
+          "type": "boolean",
+          "description": "Союзников ослаблениями"
+        },
+        "alliesHealing": {
+          "type": "boolean",
+          "description": "Союзников лечением"
+        },
+        "collateral": {
+          "type": "boolean",
+          "description": "Задевать в области всех — Режим «попутный урон»: вредное в области — и тем, кого фильтр эффекта не выбирает"
+        },
+        "ignoreTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Не задевать с тегами — Вредное не действует на юнитов с этими тегами"
+        },
+        "neutrals": {
+          "type": "boolean",
+          "description": "Нейтралов"
+        },
+        "ownSummons": {
+          "type": "boolean",
+          "description": "Своих призванных"
+        },
+        "relationAt": {
+          "type": "string",
+          "enum": [
+            "Inherit",
+            "Live",
+            "Creation"
+          ],
+          "description": "Отношения поля — Полям на гексах: на момент срабатывания или создания"
+        },
+        "self": {
+          "type": "boolean",
+          "description": "Себя — Самоповреждение — только явно"
+        },
+        "targets": {
+          "type": "string",
+          "enum": [
+            "Inherit",
+            "HostileOnly",
+            "HostileAndNeutral",
+            "AllExceptSource",
+            "AllIncludingSource",
+            "Custom"
+          ],
+          "description": "Кого задевает вредное — Урон, ослабления, контроль; лечение и усиления правило урона не блокирует"
+        }
+      },
+      "additionalProperties": true
+    },
     "InterruptDef": {
       "type": "object",
       "properties": {
@@ -902,6 +972,17 @@
             }
           ],
           "description": "Бесплатно при условии — Если условие выполнено при запуске — стоимость запуска не списывается"
+        },
+        "friendlyFire": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FriendlyFireDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Дружественный огонь — Своё правило навыка (прямой атаки и области); пусто — из сценария и правил"
         },
         "grantsPassives": {
           "type": "array",

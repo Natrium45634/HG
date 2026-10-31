@@ -128,6 +128,9 @@ public sealed class SkillDef : Def
     public bool Telegraph { get; set; } = true;
 
     [Ed("Прерывание", Group = "Прерывание")] public InterruptDef Interrupt { get; set; } = new();
+    // Part 6, stage 6.11 (§105).
+    [Ed("Дружественный огонь", "Своё правило навыка (прямой атаки и области); пусто — из сценария и правил", Group = "Наведение")]
+    public FriendlyFireDef? FriendlyFire { get; set; }
 
     // Use (docs/DECISIONS_3.md §42, §43).
     [Ed("Режим применения", "Прицельный — игрок указывает цель; автоматический — цель выбирается правилами в момент применения", Group = "Применение")]

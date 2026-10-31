@@ -65,6 +65,8 @@ public sealed class CellEffectDef : Def
     [Ed("Разрешён на местности с тегами", "Пусто — на любой", Group = "Ограничения")] public List<string> AllowedTerrainTags { get; set; } = new();
     [Ed("Запрещён на местности с тегами", Group = "Ограничения")] public List<string> ForbiddenTerrainTags { get; set; } = new();
     [Ed("Иммунные категории существ", Group = "Ограничения")] public List<string> ImmuneCreatureCategories { get; set; } = new();
+    // Part 6, stage 6.11 (§105).
+    [Ed("Дружественный огонь", "Своё правило этого поля; пусто — из сценария и правил", Group = "Ограничения")] public FriendlyFireDef? FriendlyFire { get; set; }
 
     [Ed("Доп. стоимость перемещения", Group = "Влияние"), EdRange(-10, 100)] public double MoveCostAdd { get; set; }
     [Ed("Блокирует движение", "Барьер", Group = "Влияние")] public bool BlocksMovement { get; set; }

@@ -202,6 +202,10 @@ public sealed class CombatRules : ContentPart
     [Ed("Мин. доля урона после брони"), EdRange(0, 1)] public double MinArmorFraction { get; set; } = 0.2;
     [Ed("Мин. урон при попадании"), EdRange(0, 100)] public double MinDamageOnHit { get; set; } = 1;
     [Ed("Урон по союзникам", "Области задевают союзников, если эффект это допускает")] public bool FriendlyFire { get; set; } = true;
+    // Part 6, stage 6.11 (§105).
+    [Ed("Дружественный огонь", "Правила по видам воздействия; не задано — «Урон по союзникам» для областей, остальное — по фильтрам эффектов")]
+    public FriendlyFireRulesDef? FriendlyFireRules { get; set; }
+    [Ed("Телепорт через поля")] public TeleportFields TeleportFields { get; set; } = TeleportFields.DestinationOnly;
     [Ed("Лечение может быть критическим")] public bool HealCanCrit { get; set; }
 
     [Ed("Формула шанса попадания", "Пусто — встроенная. Переменные: base, accuracy, evasion, height, surprise, cover"),

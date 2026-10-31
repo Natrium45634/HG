@@ -165,6 +165,7 @@ public sealed class CellEffectSystem
             TotalTicks = ticks,
             Generation = generation,
             SourceUnit = source,
+            SourceFaction = source >= 0 ? _sim.GetUnit(source)?.FactionId ?? "" : "",
             Serial = ++_serial,
             Origin = generation > 0 ? EffectOrigin.Spread : origin,
         };
@@ -230,6 +231,20 @@ public sealed class CellEffectSystem
         ChangeTerrain(cell, into, "разрушение");
     }
 
+    /// <summary>The effects of a field this unit gets by the rule of friendly fire in force (part 6, §105); all of them by default.</summary>
+    private IReadOnlyList<SkillEffectDef> Allowed(CellEffectInstance e, List<SkillEffectDef> effects, Unit u)
+    {
+        List<SkillEffectDef>? kept = null;
+        for (int i = 0; i < effects.Count; i++)
+        {
+            bool ok = effects[i].IsGlobal || _sim.FriendlyFire.AllowsField(e, effects[i], u);
+            if (ok && kept == null) continue;
+            kept ??= effects.Take(i).ToList();
+            if (ok) kept.Add(effects[i]);
+        }
+        return kept ?? (IReadOnlyList<SkillEffectDef>)effects;
+    }
+
     /// <summary>Immune creature category / immunity, or the effect does not reach the unit's layer.</summary>
     private bool UnitImmune(Unit u, CellEffectDef def) =>
         !LayerResolver.EffectAffects(_sim.Rules, def, u) || def.ImmuneCreatureCategories.Contains(u.Def.CreatureCategory) || u.IsImmuneTo(def.Id, def.Tags);
@@ -242,9 +257,11 @@ public sealed class CellEffectSystem
         {
             if (!u.Alive) return;
             if (e.Def.OnEnter.Count == 0 || UnitImmune(u, e.Def)) continue;
+            var onEnter = Allowed(e, e.Def.OnEnter, u);
+            if (onEnter.Count == 0) continue; // the rule of friendly fire spares this unit: a trap stays armed
             if (e.Def.ConsumeOnEnter)
                 _sim.Emit(SimEventType.TrapTriggered, LogLevel.Normal, $"{cell.Coord}: срабатывает «{e.Def.DisplayName}» под {u.Name}", e.SourceUnit, u.Id, cell.Coord);
-            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnEnter, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName, SourceOf(e));
+            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, onEnter, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName, SourceOf(e));
             if (e.Def.ConsumeOnEnter)
             {
                 if (e.Level > 1) e.Level--;
@@ -259,7 +276,8 @@ public sealed class CellEffectSystem
         {
             if (!u.Alive) return;
             if (e.Def.OnExit.Count == 0 || UnitImmune(u, e.Def)) continue;
-            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnExit, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (выход)", SourceOf(e));
+            var onExit = Allowed(e, e.Def.OnExit, u);
+            if (onExit.Count > 0) _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, onExit, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (выход)", SourceOf(e));
         }
     }
 
@@ -282,7 +300,8 @@ public sealed class CellEffectSystem
                 var key = (u.Id, e.Def.Id);
                 if (_adjacentApplied.TryGetValue(key, out var last) && _sim.Tick - last < interval) continue;
                 _adjacentApplied[key] = _sim.Tick;
-                _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnAdjacent, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (рядом)", SourceOf(e));
+                var near = Allowed(e, e.Def.OnAdjacent, u);
+                if (near.Count > 0) _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, near, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName + " (рядом)", SourceOf(e));
             }
         }
     }
@@ -315,7 +334,8 @@ public sealed class CellEffectSystem
                         foreach (var u in cell.Occupants.ToArray())
                         {
                             if (!u.Alive || UnitImmune(u, e.Def)) continue;
-                            _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, e.Def.OnTick, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName, SourceOf(e));
+                            var onTick = Allowed(e, e.Def.OnTick, u);
+                            if (onTick.Count > 0) _sim.Combat.ApplyDirect(_sim.GetUnit(e.SourceUnit), u, onTick, e.Def.ScaleWithLevel ? e.Level : 1, e.Def.DisplayName, SourceOf(e));
                         }
                     }
                 }

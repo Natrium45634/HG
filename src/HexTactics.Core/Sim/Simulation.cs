@@ -98,6 +98,7 @@ public sealed class Simulation
         Mission = new MissionModifierSystem(this);
         Interactive = new ObjectSystem(this);
         Scales = new ScaleSystem(this);
+        FriendlyFire = new FriendlyFireSystem(this);
         Scenario.PhaseEntered += Scales.OnBossPhase;
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
@@ -171,6 +172,8 @@ public sealed class Simulation
     public ObjectSystem Interactive { get; }
     /// <summary>Scales of units: sanity, morale… (part 6, §104).</summary>
     public ScaleSystem Scales { get; }
+    /// <summary>The rules of friendly fire of this battle (part 6, §105).</summary>
+    public FriendlyFireSystem FriendlyFire { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }

@@ -80,6 +80,8 @@ public sealed class SkillPreview
     public List<SkillPreviewCell> Cells { get; } = new();
     public List<Unit> Enemies { get; } = new();
     public List<Unit> Allies { get; } = new();
+    /// <summary>Allies (not the caster) a harmful effect reaches by the rule of friendly fire in force (part 6, §105).</summary>
+    public List<Unit> HarmedAllies { get; } = new();
     public List<string> Warnings { get; } = new();
     public int RangeMax { get; init; }
     public int RangeMin { get; init; }
@@ -654,13 +656,16 @@ public sealed class Planner
                 {
                     if (!o.Alive || !seenUnits.Add(o.Id)) continue;
                     if (o != u && !_sim.Vision.CanFactionSee(u.FactionId, o)) continue;
-                    var effects = st.Effects.Concat(ac.Mask?.Effects ?? Enumerable.Empty<SkillEffectDef>()).Where(e => e.TargetsUnits && _sim.FilterAccepts(e.Filter, u, o)).ToList();
+                    // The same gate as the battle: the filter of the effect and the rule of friendly fire in force (part 6, §105).
+                    var ffKind = s.Targeting == TargetingMode.Unit && kept.Count <= 1 ? FfKind.Direct : FfKind.Area;
+                    var effects = st.Effects.Concat(ac.Mask?.Effects ?? Enumerable.Empty<SkillEffectDef>()).Where(e => e.TargetsUnits && _sim.FriendlyFire.Allows(ffKind, s, e, u, o)).ToList();
                     if (effects.Count == 0) continue;
-                    bool harmful = effects.Any(e => e.Type == EffectType.Damage || e.RequiresHit);
+                    bool harmful = effects.Any(e => FriendlyFireSystem.IsHarm(FriendlyFireSystem.CategoryOf(e, _sim.Content)));
                     var rel = _sim.RelationOf(u, o);
                     if (rel == Relation.Ally)
                     {
                         p.Allies.Add(o);
+                        if (harmful && o != u) p.HarmedAllies.Add(o);
                         if (harmful && o != u) p.Warnings.Add($"задевает союзника: {o.Name}");
                         if (harmful && o == u) p.Warnings.Add("задевает самого исполнителя");
                     }

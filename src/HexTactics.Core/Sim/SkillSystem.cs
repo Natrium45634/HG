@@ -619,7 +619,9 @@ public sealed class SkillSystem
             _sim.IsPlayerFaction(caster.FactionId) || _sim.Vision.IsVisibleToPlayer(caster) || cells.Any(c => _sim.Vision.IsCellVisibleToPlayer(c.Cell))));
         while (RecentAreas.Count > 0 && RecentAreas[0].Tick < _sim.Tick - _sim.TicksPerSecond * 2) RecentAreas.RemoveAt(0);
 
-        // 3. Targets.
+        // 3. Targets. A single unit aimed at is a direct attack; anything wider — an area (they may have different rules).
+        var kind = skill.Targeting == TargetingMode.Unit && cells.Count <= 1 ? FfKind.Direct : FfKind.Area;
+        var turretRule = caster.IsStructure && caster.ObjectId != "" ? _sim.Scenario.Def?.Object(caster.ObjectId)?.FriendlyFire : null;
         var entries = new List<TargetEntry>();
         var seen = new HashSet<int>();
         foreach (var ac in cells)
@@ -633,8 +635,8 @@ public sealed class SkillSystem
                 var list = new List<SkillEffectDef>();
                 foreach (var e in stage.Effects.Concat(ac.Mask?.Effects ?? Enumerable.Empty<SkillEffectDef>()))
                 {
-                    if (!e.TargetsUnits || !_sim.FilterAccepts(e.Filter, caster, u)) continue;
-                    if (!_sim.Rules.Combat.FriendlyFire && u != caster && _sim.RelationOf(caster, u) == Relation.Ally && e.Type == EffectType.Damage) continue;
+                    // The filter of the effect and the rule of friendly fire in force (part 6, §105).
+                    if (!e.TargetsUnits || !_sim.FriendlyFire.Allows(kind, skill, e, caster, u, turretRule)) continue;
                     list.Add(e);
                 }
                 if (list.Count > 0) entries.Add(new TargetEntry { Unit = u, Cell = ac, Effects = list, WasAlive = true });
@@ -1060,7 +1062,16 @@ public sealed class SkillSystem
         if (MovementRules.Check(MoveContext.For(_sim, caster), null, cell, false, out _) != StepCheck.Ok) return;
         _sim.Commands.OnForcedMove(caster);
         _sim.Emit(SimEventType.Displaced, LogLevel.Normal, $"{caster.Name} перемещается в {cell.Coord} — {cause}", caster.Id, cell: cell.Coord);
+        var from = caster.Pos;
         if (!_sim.Relocate(caster, cell.Coord, caster, cause)) return;
-        _sim.CellEffects.OnUnitEntered(caster, cell);
+        // Through the fields on the way, if the rules say so (ТЗ ч. 6, 19.3): each crossed hex — enter and exit, once.
+        if (_sim.Rules.Combat.TeleportFields == TeleportFields.Traversed)
+            foreach (var c in HexCoord.Line(from, cell.Coord).Skip(1).SkipLast(1))
+                if (_sim.Map.Get(c) is { Effects.Count: > 0 } crossed && caster.Alive)
+                {
+                    _sim.CellEffects.OnUnitEntered(caster, crossed);
+                    _sim.CellEffects.OnUnitExited(caster, crossed);
+                }
+        if (caster.Alive) _sim.CellEffects.OnUnitEntered(caster, cell);
     }
 }

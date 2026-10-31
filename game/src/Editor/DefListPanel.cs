@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Godot;
 using HexTactics.Core.Content;
+using HexTactics.Core.Sim;
 using HexTactics.Game.App;
 using HexTactics.Game.UI;
 
@@ -21,6 +22,8 @@ public partial class DefListPanel : HSplitContainer
 {
     protected readonly EditorContext Ctx;
     protected readonly DefCategory Category;
+    /// <summary>The category this panel lists (UI tests).</summary>
+    public DefCategory Shows => Category;
     private readonly string _title;
     private readonly Func<Def, bool>? _filter;
     private readonly Func<Def>? _factory;
@@ -325,6 +328,7 @@ public partial class DefListPanel : HSplitContainer
         var grid = new PropertyGrid();
         grid.SetTarget(d, Ctx.Db);
         grid.Changed += () => OnEdited(d);
+        if (d is CellEffectDef field) return FieldDetail(field, grid);
         if (d is not StatDef stat) return grid;
         // ТЗ ч. 5, 12.5: whether the core reads the characteristic or it is a field without behaviour.
         var (use, text) = StatUsage.Of(Ctx.Db, stat.Id);
@@ -333,6 +337,28 @@ public partial class DefListPanel : HSplitContainer
             use == StatUse.Core ? Ui.Good : use == StatUse.Content ? Ui.Accent : Ui.Warn, wrap: true);
         mark.Name = "StatUsage";
         box.AddChild(mark);
+        box.AddChild(grid);
+        return box;
+    }
+
+    /// <summary>A field on hexes: its form and whom it reaches (ТЗ ч. 6, 19.5) — refreshed on every edit.</summary>
+    private Control FieldDetail(CellEffectDef field, PropertyGrid grid)
+    {
+        var box = Ui.VBox(6);
+        var preview = Ui.Label("", 13, Ui.TextDim, wrap: true);
+        preview.Name = "FriendlyFirePreview";
+        void Refresh()
+        {
+            if (!IsInstanceValid(preview)) return;
+            var effects = field.OnEnter.Concat(field.OnTick).Concat(field.OnExit).Concat(field.OnAdjacent).ToList();
+            preview.Text = effects.Count == 0
+                ? "Кого заденет: поле не действует на юнитов."
+                : "Кого заденет (поле созданное юнитом; без создателя — окружение, действует на всех):\n   " +
+                  string.Join("\n   ", FriendlyFireSystem.Preview(Ctx.Db, null, FfKind.Field, effects, (field.FriendlyFire, "поле")));
+        }
+        grid.Changed += Refresh;
+        Refresh();
+        box.AddChild(preview);
         box.AddChild(grid);
         return box;
     }

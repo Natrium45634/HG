@@ -1233,11 +1233,13 @@ public partial class BattleScreen : Node
             if (c.HasMaskEffects) o.Dot(c.Cell, Colors.White, 0.1f);
         }
         foreach (var e in pv.Enemies) o.RingHex(e.Pos, new Color(1f, 0.3f, 0.25f), 0.1f, 0.82f);
+        // Allies the area harms by the rule of friendly fire (part 6, §105) — and those it only helps.
         foreach (var a in pv.Allies)
             if (a != u)
             {
-                o.RingHex(a.Pos, new Color(1f, 0.65f, 0.15f), 0.1f, 0.82f);
-                _labels.Add(Board.UnitPos(a) + new Vector3(0, 1.85f, 0), "⚠ союзник", new Color(1f, 0.7f, 0.25f), 26);
+                bool harmed = pv.HarmedAllies.Contains(a);
+                o.RingHex(a.Pos, harmed ? new Color(1f, 0.65f, 0.15f) : new Color(0.45f, 1f, 0.55f), 0.1f, 0.82f);
+                _labels.Add(Board.UnitPos(a) + new Vector3(0, 1.85f, 0), harmed ? "⚠ союзник" : "+ союзник", harmed ? new Color(1f, 0.7f, 0.25f) : new Color(0.5f, 1f, 0.6f), 26);
             }
         if (dir.HasValue) o.Arrow(start, dir.Value, new Color(col.R, col.G, col.B, 1f), 1.0f);
         if (!pv.Valid && !string.IsNullOrEmpty(pv.Problem))
@@ -1432,13 +1434,32 @@ public partial class BattleScreen : Node
                     break;
             }
         }
-        if (pv != null && pv.Allies.Any(a => a != u) && !Input.IsKeyPressed(Key.Alt))
-            _hud.ShowBanner("Внимание: область задевает союзников!", Ui.Warn);
-        Submit(cmd);
-        int keep = InsertIndex;
-        ExitMode();
-        if (keep >= 0) InsertIndex = -1;
+        void Go()
+        {
+            Submit(cmd);
+            int keep = InsertIndex;
+            ExitMode();
+            if (keep >= 0) InsertIndex = -1;
+        }
+        var harmed = pv?.HarmedAllies ?? new List<Unit>();
+        // The friendly fire of the order (ТЗ ч. 6, 19.5): asked before it, unless switched off in the settings or Alt is held.
+        if (harmed.Count > 0 && Main.Instance.Settings.ConfirmFriendlyFire && !Input.IsKeyPressed(Key.Alt))
+        {
+            PendingFriendlyFire = string.Join(", ", harmed.Select(a => a.Name));
+            Editor.Dialogs.Confirm(this, "Удар по своим", $"«{skill.DisplayName}» заденет союзников: {PendingFriendlyFire}. Отдать приказ?\n(Alt — без вопроса; отключить — в настройках: «Подтверждать удар по своим».)",
+                () =>
+                {
+                    PendingFriendlyFire = "";
+                    Go();
+                }, "Отдать приказ");
+            return;
+        }
+        if (harmed.Count > 0) _hud.ShowBanner("Внимание: область задевает союзников!", Ui.Warn);
+        Go();
     }
+
+    /// <summary>The allies a confirmation asks about now ("" — none asked; UI tests).</summary>
+    public string PendingFriendlyFire { get; private set; } = "";
 
     private void OnRightClick()
     {

@@ -31,6 +31,8 @@ public sealed class GameRulesDef : Def
     public bool Blocking { get; set; } = true;
     [Ed("Урон по союзникам в области", "Не задано — из правил боя («Урон по союзникам»)", Group = "Системы")]
     public bool? FriendlyFire { get; set; }
+    [Ed("Дружественный огонь", "Правила по видам воздействия; не задано — из правил боя", Group = "Системы")]
+    public FriendlyFireRulesDef? FriendlyFireRules { get; set; }
     [Ed("Развёртывание", "Вызов бойцов отряда во время боя за очки развёртывания (ТЗ ч. 6, 3)", Group = "Развёртывание")]
     public DeploymentRulesDef Deployment { get; set; } = new();
 }
@@ -41,6 +43,7 @@ public sealed class GameRulesOverrideDef : ContentPart
     [Ed("Отряд на поле в начале")] public SquadStart? SquadStart { get; set; }
     [Ed("Блокирование")] public bool? Blocking { get; set; }
     [Ed("Урон по союзникам в области")] public bool? FriendlyFire { get; set; }
+    [Ed("Дружественный огонь", "Своё правило по видам воздействия; не задано — из правил режима")] public FriendlyFireRulesDef? FriendlyFireRules { get; set; }
 }
 
 /// <summary>A saved squad (ТЗ ч. 6, 2.1): templates in order; a «build» is a template or its version (§96).</summary>

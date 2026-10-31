@@ -226,6 +226,17 @@
           "type": "boolean",
           "description": "Урон по союзникам — Области задевают союзников, если эффект это допускает"
         },
+        "friendlyFireRules": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FriendlyFireRulesDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Дружественный огонь — Правила по видам воздействия; не задано — «Урон по союзникам» для областей, остальное — по фильтрам эффектов"
+        },
         "healCanCrit": {
           "type": "boolean",
           "description": "Лечение может быть критическим"
@@ -257,6 +268,14 @@
           "minimum": 0,
           "maximum": 1,
           "description": "Мин. шанс попадания"
+        },
+        "teleportFields": {
+          "type": "string",
+          "enum": [
+            "DestinationOnly",
+            "Traversed"
+          ],
+          "description": "Телепорт через поля"
         }
       },
       "additionalProperties": true
@@ -650,6 +669,126 @@
           "minimum": 0,
           "maximum": 600,
           "description": "Ждать, с"
+        }
+      },
+      "additionalProperties": true
+    },
+    "FriendlyFireDef": {
+      "type": "object",
+      "properties": {
+        "alliesBuffs": {
+          "type": "boolean",
+          "description": "Союзников усилениями"
+        },
+        "alliesControl": {
+          "type": "boolean",
+          "description": "Союзников контролем — Толчок, притяжение, состояния контроля"
+        },
+        "alliesDamage": {
+          "type": "boolean",
+          "description": "Союзников уроном"
+        },
+        "alliesDebuffs": {
+          "type": "boolean",
+          "description": "Союзников ослаблениями"
+        },
+        "alliesHealing": {
+          "type": "boolean",
+          "description": "Союзников лечением"
+        },
+        "collateral": {
+          "type": "boolean",
+          "description": "Задевать в области всех — Режим «попутный урон»: вредное в области — и тем, кого фильтр эффекта не выбирает"
+        },
+        "ignoreTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Не задевать с тегами — Вредное не действует на юнитов с этими тегами"
+        },
+        "neutrals": {
+          "type": "boolean",
+          "description": "Нейтралов"
+        },
+        "ownSummons": {
+          "type": "boolean",
+          "description": "Своих призванных"
+        },
+        "relationAt": {
+          "type": "string",
+          "enum": [
+            "Inherit",
+            "Live",
+            "Creation"
+          ],
+          "description": "Отношения поля — Полям на гексах: на момент срабатывания или создания"
+        },
+        "self": {
+          "type": "boolean",
+          "description": "Себя — Самоповреждение — только явно"
+        },
+        "targets": {
+          "type": "string",
+          "enum": [
+            "Inherit",
+            "HostileOnly",
+            "HostileAndNeutral",
+            "AllExceptSource",
+            "AllIncludingSource",
+            "Custom"
+          ],
+          "description": "Кого задевает вредное — Урон, ослабления, контроль; лечение и усиления правило урона не блокирует"
+        }
+      },
+      "additionalProperties": true
+    },
+    "FriendlyFireRulesDef": {
+      "type": "object",
+      "properties": {
+        "area": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FriendlyFireDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Область"
+        },
+        "direct": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FriendlyFireDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Прямая атака"
+        },
+        "fields": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FriendlyFireDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Поля на гексах — Огонь, яд, ловушки"
+        },
+        "objects": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FriendlyFireDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Объекты — Турели и опасности объектов"
         }
       },
       "additionalProperties": true

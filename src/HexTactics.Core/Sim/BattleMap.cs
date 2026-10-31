@@ -31,6 +31,8 @@ public sealed class CellEffectInstance
     public long SpreadTimer { get; set; }
     public int Generation { get; set; }
     public int SourceUnit { get; set; } = -1;
+    /// <summary>The faction of the creator when the field was made (part 6, §105: relations «при создании», diagnostics).</summary>
+    public string SourceFaction { get; set; } = "";
     public bool Intrinsic { get; set; }
     public long Serial { get; init; }
     /// <summary>Where the instance came from (map/terrain vs action) — docs/DECISIONS_2.md §30.</summary>

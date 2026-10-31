@@ -48,6 +48,8 @@ public sealed class Settings
     [Ed("Показывать опасные участки", "Значки и штриховка: огонь/яд, обнаружение, автоатаки, препятствия…", Group = "Управление")]
     public bool ShowHazards { get; set; } = true;
     [Ed("Радиальное меню навыков", "Выкл. — меню списком", Group = "Управление")] public bool RadialMenu { get; set; } = true;
+    [Ed("Подтверждать удар по своим", "Навык задевает союзников по правилам дружественного огня — спросить перед приказом (Alt — без вопроса)", Group = "Управление")]
+    public bool ConfirmFriendlyFire { get; set; } = true;
     [Ed("Режим маршрута", Group = "Управление")] public RouteMode RouteMode { get; set; } = RouteMode.MinCost;
     [Ed("Веса своего маршрута", Group = "Управление"), EdShowIf(nameof(RouteMode), RouteMode.Custom)] public RouteWeights RouteWeights { get; set; } = new();
     [Ed("Упрощённые визуальные эффекты", Group = "Управление")] public bool SimplifiedEffects { get; set; }

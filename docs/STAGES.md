@@ -2840,3 +2840,28 @@ Windows-сборка проверена самопроверкой на Windows 
   контент — `game/content/{scales,statuses}.json`; `docs/schema/*`.
 * **Тесты**: `Part6ScaleTests` (9): T33–T40; UI — `scale_editor_chart_and_battle_bar`.
 
+## Ч6 · Этап 6.11. Дружественный огонь
+
+* **Сделано** ([§105](DECISIONS_6.md)):
+  * правило поверх фильтра эффекта по видам воздействия: прямая атака,
+    область, поля на гексах, объекты;
+  * уровни «правила боя → правила режима → сценарий → навык / поле →
+    объект» с «наследовать»; без правил — прежний флаг «Урон по
+    союзникам»;
+  * режимы «только враждебные», «враждебные и нейтральные», «все, кроме
+    источника», «все, включая источник», своё правило с флажками и
+    тегами; режим «попутный урон» области;
+  * вред (урон, ослабления, контроль) отдельно от помощи (лечение,
+    усиления); самоповреждение только явно; окружение ничьё;
+  * отношения поля при срабатывании или при создании; ловушка, которую
+    правило не пускает, остаётся взведённой; телепорт — гекс прибытия или
+    пройденные гексы;
+  * подсветка союзников в превью области, подтверждение «Удар по своим»
+    (Alt, настройка), «Кого заденет» в редакторе навыка и поля;
+  * «По своим» в отчёте боя.
+* **Файлы**: ядро — `src/HexTactics.Core/Content/Defs/{FriendlyFireDefs,RulesDef,GameRulesDefs,EffectDefs,ScenarioObjectDefs,SkillDefs}.cs`,
+  `Sim/{FriendlyFireSystem,SkillSystem,CellEffectSystem,Planner,BattleReport,BattleMap,ScenarioSystem,Simulation}.cs`;
+  игра — `game/src/Battle/BattleScreen.cs`, `game/src/Editor/{SkillEditorPanel,DefListPanel}.cs`,
+  `game/src/App/Settings.cs`; `docs/schema/*`.
+* **Тесты**: `Part6FriendlyFireTests` (7): T41–T46; UI — `friendly_fire_preview_highlight_confirm`.
+
