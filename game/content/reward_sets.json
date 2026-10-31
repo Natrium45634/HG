@@ -1,0 +1,132 @@
+{
+  "formatVersion": 5,
+  "kind": "reward_sets",
+  "items": [
+    {
+      "id": "rw_pass_scout",
+      "name": "Перевал: разведка",
+      "description": "Медаль за первое прохождение и флаг «перевал удержан».",
+      "tags": [],
+      "group": "Кампания «Перевал»",
+      "version": 1,
+      "entries": [
+        {
+          "id": "medal",
+          "type": "Medal",
+          "scenario": "",
+          "unit": "",
+          "flag": "",
+          "currency": "",
+          "amount": 1,
+          "medal": "Разведчик перевала",
+          "onDefeat": false,
+          "policy": "FirstClearOnly",
+          "choiceGroup": ""
+        },
+        {
+          "id": "held",
+          "type": "SetFlag",
+          "scenario": "",
+          "unit": "",
+          "flag": "pass_held",
+          "currency": "",
+          "amount": 1,
+          "medal": "",
+          "onDefeat": false,
+          "policy": "FirstClearOnly",
+          "choiceGroup": ""
+        }
+      ]
+    },
+    {
+      "id": "rw_pass_siege",
+      "name": "Перевал: осада",
+      "description": "Медаль на каждый вариант сложности и трофей на выбор.",
+      "tags": [],
+      "group": "Кампания «Перевал»",
+      "version": 1,
+      "entries": [
+        {
+          "id": "medal",
+          "type": "Medal",
+          "scenario": "",
+          "unit": "",
+          "flag": "",
+          "currency": "",
+          "amount": 1,
+          "medal": "Осада выдержана",
+          "onDefeat": false,
+          "policy": "PerDifficulty",
+          "choiceGroup": ""
+        },
+        {
+          "id": "ranger",
+          "type": "UnlockUnit",
+          "scenario": "",
+          "unit": "elf_ranger",
+          "flag": "",
+          "currency": "",
+          "amount": 1,
+          "medal": "",
+          "onDefeat": false,
+          "policy": "ExclusiveChoice",
+          "choiceGroup": "трофей"
+        },
+        {
+          "id": "priestess",
+          "type": "UnlockUnit",
+          "scenario": "",
+          "unit": "priestess",
+          "flag": "",
+          "currency": "",
+          "amount": 1,
+          "medal": "",
+          "onDefeat": false,
+          "policy": "ExclusiveChoice",
+          "choiceGroup": "трофей"
+        }
+      ]
+    },
+    {
+      "id": "rw_pass_titan",
+      "name": "Перевал: титан",
+      "description": "Медаль за победу и отдельная — без потерь.",
+      "tags": [],
+      "group": "Кампания «Перевал»",
+      "version": 1,
+      "entries": [
+        {
+          "id": "medal",
+          "type": "Medal",
+          "scenario": "",
+          "unit": "",
+          "flag": "",
+          "currency": "",
+          "amount": 1,
+          "medal": "Хранитель повержен",
+          "onDefeat": false,
+          "policy": "FirstClearOnly",
+          "choiceGroup": ""
+        },
+        {
+          "id": "flawless",
+          "type": "Medal",
+          "scenario": "",
+          "unit": "",
+          "flag": "",
+          "currency": "",
+          "amount": 1,
+          "medal": "Без потерь",
+          "onDefeat": false,
+          "policy": "FirstClearOnly",
+          "choiceGroup": "",
+          "criterion": {
+            "metric": "Deaths",
+            "compare": "AtMost",
+            "value": 0
+          }
+        }
+      ]
+    }
+  ]
+}

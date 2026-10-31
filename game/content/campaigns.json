@@ -1,0 +1,108 @@
+{
+  "formatVersion": 5,
+  "kind": "campaigns",
+  "items": [
+    {
+      "id": "pass_campaign",
+      "name": "Перевал",
+      "description": "Короткая кампания из готовых сценариев перевала: развилка, осада (усложнённый вариант) и логово титана.",
+      "tags": [],
+      "group": "Кампании",
+      "version": 1,
+      "intro": "Перевал — единственная дорога через горы. Удержите его, выберите путь и спуститесь к логову титана.",
+      "startNodes": [
+        "scout"
+      ],
+      "nodes": [
+        {
+          "id": "scout",
+          "scenario": "td_pass",
+          "variant": "",
+          "stageLabel": "Глава 1",
+          "description": "Первая оборона перевала.",
+          "next": [
+            "fork",
+            "siege"
+          ],
+          "rewardSet": "rw_pass_scout"
+        },
+        {
+          "id": "fork",
+          "scenario": "td_pass_fork",
+          "variant": "",
+          "stageLabel": "Глава 2",
+          "description": "",
+          "next": [
+            "titan"
+          ],
+          "rewardSet": ""
+        },
+        {
+          "id": "siege",
+          "scenario": "td_pass_defense",
+          "variant": "td_pass_defense_siege",
+          "stageLabel": "Глава 2",
+          "description": "Открывается, если в первой главе база сохранила не меньше половины здоровья.",
+          "next": [
+            "titan"
+          ],
+          "rewardSet": "rw_pass_siege",
+          "requires": {
+            "type": "Result",
+            "children": [],
+            "node": "scout",
+            "nodes": [],
+            "count": 1,
+            "flag": "",
+            "criterion": {
+              "metric": "BaseHpRemaining",
+              "compare": "AtLeast",
+              "value": 0.5
+            }
+          }
+        },
+        {
+          "id": "titan",
+          "scenario": "titan_lair",
+          "variant": "",
+          "stageLabel": "Финал",
+          "description": "",
+          "next": [],
+          "rewardSet": "rw_pass_titan",
+          "requires": {
+            "type": "All",
+            "children": [
+              {
+                "type": "Flag",
+                "children": [],
+                "node": "",
+                "nodes": [],
+                "count": 1,
+                "flag": "pass_held"
+              },
+              {
+                "type": "CompletedCount",
+                "children": [],
+                "node": "",
+                "nodes": [
+                  "fork",
+                  "siege"
+                ],
+                "count": 1,
+                "flag": ""
+              }
+            ],
+            "node": "",
+            "nodes": [],
+            "count": 1,
+            "flag": ""
+          }
+        }
+      ],
+      "flags": [
+        "pass_held"
+      ],
+      "cycles": "Forbidden"
+    }
+  ]
+}

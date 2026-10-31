@@ -30,6 +30,10 @@ public partial class RuleGraphCanvas : GraphEdit
     public HashSet<string> Found { get; } = new();
     /// <summary>Nodes with problems: true — an error.</summary>
     public Dictionary<string, bool> Problems { get; } = new();
+    /// <summary>A scheme (phases, missions): the first line of a node's label is its title, the rest its text; no ports' captions.</summary>
+    public bool SchemeTitles { get; set; }
+    /// <summary>The colour of the outline of a node (statuses of a scheme: missions of a campaign).</summary>
+    public Dictionary<string, Color> Marks { get; } = new();
 
     /// <summary>The graph changed (nodes, links, places): the caller stores it as one operation.</summary>
     public event Action? Changed;
@@ -148,9 +152,10 @@ public partial class RuleGraphCanvas : GraphEdit
 
     private GraphNode MakeNode(RuleNodeDef n, string name)
     {
+        string[] lines = SchemeTitles && n.Label != "" ? n.Label.Split('\n') : System.Array.Empty<string>();
         var gn = new GraphNode
         {
-            Name = name, Title = $"{EdUtil.EnumLabel(n.Kind)} · {n.Id}", PositionOffset = new Vector2(n.X, n.Y),
+            Name = name, Title = lines.Length > 0 ? lines[0] : $"{EdUtil.EnumLabel(n.Kind)} · {n.Id}", PositionOffset = new Vector2(n.X, n.Y),
             CustomMinimumSize = new Vector2(190, 0), Draggable = !ReadOnly, Selectable = true,
         };
         if (IsBreakpoint?.Invoke(n.Id) == true)
@@ -161,8 +166,8 @@ public partial class RuleGraphCanvas : GraphEdit
         for (int r = 0; r < rows; r++)
         {
             var row = Ui.HBox(8);
-            var left = Ui.Label(r < ins.Count ? ins[r].Caption : "", 12, Ui.TextDim).Expand();
-            var right = Ui.Label(r < outs.Count ? outs[r].Caption : "", 12, Ui.TextDim);
+            var left = Ui.Label(r < ins.Count && !SchemeTitles ? ins[r].Caption : "", 12, Ui.TextDim).Expand();
+            var right = Ui.Label(r < outs.Count && !SchemeTitles ? outs[r].Caption : "", 12, Ui.TextDim);
             right.HorizontalAlignment = HorizontalAlignment.Right;
             row.AddChild(left);
             row.AddChild(right);
@@ -171,7 +176,7 @@ public partial class RuleGraphCanvas : GraphEdit
             gn.SetSlot(r, hasIn, hasIn ? (int)ins[r].Type : 0, hasIn ? PortColor(ins[r].Type) : Colors.White,
                 hasOut, hasOut ? (int)outs[r].Type : 0, hasOut ? PortColor(outs[r].Type) : Colors.White);
         }
-        var body = Ui.Label(RuleGraphs.Title(n), 13, Ui.Text, wrap: true);
+        var body = Ui.Label(lines.Length > 0 ? string.Join("\n", lines.Skip(1)) : RuleGraphs.Title(n), 13, Ui.Text, wrap: true);
         body.CustomMinimumSize = new Vector2(170, 0);
         body.Name = "Body";
         gn.AddChild(body);
@@ -180,6 +185,7 @@ public partial class RuleGraphCanvas : GraphEdit
         string tip = n.Label != "" ? n.Label : "";
         if (Problems.TryGetValue(n.Id, out bool error)) border = error ? Ui.Bad : Ui.Warn;
         if (Found.Contains(n.Id)) border = Ui.Accent;
+        if (Marks.TryGetValue(n.Id, out var mark0)) border = mark0;
         if (Runs != null)
         {
             if (Runs.TryGetValue(n.Id, out var run))

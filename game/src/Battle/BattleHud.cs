@@ -72,6 +72,7 @@ public partial class BattleHud : Control
     private Label _banner = null!;
     private float _bannerTime;
     private PanelContainer _outcome = null!;
+    private Label _outcomeCampaign = null!;
     private Label _outcomeText = null!;
     private PanelContainer _help = null!;
     private PanelContainer _menu = null!;
@@ -586,6 +587,12 @@ public partial class BattleHud : Control
         _outcomeText = Ui.Label("", 30, Ui.Accent);
         _outcomeText.HorizontalAlignment = HorizontalAlignment.Center;
         v.AddChild(_outcomeText);
+        _outcomeCampaign = Ui.Label("", 15, Ui.Text, wrap: true);
+        _outcomeCampaign.Name = "OutcomeCampaign";
+        _outcomeCampaign.CustomMinimumSize = new Vector2(560, 0);
+        _outcomeCampaign.HorizontalAlignment = HorizontalAlignment.Center;
+        _outcomeCampaign.Visible = false;
+        v.AddChild(_outcomeCampaign);
         var h = Ui.HBox(8);
         h.AddChild(Ui.Button("Заново", () => _bs.Restart()).MinSize(140, 40));
         h.AddChild(Ui.Button("Выйти", () => _bs.ExitBattle()).MinSize(140, 40));
@@ -971,6 +978,9 @@ public partial class BattleHud : Control
         {
             _lastMessage = Sim.OutcomeText;
             _outcomeText.Text = (Sim.Outcome == BattleOutcome.Victory ? "ПОБЕДА" : "ПОРАЖЕНИЕ") + "\n" + Sim.OutcomeText;
+            // A mission of a campaign (part 6, §103): the result goes into the progress once.
+            _outcomeCampaign.Text = _bs.RecordCampaign();
+            _outcomeCampaign.Visible = _outcomeCampaign.Text != "";
             _outcomeText.AddThemeColorOverride("font_color", Sim.Outcome == BattleOutcome.Victory ? Ui.Good : Ui.Bad);
             _outcome.Visible = true;
         }

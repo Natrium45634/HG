@@ -142,6 +142,8 @@ public static class ContentDependencies
             DefCategory.ModifierSet => ("наборе модификаторов", "наборах модификаторов"),
             DefCategory.DifficultyVariant => ("варианте сценария", "вариантах сценариев"),
             DefCategory.ObjectPreset => ("пресете объекта", "пресетах объектов"),
+            DefCategory.Campaign => ("кампании", "кампаниях"),
+            DefCategory.RewardSet => ("наборе наград", "наборах наград"),
             DefCategory.Faction => ("фракции", "фракциях"),
             DefCategory.AiProfile => ("профиле ИИ", "профилях ИИ"),
             DefCategory.Asset => ("ресурсе", "ресурсах"),

@@ -2798,3 +2798,23 @@ Windows-сборка проверена самопроверкой на Windows 
   контент — `game/content/units.json` (разрешённые навыки титана); `docs/schema/*`.
 * **Тесты**: `Part6BossTests` (6): T24, T25; UI — `boss_phases_tab_run_and_telegraph`.
 
+## Ч6 · Этап 6.8. Кампании и награды
+
+* **Сделано** ([§103](DECISIONS_6.md)):
+  * виды объектов «Кампании» и «Наборы наград»; задания ссылаются на
+    готовые сценарии и варианты; ветвление и слияние, кольца по режиму;
+  * доступ структурными условиями (пройдено, N из, флаг, результат не хуже
+    порога; И/ИЛИ/НЕ); статусы, причина закрытия, переигрывание;
+  * результат боя из отчёта боя; награды: сценарий, юнит, флаг, валюта,
+    медаль; политики «первое», «каждое», «на вариант», «на выбор»;
+  * ключи однократной выдачи, обработанные события, атомарное сохранение
+    прогресса в данных пользователя; правка кампании прогресс не сбрасывает;
+  * экран «Кампании» в главном меню; запись результата по окончании боя;
+    разделы редактора с проверкой, схемой и предпросмотром наград;
+  * кампания «Перевал» и три набора наград в контенте.
+* **Файлы**: ядро — `src/HexTactics.Core/Content/{Campaigns,ContentDatabase,ContentSearch,ContentValidator,ContentDependencies}.cs`,
+  `Content/Defs/{CampaignDefs,Common}.cs`, `Sim/CampaignResults.cs`;
+  игра — `game/src/App/{CampaignScreen,Main,MainMenu}.cs`, `game/src/Editor/{CampaignPanels,EditorScreen,RuleGraphCanvas}.cs`,
+  `game/src/Battle/{BattleScreen,BattleHud}.cs`; контент — `game/content/{campaigns,reward_sets}.json`; `docs/schema/*`.
+* **Тесты**: `Part6CampaignTests` (6): T26, T27; UI — `campaign_screen_mission_rewards_once`.
+

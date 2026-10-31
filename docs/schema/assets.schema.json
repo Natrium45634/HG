@@ -246,7 +246,9 @@
             "ZonePreset",
             "ModifierSet",
             "DifficultyVariant",
-            "ObjectPreset"
+            "ObjectPreset",
+            "Campaign",
+            "RewardSet"
           ]
         },
         "clipLengths": {

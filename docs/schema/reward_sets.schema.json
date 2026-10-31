@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/reward_sets.schema.json",
+  "title": "набор наград (reward_sets.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "reward_sets"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RewardSetDef"
+      }
+    }
+  },
+  "$defs": {
+    "OutcomeCriterionDef": {
+      "type": "object",
+      "properties": {
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "metric": {
+          "type": "string",
+          "enum": [
+            "Victory",
+            "BaseHpRemaining",
+            "Leaks",
+            "TimeToWin",
+            "Deaths",
+            "UnitsDeployed"
+          ],
+          "description": "Показатель"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RewardEntryDef": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000,
+          "description": "Количество"
+        },
+        "choiceGroup": {
+          "type": "string",
+          "description": "Группа выбора"
+        },
+        "criterion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeCriterionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Только если — Порог результата боя; пусто — без условия"
+        },
+        "currency": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "flag": {
+          "type": "string",
+          "description": "Флаг"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID — Ключ выдачи; не меняйте после выхода кампании"
+        },
+        "medal": {
+          "type": "string",
+          "description": "Медаль — Название"
+        },
+        "onDefeat": {
+          "type": "boolean",
+          "description": "И при поражении — Иначе — только при победе"
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "FirstClearOnly",
+            "Repeatable",
+            "PerDifficulty",
+            "ExclusiveChoice"
+          ],
+          "description": "Выдача"
+        },
+        "scenario": {
+          "type": "string",
+          "x-ref": "Scenario",
+          "description": "Сценарий"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "UnlockScenario",
+            "UnlockUnit",
+            "SetFlag",
+            "Currency",
+            "Medal"
+          ],
+          "description": "Награда"
+        },
+        "unit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Шаблон юнита"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RewardSetDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset",
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant",
+            "ObjectPreset",
+            "Campaign",
+            "RewardSet"
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RewardEntryDef"
+          },
+          "description": "Награды"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

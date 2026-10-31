@@ -95,6 +95,34 @@ public partial class BattleScreen : Node
         _admin = admin;
         _onExit = onExit;
         Name = "Battle";
+        Campaign = CampaignSession.Take(scenario.Id);
+    }
+
+    // Part 6, stage 6.8 (§103): a mission of a campaign records its result once — the key is this battle.
+    /// <summary>The mission of a campaign this battle is (null — a free battle).</summary>
+    public CampaignLaunch? Campaign { get; }
+    /// <summary>The ID of this battle: the event of its completion is processed once.</summary>
+    public string BattleId { get; } = Guid.NewGuid().ToString("N");
+    public CampaignCompletion? CampaignResult { get; private set; }
+
+    /// <summary>
+    /// The battle ended: its result goes into the progress of the campaign (once; a second call — «уже учтено») and the text of
+    /// what it gave is returned ("" — no campaign).
+    /// </summary>
+    public string RecordCampaign()
+    {
+        if (Campaign == null || Sim.Outcome == BattleOutcome.None) return "";
+        var pub = Main.Instance.Content.Published;
+        if (pub.Get<CampaignDef>(Campaign.Campaign) is not { } c || c.Node(Campaign.Node) == null) return "";
+        var p = CampaignSession.Progress(c);
+        var done = Campaigns.Complete(pub, c, p, Campaign.Node, CampaignResults.Of(Sim, Report.Fill(StopReason)), BattleId);
+        if (done.Duplicate) return "Кампания: результат этого боя уже учтён"; // the result shown stays the real one
+        CampaignStore.Save(CampaignSession.Dir, p);
+        CampaignResult = done;
+        CampaignSession.Last = (c.Id, Campaign.Node, done);
+        return "Кампания: " + (done.Granted.Count > 0 ? "получено — " + string.Join(", ", done.Granted) : "новых наград нет") +
+               (done.Choices.Count > 0 ? "; награда на выбор — на экране кампании" : "") +
+               (done.NewlyAvailable.Count > 0 ? "; открыто заданий: " + done.NewlyAvailable.Count : "");
     }
 
     public override void _Ready()
@@ -1668,7 +1696,12 @@ public partial class BattleScreen : Node
     }
 
     /// <summary>Back to the start: the same content, scenario and seed (the snapshot), the same «небезопасный тест» mark.</summary>
-    public void Restart() => Main.Instance.ShowBattle(new BattleScreen(_snapshot!, _admin, _onExit) { Unsafe = Unsafe, UnsafeErrors = UnsafeErrors });
+    public void Restart()
+    {
+        // A restarted mission of a campaign is a new battle of the same mission.
+        if (Campaign != null) CampaignSession.Pending = Campaign;
+        Main.Instance.ShowBattle(new BattleScreen(_snapshot!, _admin, _onExit) { Unsafe = Unsafe, UnsafeErrors = UnsafeErrors });
+    }
 
     /// <summary>The replay so far, with the content of the start inside; written to user://replays.</summary>
     public string SaveReplay()

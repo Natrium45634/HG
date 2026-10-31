@@ -47,6 +47,10 @@ public enum DefCategory
     DifficultyVariant,
     /// <summary>Interactive objects assembled from components, to put on any map (docs/DECISIONS_6.md §100).</summary>
     ObjectPreset,
+    /// <summary>Campaigns: missions over the scenarios, their links and access (docs/DECISIONS_6.md §103).</summary>
+    Campaign,
+    /// <summary>Sets of rewards of missions (docs/DECISIONS_6.md §103).</summary>
+    RewardSet,
 }
 
 /// <summary>

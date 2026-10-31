@@ -179,6 +179,9 @@ public partial class Main : Node
 
     public void ShowEditor() => SetScreen(new EditorScreen());
 
+    /// <summary>The screen of the campaigns (part 6, §103), on a campaign and its mission.</summary>
+    public void ShowCampaigns(string campaign = "", string node = "") => SetScreen(new CampaignScreen(campaign, node));
+
     public override void _Process(double delta)
     {
         _frame++;

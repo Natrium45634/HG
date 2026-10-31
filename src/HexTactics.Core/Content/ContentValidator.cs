@@ -72,6 +72,13 @@ public static class ContentValidator
             issues.Add(new ContentIssue(IssueSeverity.Warning, "Ресурсы", "Size", $"Ресурсы пакета занимают {totalMb:0} МБ — больше {db.Rules.Assets.WarnTotalMb:0} МБ"));
         foreach (var m in db.All<MapDef>()) CheckMap(db, m, issues);
         foreach (var s in db.All<ScenarioDef>()) CheckScenario(db, s, issues);
+        // Campaigns and their rewards (part 6, §103).
+        foreach (var c in db.All<CampaignDef>())
+            foreach (var p in Campaigns.Check(db, c))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(c), p.Where == "" ? "Nodes" : $"Nodes[{p.Where}]", p.Message));
+        foreach (var r in db.All<RewardSetDef>())
+            foreach (var p in Campaigns.Check(db, r))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(r), p.Where == "" ? "Entries" : $"Entries[{p.Where}]", p.Message));
         foreach (var z in db.All<ZonePresetDef>())
             if (db.Get<MapDef>(z.Map) is { } zm && z.Zone.Cells.Where(c => zm.Cells.All(mc => mc.C != c)).ToList() is { Count: > 0 } off)
                 issues.Add(Err(z, "Zone", $"Гексы вне карты «{zm.DisplayName}»: {string.Join(", ", off.Take(5))}"));
@@ -178,6 +185,8 @@ public static class ContentValidator
         DefCategory.ModifierSet => "набор модификаторов",
         DefCategory.DifficultyVariant => "вариант сценария",
         DefCategory.ObjectPreset => "пресет объекта",
+        DefCategory.Campaign => "кампания",
+        DefCategory.RewardSet => "набор наград",
         _ => c.ToString(),
     };
 

@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/campaigns.schema.json",
+  "title": "кампания (campaigns.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "campaigns"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CampaignDef"
+      }
+    }
+  },
+  "$defs": {
+    "CampaignConditionDef": {
+      "type": "object",
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CampaignConditionDef"
+          },
+          "description": "Вложенные"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Сколько"
+        },
+        "criterion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OutcomeCriterionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Порог"
+        },
+        "flag": {
+          "type": "string",
+          "description": "Флаг"
+        },
+        "node": {
+          "type": "string",
+          "description": "Задание (ID узла)"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Из заданий — ID узлов; пусто — любые"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "All",
+            "Any",
+            "Not",
+            "NodeCompleted",
+            "CompletedCount",
+            "Flag",
+            "Result"
+          ],
+          "description": "Условие"
+        }
+      },
+      "additionalProperties": true
+    },
+    "CampaignDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset",
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant",
+            "ObjectPreset",
+            "Campaign",
+            "RewardSet"
+          ]
+        },
+        "cycles": {
+          "type": "string",
+          "enum": [
+            "Forbidden",
+            "WithExit",
+            "Endless"
+          ],
+          "description": "Кольца"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Флаги кампании — Объявленные флаги (награды и условия доступа)"
+        },
+        "intro": {
+          "type": "string",
+          "description": "Вступление"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CampaignNodeDef"
+          },
+          "description": "Задания"
+        },
+        "startNodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Стартовые задания — ID узлов, открытых с начала"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "CampaignNodeDef": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Описание — Пусто — описание сценария"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID"
+        },
+        "needsUnlock": {
+          "type": "boolean",
+          "description": "Нужно открыть — Задание видно, но закрыто, пока наградой не открыт его сценарий"
+        },
+        "next": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Далее — ID следующих заданий (ветвление и слияние)"
+        },
+        "requires": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CampaignConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Доступ — Пусто — пройдено задание, ведущее сюда (стартовое — открыто)"
+        },
+        "rewardSet": {
+          "type": "string",
+          "x-ref": "RewardSet",
+          "description": "Награды"
+        },
+        "scenario": {
+          "type": "string",
+          "x-ref": "Scenario",
+          "description": "Сценарий"
+        },
+        "stageLabel": {
+          "type": "string",
+          "description": "Этап — Подпись, например «Глава 1»"
+        },
+        "variant": {
+          "type": "string",
+          "x-ref": "DifficultyVariant",
+          "description": "Вариант — Пусто — обычный"
+        },
+        "x": {
+          "type": "number",
+          "description": "X"
+        },
+        "y": {
+          "type": "number",
+          "description": "Y"
+        }
+      },
+      "additionalProperties": true
+    },
+    "OutcomeCriterionDef": {
+      "type": "object",
+      "properties": {
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "metric": {
+          "type": "string",
+          "enum": [
+            "Victory",
+            "BaseHpRemaining",
+            "Leaks",
+            "TimeToWin",
+            "Deaths",
+            "UnitsDeployed"
+          ],
+          "description": "Показатель"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

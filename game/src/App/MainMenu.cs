@@ -49,6 +49,9 @@ public partial class MainMenu : Control
         left.AddChild(version);
         left.AddChild(Ui.Spacer(0, 18));
         left.AddChild(Ui.Button("Редактор (админ-режим)", () => app.ShowEditor(), "Карты, юниты, навыки, эффекты, правила и сценарии без кода").MinSize(300, 44));
+        var campaigns = Ui.Button("Кампании", () => app.ShowCampaigns(), "Задания по порядку: связи, условия доступа, награды (часть 6)").MinSize(300, 44);
+        campaigns.Name = "MenuCampaigns";
+        left.AddChild(campaigns);
         var load = Ui.Button("Загрузить бой", () => Battle.SavedBattlesDialog.Open(this, false, null), "Бои, сохранённые посреди схватки (часть 6)").MinSize(300, 40);
         load.Name = "MenuLoadBattle";
         left.AddChild(load);
@@ -156,6 +159,7 @@ public partial class MainMenu : Control
     private void Play()
     {
         if (_chosen == null) return;
+        CampaignSession.Pending = null; // a free battle is no mission of a campaign
         var db = Main.Instance.Content.Published;
         if (Variant is { } v)
         {

@@ -35,7 +35,7 @@ public partial class BossPhasesView : VBoxContainer
         _table = new GridContainer { Name = "BossPhaseTable", Columns = 6 };
         _table.AddThemeConstantOverride("h_separation", 10);
         AddChild(_table);
-        _scheme = new RuleGraphCanvas { Name = "BossPhaseScheme", ReadOnly = true, CustomMinimumSize = new Vector2(0, 260), MinimapEnabled = false };
+        _scheme = new RuleGraphCanvas { Name = "BossPhaseScheme", ReadOnly = true, SchemeTitles = true, CustomMinimumSize = new Vector2(0, 260), MinimapEnabled = false };
         _scheme.SizeFlagsVertical = SizeFlags.Fill;
         AddChild(_scheme);
         var run = new HFlowContainer();

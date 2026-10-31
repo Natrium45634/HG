@@ -127,6 +127,8 @@ public sealed class ContentDatabase
         (DefCategory.ModifierSet, typeof(ModifierSetDef), "modifier_sets.json"),
         (DefCategory.DifficultyVariant, typeof(DifficultyVariantDef), "difficulty_variants.json"),
         (DefCategory.ObjectPreset, typeof(ObjectPresetDef), "object_presets.json"),
+        (DefCategory.RewardSet, typeof(RewardSetDef), "reward_sets.json"),
+        (DefCategory.Campaign, typeof(CampaignDef), "campaigns.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),
         (DefCategory.Map, typeof(MapDef), "maps"),
         (DefCategory.Scenario, typeof(ScenarioDef), "scenarios"),

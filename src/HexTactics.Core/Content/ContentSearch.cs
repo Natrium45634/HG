@@ -283,6 +283,8 @@ public sealed class ContentSearch
         DefCategory.ModifierSet => "набор модификаторов",
         DefCategory.DifficultyVariant => "вариант сценария",
         DefCategory.ObjectPreset => "пресет объекта",
+        DefCategory.Campaign => "кампания",
+        DefCategory.RewardSet => "набор наград",
         _ => c.ToString(),
     };
 

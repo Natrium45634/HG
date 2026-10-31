@@ -307,6 +307,21 @@ caster, minLead, showArea, color, showTimer, text}`. Нули и пустые
 значения новых полей не пишутся. Отпечаток боя включает текущую фазу
 каждого босса и число переходов (`B<юнит>:<фаза>:<переходов>`).
 
+Часть 6, этап 6.8 ([§103](DECISIONS_6.md)): `campaigns.json` — `intro,
+startNodes[], nodes[] {id, scenario, variant, stageLabel, description,
+requires {type (Always, All, Any, Not, NodeCompleted, CompletedCount, Flag,
+Result), children[], node, nodes[], count, flag, criterion}, next[],
+rewardSet, needsUnlock}, flags[], cycles (Forbidden, WithExit, Endless)`.
+`reward_sets.json` — `entries[] {id, type (UnlockScenario, UnlockUnit,
+SetFlag, Currency, Medal), scenario, unit, flag, currency, amount, medal,
+criterion {metric (Victory, BaseHpRemaining, Leaks, TimeToWin, Deaths,
+UnitsDeployed), compare, value}, onDefeat, policy (FirstClearOnly,
+Repeatable, PerDifficulty, ExclusiveChoice), choiceGroup}`. Прогресс —
+`user://campaigns/<кампания>.json`: `campaign, runId, campaignVersion,
+nodes {attempts, victories, best, last, variants}, flags, currency, medals,
+unlockedScenarios, unlockedUnits, ledger[] {key, node, entry, text},
+processed[], pending[]`.
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

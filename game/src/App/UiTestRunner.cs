@@ -93,6 +93,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("object_preset_sandbox_and_interaction", ObjectPresetSandboxAndInteraction));
         _tests.Add(("graph_editor_debug_breakpoint", GraphEditorDebugBreakpoint));
         _tests.Add(("boss_phases_tab_run_and_telegraph", BossPhasesTabRunTelegraph));
+        _tests.Add(("campaign_screen_mission_rewards_once", CampaignScreenMissionRewardsOnce));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3381,7 +3382,8 @@ public partial class UiTestRunner : Node
         var bs = Battle();
         Check(bs.Sim.Scenario.Def!.Id == "phase_sandbox", "прогон фазы — бой на пустой карте");
         var titan = bs.Sim.Units.First(u => u.Tag == "boss");
-        for (int i = 0; i < 30 && bs.Sim.Scenario.PhaseOf(titan) != "Ярость"; i++) await Frames(1);
+        for (int i = 0; i < 3; i++) bs.Sim.Step(); // the battle opens paused; the phase starts at its first tick
+        await Frames(2);
         Check(bs.Sim.Scenario.PhaseOf(titan) == "Ярость", "титан сразу в фазе «Ярость»: " + bs.Sim.Scenario.PhaseOf(titan));
 
         // A telegraph of the scenario over the titan's strike: area, timer; an interrupt takes it away.
@@ -3390,17 +3392,82 @@ public partial class UiTestRunner : Node
         bs.Sim.Ai.Enabled = false;
         bs.Sim.Scenario.Def.Telegraphs.Add(new TelegraphRuleDef { Skill = "strike", Caster = "boss", MinLead = 3, Text = "Удар!" });
         var knight = bs.Sim.Units.Where(u => u.Alive && bs.Sim.IsPlayerFaction(u.FactionId)).OrderBy(u => HexCoord.Distance(u.Pos, titan.Pos)).First();
+        bs.Sim.Skills.Interrupt(titan, InterruptCause.Cancelled, "тест"); // an auto-attack begun before they were switched off
         Check(bs.Sim.Enqueue(titan, Command.Skill("strike", null, knight.Id)) == null, "титан готовит удар");
-        bs.Sim.Step();
+        for (int i = 0; i < bs.Sim.TicksFor(3) && titan.Casting?.Skill.Id != "strike"; i++) bs.Sim.Step();
         var cast = titan.Casting;
-        Check(cast != null && cast.Rule != null && cast.ReleaseTick - cast.StartTick == bs.Sim.TicksFor(3), "телеграф сценария: предупреждение 3 с");
+        Check(cast != null && cast.Rule != null && cast.ReleaseTick - cast.StartTick == bs.Sim.TicksFor(3),
+            $"телеграф сценария: предупреждение 3 с (каст {cast?.Skill.Id}, правило {cast?.Rule != null}, тиков {cast?.ReleaseTick - cast?.StartTick})");
         await Frames(6);
         await Shot("part6_telegraph");
-        double hp = knight.Hp;
         bs.Sim.Skills.Interrupt(titan, InterruptCause.Control, "оглушение");
+        await Frames(2);
+        Check(cast!.Interrupted && !bs.Sim.Skills.ActiveCasts.Contains(cast), "прерванный удар: предупреждение снято сразу");
         for (int i = 0; i < bs.Sim.TicksFor(4); i++) bs.Sim.Step();
+        Check(!cast.Released, "прерванный удар так и не отпущен (эффекты — только от боевой системы)");
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.8 (ТЗ 9–10; §103): «Кампании» of the main menu — the first mission open, the others closed with the reason;
+    /// «▶ Играть» starts its scenario; the victory records the result once (a second event — «уже учтено»), gives the rewards and
+    /// opens the next missions; «Выйти» comes back to the campaign with the result.
+    /// </summary>
+    private async Task CampaignScreenMissionRewardsOnce()
+    {
+        CampaignStore.Delete(CampaignSession.Dir, "pass_campaign");
+        Main.Instance.ShowMainMenu();
         await Frames(4);
-        Check(!bs.Sim.Skills.ActiveCasts.Any(c => c.Caster == titan) && Math.Abs(knight.Hp - hp) < 1e-6, "прерванный удар: предупреждение снято, урона нет");
+        await PressNamed(GetTree().Root, "MenuCampaigns");
+        await Frames(6);
+        var screen = Find<CampaignScreen>(GetTree().Root).FirstOrDefault();
+        Check(screen != null && screen.Campaign?.Id == "pass_campaign", "экран кампаний открыт на «Перевале»");
+        var c = screen!.Campaign!;
+        Check(Campaigns.Status(c, screen.Progress, c.Node("scout")!) == CampaignNodeStatus.Available, "первое задание доступно");
+        Check(Campaigns.Status(c, screen.Progress, c.Node("siege")!) == CampaignNodeStatus.Locked, "осада закрыта");
+        screen.Choose("siege");
+        await Frames(2);
+        Check(Find<Label>(screen).Any(l => l.Name == "MissionStatus" && l.Text.Contains("нужно:")), "причина закрытия видна");
+        Check(Find<Button>(screen).First(b => b.Name == "CampaignPlay").Disabled, "закрытое задание не запускается");
+        Check(screen.Scheme.NodeView("scout") != null && screen.Scheme.NodeView("titan") != null, "схема связей заданий");
+        screen.Choose("scout");
+        await Frames(2);
+        await Shot("part6_campaign_screen");
+        await PressNamed(screen, "CampaignPlay");
+        await Frames(10);
+        var bs = Battle();
+        Check(bs.Campaign is { Node: "scout" } && bs.Sim.Scenario.Def!.Id == "td_pass", "задание — исходный сценарий «td_pass»");
+        bs.Sim.Scenario.Execute(new TriggerActionDef { Type = TriggerActionType.Victory, Text = "тест кампании" }, "тест", null);
+        for (int i = 0; i < 30 && !Find<Label>(bs.Hud).Any(l => l.Name == "OutcomeCampaign" && l.Visible); i++) await Frames(1);
+        var line = Find<Label>(bs.Hud).FirstOrDefault(l => l.Name == "OutcomeCampaign");
+        Check(line != null && line.Visible && line.Text.Contains("получено") && line.Text.Contains("Разведчик перевала"), "итог боя: награды кампании — " + line?.Text);
+        var p = CampaignSession.Progress(c);
+        int ledger = p.Ledger.Count;
+        Check(bs.RecordCampaign().Contains("уже учтён") && CampaignSession.Progress(c).Ledger.Count == ledger, "повторное событие завершения ничего не выдаёт");
+        await Shot("part6_campaign_outcome");
+        bs.ExitBattle();
+        await Frames(8);
+        screen = Find<CampaignScreen>(GetTree().Root).FirstOrDefault();
+        Check(screen != null && screen.Node == "scout", "«Выйти» вернул на экран кампании, к заданию");
+        Check(Find<Label>(screen!).Any(l => l.Name == "MissionResult" && l.Text.StartsWith("Победа") && l.Text.Contains("Открыто")), "результат и открытые задания");
+        Check(Campaigns.Status(c, screen.Progress, c.Node("fork")!) == CampaignNodeStatus.Available &&
+              Campaigns.Status(c, screen.Progress, c.Node("siege")!) == CampaignNodeStatus.Available, "развилка и осада открыты");
+        Check(Find<Label>(screen).Any(l => l.Name == "Reward_medal" && l.Text.StartsWith("✓")), "медаль отмечена полученной");
+        await Shot("part6_campaign_after");
+        CampaignStore.Delete(CampaignSession.Dir, "pass_campaign");
+
+        // The editor: the campaign with its check and scheme, the set of rewards with its preview.
+        await OpenEditor("campaigns");
+        var cp = Find<CampaignPanel>(GetTree().Root).First();
+        cp.Select("pass_campaign");
+        await Frames(6);
+        Check(Find<Label>(Find<VBoxContainer>(cp).First(v => v.Name == "CampaignCheck")).Any(l => l.Text.StartsWith("✓ Заданий 4")), "кампания без ошибок");
+        Check(cp.Scheme?.NodeView("siege") != null, "схема кампании в редакторе");
+        await Shot("part6_campaign_editor");
+        await OpenEditor("reward_sets");
+        var rp = Find<RewardSetPanel>(GetTree().Root).First();
+        rp.Select("rw_pass_siege");
+        await Frames(6);
+        Check(Find<Label>(Find<VBoxContainer>(rp).First(v => v.Name == "RewardPreview")).Any(l => l.Text.Contains("одна на выбор") && l.Text.Contains("«трофей»")), "предпросмотр наград: политика выдачи");
     }
 
     private async Task PressNamed(Node root, string name)

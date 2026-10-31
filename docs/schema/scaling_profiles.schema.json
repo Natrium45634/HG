@@ -162,7 +162,9 @@
             "ZonePreset",
             "ModifierSet",
             "DifficultyVariant",
-            "ObjectPreset"
+            "ObjectPreset",
+            "Campaign",
+            "RewardSet"
           ]
         },
         "displayName": {
