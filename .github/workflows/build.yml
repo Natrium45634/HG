@@ -8,7 +8,7 @@ on:
 env:
   GODOT_VERSION: 4.4.1
   GODOT_BASE: https://github.com/godotengine/godot/releases/download/4.4.1-stable
-  APP_VERSION: 1.0.0
+  APP_VERSION: 1.1.0
 
 jobs:
   build:

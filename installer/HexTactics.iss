@@ -1,9 +1,9 @@
 ﻿; Установщик «Гекс-тактика» (HexTactics) — Inno Setup 6.
-; Сборка: ISCC.exe /DAppVersion=1.0.0 /DSourceDir=<папка экспорта Windows> /DOutputDir=<куда> installer\HexTactics.iss
+; Сборка: ISCC.exe /DAppVersion=1.1.0 /DSourceDir=<папка экспорта Windows> /DOutputDir=<куда> installer\HexTactics.iss
 ; CI собирает его на Windows и проверяет: тихая установка, самопроверка установленной игры, удаление (.github/workflows/build.yml).
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\build\windows"

@@ -20,7 +20,7 @@ public partial class Main : Node
     public static Main Instance { get; private set; } = null!;
 
     /// <summary>The version of the game (project settings → application/config/version).</summary>
-    public static string Version => ProjectSettings.GetSetting("application/config/version", "1.0.0").AsString();
+    public static string Version => ProjectSettings.GetSetting("application/config/version", "1.1.0").AsString();
 
     public ContentManager Content { get; private set; } = null!;
     public Settings Settings { get; private set; } = null!;
