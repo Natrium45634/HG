@@ -499,6 +499,10 @@ public enum TriggerActionType
     [Ed("Закрыть зону развёртывания")] CloseDeploymentZone,
     // Part 6, stage 6.5 (§100).
     [Ed("Перевести объект в состояние", "Компонент «Состояния»")] SwitchObjectState,
+    // Part 6, stage 6.6 (§101): what the graph of events needs from the triggers.
+    [Ed("Запустить триггер через N с")] DelayedTrigger,
+    [Ed("Если — то триггер, иначе — триггер", "Условие проверяется один раз")] IfElse,
+    [Ed("Снять флаг события")] ClearFlag,
 }
 
 public enum ActionTarget
@@ -514,8 +518,14 @@ public sealed class TriggerActionDef : ContentPart
     [Ed("Действие")] public TriggerActionType Type { get; set; } = TriggerActionType.Message;
     [Ed("Текст / ID", "Сообщение; имя триггера; ID визуального или звукового эффекта"),
      EdShowIf(nameof(Type), TriggerActionType.Message, TriggerActionType.Victory, TriggerActionType.Defeat, TriggerActionType.Autopause,
-         TriggerActionType.ActivateTrigger, TriggerActionType.PlayVfx, TriggerActionType.PlaySound, TriggerActionType.EndScenario, TriggerActionType.LogDiagnostic)]
+         TriggerActionType.ActivateTrigger, TriggerActionType.PlayVfx, TriggerActionType.PlaySound, TriggerActionType.EndScenario, TriggerActionType.LogDiagnostic,
+         TriggerActionType.DelayedTrigger, TriggerActionType.IfElse)]
     public string Text { get; set; } = "";
+    [Ed("Через, с"), EdRange(0, 36000), EdShowIf(nameof(Type), TriggerActionType.DelayedTrigger)] public double Delay { get; set; } = 1;
+    [Ed("Условие «если»"), EdShowIf(nameof(Type), TriggerActionType.IfElse)] public ConditionDef? If { get; set; }
+    [Ed("Иначе — триггер", "Пусто — ничего"), EdShowIf(nameof(Type), TriggerActionType.IfElse), JsonOmitEmpty] public string ElseTrigger { get; set; } = "";
+    /// <summary>The node of a graph of events the action was compiled from («граф/узел»; the debugger marks it when it runs).</summary>
+    [Ed("Узел графа"), EdHidden, JsonOmitEmpty] public string Node { get; set; } = "";
     [Ed("Объект", "ID базы или объекта сценария; для зон — ID зоны развёртывания"),
      EdShowIf(nameof(Type), TriggerActionType.ActivateBase, TriggerActionType.DeactivateBase, TriggerActionType.SetTarget, TriggerActionType.SetObjectState,
          TriggerActionType.OpenDeploymentZone, TriggerActionType.CloseDeploymentZone, TriggerActionType.SwitchObjectState)]
@@ -537,7 +547,7 @@ public sealed class TriggerActionDef : ContentPart
     [Ed("Фаза босса (номер)", "1 — первая фаза из списка босса"), EdRange(1, 50), EdShowIf(nameof(Type), TriggerActionType.SetBossPhase)] public int Phase { get; set; } = 1;
     [Ed("Операции", "Каталог операций навыков: применяются к выбранным юнитам"), EdShowIf(nameof(Type), TriggerActionType.Effects)]
     public List<SkillEffectDef> Effects { get; set; } = new();
-    [Ed("Флаг"), EdShowIf(nameof(Type), TriggerActionType.SetFlag)] public string Flag { get; set; } = "";
+    [Ed("Флаг"), EdShowIf(nameof(Type), TriggerActionType.SetFlag, TriggerActionType.ClearFlag)] public string Flag { get; set; } = "";
     [Ed("Переменная"), EdShowIf(nameof(Type), TriggerActionType.SetEnvironment)] public string Variable { get; set; } = "";
     [Ed("Значение переменной"), EdShowIf(nameof(Type), TriggerActionType.SetEnvironment)] public string VariableValue { get; set; } = "";
     [Ed("Цель (ID)"), EdShowIf(nameof(Type), TriggerActionType.CompleteObjective, TriggerActionType.FailObjective)] public string Objective { get; set; } = "";
@@ -594,6 +604,9 @@ public sealed class TriggerActionDef : ContentPart
         TriggerActionType.EndScenario => (Win ? "Завершить победой" : "Завершить поражением") + (Text != "" ? $" «{Text}»" : ""),
         TriggerActionType.LogDiagnostic => $"Диагностика «{Text}»",
         TriggerActionType.SwitchObjectState => $"Объект «{Object}» → {(ObjectStateId != "" ? $"«{ObjectStateId}»" : "следующее состояние")}",
+        TriggerActionType.DelayedTrigger => $"Через {Delay:0.##} с — триггер «{Text}»",
+        TriggerActionType.IfElse => $"Если {If?.Describe() ?? "?"} — «{Text}»" + (ElseTrigger != "" ? $", иначе «{ElseTrigger}»" : ""),
+        TriggerActionType.ClearFlag => $"Снять флаг «{Flag}»",
         TriggerActionType.OpenDeploymentZone => $"Открыть зону «{Object}»",
         TriggerActionType.CloseDeploymentZone => $"Закрыть зону «{Object}»",
         _ => Type.ToString(),
@@ -628,6 +641,13 @@ public sealed class TriggerDef : ContentPart
     [Ed("Однократный")] public bool Once { get; set; } = true;
     [Ed("Не чаще, с", "Предел частоты повторяемого триггера; 0 — без предела"), EdRange(0, 3600), EdShowIf(nameof(Once), false)] public double Cooldown { get; set; }
     [Ed("Не более срабатываний", "0 — без предела"), EdRange(0, 100_000), EdShowIf(nameof(Once), false)] public int MaxFires { get; set; }
+    // Part 6, stage 6.6 (§101).
+    [Ed("Только запуском", "Сам не проверяется: его запускает другой триггер («Запустить триггер», «через N с», «если — то»)"), JsonOmitEmpty]
+    public bool ActivationOnly { get; set; }
+    [Ed("Проверять условие при запуске", "Иначе запуск другим триггером выполняет действия без условия (как раньше)"), JsonOmitEmpty]
+    public bool CheckOnActivate { get; set; }
+    /// <summary>The node of a graph of events it was compiled from («граф/узел»; empty — written by hand).</summary>
+    [Ed("Узел графа"), EdHidden, JsonOmitEmpty] public string GraphNode { get; set; } = "";
 }
 
 public sealed class ScenarioDef : Def
@@ -675,6 +695,9 @@ public sealed class ScenarioDef : Def
     public DeploymentRulesDef? DeploymentOverride { get; set; }
     [Ed("Зоны развёртывания", "Где сторона вызывает бойцов; пусто — зона расстановки", Group = "Режим"), EdHidden, JsonOmitEmpty]
     public List<DeploymentZoneDef> DeploymentZones { get; set; } = new();
+    // Part 6, stage 6.6 (§101).
+    [Ed("Графы событий", "Редактируются на вкладке «Граф событий»; компилируются в триггеры при запуске боя"), EdHidden, JsonOmitEmpty]
+    public List<RuleGraphDef> Graphs { get; set; } = new();
     // Part 6, stage 6.4 (docs/DECISIONS_6.md §99).
     [Ed("Наборы модификаторов", "Свои наборы сценария — действуют всегда, до наборов варианта", Group = "Режим"), EdRef(DefCategory.ModifierSet), JsonOmitEmpty]
     public List<string> ModifierSets { get; set; } = new();

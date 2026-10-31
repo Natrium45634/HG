@@ -209,6 +209,7 @@ public sealed partial class ScenarioSystem
 
     private bool CanFire(int i, TriggerDef tr)
     {
+        if (tr.ActivationOnly) return false; // started only by another trigger
         if (tr.Once && _firedTriggers.Contains(i)) return false;
         if (tr.MaxFires > 0 && FiresOf(i) >= tr.MaxFires) return false;
         return !_triggerNext.TryGetValue(i, out var next) || _sim.Tick >= next;
@@ -220,6 +221,7 @@ public sealed partial class ScenarioSystem
         if (tr.Once) _firedTriggers.Add(i);
         if (!tr.Once && tr.Cooldown > 0) _triggerNext[i] = _sim.Tick + _sim.TicksFor(tr.Cooldown);
         if (why != "") _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Триггер «{tr.Name}»: {why}", actor?.Id ?? -1);
+        Trace(tr, why != "" ? why : "условие выполнено");
         foreach (var a in tr.Actions) Execute(a, tr.Name, actor);
     }
 
@@ -321,3 +323,6 @@ public sealed partial class ScenarioSystem
         return true;
     }
 }
+
+/// <summary>A node of a graph of events that ran (ТЗ ч. 6, 7.6): when, which, and why.</summary>
+public sealed record GraphTraceEntry(long Tick, string Graph, string Node, string Text);

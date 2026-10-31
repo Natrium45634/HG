@@ -21,12 +21,14 @@ public enum BreakpointKind
     [Ed("Начало волны")] WaveStarted,
     [Ed("Конец волны")] WaveEnded,
     [Ed("Своё условие")] Condition,
+    // Part 6, stage 6.6 (§101).
+    [Ed("Узел графа событий", "граф/узел (например boss/branch), граф — любой его узел; пусто — любой узел")] GraphNode,
 }
 
 public sealed class BreakpointDef
 {
     [Ed("Событие")] public BreakpointKind Kind { get; set; } = BreakpointKind.UnitDeath;
-    [Ed("Значение", "Тег юнита или ID пассива"), EdShowIf(nameof(Kind), BreakpointKind.UnitDeath, BreakpointKind.Passive)] public string Value { get; set; } = "";
+    [Ed("Значение", "Тег юнита или ID пассива"), EdShowIf(nameof(Kind), BreakpointKind.UnitDeath, BreakpointKind.Passive, BreakpointKind.GraphNode)] public string Value { get; set; } = "";
     [Ed("Условие"), EdShowIf(nameof(Kind), BreakpointKind.Condition)] public ConditionDef? Condition { get; set; }
     [Ed("Включена")] public bool Enabled { get; set; } = true;
 
@@ -51,6 +53,7 @@ public sealed class Breakpoints
         var b = new Breakpoints(sim, list);
         sim.Observed += b.OnEvent;
         sim.Stepped += b.OnTick;
+        sim.Scenario.GraphNodeRan += b.OnGraph;
         return b;
     }
 
@@ -58,7 +61,34 @@ public sealed class Breakpoints
     {
         _sim.Observed -= OnEvent;
         _sim.Stepped -= OnTick;
+        _sim.Scenario.GraphNodeRan -= OnGraph;
     }
+
+    /// <summary>
+    /// Breakpoints set on nodes of the graphs in the editor («граф/узел»), apart from <see cref="List"/> (the panel of the battle
+    /// rebuilds the list from its boxes and leaves these).
+    /// </summary>
+    public HashSet<string> GraphNodes { get; } = new();
+
+    private void OnGraph(GraphTraceEntry e)
+    {
+        string node = RuleGraphs.NodeOf(e);
+        string key = e.Graph + "/" + node;
+        bool hit = GraphNodes.Contains(key) || List.Any(b => b.Enabled && b.Kind == BreakpointKind.GraphNode
+                                                            && (b.Value == "" || b.Value == key || b.Value == e.Graph || b.Value == e.Graph + "/"));
+        if (!hit) return;
+        // More of the same node in the same tick («запущен», then «ветка «нет»: …») is added to the reason.
+        if (Hit != null && _graphHit == (e.Tick, key))
+        {
+            Hit += "; " + e.Text;
+            _sim.RequestBreak(Hit);
+            return;
+        }
+        _graphHit = (e.Tick, key);
+        Stop($"граф «{e.Graph}», узел {node}: {e.Text}");
+    }
+
+    private (long Tick, string Key) _graphHit;
 
     /// <summary>The reason of the last stop, cleared (the battle goes on after it).</summary>
     public string? Consume()

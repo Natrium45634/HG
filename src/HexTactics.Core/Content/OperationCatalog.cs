@@ -157,6 +157,10 @@ public static class OperationCatalog
         Act("zone_open", "Открыть зону развёртывания", "Отряд и развёртывание", "В зону снова можно вызывать бойцов (часть 6).", TriggerActionType.OpenDeploymentZone, null, "открыть зону"),
         Act("zone_close", "Закрыть зону развёртывания", "Отряд и развёртывание", "Бойцы на поле остаются; новых в зону не вызвать.", TriggerActionType.CloseDeploymentZone, null, "закрыть зону"),
         Act("diagnostic", "Записать диагностическое событие", "Сообщения и эффекты", "Строка в журнале диагностики и отчёте автобоя.", TriggerActionType.LogDiagnostic, null, "диагностика"),
+        Act("delayed_trigger", "Запустить триггер через N с", "События", "Отложенный запуск; очередь сохраняется вместе с боем (граф событий, часть 6).",
+            TriggerActionType.DelayedTrigger, a => a.Delay = 5, "задержка"),
+        Act("if_else", "Если … то … иначе", "События", "Проверяет условие и запускает триггер «да» или «нет».", TriggerActionType.IfElse, null, "ветвление"),
+        Act("clear_flag", "Снять флаг", "События", "Обратное «Событие (флаг)»: условие «флаг» снова ложно.", TriggerActionType.ClearFlag, null, "ворота"),
     };
 
     /// <summary>Conditions (combined with И / ИЛИ / НЕ).</summary>

@@ -18,7 +18,7 @@ namespace HexTactics.Game.Editor;
 /// </summary>
 public partial class TdScenePanel : DefListPanel
 {
-    public enum TdMode { Objects, Routes, Waves, Placement, Test }
+    public enum TdMode { Objects, Routes, Waves, Placement, Test, Graph }
 
     private static readonly ScenarioObjectType[] PlaceTypes =
     {
@@ -73,7 +73,7 @@ public partial class TdScenePanel : DefListPanel
         _test = test;
         // «--tdmode=routes|waves» opens the workspace in that mode (screenshots, tests).
         if (App.Main.Instance.Args.TryGetValue("tdmode", out var m))
-            Mode = m switch { "routes" => TdMode.Routes, "waves" => TdMode.Waves, "placement" => TdMode.Placement, "test" => TdMode.Test, _ => TdMode.Objects };
+            Mode = m switch { "routes" => TdMode.Routes, "waves" => TdMode.Waves, "placement" => TdMode.Placement, "test" => TdMode.Test, "graph" => TdMode.Graph, _ => TdMode.Objects };
     }
 
     protected override bool UseScroll => false;
@@ -110,6 +110,7 @@ public partial class TdScenePanel : DefListPanel
                      (TdMode.Waves, "Волны", "Группы волн: шаблон, количество, база спавна, маршрут"),
                      (TdMode.Placement, "Расстановка и зоны", "Режим боя, зоны расстановки (ЛКМ по гексу), расстановка по умолчанию для автотеста"),
                      (TdMode.Test, "Тестирование", "Автотест и пакетные прогоны без игрока; отчёты — в user://reports"),
+                     (TdMode.Graph, "Граф событий", "Правила сцены узлами: событие → условие → действие; при запуске боя граф становится обычными триггерами"),
                  })
         {
             var mode = m;
@@ -131,6 +132,7 @@ public partial class TdScenePanel : DefListPanel
         var main = Ui.HBox(8).Expand(true, true);
         // Side panels keep their width (content scrolls instead): a resized map view would refit the camera mid-gesture.
         var libScroll = new ScrollContainer { CustomMinimumSize = new Vector2(230, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Auto };
+        _libScroll = libScroll;
         _library = Ui.VBox(4).Expand();
         libScroll.AddChild(_library);
         main.AddChild(libScroll);
@@ -141,6 +143,7 @@ public partial class TdScenePanel : DefListPanel
         _view.Dragged += OnDrag;
         _view.GuiInput += OnViewKey;
         center.AddChild(_view);
+        BuildGraphCanvas(center);
         _status = Ui.Label("", 13, Ui.TextDim);
         _status.ClipText = true;
         _status.SizeFlagsHorizontal = SizeFlags.ExpandFill;
@@ -149,6 +152,7 @@ public partial class TdScenePanel : DefListPanel
         main.AddChild(center);
 
         var propScroll = new ScrollContainer { CustomMinimumSize = new Vector2(370, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Auto };
+        _propScroll = propScroll;
         var pad = new MarginContainer();
         pad.AddThemeConstantOverride("margin_right", 12);
         _props = Ui.VBox(6).Expand();
@@ -183,6 +187,7 @@ public partial class TdScenePanel : DefListPanel
         _moving = null;
         for (int i = 0; i < _modeButtons.Count; i++) _modeButtons[i].ButtonPressed = i == (int)m;
         if (m != TdMode.Objects) PlaceType = null;
+        ShowGraphCanvas(m == TdMode.Graph);
         // Routes mode starts on the first route, so its nodes and properties are visible at once.
         if (m == TdMode.Routes && Route(SelectedRoute) == null) SelectedRoute = _sc?.Routes.FirstOrDefault()?.Id ?? "";
         RefreshLibrary();
@@ -210,6 +215,7 @@ public partial class TdScenePanel : DefListPanel
             TdMode.Placement when PresetUnit is { } pu => $"ЛКМ по гексу — поставить «{Ctx.Db.Unit(pu)?.DisplayName ?? pu}» в расстановку по умолчанию, по занятому — убрать; ПКМ — убрать.",
             TdMode.Placement when DeployZone is { } dz => $"ЛКМ по гексу — добавить/убрать гекс зоны развёртывания «{dz}». Справа — её теги, фаза, приоритет.",
             TdMode.Placement => "ЛКМ по гексу — добавить/убрать гекс зоны расстановки (вместе с зонами объектов). Справа — режим боя и настройки подготовки.",
+            TdMode.Graph => GraphHint(),
             TdMode.Test => "Автотест — один прогон без игрока; пакет — N прогонов с seed = база + i (от 10 — 95 % интервал доли побед). Отчёты — в user://reports: JSON, текст и CSV (прогоны, волны, юниты, сводка); контент не меняется.",
             _ => "Выберите волну и группу; «Добавить группу» привязывает её к выбранной базе спавна и её маршруту.",
         };
@@ -1093,6 +1099,9 @@ public partial class TdScenePanel : DefListPanel
             case TdMode.Test:
                 BuildTestLibrary((t, a, tip, name) => Btn(t, a, tip, name));
                 break;
+            case TdMode.Graph:
+                BuildGraphLibrary((t, a, tip, name) => Btn(t, a, tip, name));
+                break;
         }
     }
 
@@ -1281,9 +1290,10 @@ public partial class TdScenePanel : DefListPanel
         HexTactics.Game.App.Main.Instance.ShowBattle(sc, db, admin: true, onExit: () => HexTactics.Game.App.Main.Instance.ShowEditor());
     }
 
-    private PropertyGrid Grid(object target, Action? changed = null, Action<string>? prop = null)
+    private PropertyGrid Grid(object target, Action? changed = null, Action<string>? prop = null, bool preview = true, params string[] skip)
     {
         var grid = new PropertyGrid { LabelWidth = 170 };
+        foreach (var k in skip) grid.Skip.Add(k);
         grid.Choices[nameof(SpawnGroupDef.SpawnBase)] = () => ObjectChoices(o => o.Spawn != null);
         grid.Choices[nameof(SpawnGroupDef.Route)] = RouteChoices;
         grid.Choices[nameof(SpawnGroupDef.Target)] = () => ObjectChoices(_ => true);
@@ -1299,7 +1309,7 @@ public partial class TdScenePanel : DefListPanel
         grid.SetTarget(target, Ctx.Db);
         grid.Changed += () =>
         {
-            Edited(true);
+            Edited(preview);
             changed?.Invoke();
         };
         if (prop != null) grid.PropertyChanged += (_, p) => prop(p);
@@ -1407,6 +1417,11 @@ public partial class TdScenePanel : DefListPanel
                 _props.AddChild(Grid(w, RefreshLibrary));
                 return;
             }
+        }
+        if (Mode == TdMode.Graph)
+        {
+            BuildGraphProps();
+            return;
         }
         if (Mode == TdMode.Placement)
         {

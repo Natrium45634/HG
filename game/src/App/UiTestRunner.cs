@@ -91,6 +91,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("editor_deploy_zones_check_presets", EditorDeployZones));
         _tests.Add(("variant_menu_battle_and_modifiers_tab", VariantMenuAndModifiersTab));
         _tests.Add(("object_preset_sandbox_and_interaction", ObjectPresetSandboxAndInteraction));
+        _tests.Add(("graph_editor_debug_breakpoint", GraphEditorDebugBreakpoint));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3238,6 +3239,119 @@ public partial class UiTestRunner : Node
         await Frames(10);
         Check(bs.Sim.Interactive.StateOf(o.Id) == "closed" && bs.Sim.Map.Get(o.Anchor)!.Terrain.Id == "wall", "ворота закрылись: стена");
         await Shot("part6_object_battle");
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.6 (ТЗ 7; §101): the graph of events of a TD scene — the example of ТЗ 7.7, a node from the palette,
+    /// a link of the wrong type refused with the reason, Ctrl+Z, the search of uses, «пробная компиляция», a breakpoint; in the
+    /// test battle the breakpoint pauses it and «Тест → Граф событий» shows what the nodes did.
+    /// </summary>
+    private async Task GraphEditorDebugBreakpoint()
+    {
+        var ed = await OpenEditor("td");
+        var panel = Find<TdScenePanel>(GetTree().Root).First();
+        panel.Select("td_pass_defense");
+        await Frames(20);
+        panel = Find<TdScenePanel>(GetTree().Root).First();
+        var sc = panel.Scene!;
+        int graphs = sc.Graphs.Count;
+        RuleGraphDef? g = null;
+        try
+        {
+            await PressNamed(panel, "TdMode_Graph");
+            Check(panel.Mode == TdScenePanel.TdMode.Graph && panel.GraphCanvas.IsVisibleInTree() && !panel.View.IsVisibleInTree(), "режим «Граф событий»: холст вместо карты");
+            await PressNamed(panel, "TdGraphExample");
+            g = panel.OpenGraph;
+            Check(g != null && sc.Graphs.Count == graphs + 1 && g.Nodes.Count == 6, "пример ТЗ 7.7 добавлен и открыт");
+            Check(panel.GraphCanvas.NodeView("branch") != null && panel.GraphCanvas.NodeView("elite") != null, "узлы примера на холсте");
+            Check(!panel.GraphProblems.Any(p => p.Error), "пример без ошибок: " + string.Join("; ", panel.GraphProblems.Select(p => p.Message)));
+
+            // A node from the palette (search), then a link of the wrong type — refused with the reason.
+            var search = Find<LineEdit>(panel).First(l => l.Name == "TdGraphPaletteSearch");
+            search.Text = "Задержка";
+            search.EmitSignal(LineEdit.SignalName.TextChanged, "Задержка");
+            await Frames(2);
+            var item = Find<Button>(panel).First(b => b.IsVisibleInTree() && b.Text == "Задержка");
+            item.EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames(4);
+            var delay = g!.Nodes.FirstOrDefault(n => n.Kind == RuleNodeKind.Delay);
+            Check(delay != null && panel.SelectedGraphNode == delay.Id && Find<UI.PropertyGrid>(panel).Any(p => p.Name == "TdGraphNodeGrid"), "узел из палитры добавлен и выбран, справа его свойства");
+            Check(Find<Button>(panel).Any(b => b.IsVisibleInTree() && b.Disabled && b.Text.StartsWith("⊘")) || RuleGraphs.Palette("Задержка").All(p => p.Available),
+                "недоступные пункты палитры — серые");
+            int links = g.Links.Count;
+            string? why = panel.GraphCanvas.TryLink("t120", "value", delay!.Id, "in");
+            await Frames(2);
+            Check(why != null && why.Contains("типы не совпадают") && g.Links.Count == links && panel.StatusText.Contains("Связь отклонена"), "связь условия с потоком отклонена: " + why);
+            // The edits so far are one operation; the link is the next one (edits within 0.7 s merge).
+            ed.Context.Commit();
+            Check(panel.GraphCanvas.TryLink("branch", "yes", delay.Id, "in") == null && g.Links.Count == links + 1, "связь «да» → задержка создана");
+            await Frames(3);
+            ed.Context.Commit();
+            ed.UndoRedo(false);
+            await Frames(12);
+            panel = Find<TdScenePanel>(GetTree().Root).First();
+            g = panel.OpenGraph;
+            Check(panel.Mode == TdScenePanel.TdMode.Graph && g != null && g.Links.Count == links, "Ctrl+Z убрал связь, граф и режим остались открыты");
+
+            // The search of uses, the dry run, a breakpoint.
+            var uses = Find<LineEdit>(panel).First(l => l.Name == "TdGraphUses");
+            uses.Text = "elite";
+            uses.EmitSignal(LineEdit.SignalName.TextChanged, "elite");
+            await Frames(3);
+            Check(panel.GraphCanvas.Found.Contains("elite"), "поиск использования подсветил узел");
+            panel.GraphCanvas.Focus("branch");
+            await Frames(3);
+            await PressNamed(panel, "TdGraphBreakpoint");
+            Check(GraphBreakpoints.Has(sc.Id, g!.Id, "branch"), "точка останова на «ветвлении»");
+            await PressButton("← К графу");
+            await PressNamed(panel, "TdGraphDryRunButton");
+            Check(panel.GraphDryRun is { Count: > 0 } && panel.GraphDryRun.Any(t => t.Actions.Any(a => a.Type == TriggerActionType.IfElse)), "пробная компиляция показала триггеры с «если — иначе»");
+            panel.SetGraphWide(true);
+            await Frames(6);
+            Check(panel.GraphWide && panel.GraphCanvas.Size.X > 900, $"«⛶»: холст на всю ширину ({panel.GraphCanvas.Size.X:0})");
+            await Shot("part6_graph_editor");
+            panel.SetGraphWide(false);
+            await PressNamed(panel, "TdRun");
+            await Frames(10);
+        }
+        finally
+        {
+            if (sc.Graphs.Count > graphs) sc.Graphs.RemoveRange(graphs, sc.Graphs.Count - graphs);
+        }
+        var bs = Battle();
+        var hud = bs.Hud;
+        Check(bs.Breaks.GraphNodes.Contains(g!.Id + "/branch"), "точка останова графа дошла до теста");
+        await Click(Find<Button>(hud).First(b => b.Name == "PlaceConfirm").GetGlobalRect().GetCenter());
+        bs.Driver.SetSpeedIndex(bs.Driver.Speeds.Count - 1);
+        Unit? victim = null;
+        for (int i = 0; i < 900 && victim == null; i++)
+        {
+            await Frames(1);
+            victim = bs.Sim.Units.FirstOrDefault(u => u.Alive && !u.IsStructure && !bs.Sim.IsPlayerFaction(u.FactionId));
+        }
+        Check(victim != null, "враги вышли");
+        bs.Driver.SetSpeedIndex(0);
+        bs.Sim.Combat.Kill(victim!, null, "тест графа");
+        for (int i = 0; i < 240 && !bs.Sim.Scenario.GraphTrace.Any(e => e.Node == "branch"); i++)
+        {
+            if (bs.Driver.Paused) bs.Driver.Paused = false; // another autopause (an enemy seen…) holds the ticks
+            await Frames(1);
+        }
+        for (int i = 0; i < 60 && !bs.Driver.Paused; i++) await Frames(1);
+        Check(bs.Driver.Paused && bs.Sim.Scenario.GraphTrace.Any(e => e.Node == "branch") && bs.Sim.Log.Entries.Any(e => e.Text.Contains("Остановка: граф «" + g.Id + "», узел branch")),
+            $"бой встал на паузу в узле «ветвление» (пауза {bs.Driver.Paused}, графов {bs.Sim.Scenario.Def?.Graphs.Count}, триггеров графа " +
+            $"{bs.Sim.Scenario.Def?.Triggers.Count(t => t.GraphNode != "")}, трасса: {string.Join(" | ", bs.Sim.Scenario.GraphTrace.Take(6).Select(e => e.Node + ": " + e.Text))}, " +
+            $"жертва {victim!.Name} жива {victim.Alive})");
+        hud.TestMenu.EmitSignal(PopupMenu.SignalName.IdPressed, (long)BattleHud.TestGraph);
+        await Frames(4);
+        Check(hud.GraphDebug.Visible && hud.GraphDebug.TraceRows > 0, "отладчик графа открыт, трасса не пуста");
+        var node = hud.GraphDebug.Canvas.NodeView("branch");
+        Check(node != null && Find<Label>(node).Any(l => l.Name == "Run" && l.Text.Contains("ветка «да»")), "на холсте у «ветвления» — ✓ и ветка «да»");
+        hud.GraphDebug.Canvas.Focus("branch");
+        await Frames(2);
+        Check(hud.GraphDebug.NodeText.Contains("сработал"), "выбранный узел: сколько раз и последний тик");
+        await Shot("part6_graph_debug");
+        GraphBreakpoints.ClearIn(sc.Id);
     }
 
     private async Task PressNamed(Node root, string name)

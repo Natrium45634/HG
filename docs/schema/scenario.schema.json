@@ -1647,6 +1647,201 @@
       },
       "additionalProperties": true
     },
+    "RuleGraphDef": {
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Включён"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleLinkDef"
+          },
+          "description": "Связи"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleNodeDef"
+          },
+          "description": "Узлы"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RuleLinkDef": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Из узла"
+        },
+        "fromPort": {
+          "type": "string",
+          "description": "Выход"
+        },
+        "to": {
+          "type": "string",
+          "description": "В узел"
+        },
+        "toPort": {
+          "type": "string",
+          "description": "Вход"
+        }
+      },
+      "additionalProperties": true
+    },
+    "RuleNodeDef": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TriggerActionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Действие"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие — У события — только для «Выполнение условия»"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Сколько раз"
+        },
+        "event": {
+          "type": "string",
+          "enum": [
+            "None",
+            "ScenarioStart",
+            "PreparationDone",
+            "WaveStarted",
+            "WaveEnded",
+            "UnitSpawned",
+            "UnitDied",
+            "GoalReached",
+            "BaseDestroyed",
+            "ObjectActivated",
+            "CheckpointReached",
+            "Timer",
+            "AliveLimitExceeded",
+            "ConditionMet",
+            "BattleEnded",
+            "StatusApplied",
+            "SkillUsed",
+            "PassiveTriggered",
+            "WaveSpawnFinished",
+            "UnitDeployed",
+            "UnitWithdrawn",
+            "ObjectStateChanged"
+          ],
+          "description": "Событие"
+        },
+        "eventObject": {
+          "type": "string",
+          "description": "Фильтр: объект или ID"
+        },
+        "eventUnit": {
+          "type": "string",
+          "description": "Фильтр: юнит — Метка, tag:x, категория или шаблон"
+        },
+        "eventWave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Фильтр: волна — С 1; 0 — любая"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Event",
+            "Timer",
+            "Signal",
+            "Condition",
+            "And",
+            "Or",
+            "Not",
+            "Branch",
+            "Sequence",
+            "Delay",
+            "Once",
+            "Cooldown",
+            "LimitedRepeat",
+            "Gate",
+            "GateOpen",
+            "GateClose",
+            "Action",
+            "EmitSignal"
+          ],
+          "description": "Вид"
+        },
+        "label": {
+          "type": "string",
+          "description": "Подпись — Пусто — по виду и параметрам"
+        },
+        "name": {
+          "type": "string",
+          "description": "Имя — Сигнала или ворот"
+        },
+        "nodeVersion": {
+          "type": "integer",
+          "description": "Версия узла"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Открыты в начале"
+        },
+        "repeat": {
+          "type": "boolean",
+          "description": "Повторяемый"
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Секунды — Таймер, задержка, «не чаще», интервал повтора"
+        },
+        "x": {
+          "type": "number",
+          "description": "X"
+        },
+        "y": {
+          "type": "number",
+          "description": "Y"
+        }
+      },
+      "additionalProperties": true
+    },
     "ScenarioDef": {
       "type": "object",
       "properties": {
@@ -1809,6 +2004,13 @@
             }
           ],
           "description": "Свои значения правил режима — Заданное поле сильнее пресета; незаданное наследуется"
+        },
+        "graphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuleGraphDef"
+          },
+          "description": "Графы событий — Редактируются на вкладке «Граф событий»; компилируются в триггеры при запуске боя"
         },
         "intro": {
           "type": "string",
@@ -3003,12 +3205,22 @@
           "maximum": 100,
           "description": "Количество"
         },
+        "delay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Через, с"
+        },
         "effects": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/SkillEffectDef"
           },
           "description": "Операции — Каталог операций навыков: применяются к выбранным юнитам"
+        },
+        "elseTrigger": {
+          "type": "string",
+          "description": "Иначе — триггер — Пусто — ничего"
         },
         "flag": {
           "type": "string",
@@ -3018,9 +3230,24 @@
           "type": "string",
           "description": "Группа волны — ID группы"
         },
+        "if": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие «если»"
+        },
         "marker": {
           "type": "string",
           "description": "Метка карты — Пусто — вокруг владельца"
+        },
+        "node": {
+          "type": "string",
+          "description": "Узел графа"
         },
         "object": {
           "type": "string",
@@ -3132,7 +3359,10 @@
             "LogDiagnostic",
             "OpenDeploymentZone",
             "CloseDeploymentZone",
-            "SwitchObjectState"
+            "SwitchObjectState",
+            "DelayedTrigger",
+            "IfElse",
+            "ClearFlag"
           ],
           "description": "Действие"
         },
@@ -3175,6 +3405,14 @@
             "$ref": "#/$defs/TriggerActionDef"
           },
           "description": "Действия"
+        },
+        "activationOnly": {
+          "type": "boolean",
+          "description": "Только запуском — Сам не проверяется: его запускает другой триггер («Запустить триггер», «через N с», «если — то»)"
+        },
+        "checkOnActivate": {
+          "type": "boolean",
+          "description": "Проверять условие при запуске — Иначе запуск другим триггером выполняет действия без условия (как раньше)"
         },
         "condition": {
           "$ref": "#/$defs/ConditionDef",
@@ -3231,6 +3469,10 @@
           "minimum": 0,
           "maximum": 1000,
           "description": "Фильтр: волна — Номер волны с 1; 0 — любая"
+        },
+        "graphNode": {
+          "type": "string",
+          "description": "Узел графа"
         },
         "interval": {
           "type": "number",

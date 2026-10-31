@@ -33,6 +33,10 @@ public partial class BattleScreen
     {
         Report = BattleReport.Attach(sim, _scenario.DisplayName, sim.Options.Seed);
         Breaks = Breakpoints.Attach(sim, new List<BreakpointDef>());
+        // Breakpoints on the nodes of the graphs (§101) — only a test from the editor stops on them.
+        if (_admin)
+            foreach (var key in GraphBreakpoints.In(_scenario.Id))
+                Breaks.GraphNodes.Add(key);
     }
 
     private void InitAutobattle()

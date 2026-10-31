@@ -733,6 +733,11 @@ public static class ContentValidator
             issues.Add(new ContentIssue(p.Severity, Src(s), p.Path, p.Message));
         var cells = map.Cells.ToDictionary(c => c.C);
         CheckDeploymentZones(db, s, cells, issues);
+        // Graphs of events (part 6, §101): checked before any battle; a graph with errors is left out of it.
+        foreach (var g in s.Graphs)
+            foreach (var p in RuleGraphs.Check(s, g))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(s), $"Graphs[{g.DisplayName}]",
+                    $"Граф «{g.DisplayName}»" + (p.Node != "" ? $", узел {p.Node}" : "") + ": " + p.Message));
         // Modifiers of the mission (part 6, §99): the scenario's own sets, then every variant of it — before any battle.
         if (s.ModifierSets.Count > 0)
             foreach (var p in MissionModifiers.Check(db, s, null))

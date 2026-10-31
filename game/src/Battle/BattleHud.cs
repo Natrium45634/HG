@@ -121,6 +121,9 @@ public partial class BattleHud : Control
         AddChild(Report);
         Breakpoints = Track(new BreakpointsPanel(_bs));
         AddChild(Breakpoints);
+        // Part 6, stage 6.6 (§101): what the graphs of events did, breakpoints on their nodes.
+        GraphDebug = Track(new GraphDebugPanel(_bs));
+        AddChild(GraphDebug);
         _boxRect = new Panel { MouseFilter = MouseFilterEnum.Ignore, Visible = false, Name = "SelectionBox" };
         _boxRect.AddThemeStyleboxOverride("panel", Ui.Box(new Color(0.5f, 1f, 0.7f, 0.12f), new Color(0.5f, 1f, 0.7f, 0.9f), 2, 2, 0));
         AddChild(_boxRect);
@@ -308,10 +311,11 @@ public partial class BattleHud : Control
     public RosterRibbon Roster { get; private set; } = null!;
     public ReportPanel Report { get; private set; } = null!;
     public BreakpointsPanel Breakpoints { get; private set; } = null!;
+    public GraphDebugPanel GraphDebug { get; private set; } = null!;
     public PopupMenu TestMenu { get; private set; } = null!;
 
     /// <summary>Items of the «Тест» menu (docs/DECISIONS_4.md §64).</summary>
-    public const int TestReport = 1, TestLogicOnly = 2, TestNoEffects = 3, TestBreakpoints = 4;
+    public const int TestReport = 1, TestLogicOnly = 2, TestNoEffects = 3, TestBreakpoints = 4, TestGraph = 5;
 
     private void OnTestMenu(long id)
     {
@@ -330,6 +334,10 @@ public partial class BattleHud : Control
                 break;
             case TestBreakpoints:
                 Breakpoints.Visible = !Breakpoints.Visible;
+                break;
+            case TestGraph:
+                if (GraphDebug.Visible) GraphDebug.Visible = false;
+                else GraphDebug.Open();
                 break;
         }
     }
@@ -393,6 +401,12 @@ public partial class BattleHud : Control
         TestMenu.AddItem("Только логика: до конца боя", TestLogicOnly);
         TestMenu.AddCheckItem("Без визуальных эффектов", TestNoEffects);
         TestMenu.AddItem("Остановка на событии…", TestBreakpoints);
+        TestMenu.AddItem("Граф событий…", TestGraph);
+        if (_bs.Sim.Scenario.Def?.Graphs.Count is null or 0)
+        {
+            TestMenu.SetItemDisabled(TestMenu.GetItemIndex(TestGraph), true);
+            TestMenu.SetItemTooltip(TestMenu.GetItemIndex(TestGraph), "В сценарии нет графов событий");
+        }
         TestMenu.IdPressed += OnTestMenu;
         bar.AddChild(test);
         bar.AddChild(Ui.Button("?", ToggleHelp, "Справка (F1)", 34));
@@ -928,6 +942,8 @@ public partial class BattleHud : Control
         }
         Report.Position = (vp - Report.Size) / 2;
         Breakpoints.Position = new Vector2(vp.X - Breakpoints.Size.X - 10, 64);
+        if (GraphDebug.Visible) GraphDebug.Fit(vp);
+        GraphDebug.Position = new Vector2(Math.Max(0, (vp.X - GraphDebug.Size.X) / 2), 64);
         _help.Position = (vp - _help.Size) / 2;
         _menu.Position = (vp - _menu.Size) / 2;
         _diagPanel.Position = new Vector2(vp.X - _diagPanel.Size.X - 10, vp.Y - _diagPanel.Size.Y - _actionPanel.Size.Y - 24);

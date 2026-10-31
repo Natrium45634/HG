@@ -148,6 +148,10 @@ public static class EdUtil
     public static string EnumLabel(Enum value) => EnumLabels.GetOrAdd(value, v =>
         v.GetType().GetField(v.ToString())?.GetCustomAttributes(typeof(EdAttribute), false) is [EdAttribute ed, ..] ? ed.Label : v.ToString());
 
+    /// <summary>The [Ed] tip of an enum value (empty without one).</summary>
+    public static string EnumDescription(Enum value) =>
+        value.GetType().GetField(value.ToString())?.GetCustomAttributes(typeof(EdAttribute), false) is [EdAttribute ed, ..] ? ed.Tip : "";
+
     public static bool IsShown(object obj, System.Reflection.PropertyInfo prop)
     {
         var a = Attr<EdShowIfAttribute>(prop);

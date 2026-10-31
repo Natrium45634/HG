@@ -1223,12 +1223,22 @@
           "maximum": 100,
           "description": "Количество"
         },
+        "delay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Через, с"
+        },
         "effects": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/SkillEffectDef"
           },
           "description": "Операции — Каталог операций навыков: применяются к выбранным юнитам"
+        },
+        "elseTrigger": {
+          "type": "string",
+          "description": "Иначе — триггер — Пусто — ничего"
         },
         "flag": {
           "type": "string",
@@ -1238,9 +1248,24 @@
           "type": "string",
           "description": "Группа волны — ID группы"
         },
+        "if": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие «если»"
+        },
         "marker": {
           "type": "string",
           "description": "Метка карты — Пусто — вокруг владельца"
+        },
+        "node": {
+          "type": "string",
+          "description": "Узел графа"
         },
         "object": {
           "type": "string",
@@ -1352,7 +1377,10 @@
             "LogDiagnostic",
             "OpenDeploymentZone",
             "CloseDeploymentZone",
-            "SwitchObjectState"
+            "SwitchObjectState",
+            "DelayedTrigger",
+            "IfElse",
+            "ClearFlag"
           ],
           "description": "Действие"
         },

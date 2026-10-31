@@ -285,6 +285,20 @@ targetState}`, `turret {skill, interval, range, targets, sight}`. Действи
 `Interact` (`unit`, `text` — ID объекта). `object_presets.json` —
 `object` (объект без места и ID).
 
+Часть 6, этап 6.6 ([§101](DECISIONS_6.md)): у сценария — `graphs[]`
+(графы событий): `id, name, enabled, nodes[] {id, kind (Event, Timer,
+Signal, Condition, And, Or, Not, Branch, Sequence, Delay, Once, Cooldown,
+LimitedRepeat, Gate, GateOpen, GateClose, Action, EmitSignal), label, x,
+y, nodeVersion, event, eventObject, eventUnit, eventWave, seconds,
+repeat, count, name, open, condition, action}, links[] {from, fromPort
+(out, value, yes, no), to, toPort (in, if)}`. В бою граф становится
+триггерами; у триггера новые служебные поля `activationOnly`,
+`checkOnActivate`, `graphNode`, у действия — `node`, новые действия
+`DelayedTrigger` (`text` — триггер, `delay`), `IfElse` (`if` — условие,
+`text` — триггер «да», `elseTrigger` — «нет»), `ClearFlag` (`flag`).
+`false` в необязательных флагах не пишется. Отпечаток боя включает
+очередь отложенных запусков (`d<тик>:<триггер>`).
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

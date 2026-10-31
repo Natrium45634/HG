@@ -57,6 +57,7 @@ public sealed class SimDigest
             .Concat(sc.BossPhasesEntered.Select(b => "b" + b))
             .Concat(sc.SwitchedObjects.Select(x => "a" + x))
             .Concat(sim.Interactive.Digest().Select(x => "x" + x))
+            .Concat(sc.DelayedTriggers.Select(x => "d" + x))
             .Append($"outcome={sim.Outcome}"));
         return new SimDigest { Tick = sim.Tick, Parts = parts };
     }

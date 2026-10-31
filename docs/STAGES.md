@@ -2753,3 +2753,28 @@ Windows-сборка проверена самопроверкой на Windows 
   контент — `game/content/object_presets.json`; `docs/schema/*`.
 * **Тесты**: `Part6ObjectTests` (8): T19, T20; UI —
   `object_preset_sandbox_and_interaction`.
+
+## Ч6 · Этап 6.6. Граф событий поверх триггеров
+
+* **Сделано** ([§101](DECISIONS_6.md)):
+  * граф сценария (`graphs`): источники, условия и логика, ветвление,
+    последовательность, задержка, однократно, не чаще, ограниченный повтор,
+    ворота, действия каталога, сигналы; недоступное — серым с причиной;
+  * компиляция в обычные триггеры при запуске боя; новые примитивы
+    триггеров: «запустить через N с», «если — то, иначе», «снять флаг»,
+    «только запуском», «проверять условие при запуске»;
+  * типизированные порты, проверка до сохранения; мгновенный цикл — ошибка,
+    кольцо значений — ошибка;
+  * трасса узлов с объяснением условий («почему ветка не запустилась»),
+    очередь задержек в отпечатке — загрузка не перезапускает выполненное;
+  * режим «Граф событий» TD-сцены: холст, мини-карта, палитра с поиском,
+    свойства узла, поиск использования, пробная компиляция, история
+    Ctrl+Z / Ctrl+Y, пример ТЗ 7.7;
+  * «Тест → Граф событий…» в бою: отметки узлов, трасса, точки останова
+    (только тест из редактора); «Узел графа событий» в «Остановке на событии».
+* **Файлы**: ядро — `src/HexTactics.Core/Content/{RuleGraphs,RuleGraphEditing,OperationCatalog,ContentJson,ContentValidator,EditorAttributes}.cs`,
+  `Content/Defs/{RuleGraphDefs,MapScenarioDefs}.cs`, `Sim/{ScenarioSystem,ScenarioEventSystem,SimDigest,AutoBattle}.cs`;
+  игра — `game/src/Editor/{RuleGraphCanvas,TdSceneGraph,TdScenePanel}.cs`,
+  `game/src/Battle/{GraphDebugPanel,BattleHud,BattlePlacement}.cs`; `docs/schema/*`.
+* **Тесты**: `Part6GraphTests` (7): T21, T22, T23; UI —
+  `graph_editor_debug_breakpoint`.

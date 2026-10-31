@@ -118,6 +118,33 @@ public sealed partial class ScenarioSystem
 
     /// <summary>Nested trigger activations deeper than this are cut (a cycle of «запустить триггер»).</summary>
     public const int MaxTriggerDepth = 8;
+
+    // Part 6, stage 6.6 (§101): triggers started later, and what the compiled graphs did (the debugger reads it).
+    private readonly List<(long Tick, string Name)> _delayed = new();
+    private readonly List<GraphTraceEntry> _graphTrace = new();
+    public const int MaxGraphTrace = 2000;
+
+    /// <summary>The nodes of the graphs of events that ran, in order, with the tick and why (ТЗ ч. 6, 7.6; outside the fingerprint).</summary>
+    public IReadOnlyList<GraphTraceEntry> GraphTrace => _graphTrace;
+
+    /// <summary>Triggers waiting for their tick (the runtime state of «Задержка» and «Ограниченный повтор», saved with the battle — ТЗ 7.8).</summary>
+    public IEnumerable<string> DelayedTriggers => _delayed.Select(d => $"{d.Tick}:{d.Name}");
+
+    /// <summary>Raised for every entry of the trace (a breakpoint on a node of a graph listens to it).</summary>
+    public event Action<GraphTraceEntry>? GraphNodeRan;
+
+    private void Trace(TriggerDef tr, string text) => TraceNode(tr.GraphNode, text);
+
+    private void TraceNode(string mark, string text)
+    {
+        if (mark == "") return;
+        int slash = mark.IndexOf('/');
+        var e = new GraphTraceEntry(_sim.Tick, slash > 0 ? mark[..slash] : mark, slash > 0 ? mark[(slash + 1)..] : "", text);
+        if (_graphTrace.Count >= MaxGraphTrace) _graphTrace.RemoveAt(0);
+        _graphTrace.Add(e);
+        _sim.Emit(SimEventType.Diagnostic, LogLevel.Detail, $"Граф «{e.Graph}», узел {e.Node}: {text}");
+        GraphNodeRan?.Invoke(e);
+    }
     public long TriggerCycleCuts { get; private set; }
     private bool _hadPlayerUnits;
     private int _nextSpawnId = 1;
@@ -164,6 +191,8 @@ public sealed partial class ScenarioSystem
     public static Simulation Create(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false,
         IReadOnlyList<string>? roster = null)
     {
+        // The graphs of events (part 6, §101) become ordinary triggers of a copy of the scenario.
+        sc = RuleGraphs.WithCompiled(sc);
         // «Автотест» (docs/DECISIONS_4.md §64): the player's side is driven by AI profiles as well.
         autoPlayer |= sc.Mode == BattleMode.AutoTest;
         string defender = sc.Placement.DefenderProfile != "" ? sc.Placement.DefenderProfile : db.Get<AiProfileDef>("ai_guard") != null ? "ai_guard" : "";
@@ -844,6 +873,7 @@ public sealed partial class ScenarioSystem
         if (Preparing) UpdatePreparation();
         if (!WavesHeld) UpdateWaves();
         Warnings.Update();
+        UpdateDelayed();
         UpdateTriggers();
         ProcessEvents();
         if (!WavesHeld)
@@ -879,6 +909,17 @@ public sealed partial class ScenarioSystem
         }
         var tr = Def.Triggers[i];
         if (tr.Once && _firedTriggers.Contains(i)) return false;
+        if (tr.MaxFires > 0 && FiresOf(i) >= tr.MaxFires) return false;
+        if (!tr.Once && _triggerNext.TryGetValue(i, out var next) && _sim.Tick < next)
+        {
+            Trace(tr, $"не чаще {tr.Cooldown:0.##} с — пропущено");
+            return false;
+        }
+        if (tr.CheckOnActivate && !Evaluate(tr.Condition, actor))
+        {
+            Trace(tr, "условие ложно: " + Explain(tr.Condition, actor));
+            return false;
+        }
         if (_triggerDepth >= MaxTriggerDepth)
         {
             TriggerCycleCuts++;
@@ -889,6 +930,9 @@ public sealed partial class ScenarioSystem
         try
         {
             if (tr.Once) _firedTriggers.Add(i);
+            _triggerFires[i] = FiresOf(i) + 1;
+            if (!tr.Once && tr.Cooldown > 0) _triggerNext[i] = _sim.Tick + _sim.TicksFor(tr.Cooldown);
+            Trace(tr, "запущен" + (tr.MaxFires > 0 ? $" ({FiresOf(i)} из {tr.MaxFires})" : ""));
             foreach (var a in tr.Actions) Execute(a, tr.Name, actor);
         }
         finally
@@ -975,6 +1019,7 @@ public sealed partial class ScenarioSystem
     /// <summary>Executes an action of a trigger, a wave or a boss phase (actor — the boss or null).</summary>
     public void Execute(TriggerActionDef a, string source, Unit? actor)
     {
+        if (a.Node != "") TraceNode(a.Node, a.Describe());
         switch (a.Type)
         {
             case TriggerActionType.Message:
@@ -1007,6 +1052,22 @@ public sealed partial class ScenarioSystem
             case TriggerActionType.SetFlag:
                 SetFlag(a.Flag);
                 break;
+            case TriggerActionType.ClearFlag:
+                if (_flags.Remove(a.Flag)) _sim.Emit(SimEventType.Info, LogLevel.Detail, $"Флаг «{a.Flag}» снят ({source})");
+                break;
+            case TriggerActionType.DelayedTrigger:
+                // At least one tick later: a loop through a delay can never be instant (ТЗ 7.5).
+                _delayed.Add((_sim.Tick + Math.Max(1, _sim.TicksFor(a.Delay)), a.Text));
+                break;
+            case TriggerActionType.IfElse:
+            {
+                bool yes = a.If == null || Evaluate(a.If, actor);
+                string branch = yes ? a.Text : a.ElseTrigger;
+                if (Def?.Triggers.FirstOrDefault(t => t.Name == source) is { GraphNode.Length: > 0 } owner)
+                    Trace(owner, (yes ? "ветка «да»" : "ветка «нет»") + (a.If != null ? ": " + Explain(a.If, actor) : ""));
+                if (branch != "") ActivateTrigger(branch, actor);
+                break;
+            }
             case TriggerActionType.SetEnvironment:
                 SetVariable(a.Variable, a.VariableValue);
                 break;
@@ -1265,6 +1326,49 @@ public sealed partial class ScenarioSystem
 
     /// <summary>All waves have started (or are cancelled) — the field cannot get new enemies by waves.</summary>
     private bool WavesDone => _waves.All(w => w.State is WaveState.Cancelled or WaveState.Cleared || w.State == WaveState.Active && w.Planned.All(p => p.Done));
+
+    /// <summary>The delayed triggers whose tick has come, in the order they were set.</summary>
+    private void UpdateDelayed()
+    {
+        if (_delayed.Count == 0) return;
+        var due = _delayed.Where(d => d.Tick <= _sim.Tick).ToList();
+        if (due.Count == 0) return;
+        _delayed.RemoveAll(d => d.Tick <= _sim.Tick);
+        foreach (var (_, name) in due) ActivateTrigger(name, null);
+    }
+
+    /// <summary>
+    /// A condition with what it is made of now (ТЗ ч. 6, 7.6, T23): «Прошло 120 с: нет (сейчас 95.3 с)». Evaluating it does not
+    /// change the battle (except the latch of «по порядку», which it reads only).
+    /// </summary>
+    public string Explain(ConditionDef c, Unit? self = null)
+    {
+        string yes(bool v) => v ? "да" : "нет";
+        switch (c.Type)
+        {
+            case ConditionType.All:
+            case ConditionType.Any:
+                return (c.Type == ConditionType.All ? "все: " : "любое: ") + string.Join("; ", c.Children.Select(x => Explain(x, self)));
+            case ConditionType.Not:
+                return "не (" + string.Join("; ", c.Children.Select(x => Explain(x, self))) + ")";
+            case ConditionType.InOrder:
+                return $"{c.Describe()}: пройдено {_orderProgress.GetValueOrDefault(c)} из {c.Children.Count}";
+            case ConditionType.SurviveTime:
+            case ConditionType.TimeElapsed:
+                return $"{c.Describe()}: {yes(BattleTime >= c.Seconds)} (сейчас {BattleTime:0.#} с)";
+            case ConditionType.FlagSet:
+                return $"{c.Describe()}: {yes(_flags.Contains(c.Flag))}";
+            case ConditionType.ObjectInState:
+                return $"{c.Describe()}: {yes(_sim.Interactive.StateOf(c.ObjectId) == c.ObjectState)} (сейчас «{_sim.Interactive.StateOf(c.ObjectId)}»)";
+            case ConditionType.UnitDead:
+            case ConditionType.UnitAlive:
+                return $"{c.Describe()}: {yes(Evaluate(c, self))} (с меткой: {_sim.Units.Count(u => u.Tag == c.UnitTag)}, живых {_sim.Units.Count(u => u.Tag == c.UnitTag && u.Alive)})";
+            case ConditionType.Environment:
+                return $"{c.Describe()}: {yes(Evaluate(c, self))} (сейчас «{Variable(c.Variable)}»)";
+            default:
+                return $"{c.Describe()}: {yes(Evaluate(c, self))}";
+        }
+    }
 
     public bool Evaluate(ConditionDef c) => Evaluate(c, null);
 
