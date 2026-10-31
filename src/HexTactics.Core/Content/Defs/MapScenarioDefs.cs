@@ -138,6 +138,7 @@ public sealed class ScenarioUnitDef : ContentPart
     [Ed("Профиль ИИ", "Пусто — из шаблона"), EdRef(DefCategory.AiProfile)] public string AiProfile { get; set; } = "";
     [Ed("Имя", "Пусто — из шаблона")] public string Name { get; set; } = "";
     [Ed("Уровень", "0 — уровень шаблона; иначе характеристики экземпляра подгоняются")] public int Level { get; set; }
+    [Ed("Свои фазы босса", "Профиль фаз этого юнита вместо фаз шаблона (ТЗ ч. 6, 8.1); пусто — из шаблона")] public BossDef? Boss { get; set; }
 }
 
 public sealed class WaveUnitDef : ContentPart
@@ -698,6 +699,9 @@ public sealed class ScenarioDef : Def
     // Part 6, stage 6.6 (§101).
     [Ed("Графы событий", "Редактируются на вкладке «Граф событий»; компилируются в триггеры при запуске боя"), EdHidden, JsonOmitEmpty]
     public List<RuleGraphDef> Graphs { get; set; } = new();
+    // Part 6, stage 6.7 (§102).
+    [Ed("Телеграфы атак", "Предупреждение перед навыком: не меньше N с, область, контур, таймер; удар решает бой (ТЗ ч. 6, 8.5)", Group = "Юниты"), JsonOmitEmpty]
+    public List<TelegraphRuleDef> Telegraphs { get; set; } = new();
     // Part 6, stage 6.4 (docs/DECISIONS_6.md §99).
     [Ed("Наборы модификаторов", "Свои наборы сценария — действуют всегда, до наборов варианта", Group = "Режим"), EdRef(DefCategory.ModifierSet), JsonOmitEmpty]
     public List<string> ModifierSets { get; set; } = new();

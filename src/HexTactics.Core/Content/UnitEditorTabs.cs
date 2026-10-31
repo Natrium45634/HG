@@ -14,6 +14,8 @@ public enum UnitTab
     Skills,
     Visual,
     Rating,
+    // Part 6, stage 6.7 (§102).
+    Boss,
 }
 
 /// <summary>
@@ -33,6 +35,7 @@ public static class UnitEditorTabs
         (UnitTab.Skills, "Навыки"),
         (UnitTab.Visual, "Вид"),
         (UnitTab.Rating, "Уровень и рейтинг"),
+        (UnitTab.Boss, "Босс и фазы"),
     };
 
     private static readonly Dictionary<string, UnitTab> Placed = new()
@@ -47,7 +50,7 @@ public static class UnitEditorTabs
         [nameof(UnitDef.Role)] = UnitTab.Ai,
         [nameof(UnitDef.Perception)] = UnitTab.Ai,
         [nameof(UnitDef.Info)] = UnitTab.Ai,
-        [nameof(UnitDef.Boss)] = UnitTab.Ai,
+        [nameof(UnitDef.Boss)] = UnitTab.Boss,
         [nameof(Def.Tags)] = UnitTab.Tags,
         [nameof(Def.Group)] = UnitTab.Tags,
         [nameof(UnitDef.CreatureCategory)] = UnitTab.Tags,

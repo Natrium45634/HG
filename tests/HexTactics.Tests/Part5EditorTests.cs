@@ -16,7 +16,7 @@ public class Part5EditorTests
         foreach (var f in fields)
             Assert.Single(UnitEditorTabs.All, t => !UnitEditorTabs.SkipFor(t.Tab).Contains(f));
         Assert.All(UnitEditorTabs.All, t => Assert.Contains(fields, f => UnitEditorTabs.Of(f) == t.Tab));
-        Assert.Equal(8, UnitEditorTabs.All.Length);
+        Assert.Equal(9, UnitEditorTabs.All.Length); // part 6 (§102): «Босс и фазы»
         Assert.Equal(UnitTab.Base, UnitEditorTabs.Of(nameof(UnitDef.Stats)));
         Assert.Equal(UnitTab.Movement, UnitEditorTabs.Of(nameof(UnitDef.MoveCategory)));
         Assert.Equal(UnitTab.Ai, UnitEditorTabs.Of(nameof(UnitDef.AiProfile)));

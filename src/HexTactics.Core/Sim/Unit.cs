@@ -188,6 +188,10 @@ public sealed class Unit
     /// <summary>Original faction (mind control changes FactionId temporarily).</summary>
     public string BaseFactionId { get; set; } = "";
     public string Tag { get; set; } = "";
+    /// <summary>The phases of this unit of the scenario instead of its template's (ТЗ ч. 6, 8.1); null — the template's.</summary>
+    public BossDef? BossOverride { get; set; }
+    /// <summary>The boss profile in force: the scenario's for this unit, or the template's.</summary>
+    public BossDef Boss => BossOverride ?? Def.Boss;
 
     public HexCoord Pos { get; internal set; }
     public HexDirection Facing { get; internal set; }

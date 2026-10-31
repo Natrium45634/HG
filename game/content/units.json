@@ -2078,6 +2078,10 @@
             ],
             "message": "Ярость титана: земля вокруг пылает!"
           }
+        ],
+        "allowedSkills": [
+          "meteor",
+          "cleave"
         ]
       },
       "spawnWarning": true,

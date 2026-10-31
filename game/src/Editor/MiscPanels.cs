@@ -258,6 +258,18 @@ public partial class UnitEditorPanel : DefListPanel
                 box.AddChild(g);
                 tabs.AddChild(box);
             }
+            else if (tab == UnitTab.Boss)
+            {
+                // Part 6 (§102): the phases as a table, their problems, the scheme of the transitions and «прогон фазы».
+                var box = Ui.VBox(6);
+                box.Name = "UnitTab_" + tab;
+                g.Name = "UnitTabGrid_" + tab;
+                var phases = new BossPhasesView(Ctx, u);
+                g.Changed += phases.Refresh;
+                box.AddChild(phases);
+                box.AddChild(g);
+                tabs.AddChild(box);
+            }
             else tabs.AddChild(g);
             tabs.SetTabTitle(tabs.GetTabCount() - 1, title);
             grids.Add(g);

@@ -55,6 +55,7 @@ public sealed class SimDigest
             // Part 6 (T28): which triggers fired and which boss phases were entered — a loaded battle repeats neither.
             .Concat(sc.TriggerFires.Select(t => $"t{t.Trigger}={t.Fires}"))
             .Concat(sc.BossPhasesEntered.Select(b => "b" + b))
+            .Concat(sc.BossCurrentPhases.Select(b => "B" + b))
             .Concat(sc.SwitchedObjects.Select(x => "a" + x))
             .Concat(sim.Interactive.Digest().Select(x => "x" + x))
             .Concat(sc.DelayedTriggers.Select(x => "d" + x))

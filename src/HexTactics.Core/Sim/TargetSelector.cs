@@ -46,9 +46,9 @@ public sealed class TargetSelector
                 return prot.Count == 0 ? 0 : prot.Min(p => HexCoord.Distance(p.Pos, t.Pos));
             }
             case AutoTargetRule.Boss:
-                return HasTag(t, _sim.Rules.AutoAttacks.BossTag) || t.Def.Boss.IsBoss ? 0 : 1;
+                return HasTag(t, _sim.Rules.AutoAttacks.BossTag) || t.Boss.IsBoss ? 0 : 1;
             case AutoTargetRule.BossOrElite:
-                return HasTag(t, _sim.Rules.AutoAttacks.BossTag) || t.Def.Boss.IsBoss || HasTag(t, _sim.Rules.AutoAttacks.EliteTag) ? 0 : 1;
+                return HasTag(t, _sim.Rules.AutoAttacks.BossTag) || t.Boss.IsBoss || HasTag(t, _sim.Rules.AutoAttacks.EliteTag) ? 0 : 1;
             case AutoTargetRule.WithTag: return !string.IsNullOrEmpty(r.Tag) && HasTag(t, r.Tag) ? 0 : 1;
             case AutoTargetRule.WithStatus: return !string.IsNullOrEmpty(r.Status) && t.FindStatus(r.Status) != null ? 0 : 1;
             case AutoTargetRule.BlockedByMe: return _sim.Blocking.BlockerOf(t) == u ? 0 : 1;

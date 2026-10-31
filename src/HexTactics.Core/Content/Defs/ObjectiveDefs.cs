@@ -97,17 +97,58 @@ public sealed class ScenarioWarningsDef : ContentPart
     [Ed("Туман войны"), EdShowIf(nameof(OverrideFog), true)] public WarningFog Fog { get; set; } = WarningFog.AfterScouting;
 }
 
+/// <summary>
+/// A phase of a boss (ТЗ ч. 6, 8; docs/DECISIONS_6.md §102): the transition into it (from which phases, the condition, the
+/// priority, once or again) and what it does — only actions of the scenario. Nothing is reset unless the phase says so.
+/// </summary>
 public sealed class BossPhaseDef : ContentPart
 {
+    [Ed("ID", "Пусто — номер фазы (1, 2…)"), JsonOmitEmpty] public string Id { get; set; } = "";
     [Ed("Название фазы")] public string Name { get; set; } = "Фаза";
-    [Ed("Условие начала", "Например, «здоровье ниже 50 %» (без метки — сам босс)")] public ConditionDef When { get; set; } = new() { Type = ConditionType.HpBelow, Fraction = 0.5 };
-    [Ed("Действия", "Смена навыков и автоатак, состояния (сопротивления фазы), призыв, местность…")] public List<TriggerActionDef> Actions { get; set; } = new();
+    [Ed("Условие начала", "Например, «здоровье ниже 50 %» (без метки — сам босс); таймер, гибель союзника, объект в состоянии, юнит в области")]
+    public ConditionDef When { get; set; } = new() { Type = ConditionType.HpBelow, Fraction = 0.5 };
+    [Ed("Из фаз", "ID фаз, из которых возможен переход: «start» — до первой фазы, «*» — из любой; пусто — после предыдущей по списку"), JsonOmitEmpty]
+    public List<string> From { get; set; } = new();
+    [Ed("Приоритет", "Готовы несколько переходов в один тик — сначала больший; при равенстве — по списку"), EdRange(-100, 100), JsonOmitEmpty]
+    public int Priority { get; set; }
+    [Ed("Может повториться", "Иначе фаза наступает один раз за бой"), JsonOmitEmpty] public bool CanRepeat { get; set; }
+    [Ed("Действия", "Смена навыков и автоатак, профиля ИИ, состояния (сопротивления фазы), волна, объект, призыв, местность…")]
+    public List<TriggerActionDef> Actions { get; set; } = new();
     [Ed("Сообщение")] public string Message { get; set; } = "";
+    // ТЗ 8.4: by default the transition keeps damage, statuses, cooldowns and AP — only these explicit rules change them.
+    [Ed("Сбросить перезарядки", "Явное правило; по умолчанию перезарядки сохраняются"), JsonOmitEmpty] public bool ResetCooldowns { get; set; }
+    [Ed("Восполнить ОД", "Явное правило; по умолчанию ОД сохраняются"), JsonOmitEmpty] public bool RefillAp { get; set; }
+    [Ed("Лечение, доля здоровья", "Явное правило; 0 — здоровье не меняется"), EdRange(0, 1), JsonOmitEmpty] public double Heal { get; set; }
+    [Ed("Снять состояния", "Явное правило; пусто — состояния остаются"), EdRef(DefCategory.Status), JsonOmitEmpty] public List<string> ClearStatuses { get; set; } = new();
+
+    public override string ToString() => Id != "" ? $"{Name} [{Id}]" : Name;
 }
 
 public sealed class BossDef : ContentPart
 {
     [Ed("Это босс", "Полоса здоровья вверху экрана, правило автоатак «босс»")] public bool IsBoss { get; set; }
     [Ed("Титул"), EdShowIf(nameof(IsBoss), true)] public string Title { get; set; } = "";
-    [Ed("Фазы", "Проверяются по порядку, каждая срабатывает один раз"), EdShowIf(nameof(IsBoss), true)] public List<BossPhaseDef> Phases { get; set; } = new();
+    [Ed("Фазы", "Переходы проверяются каждый тик: «из фаз», условие, приоритет; без «может повториться» — один раз"), EdShowIf(nameof(IsBoss), true)]
+    public List<BossPhaseDef> Phases { get; set; } = new();
+    [Ed("Разрешённые навыки фаз", "Навыки, которые фазы могут добавить или сделать автоатакой (ТЗ 8.3); другие — предупреждение проверки"),
+     EdRef(DefCategory.Skill), EdShowIf(nameof(IsBoss), true), JsonOmitEmpty]
+    public List<string> AllowedSkills { get; set; } = new();
+}
+
+/// <summary>
+/// «Телеграф атаки» (ТЗ ч. 6, 8.5; §102): a setting of the scenario over an existing skill — the warning lasts at least N s, the
+/// area, the outline, the timer. The hit, its area and the cooldown are still the skill's; an interrupted cast takes the
+/// warning away and does nothing.
+/// </summary>
+public sealed class TelegraphRuleDef : ContentPart
+{
+    [Ed("Навык"), EdRef(DefCategory.Skill, AllowEmpty = false)] public string Skill { get; set; } = "";
+    [Ed("Кто", "Метка, tag:x, категория или шаблон; пусто — любой исполнитель")] public string Caster { get; set; } = "";
+    [Ed("Мин. предупреждение, с", "Подготовка навыка длится не меньше этого"), EdRange(0, 30)] public double MinLead { get; set; } = 1.5;
+    [Ed("Показывать область")] public bool ShowArea { get; set; } = true;
+    [Ed("Цвет контура")] public string Color { get; set; } = "#ff5040";
+    [Ed("Таймер", "Секунды до удара над областью")] public bool ShowTimer { get; set; } = true;
+    [Ed("Надпись", "Над областью, например «Удар хвостом!»")] public string Text { get; set; } = "";
+
+    public override string ToString() => $"{Skill} ≥ {MinLead:0.##} с";
 }

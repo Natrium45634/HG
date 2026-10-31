@@ -2778,3 +2778,23 @@ Windows-сборка проверена самопроверкой на Windows 
   `game/src/Battle/{GraphDebugPanel,BattleHud,BattlePlacement}.cs`; `docs/schema/*`.
 * **Тесты**: `Part6GraphTests` (7): T21, T22, T23; UI —
   `graph_editor_debug_breakpoint`.
+
+## Ч6 · Этап 6.7. Фазы босса и телеграфы атак
+
+* **Сделано** ([§102](DECISIONS_6.md)):
+  * у фазы ID, «из фаз», приоритет, «может повториться»; несколько
+    переходов за тик; текущая фаза в отпечатке боя;
+  * по умолчанию переход ничего не сбрасывает; явные правила — перезарядки,
+    ОД, лечение, снятие состояний; источник в журнале;
+  * свой профиль фаз у юнита сценария; разрешённые навыки фаз;
+  * проверка: недостижимые фазы, цикл без выхода, конфликт переходов,
+    недоступные навыки;
+  * вкладка «Босс и фазы»: таблица, схема переходов, «▶ Прогон фазы» с seed;
+  * «Телеграфы атак» сценария: минимальное время предупреждения, область,
+    контур, таймер, надпись; прерывание снимает предупреждение.
+* **Файлы**: ядро — `src/HexTactics.Core/Content/{BossPhases,UnitEditorTabs,ContentValidator,ContentJson}.cs`,
+  `Content/Defs/{ObjectiveDefs,MapScenarioDefs}.cs`, `Sim/{ScenarioSystem,ScenarioEventSystem,SkillSystem,SimDigest,Unit,TargetSelector}.cs`;
+  игра — `game/src/Editor/{BossPhasesView,MiscPanels}.cs`, `game/src/Battle/{BattleScreen,BattleHud}.cs`;
+  контент — `game/content/units.json` (разрешённые навыки титана); `docs/schema/*`.
+* **Тесты**: `Part6BossTests` (6): T24, T25; UI — `boss_phases_tab_run_and_telegraph`.
+

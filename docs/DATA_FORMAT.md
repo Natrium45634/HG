@@ -299,6 +299,14 @@ repeat, count, name, open, condition, action}, links[] {from, fromPort
 `false` в необязательных флагах не пишется. Отпечаток боя включает
 очередь отложенных запусков (`d<тик>:<триггер>`).
 
+Часть 6, этап 6.7 ([§102](DECISIONS_6.md)): у фазы босса — `id, from[]
+(ID фаз, "start", "*"), priority, canRepeat, resetCooldowns, refillAp,
+heal, clearStatuses[]`; у профиля босса — `allowedSkills[]`; у юнита
+сценария — `boss` (свой профиль). У сценария — `telegraphs[] {skill,
+caster, minLead, showArea, color, showTimer, text}`. Нули и пустые
+значения новых полей не пишутся. Отпечаток боя включает текущую фазу
+каждого босса и число переходов (`B<юнит>:<фаза>:<переходов>`).
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

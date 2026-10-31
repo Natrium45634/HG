@@ -109,6 +109,9 @@ public sealed partial class ScenarioSystem
     private readonly Dictionary<ConditionDef, long> _areaSince = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ConditionDef, int> _orderProgress = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<int, HashSet<int>> _bossPhases = new();
+    // Part 6, stage 6.7 (§102): the phase each boss is in and how many transitions it made (repeatable phases).
+    private readonly Dictionary<int, int> _bossCurrent = new();
+    private readonly Dictionary<int, int> _bossEntries = new();
     private readonly HashSet<string> _taggedSeen = new(StringComparer.Ordinal);
     private readonly Dictionary<string, long> _flagTicks = new(StringComparer.Ordinal);
     private readonly Dictionary<ConditionDef, HashSet<int>> _areaInside = new(ReferenceEqualityComparer.Instance);
@@ -257,6 +260,7 @@ public sealed partial class ScenarioSystem
                 string.IsNullOrEmpty(su.Name) ? null : su.Name, su.Tag, string.IsNullOrEmpty(su.AiProfile) ? null : su.AiProfile);
             if (!string.IsNullOrEmpty(u.Tag)) _taggedSeen.Add(u.Tag);
             if (su.Level > 0) ApplyLevel(u, su.Level);
+            if (su.Boss != null) u.BossOverride = su.Boss;
         }
         // The player's squad (part 6, §96): after the scenario's own units, so their hexes are taken.
         _sim.Squad.Load(sc);
@@ -1266,16 +1270,14 @@ public sealed partial class ScenarioSystem
     /// <summary>A wave was cleared (between waves: restore, relocation — the placement system listens).</summary>
     public event Action<WaveRuntime>? BetweenWaves;
 
-    /// <summary>«Сменить фазу босса»: the phase starts now (its actions run once), regardless of its condition.</summary>
+    /// <summary>«Сменить фазу босса»: the phase starts now, regardless of its condition (once, unless it may repeat).</summary>
     private void ForcePhase(Unit u, int index, string source)
     {
-        var phases = u.Def.Boss.Phases;
-        if (!u.Def.Boss.IsBoss || index < 0 || index >= phases.Count) return;
-        if (!_bossPhases.TryGetValue(u.Id, out var fired)) _bossPhases[u.Id] = fired = new HashSet<int>();
-        if (!fired.Add(index)) return;
-        var ph = phases[index];
-        _sim.Emit(SimEventType.Message, LogLevel.Normal, string.IsNullOrEmpty(ph.Message) ? $"{u.Name}: фаза «{ph.Name}»" : ph.Message, u.Id);
-        foreach (var act in ph.Actions) Execute(act, $"{u.Name}: {ph.Name}", u);
+        var phases = u.Boss.Phases;
+        if (!u.Boss.IsBoss || index < 0 || index >= phases.Count) return;
+        if (_bossPhases.TryGetValue(u.Id, out var fired) && fired.Contains(index) && !phases[index].CanRepeat) return;
+        if (CurrentPhase(u) == index) return;
+        EnterPhase(u, index, "по действию «" + source + "»");
     }
 
     /// <summary>Units a condition is about: the tagged ones, or the owner (self) without a tag.</summary>
@@ -1501,7 +1503,7 @@ public sealed partial class ScenarioSystem
             case ConditionType.BossPhase:
             {
                 IEnumerable<Unit> bosses = string.IsNullOrEmpty(c.UnitTag)
-                    ? self != null && self.Def.Boss.IsBoss ? new[] { self } : _sim.Units.Where(u => u.Def.Boss.IsBoss)
+                    ? self != null && self.Boss.IsBoss ? new[] { self } : _sim.Units.Where(u => u.Boss.IsBoss)
                     : _sim.Units.Where(u => u.Tag == c.UnitTag);
                 int need = Math.Max(1, c.Count) - 1;
                 return bosses.Any(b => _bossPhases.TryGetValue(b.Id, out var f) && f.Any(i => i >= need));
@@ -1622,7 +1624,7 @@ public sealed partial class ScenarioSystem
                 }
                 case ObjectiveKind.KillBoss:
                 {
-                    var bosses = _sim.Units.Where(u => string.IsNullOrEmpty(d.UnitTag) ? u.Def.Boss.IsBoss : u.Tag == d.UnitTag).ToList();
+                    var bosses = _sim.Units.Where(u => string.IsNullOrEmpty(d.UnitTag) ? u.Boss.IsBoss : u.Tag == d.UnitTag).ToList();
                     var alive = bosses.Where(u => u.Alive).ToList();
                     o.Progress = alive.Count > 0 ? $"здоровье босса {alive.Average(u => u.HpFraction):P0}" : bosses.Count == 0 ? "босс ещё не появился" : "";
                     done = bosses.Count > 0 && alive.Count == 0;
@@ -1706,29 +1708,102 @@ public sealed partial class ScenarioSystem
     {
         foreach (var u in _sim.Units.ToList())
         {
-            if (!u.Alive || !u.Def.Boss.IsBoss || u.Def.Boss.Phases.Count == 0) continue;
-            if (!_bossPhases.TryGetValue(u.Id, out var fired)) _bossPhases[u.Id] = fired = new HashSet<int>();
-            var phases = u.Def.Boss.Phases;
-            for (int i = 0; i < phases.Count; i++)
+            if (!u.Alive || !u.Boss.IsBoss || u.Boss.Phases.Count == 0) continue;
+            var phases = u.Boss.Phases;
+            // Several transitions may follow one another in a tick (a big hit passes two thresholds), each phase once in it.
+            var now = new HashSet<int>();
+            for (int step = 0; step < phases.Count; step++)
             {
-                if (fired.Contains(i)) continue;
-                if (!Evaluate(phases[i].When, u)) break; // phases go in order
-                fired.Add(i);
-                var ph = phases[i];
-                _sim.Emit(SimEventType.Message, LogLevel.Normal, string.IsNullOrEmpty(ph.Message) ? $"{u.Name}: фаза «{ph.Name}»" : ph.Message, u.Id);
-                foreach (var a in ph.Actions) Execute(a, $"{u.Name}: {ph.Name}", u);
+                int cur = CurrentPhase(u);
+                int best = -1;
+                for (int i = 0; i < phases.Count; i++)
+                {
+                    if (i == cur || now.Contains(i) || !CanEnter(u, i, cur) || !Evaluate(phases[i].When, u)) continue;
+                    if (best < 0 || phases[i].Priority > phases[best].Priority) best = i;
+                }
+                if (best < 0) break;
+                now.Add(best);
+                EnterPhase(u, best, "условие: " + phases[best].When.Describe());
             }
         }
     }
 
+    /// <summary>
+    /// May a boss enter a phase now (ТЗ 8.2): not entered yet or «может повториться»; «из фаз» — the phase it is in («start» — before
+    /// the first, «*» — any), empty — after the previous one of the list (the first — from the start).
+    /// </summary>
+    private bool CanEnter(Unit u, int i, int cur)
+    {
+        var ph = u.Boss.Phases[i];
+        _bossPhases.TryGetValue(u.Id, out var fired);
+        if (fired != null && fired.Contains(i) && !ph.CanRepeat) return false;
+        if (ph.From.Count == 0) return i == 0 || fired != null && fired.Contains(i - 1);
+        if (ph.From.Contains("*")) return true;
+        return cur < 0 ? ph.From.Contains(BossPhases.Start) : ph.From.Contains(BossPhases.IdOf(u.Boss, cur));
+    }
+
+    /// <summary>
+    /// The boss enters a phase: its message, the explicit rules of the transition (cooldowns, AP, health, statuses — none by
+    /// default, ТЗ 8.4), then its actions; each written to the log with the phase as its source.
+    /// </summary>
+    private void EnterPhase(Unit u, int index, string why)
+    {
+        var ph = u.Boss.Phases[index];
+        if (!_bossPhases.TryGetValue(u.Id, out var fired)) _bossPhases[u.Id] = fired = new HashSet<int>();
+        fired.Add(index);
+        _bossCurrent[u.Id] = index;
+        _bossEntries[u.Id] = _bossEntries.GetValueOrDefault(u.Id) + 1;
+        string src = $"фаза «{ph.Name}» ({u.Name})";
+        _sim.Emit(SimEventType.Message, LogLevel.Normal, string.IsNullOrEmpty(ph.Message) ? $"{u.Name}: фаза «{ph.Name}»" : ph.Message, u.Id);
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: переход в фазу «{ph.Name}» — {why}", u.Id);
+        if (ph.ResetCooldowns && u.CooldownUntil.Count > 0)
+        {
+            u.CooldownUntil.Clear();
+            _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name}: перезарядки сброшены — {src}", u.Id);
+        }
+        if (ph.RefillAp && u.Ap < u.ApMax)
+        {
+            u.Ap = u.ApMax;
+            _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name}: ОД восполнены — {src}", u.Id);
+        }
+        if (ph.Heal > 0 && u.Hp < u.HpMax)
+        {
+            double before = u.Hp;
+            u.Hp = Math.Min(u.HpMax, u.Hp + u.HpMax * ph.Heal);
+            _sim.Emit(SimEventType.Heal, LogLevel.Normal, $"{u.Name}: +{u.Hp - before:0} здоровья — {src}", u.Id, u.Id, value: u.Hp - before);
+        }
+        foreach (var st in ph.ClearStatuses) _sim.Statuses.RemoveById(u, st, src);
+        foreach (var a in ph.Actions)
+        {
+            _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{src}: {a.Describe()}", u.Id);
+            Execute(a, src, u);
+        }
+    }
+
+    /// <summary>«Телеграф атаки» of the scenario for a caster and a skill (the first that matches; null — none).</summary>
+    public TelegraphRuleDef? TelegraphFor(Unit u, SkillDef s)
+    {
+        if (Def == null || Def.Telegraphs.Count == 0) return null;
+        foreach (var t in Def.Telegraphs)
+            if (t.Skill == s.Id && (t.Caster == "" || u.Tag == t.Caster || _sim.Conditions.TypeMatches(u, t.Caster)))
+                return t;
+        return null;
+    }
+
+    /// <summary>The phase a boss is in (an index of its list; −1 — before the first).</summary>
+    public int CurrentPhase(Unit u) => _bossCurrent.TryGetValue(u.Id, out var i) ? i : -1;
+
+    /// <summary>How many times a boss changed its phase.</summary>
+    public int PhaseEntries(Unit u) => _bossEntries.GetValueOrDefault(u.Id);
+
     /// <summary>Current phase number of a boss, from 1 (0 — before the first phase).</summary>
-    public int PhaseNumberOf(Unit u) => _bossPhases.TryGetValue(u.Id, out var fired) && fired.Count > 0 ? fired.Max() + 1 : 0;
+    public int PhaseNumberOf(Unit u) => CurrentPhase(u) + 1;
 
     /// <summary>Current phase name of a boss ("" — before the first phase).</summary>
     public string PhaseOf(Unit u)
     {
-        if (!_bossPhases.TryGetValue(u.Id, out var fired) || fired.Count == 0) return "";
-        return u.Def.Boss.Phases[fired.Max()].Name;
+        int i = CurrentPhase(u);
+        return i >= 0 && i < u.Boss.Phases.Count ? u.Boss.Phases[i].Name : "";
     }
 
     // ------------------------------------------------------------------ outcome

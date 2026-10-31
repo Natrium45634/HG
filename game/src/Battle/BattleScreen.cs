@@ -844,7 +844,7 @@ public partial class BattleScreen : Node
             }
             if (ob.Def.Kind is ObjectiveKind.Destroy or ObjectiveKind.KillBoss or ObjectiveKind.Escort)
                 foreach (var u in Sim.Units)
-                    if (u.Alive && UnitVisible(u) && (string.IsNullOrEmpty(ob.Def.UnitTag) ? ob.Def.Kind == ObjectiveKind.KillBoss && u.Def.Boss.IsBoss : u.Tag == ob.Def.UnitTag))
+                    if (u.Alive && UnitVisible(u) && (string.IsNullOrEmpty(ob.Def.UnitTag) ? ob.Def.Kind == ObjectiveKind.KillBoss && u.Boss.IsBoss : u.Tag == ob.Def.UnitTag))
                         o.Circle(Board.UnitPos(u) + new Vector3(0, 0.05f, 0), 0.62f, 0.05f, ob.Def.Kind == ObjectiveKind.Escort ? col : new Color(1f, 0.35f, 0.3f, 0.9f));
         }
     }
@@ -953,9 +953,27 @@ public partial class BattleScreen : Node
             var caster = cast.Caster;
             bool own = Sim.IsPlayerFaction(caster.FactionId);
             bool visible = _admin || own || (cast.VisibleToPlayer && UnitVisible(caster));
-            if (!visible || !cast.Skill.Telegraph) continue;
+            if (!visible || !cast.Telegraphed) continue;
             var col = Ui.Parse(cast.Skill.Color, Ui.Accent);
             bool hostileToPlayer = !own && Sim.Options.PlayerFactions.Any(pf => _db.RelationOf(pf, caster.FactionId) == Relation.Enemy);
+            // «Телеграф атаки» of the scenario (part 6, §102): its outline, its timer and text; the area only if it says so.
+            if (cast.Rule is { } rule)
+            {
+                var rc = Ui.Parse(rule.Color, new Color(1f, 0.3f, 0.2f));
+                if (rule.ShowArea)
+                    foreach (var c in cast.TelegraphCells)
+                    {
+                        o.FillHex(c, new Color(rc.R, rc.G, rc.B, 0.14f + 0.14f * pulse));
+                        o.RingHex(c, new Color(rc.R, rc.G, rc.B, 0.95f), 0.07f);
+                    }
+                double left = Math.Max(0, (cast.ReleaseTick - Sim.Tick) * Sim.Dt);
+                string text = (rule.ShowTimer ? $"{left:0.0} с" : "") + (rule.Text != "" ? (rule.ShowTimer ? " · " : "") + rule.Text : "");
+                if (text != "") _labels.Add(LabelPos(cast.Anchor, 1.1f), text, rc, 40);
+                var cp = Board.UnitPos(caster) + new Vector3(0, 0.02f, 0);
+                o.Circle(cp, 0.66f, 0.07f, new Color(0, 0, 0, 0.5f), true, 40, 1f);
+                o.Circle(cp, 0.66f, 0.07f, rc, true, 40, Math.Max(0.02f, (float)cast.Progress(Sim.Tick)));
+                continue;
+            }
             foreach (var c in cast.TelegraphCells)
             {
                 if (hostileToPlayer)

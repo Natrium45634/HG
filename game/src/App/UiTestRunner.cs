@@ -92,6 +92,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("variant_menu_battle_and_modifiers_tab", VariantMenuAndModifiersTab));
         _tests.Add(("object_preset_sandbox_and_interaction", ObjectPresetSandboxAndInteraction));
         _tests.Add(("graph_editor_debug_breakpoint", GraphEditorDebugBreakpoint));
+        _tests.Add(("boss_phases_tab_run_and_telegraph", BossPhasesTabRunTelegraph));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3354,6 +3355,54 @@ public partial class UiTestRunner : Node
         GraphBreakpoints.ClearIn(sc.Id);
     }
 
+    /// <summary>
+    /// Part 6, stage 6.7 (ТЗ 8; §102): the tab «Босс и фазы» of the titan — the table, the check, the scheme; «▶ Прогон фазы»
+    /// starts a battle on an empty field in «Ярость» at once; a telegraph of the scenario over the titan's strike shows its
+    /// area and timer, and an interrupted cast takes them away without a hit.
+    /// </summary>
+    private async Task BossPhasesTabRunTelegraph()
+    {
+        await OpenEditor("enemies");
+        var units = Find<UnitEditorPanel>(GetTree().Root).First();
+        units.Select("titan");
+        await Frames(6);
+        var tabs = units.Tabs!;
+        tabs.CurrentTab = UnitEditorTabs.All.ToList().FindIndex(t => t.Tab == UnitTab.Boss);
+        await Frames(4);
+        var view = Find<BossPhasesView>(tabs).FirstOrDefault();
+        Check(view != null && view.IsVisibleInTree(), "вкладка «Босс и фазы» с таблицей фаз");
+        Check(view!.TableRows == 2 && Find<Label>(view).Any(l => l.Name == "BossPhaseCheck" && l.Text.StartsWith("✓")), "у титана две фазы без ошибок");
+        Check(view.Scheme.NodeView(BossPhases.Start) != null && view.Scheme.NodeView("p1") != null, "схема переходов: начало и фазы");
+        var choice = Find<OptionButton>(view).First(o => o.Name == "BossPhaseRunChoice");
+        choice.Select(1);
+        await Shot("part6_boss_phases_tab");
+        await PressNamed(view, "BossPhaseRun");
+        await Frames(10);
+        var bs = Battle();
+        Check(bs.Sim.Scenario.Def!.Id == "phase_sandbox", "прогон фазы — бой на пустой карте");
+        var titan = bs.Sim.Units.First(u => u.Tag == "boss");
+        for (int i = 0; i < 30 && bs.Sim.Scenario.PhaseOf(titan) != "Ярость"; i++) await Frames(1);
+        Check(bs.Sim.Scenario.PhaseOf(titan) == "Ярость", "титан сразу в фазе «Ярость»: " + bs.Sim.Scenario.PhaseOf(titan));
+
+        // A telegraph of the scenario over the titan's strike: area, timer; an interrupt takes it away.
+        bs.Driver.Paused = true;
+        foreach (var u in bs.Sim.Units) bs.Sim.AutoAttacks.DisabledUnits.Add(u.Id);
+        bs.Sim.Ai.Enabled = false;
+        bs.Sim.Scenario.Def.Telegraphs.Add(new TelegraphRuleDef { Skill = "strike", Caster = "boss", MinLead = 3, Text = "Удар!" });
+        var knight = bs.Sim.Units.Where(u => u.Alive && bs.Sim.IsPlayerFaction(u.FactionId)).OrderBy(u => HexCoord.Distance(u.Pos, titan.Pos)).First();
+        Check(bs.Sim.Enqueue(titan, Command.Skill("strike", null, knight.Id)) == null, "титан готовит удар");
+        bs.Sim.Step();
+        var cast = titan.Casting;
+        Check(cast != null && cast.Rule != null && cast.ReleaseTick - cast.StartTick == bs.Sim.TicksFor(3), "телеграф сценария: предупреждение 3 с");
+        await Frames(6);
+        await Shot("part6_telegraph");
+        double hp = knight.Hp;
+        bs.Sim.Skills.Interrupt(titan, InterruptCause.Control, "оглушение");
+        for (int i = 0; i < bs.Sim.TicksFor(4); i++) bs.Sim.Step();
+        await Frames(4);
+        Check(!bs.Sim.Skills.ActiveCasts.Any(c => c.Caster == titan) && Math.Abs(knight.Hp - hp) < 1e-6, "прерванный удар: предупреждение снято, урона нет");
+    }
+
     private async Task PressNamed(Node root, string name)
     {
         var b = Find<Button>(root).FirstOrDefault(x => x.Name == name);
@@ -3378,7 +3427,7 @@ public partial class UiTestRunner : Node
             units.Select("knight");
             await Frames(6);
             var tabs = units.Tabs;
-            Check(tabs != null && tabs.GetTabCount() == 8, "у формы юнита должно быть 8 вкладок");
+            Check(tabs != null && tabs.GetTabCount() == UnitEditorTabs.All.Length, $"у формы юнита должно быть {UnitEditorTabs.All.Length} вкладок");
             var titles = Enumerable.Range(0, tabs!.GetTabCount()).Select(i => tabs.GetTabTitle(i)).ToList();
             Check(titles.SequenceEqual(UnitEditorTabs.All.Select(t => t.Title)), "вкладки: " + string.Join(", ", titles));
             string Rows(string name) => string.Join("|", Find<Label>(Find<Control>(tabs).First(c => c.Name == name)).Where(l => l.IsVisibleInTree()).Select(l => l.Text));

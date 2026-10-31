@@ -39,6 +39,8 @@ public sealed partial class ScenarioSystem
 
     /// <summary>The boss phases entered, as «unit:phase» (part 6, T28).</summary>
     public IEnumerable<string> BossPhasesEntered => _bossPhases.OrderBy(k => k.Key).SelectMany(k => k.Value.OrderBy(i => i).Select(i => $"{k.Key}:{i}"));
+    /// <summary>The phase each boss is in and its count of transitions (part 6, §102), for the fingerprint.</summary>
+    public IEnumerable<string> BossCurrentPhases => _bossCurrent.OrderBy(k => k.Key).Select(k => $"{k.Key}:{k.Value}:{_bossEntries.GetValueOrDefault(k.Key)}");
 
     /// <summary>The battle mode of the loaded scenario.</summary>
     public BattleMode Mode => Def?.Mode ?? BattleMode.Normal;

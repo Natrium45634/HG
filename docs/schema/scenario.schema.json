@@ -136,6 +136,103 @@
       },
       "additionalProperties": true
     },
+    "BossDef": {
+      "type": "object",
+      "properties": {
+        "allowedSkills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Skill"
+          },
+          "description": "Разрешённые навыки фаз — Навыки, которые фазы могут добавить или сделать автоатакой (ТЗ 8.3); другие — предупреждение проверки"
+        },
+        "isBoss": {
+          "type": "boolean",
+          "description": "Это босс — Полоса здоровья вверху экрана, правило автоатак «босс»"
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BossPhaseDef"
+          },
+          "description": "Фазы — Переходы проверяются каждый тик: «из фаз», условие, приоритет; без «может повториться» — один раз"
+        },
+        "title": {
+          "type": "string",
+          "description": "Титул"
+        }
+      },
+      "additionalProperties": true
+    },
+    "BossPhaseDef": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TriggerActionDef"
+          },
+          "description": "Действия — Смена навыков и автоатак, профиля ИИ, состояния (сопротивления фазы), волна, объект, призыв, местность…"
+        },
+        "canRepeat": {
+          "type": "boolean",
+          "description": "Может повториться — Иначе фаза наступает один раз за бой"
+        },
+        "clearStatuses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Status"
+          },
+          "description": "Снять состояния — Явное правило; пусто — состояния остаются"
+        },
+        "from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Из фаз — ID фаз, из которых возможен переход: «start» — до первой фазы, «*» — из любой; пусто — после предыдущей по списку"
+        },
+        "heal": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Лечение, доля здоровья — Явное правило; 0 — здоровье не меняется"
+        },
+        "id": {
+          "type": "string",
+          "description": "ID — Пусто — номер фазы (1, 2…)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Сообщение"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название фазы"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет — Готовы несколько переходов в один тик — сначала больший; при равенстве — по списку"
+        },
+        "refillAp": {
+          "type": "boolean",
+          "description": "Восполнить ОД — Явное правило; по умолчанию ОД сохраняются"
+        },
+        "resetCooldowns": {
+          "type": "boolean",
+          "description": "Сбросить перезарядки — Явное правило; по умолчанию перезарядки сохраняются"
+        },
+        "when": {
+          "$ref": "#/$defs/ConditionDef",
+          "description": "Условие начала — Например, «здоровье ниже 50 %» (без метки — сам босс); таймер, гибель союзника, объект в состоянии, юнит в области"
+        }
+      },
+      "additionalProperties": true
+    },
     "ConditionDef": {
       "type": "object",
       "properties": {
@@ -2127,6 +2224,13 @@
           ],
           "description": "Отряд игрока — Кого игрок берёт в бой: размер, теги, лимиты, обязательные бойцы"
         },
+        "telegraphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TelegraphRuleDef"
+          },
+          "description": "Телеграфы атак — Предупреждение перед навыком: не меньше N с, область, контур, таймер; удар решает бой (ТЗ ч. 6, 8.5)"
+        },
         "triggers": {
           "type": "array",
           "items": {
@@ -2482,6 +2586,17 @@
           "type": "string",
           "x-ref": "AiProfile",
           "description": "Профиль ИИ — Пусто — из шаблона"
+        },
+        "boss": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BossDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Свои фазы босса — Профиль фаз этого юнита вместо фаз шаблона (ТЗ ч. 6, 8.1); пусто — из шаблона"
         },
         "c": {
           "type": "array",
@@ -3172,6 +3287,43 @@
         "self": {
           "type": "boolean",
           "description": "Сам исполнитель"
+        }
+      },
+      "additionalProperties": true
+    },
+    "TelegraphRuleDef": {
+      "type": "object",
+      "properties": {
+        "caster": {
+          "type": "string",
+          "description": "Кто — Метка, tag:x, категория или шаблон; пусто — любой исполнитель"
+        },
+        "color": {
+          "type": "string",
+          "description": "Цвет контура"
+        },
+        "minLead": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30,
+          "description": "Мин. предупреждение, с — Подготовка навыка длится не меньше этого"
+        },
+        "showArea": {
+          "type": "boolean",
+          "description": "Показывать область"
+        },
+        "showTimer": {
+          "type": "boolean",
+          "description": "Таймер — Секунды до удара над областью"
+        },
+        "skill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык"
+        },
+        "text": {
+          "type": "string",
+          "description": "Надпись — Над областью, например «Удар хвостом!»"
         }
       },
       "additionalProperties": true

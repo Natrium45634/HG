@@ -275,12 +275,12 @@ public partial class BattleHud : Control
 
     private void RefreshBoss()
     {
-        var boss = Sim.Units.FirstOrDefault(u => u.Alive && u.Def.Boss.IsBoss && _bs.UnitVisible(u));
+        var boss = Sim.Units.FirstOrDefault(u => u.Alive && u.Boss.IsBoss && _bs.UnitVisible(u));
         _bossPanel.Visible = boss != null;
         if (boss == null) return;
         string phase = Sim.Scenario.PhaseOf(boss);
         var info = Sim.Knowledge.GetInfo(boss);
-        _bossName.Text = (string.IsNullOrEmpty(boss.Def.Boss.Title) ? "" : boss.Def.Boss.Title + " · ") + info.Name + (phase.Length > 0 ? $" — {phase}" : "");
+        _bossName.Text = (string.IsNullOrEmpty(boss.Boss.Title) ? "" : boss.Boss.Title + " · ") + info.Name + (phase.Length > 0 ? $" — {phase}" : "");
         if (info.HealthField.Known) _bossHp.Set(info.Hp, info.HpMax, $"{info.Hp:0}/{info.HpMax:0}");
         else _bossHp.Set(1, 1, "?");
         _bossPanel.ResetSize();

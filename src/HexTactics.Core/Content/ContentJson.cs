@@ -39,7 +39,15 @@ public static class ContentJson
                 {
                     foreach (var p in ti.Properties)
                         if (p.AttributeProvider?.IsDefined(typeof(JsonOmitEmptyAttribute), true) == true)
-                            p.ShouldSerialize = (_, v) => v is string s ? s.Length > 0 : v is bool b ? b : v is not ICollection c || c.Count > 0;
+                            p.ShouldSerialize = (_, v) => v switch
+                            {
+                                string s => s.Length > 0,
+                                bool b => b,
+                                int i => i != 0,     // only for numbers whose default is 0
+                                double d => d != 0,
+                                ICollection c => c.Count > 0,
+                                _ => true,
+                            };
                 },
             },
         };
@@ -62,7 +70,7 @@ public static class ContentJson
     }
 }
 
-/// <summary>The collection (text) is not written to JSON while it is empty (a flag — while it is off).</summary>
+/// <summary>The collection (text) is not written to JSON while it is empty (a flag — while it is off, a number — while 0: only where 0 is the default).</summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class JsonOmitEmptyAttribute : Attribute
 {

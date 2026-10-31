@@ -408,6 +408,9 @@ public static class ContentValidator
             issues.Add(Err(u, "MoveCategory", $"Неизвестная категория движения '{u.MoveCategory}'"));
         if (!string.IsNullOrEmpty(u.DefenseSkill) && db.Skill(u.DefenseSkill) is { } ds && ds.Targeting != TargetingMode.Self)
             issues.Add(Warn(u, "DefenseSkill", $"Защитный навык «{ds.DisplayName}» не наводится «на себя» — команда защиты применит его к исполнителю"));
+        // Phases of the boss (part 6, §102).
+        foreach (var p in BossPhases.Check(db, u.Boss))
+            issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(u), "Boss.Phases", "Фазы босса: " + p.Message));
     }
 
     private static void CheckStatus(StatusDef s, List<ContentIssue> issues)
@@ -733,6 +736,14 @@ public static class ContentValidator
             issues.Add(new ContentIssue(p.Severity, Src(s), p.Path, p.Message));
         var cells = map.Cells.ToDictionary(c => c.C);
         CheckDeploymentZones(db, s, cells, issues);
+        // Own phases of bosses and telegraphs of attacks (part 6, §102).
+        for (int i = 0; i < s.Units.Count; i++)
+            if (s.Units[i].Boss is { } own)
+                foreach (var p in BossPhases.Check(db, own))
+                    issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(s), $"Units[{i}].Boss", $"Фазы босса «{s.Units[i].Unit}»: " + p.Message));
+        foreach (var t in s.Telegraphs)
+            if (db.Skill(t.Skill) is { } ts && ts.Stages.Count == 0 && t.ShowArea)
+                issues.Add(Warn(s, "Telegraphs", $"Телеграф «{ts.DisplayName}»: у навыка нет этапов — показать нечего, кроме таймера"));
         // Graphs of events (part 6, §101): checked before any battle; a graph with errors is left out of it.
         foreach (var g in s.Graphs)
             foreach (var p in RuleGraphs.Check(s, g))

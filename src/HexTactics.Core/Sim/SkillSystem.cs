@@ -34,6 +34,10 @@ public sealed class SkillCast
     public Dictionary<string, double> PaidResources { get; } = new();
     /// <summary>Cells shown as the threat/telegraph area (stage 0 at start of preparation).</summary>
     public List<HexCoord> TelegraphCells { get; } = new();
+    /// <summary>The telegraph of the scenario over this skill (part 6, §102): shown even when the skill does not telegraph.</summary>
+    public TelegraphRuleDef? Rule { get; set; }
+    /// <summary>Is a warning shown for this cast: the skill's own or the scenario's.</summary>
+    public bool Telegraphed => Rule != null || Skill.Telegraph;
     public bool Released { get; set; }
     public bool Interrupted { get; set; }
     /// <summary>The player side saw the caster when the preparation started (telegraph may be shown).</summary>
@@ -265,6 +269,17 @@ public sealed class SkillSystem
         if (s.Stages.Count > 0)
             foreach (var c in StageCells(cast, s.Stages[0], preview: true))
                 cast.TelegraphCells.Add(c.Cell);
+        // «Телеграф атаки» of the scenario (ТЗ ч. 6, 8.5): the warning lasts at least its time; the hit stays the skill's.
+        if (_sim.Scenario.TelegraphFor(u, s) is { } rule)
+        {
+            cast.Rule = rule;
+            long lead = _sim.TicksFor(rule.MinLead);
+            if (cast.ReleaseTick - cast.StartTick < lead)
+            {
+                cast.ReleaseTick = cast.StartTick + lead;
+                _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: «{s.DisplayName}» — предупреждение {rule.MinLead:0.##} с (телеграф сценария)", u.Id);
+            }
+        }
         cast.VisibleToPlayer = _sim.IsPlayerFaction(u.FactionId) || _sim.Vision.IsVisibleToPlayer(u) || _sim.Options.AdminMode;
         _sim.Knowledge.OnSkillUsed(u, s);
         u.Casting = cast;
