@@ -51,6 +51,7 @@ public sealed class ScaleSystem
     public ScaleState? Of(Unit u)
     {
         if (_states.TryGetValue(u.Id, out var s)) return s;
+        if (!_sim.Options.Scales) return null; // switched off by the rules of the mode (§107)
         if (u.Def.Scale is not { } use || _sim.Content.Get<ScaleProfileDef>(use.Profile) is not { } p) return null;
         bool immune = use.Mode == ScaleUseMode.Immune || p.ImmuneTags.Any(u.HasTag);
         double start = use.OwnStart ? use.Start : _sim.Tick > 1 ? p.SpawnValue : p.Start;

@@ -194,8 +194,8 @@ public sealed partial class ScenarioSystem
     public static Simulation Create(ContentDatabase db, ScenarioDef sc, ulong? seed = null, bool admin = false, bool autoPlayer = false,
         IReadOnlyList<string>? roster = null)
     {
-        // The graphs of events (part 6, §101) become ordinary triggers of a copy of the scenario.
-        sc = RuleGraphs.WithCompiled(sc);
+        // The graphs of events (part 6, §101) become ordinary triggers of a copy of the scenario — unless the mode switches them off.
+        if (EffectiveGameRules.Resolve(db, sc).Graphs) sc = RuleGraphs.WithCompiled(sc);
         // «Автотест» (docs/DECISIONS_4.md §64): the player's side is driven by AI profiles as well.
         autoPlayer |= sc.Mode == BattleMode.AutoTest;
         string defender = sc.Placement.DefenderProfile != "" ? sc.Placement.DefenderProfile : db.Get<AiProfileDef>("ai_guard") != null ? "ai_guard" : "";
@@ -226,6 +226,10 @@ public sealed partial class ScenarioSystem
             Roster = roster,
             SquadStart = mode.SquadStart,
             Deployment = mode.Deployment,
+            Objects = mode.Objects,
+            Modifiers = mode.Modifiers,
+            Scales = mode.Scales,
+            Summons = mode.Summons,
         });
         sim.Scenario.Load(sc);
         return sim;
@@ -243,7 +247,7 @@ public sealed partial class ScenarioSystem
         // The rules of friendly fire of the mode and of the scenario (part 6, §105).
         _sim.FriendlyFire.Load(_sim.Content, sc);
         // The states of the objects (part 6, §100): their terrain is set before anyone is placed.
-        _sim.Interactive.Load(sc);
+        if (_sim.Options.Objects) _sim.Interactive.Load(sc);
         foreach (var su in sc.Units)
         {
             var def = _sim.Content.Unit(su.Unit);
@@ -267,7 +271,7 @@ public sealed partial class ScenarioSystem
         // The player's squad (part 6, §96): after the scenario's own units, so their hexes are taken.
         _sim.Squad.Load(sc);
         _sim.Deployment.Load(_sim.Options.Deployment);
-        _sim.Mission.Load(sc);
+        if (_sim.Options.Modifiers) _sim.Mission.Load(sc);
         _hadPlayerUnits = _sim.Units.Any(u => _sim.IsPlayerFaction(u.FactionId));
         for (int i = 0; i < sc.Waves.Count; i++) _waves.Add(new WaveRuntime { Index = i, Def = sc.Waves[i] });
         foreach (var o in sc.Objectives.Select((d, i) => (d, i)).OrderBy(x => x.d.Priority).ThenBy(x => x.i))

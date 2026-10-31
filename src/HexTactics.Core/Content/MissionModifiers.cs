@@ -61,7 +61,8 @@ public static class MissionModifiers
     public static (ContentDatabase Db, ScenarioDef Scenario) Prepare(ContentDatabase db, ScenarioDef sc, DifficultyVariantDef? variant)
     {
         var copy = ContentJson.Clone(sc);
-        var mods = Active(db, sc, variant);
+        // The rules of the mode may switch the modifiers off (ТЗ ч. 6, 14.1; §107): the variant then changes nothing.
+        var mods = EffectiveGameRules.Resolve(db, sc).Modifiers ? Active(db, sc, variant) : new List<(MissionModifierDef Mod, ModifierSetDef Set)>();
         copy.AppliedVariant = variant?.Id ?? "";
         copy.AppliedModifiers.Clear();
         copy.AppliedNotes.Clear();

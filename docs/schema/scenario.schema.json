@@ -866,6 +866,50 @@
           ],
           "description": "Дружественный огонь — Своё правило по видам воздействия; не задано — из правил режима"
         },
+        "graphs": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Граф событий"
+        },
+        "modifiers": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Модификаторы миссии"
+        },
+        "objects": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Интерактивные объекты"
+        },
+        "scales": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Шкалы"
+        },
         "squadStart": {
           "anyOf": [
             {
@@ -881,6 +925,17 @@
             }
           ],
           "description": "Отряд на поле в начале"
+        },
+        "summons": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Призывы по описаниям"
         }
       },
       "additionalProperties": true

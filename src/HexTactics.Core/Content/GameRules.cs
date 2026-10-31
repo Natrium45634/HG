@@ -18,6 +18,12 @@ public sealed class EffectiveGameRules
     public string RulesPreset { get; init; } = "";
     public SquadStart SquadStart { get; init; } = SquadStart.AllOnField;
     public bool Blocking { get; init; } = true;
+    // ТЗ ч. 6, 14.1 (§107): the subsystems switched on.
+    public bool Objects { get; init; } = true;
+    public bool Modifiers { get; init; } = true;
+    public bool Graphs { get; init; } = true;
+    public bool Scales { get; init; } = true;
+    public bool Summons { get; init; } = true;
     /// <summary>Null — as the battle rules say.</summary>
     public bool? FriendlyFire { get; init; }
     /// <summary>The deployment during the battle (part 6, §97): the scenario's own block, else the preset's.</summary>
@@ -45,6 +51,11 @@ public sealed class EffectiveGameRules
         }
         var start = Pick(o?.SquadStart, preset?.SquadStart, SquadStart.AllOnField, out var startSrc);
         var blocking = Pick(o?.Blocking, preset?.Blocking, true, out var blockSrc);
+        var objects = Pick(o?.Objects, preset?.Objects, true, out var objectsSrc);
+        var modifiers = Pick(o?.Modifiers, preset?.Modifiers, true, out var modsSrc);
+        var graphs = Pick(o?.Graphs, preset?.Graphs, true, out var graphsSrc);
+        var scales = Pick(o?.Scales, preset?.Scales, true, out var scalesSrc);
+        var summons = Pick(o?.Summons, preset?.Summons, true, out var summonsSrc);
         bool? ff;
         string ffSrc;
         if (o?.FriendlyFire is { } ownFf)
@@ -66,13 +77,27 @@ public sealed class EffectiveGameRules
         string rulesSrc = sc.RulesPreset != "" ? "сценарий" : preset != null && preset.RulesPreset != "" ? fromPreset : "по умолчанию";
         var deployment = sc.DeploymentOverride ?? preset?.Deployment ?? new DeploymentRulesDef();
         string deploySrc = sc.DeploymentOverride != null ? "сценарий" : preset != null ? fromPreset : "по умолчанию";
-        var e = new EffectiveGameRules { Preset = preset, RulesPreset = rulesPreset, SquadStart = start, Blocking = blocking, FriendlyFire = ff, Deployment = deployment };
+        var e = new EffectiveGameRules
+        {
+            Preset = preset, RulesPreset = rulesPreset, SquadStart = start, Blocking = blocking, FriendlyFire = ff, Deployment = deployment,
+            Objects = objects, Modifiers = modifiers, Graphs = graphs, Scales = scales, Summons = summons,
+        };
         e.Values.Add(new GameRuleValue("rules", "Правила боя", rulesPreset == "" ? "глобальные" : db.Get<RulesPresetDef>(rulesPreset)?.DisplayName ?? rulesPreset + " (нет)", rulesSrc));
         e.Values.Add(new GameRuleValue("squadStart", "Отряд на поле в начале", EdUtil.EnumLabel(start), startSrc));
         e.Values.Add(new GameRuleValue("blocking", "Блокирование", blocking ? "включено" : "выключено", blockSrc));
         bool ffNow = ff ?? (db.Get<RulesPresetDef>(rulesPreset)?.Rules ?? db.Rules).Combat.FriendlyFire;
         e.Values.Add(new GameRuleValue("friendlyFire", "Урон по союзникам в области", ffNow ? "включён" : "выключен", ffSrc));
         e.Values.Add(new GameRuleValue("deployment", "Вызов за очки развёртывания", Describe(deployment), deploySrc));
+        string On(bool v) => v ? "включены" : "выключены";
+        e.Values.Add(new GameRuleValue("objects", "Интерактивные объекты", On(objects), objectsSrc));
+        e.Values.Add(new GameRuleValue("modifiers", "Модификаторы миссии", On(modifiers), modsSrc));
+        e.Values.Add(new GameRuleValue("graphs", "Граф событий", graphs ? "включён" : "выключен", graphsSrc));
+        e.Values.Add(new GameRuleValue("scales", "Шкалы", On(scales), scalesSrc));
+        e.Values.Add(new GameRuleValue("summons", "Призывы по описаниям", On(summons), summonsSrc));
+        // A switched-off subsystem the mission uses explicitly: the mission still runs, the part is inert (ТЗ 14.1: explicit dependencies).
+        if (!graphs && sc.Graphs.Count > 0) e.Hints.Add($"граф событий выключен — {sc.Graphs.Count} граф(ов) сценария не действуют");
+        if (!objects && sc.Objects.Any(x => x.States is { States.Count: > 0 })) e.Hints.Add("интерактивные объекты выключены — объекты сценария не переключаются");
+        if (!modifiers && (sc.ModifierSets.Count > 0 || sc.AppliedModifiers.Count > 0)) e.Hints.Add("модификаторы миссии выключены — наборы сценария не применяются");
         if (sc.GameRules != "" && preset == null) e.Notes.Add($"правила режима «{sc.GameRules}» не найдены — действуют значения по умолчанию");
         if (rulesPreset != "" && db.Get<RulesPresetDef>(rulesPreset) == null) e.Notes.Add($"пресет правил боя «{rulesPreset}» не найден — действуют глобальные правила");
         if (preset != null && o != null)

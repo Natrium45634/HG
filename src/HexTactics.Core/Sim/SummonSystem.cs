@@ -95,6 +95,7 @@ public sealed class SummonSystem
     {
         var unit = _sim.Content.Unit(def.Unit);
         string Who() => summoner?.Name ?? cause;
+        if (!_sim.Options.Summons) return Fail(def, summoner, $"{Who()}: призывы по описаниям выключены правилами режима");
         if (unit == null) return Fail(def, summoner, $"{Who()}: нет шаблона «{def.Unit}» для призыва «{def.DisplayName}»");
         // The chain (ТЗ 20.5): a summoned summons only when its own description allows, and not deeper than the limits.
         var parent = summoner?.Summon;

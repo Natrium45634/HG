@@ -161,6 +161,8 @@ public partial class BattleHud : Control
     }
 
     private PanelContainer? _topBar;
+    /// <summary>The top bar (UI tests: on the screen at any scale).</summary>
+    public Control? TopBar => _topBar;
 
     // ------------------------------------------------------------------ objectives and boss (TZ part 2 §4)
 
@@ -615,35 +617,44 @@ public partial class BattleHud : Control
         AddChild(_outcome);
     }
 
-    private void BuildHelp()
+    /// <summary>The help with the keys as they are bound now (part 6, §107).</summary>
+    private static string HelpText()
     {
-        var text = string.Join("\n", new[]
+        static string K(string id) => Hotkeys.Label(id) is { Length: > 0 } k ? k : "—";
+        return string.Join("\n", new[]
         {
-            "Пробел — пауза/продолжить · Z/X или −/+ — скорость · . — один тик (на паузе)",
-            "ЛКМ по своему юниту — выбрать (стрелка взгляда, панель команд) · Shift+ЛКМ, рамка — несколько · Tab — следующий",
+            $"{K("pause")} — пауза/продолжить · {K("slower")} / {K("faster")} — скорость · {K("step")} — один тик (на паузе)",
+            $"ЛКМ по своему юниту — выбрать (стрелка взгляда, панель команд) · Shift+ЛКМ, рамка — несколько · {K("cycle")} — следующий",
             "Стрелка взгляда: короткий жест — поворот, длинный — маршрут по гексам; в конце маршрута — направление после движения",
-            "Жест или ЛКМ на враге — меню навыков против него (защитный навык в центре) · R — меню навыков у курсора",
-            "M — движение (несколько ЛКМ = маршрут) · T — поворот · F — атака · 1–9 — навыки (автоматический — сразу)",
+            $"Жест или ЛКМ на враге — меню навыков против него (защитный навык в центре) · {K("skill_menu")} — меню навыков у курсора",
+            $"{K("move")} — движение (несколько ЛКМ = маршрут) · {K("turn")} — поворот · {K("attack")} — атака · {K("skill1")}…{K("skill9")} — навыки (автоматический — сразу)",
             "Ctrl+1…9 — сохранить группу · Alt+1…9 — выбрать группу; приказ выделенным — групповой",
-            "B — защитная стойка · H — ожидание 2 с · Backspace — убрать последнюю точку · Delete — ожидающие приказы · Shift+Delete — всё",
+            $"{K("defend")} — защитная стойка · {K("wait")} — ожидание 2 с · {K("undo_point")} — убрать последнюю точку · {K("clear_orders")} — ожидающие приказы · Shift+{K("clear_orders")} — всё",
             "ЛКМ по номеру точки маршрута — действие после этой точки (навык, поворот, стойка…)",
             "ПКМ — быстрый приказ; во время жеста — отмена · Esc — шаг назад: жест → режим → выделение → меню",
             "Shift при клике — заменить очередь вместо добавления (или наоборот, см. переключатель)",
             "Камера: WASD/стрелки, средняя кнопка мыши, край экрана · колесо/PgUp/PgDn — зум · Q/E — поворот",
-            "V — вписать карту в экран · Ctrl+0 — стандартный масштаб",
+            $"{K("fit")} — вписать карту в экран · {K("reset_zoom")} — стандартный масштаб",
             "ЛКМ по врагу — сведения о нём (только то, что видели или наблюдали)",
             "Несколько существ на гексе (×N): клик — полоска выбора, повторный клик или Tab — следующий, Esc — закрыть",
             "Оранжевая цепь — блок (у выбранного и наведённого; все — настройка или F3): «Блок 2/3» у блокирующего, «ещё N проходят» — переполнено, «заблокирован» / «обходит блок» у врага",
             "Стрелка у основания — взгляд; несколько стрелок — несколько направлений; кольцо — круговой обзор; нет стрелки — без направления",
-            "I — характеристики · L — журнал · F3 — диагностика · Home — к выбранному юниту",
-            "Лента отряда (вызов за очки): карточка → гекс зоны → направление (курсор или 1–6) → ЛКМ/Enter; Esc/ПКМ — шаг назад · O — отозвать",
+            $"{K("info")} — характеристики · {K("log")} — журнал · {K("diag")} — диагностика · {K("focus")} — к выбранному юниту · {K("help")} — справка",
+            $"Лента отряда (вызов за очки): карточка → гекс зоны → направление (курсор или 1–6) → ЛКМ/Enter; Esc/ПКМ — шаг назад · {K("retreat")} — отозвать",
             "",
             "Обозначения: синяя линия — запланированный маршрут; жёлтая — предпросмотр пути;",
             "серые точки — пройденный путь; заливка цвета навыка — область; штриховка + «!» — угроза врага;",
             "серая штриховка — клетка закрыта препятствием; пунктир «?» — последнее известное место врага.",
             "Основание фишки: круг — отряд, ромб — враги, квадрат — нейтралы. Стрелка — направление взгляда.",
         });
-        var v = Ui.VBox(8, Ui.Label("Управление и обозначения", 20, Ui.Accent), Ui.Label(text, 14, Ui.Text), Ui.Button("Закрыть", ToggleHelp));
+    }
+
+    private void BuildHelp()
+    {
+        var text = HelpText();
+        _helpText = Ui.Label(text, 14, Ui.Text);
+        _helpText.Name = "HelpText";
+        var v = Ui.VBox(8, Ui.Label("Управление и обозначения", 20, Ui.Accent), _helpText, Ui.Button("Закрыть", ToggleHelp));
         _help = Track(Ui.PanelBox(v, Ui.PanelLight, 18));
         _help.Visible = false;
         AddChild(_help);
@@ -753,7 +764,13 @@ public partial class BattleHud : Control
     }
 
     public void ToggleLog() => _logPanel.Visible = !_logPanel.Visible;
-    public void ToggleHelp() => _help.Visible = !_help.Visible;
+    private Label _helpText = null!;
+
+    public void ToggleHelp()
+    {
+        _help.Visible = !_help.Visible;
+        if (_help.Visible) _helpText.Text = HelpText(); // the keys may have been reassigned since
+    }
     public void ToggleMenu() => _menu.Visible = !_menu.Visible;
 
     public void ToggleInfo()
@@ -791,7 +808,7 @@ public partial class BattleHud : Control
         {
             var a = _popupActions[i];
             if (a.Key == "queue" && insertIndex >= 0) continue;
-            string hot = a.Key switch { "move" => " (M)", "turn" => " (T)", "attack" => " (F)", "defend" => " (B)", "wait" => " (H)", "info" => " (I)", _ => "" };
+            string hot = a.Key is "move" or "turn" or "attack" or "defend" or "wait" or "info" && Hotkeys.Label(a.Key) is { Length: > 0 } hk ? $" ({hk})" : "";
             if (a.Key.StartsWith("skill:"))
             {
                 skillN++;
@@ -965,6 +982,17 @@ public partial class BattleHud : Control
         _pauseBtn.Text = d.Paused ? "▶" : "‖";
         _pauseBtn.TooltipText = d.Paused ? "Продолжить (Пробел)" : "Пауза (Пробел)";
         for (int i = 0; i < _speedBtns.Count; i++) _speedBtns[i].ButtonPressed = !d.Paused && i == d.SpeedIndex;
+        // A narrow screen or a big scale of the interface (ТЗ ч. 6, 11.7): the speeds shrink to 1× and the current one (Z/X change
+        // them), so the pause, the menu and the rest of the bar never leave the screen.
+        if (_topBar != null)
+        {
+            float room = vp.X - 16;
+            bool compact = _speedBtns.Any(b => !b.Visible) ? _topBar.Size.X + _speedBtns.Where(b => !b.Visible).Sum(b => b.Size.X + 6) > room : _topBar.Size.X > room;
+            int one = _bs.Driver.Speeds.IndexOf(1);
+            for (int i = 0; i < _speedBtns.Count; i++) _speedBtns[i].Visible = !compact || i == d.SpeedIndex || i == one;
+            if (compact) _topBar.ResetSize();
+            _topBar.Position = new Vector2(Math.Max(8, (vp.X - _topBar.Size.X) / 2), _topBar.Position.Y);
+        }
         _time.Text = Ui.FormatTime(Sim.Time);
         _status.Text = d.Paused ? "ПАУЗА" : $"{d.Speed:0.##}×";
         _status.AddThemeColorOverride("font_color", d.Paused ? Ui.Warn : Ui.TextDim);
@@ -1505,8 +1533,8 @@ public partial class BattleHud : Control
         foreach (var a in actions)
         {
             if (a.Key == "queue" || a.Key == "info") continue;
-            string hot = a.Key switch { "move" => "M", "turn" => "T", "attack" => "F", "defend" => "B", "wait" => "H", _ => "" };
-            if (a.Key.StartsWith("skill:")) hot = (++skillN).ToString();
+            string hot = a.Key is "move" or "turn" or "attack" or "defend" or "wait" ? Hotkeys.Label(a.Key) : "";
+            if (a.Key.StartsWith("skill:")) hot = Hotkeys.Label($"skill{++skillN}");
             var image = a.Skill == null ? null : Render.Assets.Texture(Sim.Content.Get<AssetDef>(a.Skill.IconAsset));
             string icon = image != null ? "" : a.Skill != null && !string.IsNullOrEmpty(a.Skill.Icon) ? a.Skill.Icon + " " : a.Key switch { "move" => "➜ ", "turn" => "↻ ", "defend" => "▣ ", "wait" => "‖ ", _ => "" };
             string cost = a.Skill != null ? $"\n{a.Skill.ApCost:0.#} ОД" : a.Key == "defend" ? $"\n{Sim.Rules.Ap.DefendCost:0.#} ОД" : "\n";

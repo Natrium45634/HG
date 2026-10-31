@@ -92,6 +92,57 @@
       "incompatibleWith": [
         "easy"
       ]
+    },
+    {
+      "id": "two_passes_hard_mods",
+      "name": "Два прохода — тяжёлый",
+      "description": "",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "modifiers": [
+        {
+          "id": "tough_enemies",
+          "label": "Закалённые враги",
+          "description": "+30 % здоровья врагов",
+          "op": "Stat",
+          "selector": {
+            "faction": "enemy",
+            "units": [],
+            "group": "",
+            "wave": 0,
+            "spawnBase": ""
+          },
+          "stat": {
+            "stat": "hp_max",
+            "add": 0,
+            "mul": 0.3
+          },
+          "status": "",
+          "statusPoints": 1,
+          "activeFrom": 0,
+          "activeUntil": 0,
+          "rule": "Blocking",
+          "ruleOn": true,
+          "deployField": "StartingPoints",
+          "squadField": "MaxSize",
+          "delta": 0,
+          "tags": [],
+          "waveIndex": 1,
+          "countMul": 1,
+          "countAdd": 0,
+          "extraUnit": "",
+          "extraCount": 1,
+          "delayAdd": 0,
+          "stacking": "Stack",
+          "ownTags": [],
+          "incompatibleTags": [],
+          "showInBattle": true,
+          "editorNotes": "",
+          "title": "Закалённые враги"
+        }
+      ],
+      "incompatibleWith": []
     }
   ]
 }

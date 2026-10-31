@@ -14,7 +14,13 @@ public partial class SettingsDialog : AcceptDialog
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(520, 520), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         var grid = new PropertyGrid { LabelWidth = 260 };
         grid.SetTarget(settings, null);
-        scroll.AddChild(grid);
+        var box = Ui.VBox(6);
+        // Part 6 (ТЗ 11.7): the keys of the battle.
+        var keys = Ui.Button("Клавиши…", () => OpenHotkeys(), "Переназначить клавиши боя");
+        keys.Name = "OpenHotkeys";
+        box.AddChild(keys);
+        box.AddChild(grid);
+        scroll.AddChild(box.Expand());
         AddChild(scroll);
         Confirmed += () =>
         {
@@ -23,5 +29,14 @@ public partial class SettingsDialog : AcceptDialog
             QueueFree();
         };
         Canceled += QueueFree;
+    }
+
+    /// <summary>The dialog of the keys over this one (a child window: one exclusive window at a time).</summary>
+    public HotkeysDialog OpenHotkeys()
+    {
+        var d = new HotkeysDialog();
+        AddChild(d);
+        d.PopupCentered(new Vector2I(640, 640));
+        return d;
     }
 }

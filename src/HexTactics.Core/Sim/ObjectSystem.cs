@@ -91,6 +91,11 @@ public sealed class ObjectSystem
     public bool SetState(string objectId, string stateId, string source, out string why)
     {
         why = "";
+        if (!_sim.Options.Objects)
+        {
+            why = "интерактивные объекты выключены правилами режима";
+            return false;
+        }
         var o = Obj(objectId);
         if (o?.States is not { } st) { why = $"у объекта «{objectId}» нет состояний"; return false; }
         if (stateId == "") stateId = NextOf(o);
@@ -230,7 +235,7 @@ public sealed class ObjectSystem
     /// <summary>Starts an interaction: ОД spent, the unit busy for the duration; the effect comes when it ends.</summary>
     public bool Interact(Unit u, string objectId, out string why)
     {
-        why = CanInteract(u, objectId) ?? "";
+        why = !_sim.Options.Objects ? "интерактивные объекты выключены правилами режима" : CanInteract(u, objectId) ?? "";
         if (why != "") return false;
         var it = Obj(objectId)!.Interaction!;
         if (it.ApCost > 0) u.Ap -= it.ApCost;

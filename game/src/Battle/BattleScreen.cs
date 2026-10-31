@@ -1543,88 +1543,109 @@ public partial class BattleScreen : Node
         var actions = u != null ? Sim.Planner.Actions(u) : new List<ActionInfo>();
         ActionInfo? A(string key) => actions.FirstOrDefault(a => a.Key == key);
         if (DeployKey(k)) return true;
-        switch (k.Keycode)
+        if (k.Keycode == Key.Escape)
         {
-            case Key.Space:
-                TogglePause();
+            // Cancel the operation → leave the planning mode → clear the selection → game menu (docs/DECISIONS_3.md §39). Not reassignable.
+            if (_gesture != null) CancelGesture();
+            else if (_hud.CloseTransient()) { }
+            else if (DeployStepBack()) { }
+            else if (GroupMode != null) CancelGroupMode();
+            else if (GroupActive) ClearGroup();
+            else if (Mode != InputMode.None) ExitMode();
+            else if (StackOpen) _stackOpen = false;
+            else if (Selected != null) Select(null);
+            else _hud.ToggleMenu();
+            return true;
+        }
+        // The reassignable keys (part 6, §107: «Настройки → Клавиши…»).
+        bool H(string id) => Hotkeys.Is(k, id);
+        if (H("pause"))
+        {
+            TogglePause();
+            return true;
+        }
+        if (H("slower"))
+        {
+            Driver.Slower();
+            return true;
+        }
+        if (H("faster"))
+        {
+            Driver.Faster();
+            return true;
+        }
+        if (H("cycle"))
+        {
+            if (StackOpen) CycleStack(k.ShiftPressed ? -1 : 1);
+            else CycleUnits(k.ShiftPressed ? -1 : 1);
+            return true;
+        }
+        foreach (var id in new[] { "move", "turn", "attack", "defend", "wait" })
+            if (H(id) && A(id) is { } act)
+            {
+                Activate(act);
                 return true;
-            case Key.Z:
-            case Key.Minus:
-                Driver.Slower();
-                return true;
-            case Key.X:
-            case Key.Equal:
-                Driver.Faster();
-                return true;
-            case Key.Escape:
-                // Cancel the operation → leave the planning mode → clear the selection → game menu (docs/DECISIONS_3.md §39).
-                if (_gesture != null) CancelGesture();
-                else if (_hud.CloseTransient()) { }
-                else if (DeployStepBack()) { }
-                else if (GroupMode != null) CancelGroupMode();
-                else if (GroupActive) ClearGroup();
-                else if (Mode != InputMode.None) ExitMode();
-                else if (StackOpen) _stackOpen = false;
-                else if (Selected != null) Select(null);
-                else _hud.ToggleMenu();
-                return true;
-            case Key.Tab:
-                if (StackOpen) CycleStack(k.ShiftPressed ? -1 : 1);
-                else CycleUnits(k.ShiftPressed ? -1 : 1);
-                return true;
-            case Key.M when A("move") is { } a1:
-                Activate(a1);
-                return true;
-            case Key.T when A("turn") is { } a2:
-                Activate(a2);
-                return true;
-            case Key.F when A("attack") is { } a3:
-                Activate(a3);
-                return true;
-            case Key.B when A("defend") is { } a4:
-                Activate(a4);
-                return true;
-            case Key.H when A("wait") is { } a5:
-                Activate(a5);
-                return true;
-            case Key.I:
-                _hud.ToggleInfo();
-                return true;
-            case Key.R when u != null:
-                OpenSkillMenu(_hoverUnit != null && Sim.IsHostile(u, _hoverUnit) && UnitVisible(_hoverUnit) ? _hoverUnit : null, _mouse);
-                return true;
-            case Key.L:
-                _hud.ToggleLog();
-                return true;
-            case Key.O when u != null && Sim.Deployment.Enabled && Sim.Squad.EntryOf(u) != null:
-                RetreatSelected();
-                return true;
-            case Key.F1:
-                _hud.ToggleHelp();
-                return true;
-            case Key.F3:
-                _diag = !_diag;
-                return true;
-            case Key.Period when _admin || Driver.Paused:
-                Driver.StepOnce();
-                return true;
-            case Key.Home:
-                if (u != null) Board.Rig.FocusOn(Board.UnitPos(u));
-                return true;
-            case Key.V:
-                FitMap();
-                return true;
-            case Key.Key0 when k.CtrlPressed:
-            case Key.Kp0 when k.CtrlPressed:
-                Board.Rig.ResetStandardZoom();
-                return true;
-            case Key.Backspace:
-                UndoLastPoint();
-                return true;
-            case Key.Delete:
-                if (k.ShiftPressed) CancelAll();
-                else ClearPendingOrders();
-                return true;
+            }
+        if (H("info"))
+        {
+            _hud.ToggleInfo();
+            return true;
+        }
+        if (H("skill_menu") && u != null)
+        {
+            OpenSkillMenu(_hoverUnit != null && Sim.IsHostile(u, _hoverUnit) && UnitVisible(_hoverUnit) ? _hoverUnit : null, _mouse);
+            return true;
+        }
+        if (H("log"))
+        {
+            _hud.ToggleLog();
+            return true;
+        }
+        if (H("retreat") && u != null && Sim.Deployment.Enabled && Sim.Squad.EntryOf(u) != null)
+        {
+            RetreatSelected();
+            return true;
+        }
+        if (H("help"))
+        {
+            _hud.ToggleHelp();
+            return true;
+        }
+        if (H("diag"))
+        {
+            _diag = !_diag;
+            return true;
+        }
+        if (H("step") && (_admin || Driver.Paused))
+        {
+            Driver.StepOnce();
+            return true;
+        }
+        if (H("focus"))
+        {
+            if (u != null) Board.Rig.FocusOn(Board.UnitPos(u));
+            return true;
+        }
+        if (H("fit"))
+        {
+            FitMap();
+            return true;
+        }
+        if (H("reset_zoom"))
+        {
+            Board.Rig.ResetStandardZoom();
+            return true;
+        }
+        if (H("undo_point"))
+        {
+            UndoLastPoint();
+            return true;
+        }
+        if (H("clear_orders"))
+        {
+            if (k.ShiftPressed) CancelAll();
+            else ClearPendingOrders();
+            return true;
         }
         if (k.Keycode >= Key.Key1 && k.Keycode <= Key.Key9 && (k.CtrlPressed || k.AltPressed))
         {
@@ -1634,9 +1655,10 @@ public partial class BattleScreen : Node
             else RecallGroup(slot);
             return true;
         }
-        if (k.Keycode >= Key.Key1 && k.Keycode <= Key.Key9 && u != null)
+        int slotKey = Enumerable.Range(1, 9).FirstOrDefault(i => H($"skill{i}"));
+        if (slotKey > 0 && u != null)
         {
-            int idx = (int)(k.Keycode - Key.Key1);
+            int idx = slotKey - 1;
             var skills = actions.Where(a => a.Key.StartsWith("skill:")).ToList();
             if (idx >= skills.Count) return true;
             var a = skills[idx];

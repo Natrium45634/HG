@@ -539,6 +539,7 @@
     },
     {
       "id": "scout",
+      "deployment": { "cost": 3 },
       "name": "Разведчик",
       "description": "",
       "tags": [],
@@ -2955,6 +2956,295 @@
       },
       "threatCost": 0,
       "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
+      "mainCategory": "",
+      "moveTypes": []
+    },
+    {
+      "id": "pass_warlord",
+      "name": "Вожак перевала",
+      "description": "Мини-босс «Двух проходов»: ниже 60 % здоровья впадает в ярость, ниже 30 % зовёт двух гоблинов.",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "faction": "enemy",
+      "creatureCategory": "humanoid",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 320,
+        "move_speed": 1.1,
+        "ap_max": 10,
+        "ap_regen": 0.9,
+        "detection_range": 6,
+        "armor": 3,
+        "power": 4,
+        "base_damage": 60
+      },
+      "defense": {
+        "modifiers": [
+          {
+            "match": "cat:Physical",
+            "percent": -15
+          },
+          {
+            "match": "el:fire",
+            "percent": 25
+          }
+        ],
+        "immune": [],
+        "flatReductions": [
+          {
+            "match": "slashing",
+            "amount": 2
+          }
+        ],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [
+          {
+            "match": "cat:Physical",
+            "percent": 20,
+            "type": "Original",
+            "fixedType": "",
+            "base": "HealthLost",
+            "affectsPeriodic": false,
+            "meleeOnly": true
+          }
+        ],
+        "critImmune": false
+      },
+      "offense": {
+        "bonuses": [],
+        "conversions": []
+      },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [],
+      "basicAttack": "strike",
+      "skills": [
+        "quake",
+        "cleave"
+      ],
+      "defenseSkill": "",
+      "passives": [
+        "thick_hide"
+      ],
+      "origins": [],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "aggressive",
+      "role": "Auto",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [
+          3
+        ],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": {
+        "zone": "AllAdjacent",
+        "range": 1,
+        "categories": [],
+        "exceptCategories": [],
+        "layers": [],
+        "abilities": [],
+        "whileMoving": false,
+        "whileStunned": false,
+        "targetOrder": "Nearest",
+        "priority": 0,
+        "maxDuration": 0,
+        "passTime": 2
+      },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 2,
+        "canBypass": false,
+        "ignoreBlockers": [],
+        "whenBlocked": "AttackBlocker",
+        "breakSkill": ""
+      },
+      "boss": {
+        "isBoss": true,
+        "title": "Вожак перевала",
+        "phases": [
+          {
+            "id": "rage",
+            "name": "Ярость",
+            "when": {
+              "type": "HpBelow",
+              "children": [],
+              "seconds": 60,
+              "marker": "",
+              "unitTag": "",
+              "side": "Player",
+              "resource": "",
+              "value": 0,
+              "compare": "AtLeast",
+              "status": "",
+              "synergy": "",
+              "count": 5,
+              "categories": [],
+              "wave": 0,
+              "objective": "",
+              "flag": "",
+              "variable": "",
+              "variableValue": "",
+              "fraction": 0.6
+            },
+            "actions": [
+              {
+                "type": "ApplyStatus",
+                "text": "",
+                "delay": 1,
+                "object": "",
+                "group": "",
+                "targetTag": "",
+                "objectState": "Activate",
+                "win": true,
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "",
+                "radius": 1,
+                "route": "",
+                "phase": 1,
+                "effects": [],
+                "flag": "",
+                "variable": "",
+                "variableValue": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "",
+                "summon": "",
+                "count": 1,
+                "target": "Self",
+                "unitTag": "",
+                "status": "frenzy",
+                "amount": 1,
+                "skill": "",
+                "autoAttack": 0,
+                "aiProfile": ""
+              }
+            ],
+            "message": "Вожак впадает в ярость!"
+          },
+          {
+            "id": "call",
+            "name": "Последний рёв",
+            "when": {
+              "type": "HpBelow",
+              "children": [],
+              "seconds": 60,
+              "marker": "",
+              "unitTag": "",
+              "side": "Player",
+              "resource": "",
+              "value": 0,
+              "compare": "AtLeast",
+              "status": "",
+              "synergy": "",
+              "count": 5,
+              "categories": [],
+              "wave": 0,
+              "objective": "",
+              "flag": "",
+              "variable": "",
+              "variableValue": "",
+              "fraction": 0.3
+            },
+            "from": [
+              "rage"
+            ],
+            "actions": [
+              {
+                "type": "SummonUnits",
+                "text": "",
+                "delay": 1,
+                "object": "",
+                "group": "",
+                "targetTag": "",
+                "objectState": "Activate",
+                "win": true,
+                "wave": 0,
+                "cellEffect": "",
+                "marker": "",
+                "radius": 1,
+                "route": "",
+                "phase": 1,
+                "effects": [],
+                "flag": "",
+                "variable": "",
+                "variableValue": "",
+                "objective": "",
+                "terrain": "",
+                "unit": "goblin",
+                "summon": "",
+                "count": 2,
+                "target": "Self",
+                "unitTag": "",
+                "status": "",
+                "amount": 1,
+                "skill": "",
+                "autoAttack": 0,
+                "aiProfile": ""
+              }
+            ],
+            "message": "Вожак зовёт подмогу!"
+          }
+        ]
+      },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Brute",
+        "color": "",
+        "scale": 1,
+        "symbol": "О",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
+      },
+      "threatCost": 0,
+      "rank": "Elite",
       "customRank": "",
       "powerRole": "Auto",
       "scalingProfile": "",

@@ -40,6 +40,11 @@ public sealed class SimOptions
     public SquadStart SquadStart { get; init; } = SquadStart.AllOnField;
     /// <summary>The rules of the deployment during the battle (part 6, §97).</summary>
     public DeploymentRulesDef Deployment { get; init; } = new();
+    // Part 6, ТЗ 14.1 (§107): the subsystems of the mode.
+    public bool Objects { get; init; } = true;
+    public bool Modifiers { get; init; } = true;
+    public bool Scales { get; init; } = true;
+    public bool Summons { get; init; } = true;
 }
 
 /// <summary>

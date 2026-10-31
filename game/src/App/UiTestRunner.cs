@@ -97,6 +97,9 @@ public partial class UiTestRunner : Node
         _tests.Add(("scale_editor_chart_and_battle_bar", ScaleEditorChartAndBattleBar));
         _tests.Add(("friendly_fire_preview_highlight_confirm", FriendlyFirePreviewHighlightConfirm));
         _tests.Add(("summon_editor_preview_and_hud", SummonEditorPreviewAndHud));
+        _tests.Add(("hotkeys_rebind_in_battle", HotkeysRebindInBattle));
+        _tests.Add(("validation_code_place_fix", ValidationCodePlaceFix));
+        _tests.Add(("demo_two_passes_hud_resolutions", DemoTwoPassesHudResolutions));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3635,6 +3638,165 @@ public partial class UiTestRunner : Node
         await Frames(20);
         info = Find<Label>(bs.Hud).FirstOrDefault(l => l.Name == "SummonInfo" && l.IsVisibleInTree());
         Check(info != null && info.Text.Contains("Призван: " + bm.Name) && info.Text.Contains(" с"), "панель призванного: хозяин и срок — " + info?.Text);
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.9 (ТЗ 11.7; §107): «Настройки → Клавиши…» reassigns «Движение» to N — a key taken from another action is
+    /// named; in the battle N enters the movement and M does not; the button of the action shows N; «Все по умолчанию» returns M.
+    /// </summary>
+    private async Task HotkeysRebindInBattle()
+    {
+        try
+        {
+            var settings = new SettingsDialog();
+            Main.Instance.AddChild(settings);
+            settings.PopupCentered(new Vector2I(560, 620));
+            await Frames(4);
+            var keys = settings.OpenHotkeys();
+            await Frames(4);
+            Check(Find<Button>(keys).Any(b => b.Name == "Hotkey_move" && b.Text == "M"), "в диалоге «Движение» — M");
+            keys.StartCapture("move");
+            await Frames(2);
+            keys.Take(new InputEventKey { Keycode = Godot.Key.N, PhysicalKeycode = Godot.Key.N, Pressed = true });
+            await Frames(3);
+            Check(Find<Button>(keys).Any(b => b.Name == "Hotkey_move" && b.Text == "N"), "«Движение» переназначено на N");
+            keys.StartCapture("turn");
+            keys.Take(new InputEventKey { Keycode = Godot.Key.F, PhysicalKeycode = Godot.Key.F, Pressed = true });
+            await Frames(3);
+            var note = Find<Label>(keys).First(l => l.Name == "HotkeysNote").Text;
+            Check(note.Contains("снята с") && note.Contains("Атака"), "клавиша F снята с «Атаки» — " + note);
+            await Shot("part6_hotkeys_dialog");
+            keys.EmitSignal(AcceptDialog.SignalName.Confirmed);
+            settings.EmitSignal(AcceptDialog.SignalName.Canceled);
+            await Frames(4);
+
+            var bs = await OpenBattle("sandbox");
+            var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+            bs.Select(knight);
+            await Frames(6);
+            await Key(Godot.Key.M);
+            Check(bs.Mode != InputMode.Move, "M больше не движение");
+            await Key(Godot.Key.N);
+            Check(bs.Mode == InputMode.Move, "N — движение");
+            await Key(Godot.Key.Escape);
+            await Frames(12);
+            Check(Find<Label>(bs.Hud).Any(l => l.Text == "N" && l.IsVisibleInTree()), "на кнопке «Движение» подписана N");
+            Hotkeys.ResetAll();
+            Check(Hotkeys.Label("move") == "M" && Hotkeys.Label("attack") == "F", "по умолчанию вернулись M и F");
+        }
+        finally
+        {
+            Hotkeys.ResetAll();
+            Main.Instance.Settings.Save();
+        }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.9 (T31; §107): «Проверка» shows every problem with its code, place and fix; a number out of its range is
+    /// fixed by one button and the problem goes away.
+    /// </summary>
+    private async Task ValidationCodePlaceFix()
+    {
+        var ed = await OpenEditor("check");
+        var skill = ed.Context.Db.Skill("fireball")!;
+        double keep = skill.Cooldown;
+        try
+        {
+            skill.Cooldown = -5;
+            ed.Context.Validate();
+            await Frames(6);
+            var panel = Find<ValidationPanel>(GetTree().Root).First();
+            int idx = panel.Shown.ToList().FindIndex(i => i.Source == "Skill:fireball" && i.Message.Contains("вне диапазона"));
+            Check(idx >= 0, "проблема диапазона в списке");
+            var list = Find<ItemList>(panel).First(l => l.Name == "IssueList");
+            Check(list.GetItemText(idx).Contains("[E-RNG-01]") && list.GetItemText(idx).Contains("Cooldown"), "в строке — код и поле: " + list.GetItemText(idx));
+            list.Select(idx);
+            panel.ShowDetail(idx);
+            await Frames(3);
+            Check(panel.Detail.Text.Contains("Код: E-RNG-01") && panel.Detail.Text.Contains("Место: Skill:fireball → Cooldown") && panel.Detail.Text.Contains("Как исправить:"),
+                "подробности: код, место, исправление — " + panel.Detail.Text);
+            Check(!panel.FixButton.Disabled, "кнопка автоисправления доступна");
+            await Shot("part6_validation_fix");
+            panel.FixButton.EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames(6);
+            Check(skill.Cooldown == 0, $"перезарядка исправлена до 0, а не {skill.Cooldown}");
+            Check(!panel.Shown.Any(i => i.Source == "Skill:fireball" && i.Message.Contains("вне диапазона")), "проблема ушла после исправления");
+            Check(panel.Detail.Text.StartsWith("Исправлено"), "сообщение об исправлении — " + panel.Detail.Text);
+        }
+        finally
+        {
+            skill.Cooldown = keep;
+            ed.Context.Validate();
+        }
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.9 (T29, ТЗ 11.7, 15; §107): the demo level «Два прохода» at 1920×1080 and 2560×1440 — the ribbon of the squad
+    /// with the points, the top bar and the panels are on the screen and cover none of the critical hexes (the base, the spawns, the
+    /// zones, the bridge); at the scale of the interface 2 a confirmation keeps its buttons on the screen.
+    /// </summary>
+    private async Task DemoTwoPassesHudResolutions()
+    {
+        var win = GetWindow();
+        var keepSize = win.Size;
+        float keepScale = GetTree().Root.ContentScaleFactor;
+        try
+        {
+            var db = Main.Instance.Content.Published.Clone();
+            var sc = ContentJson.Clone(db.Get<ScenarioDef>("two_passes")!);
+            sc.Squad!.StartingRoster = new List<string>(sc.Squad.Pool);
+            sc.Squad.Fixed = true;
+            db.Table(DefCategory.Scenario).Replace(sc);
+            foreach (var size in new[] { new Vector2I(1920, 1080), new Vector2I(2560, 1440) })
+            {
+                win.Size = size;
+                await Frames(6);
+                Main.Instance.ShowBattle(sc, db, false);
+                await Frames(10);
+                var bs = Battle();
+                bs.Driver.Paused = true;
+                bs.FitMap();
+                await Frames(10);
+                var view = bs.GetViewport().GetVisibleRect();
+                Check(view.Size.X >= size.X - 1 && view.Size.Y >= size.Y - 1, $"окно {size}: видимая область {view.Size}");
+                var hud = bs.Hud;
+                Check(hud.Roster.Visible && view.Encloses(hud.Roster.GetGlobalRect()), $"{size}: лента отряда на экране");
+                var points = Find<Label>(hud.Roster).First(l => l.Name == "RosterPoints").Text;
+                Check(points.Contains("10"), $"{size}: очки развёртывания в ленте — {points}");
+                // The critical hexes: the base, the spawns, the zones of deployment, the bridge.
+                var critical = sc.Objects.Where(o => o.Type is ScenarioObjectType.PlayerBase or ScenarioObjectType.SpawnBase || o.Id == "bridge").SelectMany(o => o.Cells())
+                    .Concat(sc.DeploymentZones.SelectMany(z => z.Cells)).Distinct().ToList();
+                var covered = critical.Where(c => hud.IsOverUi(HexScreen(bs, c)) || !view.HasPoint(HexScreen(bs, c))).ToList();
+                Check(covered.Count == 0, $"{size}: панели закрывают критические гексы: {string.Join(" ", covered)}");
+                await Shot($"part6_demo_{size.X}x{size.Y}");
+            }
+            // The scale of the interface 2: a confirmation keeps its buttons on the screen.
+            win.Size = new Vector2I(1920, 1080);
+            GetTree().Root.ContentScaleFactor = 2;
+            await Frames(8);
+            var b2 = Battle();
+            await Frames(6);
+            var v2 = b2.GetViewport().GetVisibleRect();
+            Check(b2.Hud.TopBar != null && v2.Grow(1).Encloses(b2.Hud.TopBar.GetGlobalRect()), $"масштаб 2: верхняя панель в экране ({b2.Hud.TopBar?.GetGlobalRect()} в {v2})");
+            Check(Find<Button>(b2.Hud.TopBar!).Any(b => b.IsVisibleInTree() && b.Text == "Меню") && Find<Button>(b2.Hud.TopBar!).Any(b => b.IsVisibleInTree() && b.Text is "▶" or "‖"),
+                "масштаб 2: пауза и меню на месте");
+            Editor.Dialogs.Confirm(b2, "Проверка масштаба", "Кнопки подтверждения остаются на экране при масштабе 2.", () => { }, "Подтвердить");
+            await Frames(6);
+            var dlg = Find<ConfirmationDialog>(GetTree().Root).Last(d => d.Visible);
+            var ok = dlg.GetOkButton();
+            var screen = new Rect2(Vector2.Zero, GetWindow().Size);
+            var okRect = new Rect2(dlg.Position + ok.GetGlobalRect().Position * GetTree().Root.ContentScaleFactor, ok.Size * GetTree().Root.ContentScaleFactor);
+            Check(ok.IsVisibleInTree() && screen.Encloses(new Rect2(dlg.Position, dlg.Size)), $"масштаб 2: окно подтверждения в экране ({dlg.Position}, {dlg.Size}; экран {screen.Size})");
+            await Shot("part6_demo_scale2_confirm");
+            dlg.EmitSignal(AcceptDialog.SignalName.Canceled);
+            _ = okRect;
+        }
+        finally
+        {
+            GetTree().Root.ContentScaleFactor = keepScale;
+            win.Size = keepSize;
+            await Frames(4);
+        }
     }
 
     private async Task PressNamed(Node root, string name)

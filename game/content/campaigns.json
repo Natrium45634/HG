@@ -103,6 +103,46 @@
         "pass_held"
       ],
       "cycles": "Forbidden"
+    },
+    {
+      "id": "two_passes_campaign",
+      "name": "Два прохода",
+      "description": "",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "intro": "Простейшая кампания демоуровня: удержать два прохода, затем — развилку.",
+      "startNodes": [
+        "hold"
+      ],
+      "nodes": [
+        {
+          "id": "hold",
+          "scenario": "two_passes",
+          "variant": "",
+          "stageLabel": "Задание 1",
+          "description": "",
+          "next": [
+            "fork"
+          ],
+          "rewardSet": "",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "fork",
+          "scenario": "td_pass_fork",
+          "variant": "",
+          "stageLabel": "Задание 2",
+          "description": "Открывается после «Двух проходов».",
+          "next": [],
+          "rewardSet": "",
+          "x": 260,
+          "y": 0
+        }
+      ],
+      "flags": [],
+      "cycles": "Forbidden"
     }
   ]
 }

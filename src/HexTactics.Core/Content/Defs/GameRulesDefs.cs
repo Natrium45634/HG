@@ -33,6 +33,17 @@ public sealed class GameRulesDef : Def
     public bool? FriendlyFire { get; set; }
     [Ed("Дружественный огонь", "Правила по видам воздействия; не задано — из правил боя", Group = "Системы")]
     public FriendlyFireRulesDef? FriendlyFireRules { get; set; }
+    // ТЗ ч. 6, 14.1 (§107): every subsystem of part 6 is switched off on its own.
+    [Ed("Интерактивные объекты", "Состояния, взаимодействие, сигналы объектов; выключено — объекты стоят как на карте", Group = "Системы")]
+    public bool Objects { get; set; } = true;
+    [Ed("Модификаторы миссии", "Наборы модификаторов сценария и варианта; выключено — числа как в шаблонах", Group = "Системы")]
+    public bool Modifiers { get; set; } = true;
+    [Ed("Граф событий", "Графы сценария становятся триггерами; выключено — только обычные триггеры", Group = "Системы")]
+    public bool Graphs { get; set; } = true;
+    [Ed("Шкалы", "Боевой дух, санити…; выключено — шкалы юнитов не считаются", Group = "Системы")]
+    public bool Scales { get; set; } = true;
+    [Ed("Призывы по описаниям", "Выключено — призывы по описаниям отказываются (простой призыв навыка работает)", Group = "Системы")]
+    public bool Summons { get; set; } = true;
     [Ed("Развёртывание", "Вызов бойцов отряда во время боя за очки развёртывания (ТЗ ч. 6, 3)", Group = "Развёртывание")]
     public DeploymentRulesDef Deployment { get; set; } = new();
 }
@@ -44,6 +55,11 @@ public sealed class GameRulesOverrideDef : ContentPart
     [Ed("Блокирование")] public bool? Blocking { get; set; }
     [Ed("Урон по союзникам в области")] public bool? FriendlyFire { get; set; }
     [Ed("Дружественный огонь", "Своё правило по видам воздействия; не задано — из правил режима")] public FriendlyFireRulesDef? FriendlyFireRules { get; set; }
+    [Ed("Интерактивные объекты")] public bool? Objects { get; set; }
+    [Ed("Модификаторы миссии")] public bool? Modifiers { get; set; }
+    [Ed("Граф событий")] public bool? Graphs { get; set; }
+    [Ed("Шкалы")] public bool? Scales { get; set; }
+    [Ed("Призывы по описаниям")] public bool? Summons { get; set; }
 }
 
 /// <summary>A saved squad (ТЗ ч. 6, 2.1): templates in order; a «build» is a template or its version (§96).</summary>

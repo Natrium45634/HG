@@ -16,6 +16,21 @@
       "unlockedBy": "",
       "recommendedPower": 0,
       "expectedThreat": 0
+    },
+    {
+      "id": "two_passes_hard",
+      "name": "Два прохода — тяжёлый",
+      "description": "",
+      "tags": [],
+      "group": "",
+      "version": 1,
+      "scenario": "two_passes",
+      "modifierSets": [
+        "two_passes_hard_mods"
+      ],
+      "unlockedBy": "",
+      "recommendedPower": 0,
+      "expectedThreat": 0
     }
   ]
 }

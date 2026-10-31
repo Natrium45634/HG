@@ -59,6 +59,9 @@ public sealed class Settings
     /// <summary>Favourite library objects ("Category:id"): a personal mark, not part of the content.</summary>
     [EdHidden] public System.Collections.Generic.List<string> Favorites { get; set; } = new();
 
+    /// <summary>Reassigned keys of the battle: action → «M» or «Z, Minus» (part 6, §107; the rest — defaults, see <see cref="Hotkeys"/>).</summary>
+    [EdHidden] public System.Collections.Generic.Dictionary<string, string> KeyBindings { get; set; } = new();
+
     /// <summary>Settings file (user://settings.json; UI tests use a sandbox copy).</summary>
     public static string FileName { get; set; } = "user://settings.json";
 

@@ -138,9 +138,23 @@ public partial class ValidationPanel : VBoxContainer
         AddChild(head);
         _summary = Ui.Label("", 14, Ui.Text);
         AddChild(_summary);
-        _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill };
+        _list = new ItemList { SizeFlagsVertical = SizeFlags.ExpandFill, Name = "IssueList" };
         _list.ItemActivated += i => Go((int)i);
+        _list.ItemSelected += i => ShowDetail((int)i);
         AddChild(_list);
+        // Part 6 (T31, §107): the code, the place and the fix of the chosen problem; some are fixed by one button.
+        var detail = Ui.VBox(4);
+        _detail = Ui.Label("Выберите проблему — здесь будут код, место и как исправить.", 13, Ui.Text, wrap: true);
+        _detail.Name = "IssueDetail";
+        detail.AddChild(_detail);
+        var buttons = Ui.HBox(6);
+        _fix = Ui.Button("Исправить автоматически", FixSelected, "Безопасное исправление: очистить ссылку на несуществующий объект, привести число к диапазону…");
+        _fix.Name = "IssueAutoFix";
+        _fix.Disabled = true;
+        buttons.AddChild(_fix);
+        buttons.AddChild(Ui.Button("Перейти к объекту", () => Go(_selected), "Открыть объект в его разделе"));
+        detail.AddChild(buttons);
+        AddChild(Ui.PanelBox(detail, null, 8));
         AddChild(Ui.Label("Двойной клик — перейти к объекту. Проверяются типы, диапазоны, уникальность ID, ссылки, формулы, карты (достижимость, запертые области) и сценарии.", 12, Ui.TextDim, wrap: true));
         _ctx.Validated += Refresh;
         Refresh();
@@ -149,6 +163,44 @@ public partial class ValidationPanel : VBoxContainer
     public override void _ExitTree() => _ctx.Validated -= Refresh;
 
     private System.Collections.Generic.List<ContentIssue> _shown = new();
+    private Label _detail = null!;
+    private Button _fix = null!;
+    private int _selected = -1;
+
+    /// <summary>The problems shown now (UI tests).</summary>
+    public System.Collections.Generic.IReadOnlyList<ContentIssue> Shown => _shown;
+    public Label Detail => _detail;
+    public Button FixButton => _fix;
+
+    public void ShowDetail(int i)
+    {
+        _selected = i;
+        if (i < 0 || i >= _shown.Count)
+        {
+            _fix.Disabled = true;
+            return;
+        }
+        var issue = _shown[i];
+        _detail.Text = $"Код: {IssueCatalog.CodeOf(issue)}\nМесто: {issue.Source}" + (issue.Path != "" ? $" → {IssueCatalog.Field(issue)}" : "") +
+                       $"\nПроблема: {issue.Message}\nКак исправить: {IssueCatalog.FixOf(issue)}";
+        _fix.Disabled = !IssueCatalog.CanAutoFix(issue);
+    }
+
+    private void FixSelected()
+    {
+        if (_selected < 0 || _selected >= _shown.Count) return;
+        var issue = _shown[_selected];
+        var def = IssueCatalog.DefOf(_ctx.Db, issue);
+        if (!IssueCatalog.TryFix(_ctx.Db, issue, out var done) || def == null)
+        {
+            _detail.Text += "\nНе исправлено: " + done;
+            return;
+        }
+        _ctx.MarkDirty(def);
+        _ctx.Validate();
+        _detail.Text = $"Исправлено ({IssueCatalog.CodeOf(issue)}): {done}. Проверка обновлена.";
+        _fix.Disabled = true;
+    }
 
     private void Refresh()
     {
@@ -162,13 +214,14 @@ public partial class ValidationPanel : VBoxContainer
         }).OrderByDescending(i => i.Severity).ToList();
         foreach (var i in _shown)
         {
-            int idx = _list.AddItem($"{(i.Severity == IssueSeverity.Error ? "✗" : i.Severity == IssueSeverity.Warning ? "⚠" : "i")}  {i.Source}  {i.Path}  —  {i.Message}");
+            int idx = _list.AddItem($"{(i.Severity == IssueSeverity.Error ? "✗" : i.Severity == IssueSeverity.Warning ? "⚠" : "i")}  [{IssueCatalog.CodeOf(i)}]  {i.Source}  {IssueCatalog.Field(i)}  —  {i.Message}" +
+                                    (IssueCatalog.CanAutoFix(i) ? "  ⚙" : ""));
             _list.SetItemCustomFgColor(idx, i.Severity == IssueSeverity.Error ? Ui.Bad : i.Severity == IssueSeverity.Warning ? Ui.Warn : Ui.TextDim);
         }
         _summary.Text = $"Ошибок: {_ctx.Errors} · предупреждений: {_ctx.Warnings}" + (_ctx.Db.DisabledSkills.Count > 0 ? $" · отключённых навыков: {_ctx.Db.DisabledSkills.Count}" : "");
     }
 
-    private void Go(int i)
+    public void Go(int i)
     {
         if (i < 0 || i >= _shown.Count) return;
         var src = _shown[i].Source;
