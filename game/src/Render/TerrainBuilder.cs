@@ -217,13 +217,52 @@ public partial class TerrainNode : Node3D
         var plate = new MeshInstance3D
         {
             Name = "TopMat_" + cell.Coord,
-            Mesh = new CylinderMesh { TopRadius = Board.HexSize * 0.9f, BottomRadius = Board.HexSize * 0.9f, Height = 0.012f, RadialSegments = 6, Rings = 1 },
+            Mesh = TopPlate,
             MaterialOverride = mat,
             Position = Board.Center(cell.Coord, Board.TopY(cell) + 0.008f),
             RotationDegrees = new Vector3(0, rotation, 0),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         AddChild(plate);
+    }
+
+    private static ArrayMesh? _topPlate;
+
+    /// <summary>
+    /// The hexagonal plate of a top texture: the whole image maps onto it — the hexagon inscribed in the square of the image,
+    /// corners at the middle of its top and bottom edges (a cylinder of the engine would show only a quarter of the image).
+    /// Both windings, so the plate shows whichever way the engine culls.
+    /// </summary>
+    public static ArrayMesh TopPlate
+    {
+        get
+        {
+            if (_topPlate != null) return _topPlate;
+            float r = Board.HexSize * 0.9f;
+            var st = new SurfaceTool();
+            st.Begin(Mesh.PrimitiveType.Triangles);
+            Vector3 P(int k) => new(r * Mathf.Sin(k * Mathf.Tau / 6), 0, r * Mathf.Cos(k * Mathf.Tau / 6));
+            Vector2 Uv(Vector3 p) => new(0.5f + p.X / (2 * r), 0.5f + p.Z / (2 * r));
+            void V(Vector3 p)
+            {
+                st.SetNormal(Vector3.Up);
+                st.SetUV(Uv(p));
+                st.AddVertex(p);
+            }
+            for (int k = 0; k < 6; k++)
+            {
+                var a = P(k);
+                var b = P(k + 1);
+                V(Vector3.Zero);
+                V(a);
+                V(b);
+                V(Vector3.Zero);
+                V(b);
+                V(a);
+            }
+            _topPlate = st.Commit();
+            return _topPlate;
+        }
     }
 
     private static Material MaterialFor(string key)

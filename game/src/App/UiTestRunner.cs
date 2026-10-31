@@ -100,6 +100,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("hotkeys_rebind_in_battle", HotkeysRebindInBattle));
         _tests.Add(("validation_code_place_fix", ValidationCodePlaceFix));
         _tests.Add(("demo_two_passes_hud_resolutions", DemoTwoPassesHudResolutions));
+        _tests.Add(("hex_top_texture_whole_image", HexTopTextureWholeImage));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3797,6 +3798,30 @@ public partial class UiTestRunner : Node
             win.Size = keepSize;
             await Frames(4);
         }
+    }
+
+    /// <summary>
+    /// The texture of the top of a hex (TerrainLook.TopTexture) maps the whole image onto the hex: the hexagon inscribed in the
+    /// square of the image — not a quarter of it (the engine's cylinder did that).
+    /// </summary>
+    private async Task HexTopTextureWholeImage()
+    {
+        var db = Main.Instance.Content.Published.Clone();
+        foreach (var t in db.All<TerrainDef>()) t.Look.TopTexture = "tech_panel_tex";
+        var sc = db.Get<ScenarioDef>("sandbox")!;
+        Main.Instance.ShowBattle(sc, db, false);
+        await Frames(10);
+        var bs = Battle();
+        bs.Driver.Paused = true;
+        var plates = Find<MeshInstance3D>(bs).Where(m => m.Name.ToString().StartsWith("TopMat_")).ToList();
+        Check(plates.Count > 0, "нет пластин текстуры верха");
+        var uv = (Vector2[])plates[0].Mesh.SurfaceGetArrays(0)[(int)Mesh.ArrayType.TexUV];
+        float uMin = uv.Min(p => p.X), uMax = uv.Max(p => p.X), vMin = uv.Min(p => p.Y), vMax = uv.Max(p => p.Y);
+        Check(Math.Abs(vMin) < 1e-3 && Math.Abs(vMax - 1) < 1e-3 && Math.Abs(uMin - 0.067f) < 0.01f && Math.Abs(uMax - 0.933f) < 0.01f,
+            $"верх гекса — вся картинка: u {uMin:0.###}…{uMax:0.###}, v {vMin:0.###}…{vMax:0.###}");
+        bs.FitMap();
+        await Frames(8);
+        await Shot("hex_top_texture_whole_image");
     }
 
     private async Task PressNamed(Node root, string name)
