@@ -103,6 +103,11 @@ public enum SimEventType
     ScaleThreshold,
     /// <summary>SAN_STATE_APPLIED / REMOVED: the status of a band; DamageType = status ID.</summary>
     ScaleState,
+    // Part 6, stage 6.12 (§106).
+    /// <summary>A summon was refused or partly placed: limit, depth, no hexes; DamageType = summon ID.</summary>
+    SummonFailed,
+    /// <summary>A summoned unit ended its life by its policy (vanished, neutral, independent, transferred).</summary>
+    SummonEnded,
 }
 
 public enum LogLevel

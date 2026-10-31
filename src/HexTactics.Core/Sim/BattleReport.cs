@@ -107,6 +107,13 @@ public sealed class BattleReport
     public double AlliedHealing { get; set; }
     /// <summary>Negative statuses put on allies.</summary>
     public int FriendlyStatuses { get; set; }
+    // Part 6, stage 6.12 (ТЗ 20.6): the summoned.
+    public int SummonsCreated { get; set; }
+    public int SummonsLost { get; set; }
+    public double SummonDamage { get; set; }
+    public double SummonHealing { get; set; }
+    public int SummonFailedAttempts { get; set; }
+    public int ActiveSummonsPeak { get; set; }
     public int EnemiesKilledByDefenders { get; set; }
     public int EnemiesKilled { get; set; }
     public int EnemiesReachedGoal { get; set; }
@@ -233,8 +240,19 @@ public sealed class BattleReport
                 if (U(src) is { } us) us.DamageDealt += e.Value;
                 if (U(dst) is { } ud) ud.DamageTaken += e.Value;
                 if (src != null && dst != null && src != dst && sim.RelationOf(src, dst) == Relation.Ally) FriendlyDamage += e.Value;
+                if (src?.Summon != null) SummonDamage += e.Value;
                 break;
             }
+            case SimEventType.Summoned:
+                SummonsCreated++;
+                ActiveSummonsPeak = Math.Max(ActiveSummonsPeak, sim.Summons.Alive.Count());
+                break;
+            case SimEventType.SummonFailed:
+                SummonFailedAttempts++;
+                break;
+            case SimEventType.SummonEnded when e.Value > 0: // vanished without a death
+                SummonsLost++;
+                break;
             case SimEventType.StatusApplied when e.DamageType != "" && e.SourceUnit >= 0 && e.SourceUnit != e.TargetUnit:
             {
                 var src = sim.GetUnit(e.SourceUnit);
@@ -259,6 +277,7 @@ public sealed class BattleReport
             case SimEventType.Heal when e.Value > 0:
                 Healing += e.Value;
                 Heals++;
+                if (e.SourceUnit >= 0 && sim.GetUnit(e.SourceUnit)?.Summon != null) SummonHealing += e.Value;
                 if (e.SourceUnit >= 0 && e.SourceUnit != e.TargetUnit && sim.GetUnit(e.SourceUnit) is { } hs && sim.GetUnit(e.TargetUnit) is { } ht && sim.RelationOf(hs, ht) == Relation.Ally)
                     AlliedHealing += e.Value;
                 break;
@@ -290,6 +309,7 @@ public sealed class BattleReport
             {
                 var dead = sim.GetUnit(e.TargetUnit);
                 if (dead == null || dead.DeathCause == DeathCause.Removed && dead.Hp > 0) break;
+                if (dead.Summon != null) SummonsLost++;
                 var killer = sim.GetUnit(e.SourceUnit);
                 if (U(dead) is { } ud) ud.DeathTick = sim.Tick;
                 if (killer != null && killer != dead && U(killer) is { } uk) uk.Kills++;
@@ -462,6 +482,8 @@ public sealed class BattleReport
                       + (DamageTaken.Count > 0 ? "; получили: " + string.Join(", ", DamageTaken.OrderByDescending(k => k.Value).Select(k => $"{k.Key} {F(k.Value)}")) : ""));
         sb.AppendLine($"Лечение: {F(Healing)} ({Heals} раз); щиты приняли {F(Shielded)}, поглощено {F(Absorbed)}");
         sb.AppendLine($"По своим: урон {F(FriendlyDamage)}, убийств {FriendlyKills}, ослаблений {FriendlyStatuses}; лечение союзников {F(AlliedHealing)}");
+        if (SummonsCreated > 0 || SummonFailedAttempts > 0)
+            sb.AppendLine($"Призванные: создано {SummonsCreated}, потеряно {SummonsLost}, одновременно до {ActiveSummonsPeak}, урон {F(SummonDamage)}, лечение {F(SummonHealing)}, неудачных призывов {SummonFailedAttempts}");
         if (DamageByType.Count > 0)
             sb.AppendLine("Урон по типам: " + string.Join(", ", DamageByType.OrderByDescending(k => k.Value).Select(k => $"{db?.DamageType(k.Key)?.DisplayName ?? k.Key} {F(k.Value)}")));
         if (Skills.Count > 0)

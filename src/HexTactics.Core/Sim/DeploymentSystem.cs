@@ -91,7 +91,18 @@ public sealed class DeploymentSystem
         e.ReadyAt = _sim.Tick + _sim.TicksFor(Rules.DeathCooldown);
     }
 
-    public int DeployedCount => _sim.Squad.Count(RosterState.Deployed);
+    /// <summary>The fighters on the field — and the summoned of the side when the scenario counts them (part 6, §106; by default not).</summary>
+    public int DeployedCount => _sim.Squad.Count(RosterState.Deployed) + _sim.Summons.CountedForDeploy(_sim.Placement.Faction);
+
+    /// <summary>Spends (a negative amount returns) deployment points outside of a call of a fighter: summons (part 6, §106).</summary>
+    public bool Spend(double amount, string why)
+    {
+        if (amount > 0 && Points + 1e-9 < amount) return false;
+        Points -= amount;
+        if (amount > 0) Spent += amount;
+        _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{PointsName}: {-amount:+0.#;-0.#} — {why}", value: -amount);
+        return true;
+    }
 
     /// <summary>The price of a fighter: its own, the default of the rules, or its threat cost.</summary>
     public double CostOf(RosterEntry e)

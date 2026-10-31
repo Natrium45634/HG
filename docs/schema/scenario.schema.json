@@ -2183,7 +2183,8 @@
             "ObjectPreset",
             "Campaign",
             "RewardSet",
-            "Scale"
+            "Scale",
+            "Summon"
           ]
         },
         "defeat": {
@@ -2358,6 +2359,17 @@
             }
           ],
           "description": "Отряд игрока — Кого игрок берёт в бой: размер, теги, лимиты, обязательные бойцы"
+        },
+        "summons": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SummonRulesDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Призывы — Общие лимиты призванных, глубина цепочек, места на поле (ТЗ ч. 6, 20.5–20.6)"
         },
         "telegraphs": {
           "type": "array",
@@ -3011,10 +3023,15 @@
           "x-ref": "Status",
           "description": "Состояние"
         },
+        "summon": {
+          "type": "string",
+          "x-ref": "Summon",
+          "description": "Призыв — Описание из «Призывов»: количество, расстановка, время жизни, лимиты, ИИ (ТЗ ч. 6, 20)"
+        },
         "summonUnit": {
           "type": "string",
           "x-ref": "Unit",
-          "description": "Призываемый юнит"
+          "description": "Призываемый юнит — Простой призыв: один юнит на клетку навыка; при заданном описании призыва не нужен"
         },
         "targetsUnits": {
           "type": "boolean"
@@ -3416,6 +3433,38 @@
       },
       "additionalProperties": true
     },
+    "SummonRulesDef": {
+      "type": "object",
+      "properties": {
+        "allowManual": {
+          "type": "boolean",
+          "description": "Ручное управление — Разрешить поведение «Ручное управление» призванным игрока"
+        },
+        "countTowardsDeploy": {
+          "type": "boolean",
+          "description": "Занимают места на поле — Призванные игрока входят в лимит «На поле одновременно» развёртывания"
+        },
+        "maxAlive": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Живых призванных всего — 0 — без лимита; сверх — отказ новым по порядку запросов"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Глубина цепочки — 0 — по описаниям призывов"
+        },
+        "maxTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Призывов за бой — 0 — без лимита"
+        }
+      },
+      "additionalProperties": true
+    },
     "TargetFilterDef": {
       "type": "object",
       "properties": {
@@ -3595,6 +3644,11 @@
           "type": "string",
           "x-ref": "Status",
           "description": "Состояние"
+        },
+        "summon": {
+          "type": "string",
+          "x-ref": "Summon",
+          "description": "Призыв — Описание из «Призывов» (расстановка, лимиты, ИИ); пусто — юнит и количество"
         },
         "target": {
           "type": "string",

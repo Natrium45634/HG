@@ -99,6 +99,7 @@ public sealed class Simulation
         Interactive = new ObjectSystem(this);
         Scales = new ScaleSystem(this);
         FriendlyFire = new FriendlyFireSystem(this);
+        Summons = new SummonSystem(this);
         Scenario.PhaseEntered += Scales.OnBossPhase;
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
@@ -174,6 +175,8 @@ public sealed class Simulation
     public ScaleSystem Scales { get; }
     /// <summary>The rules of friendly fire of this battle (part 6, §105).</summary>
     public FriendlyFireSystem FriendlyFire { get; }
+    /// <summary>Summons of sub-units: requests, limits, lives (part 6, §106).</summary>
+    public SummonSystem Summons { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }
@@ -532,11 +535,16 @@ public sealed class Simulation
     // ------------------------------------------------------------------ command API (UI / AI)
 
     /// <summary>Can the player issue commands to this unit?</summary>
-    public bool CanPlayerCommand(Unit u) => u.Alive && !u.IsStructure && (Options.AdminMode || IsPlayerControlled(u));
+    public bool CanPlayerCommand(Unit u) => u.Alive && !u.IsStructure && (Options.AdminMode || IsPlayerControlled(u) || Summons.PlayerMayOrder(u));
 
     /// <summary>Enqueue (or insert) a command after validation. Returns an error text or null.</summary>
-    public string? Enqueue(Unit u, Command c, int insertIndex = -1, bool replaceQueue = false) =>
-        Commands.Enqueue(u, c, insertIndex, replaceQueue);
+    public string? Enqueue(Unit u, Command c, int insertIndex = -1, bool replaceQueue = false)
+    {
+        var err = Commands.Enqueue(u, c, insertIndex, replaceQueue);
+        // «Приказы владельца важнее» (part 6, §106): an order not given by the AI holds the AI of a summoned unit until it is done.
+        if (err == null && u.Summon != null && !Ai.Deciding) u.Summon.PlayerOrder = true;
+        return err;
+    }
 
     public bool RemoveCommand(Unit u, int commandId) => Commands.Remove(u, commandId);
 
@@ -567,6 +575,7 @@ public sealed class Simulation
         Scenario.Update();
         Mission.Update();
         Interactive.Update();
+        Summons.Update();
         p.End("Сценарий", t);
         t = p.Begin();
         Ai.Update();
@@ -653,7 +662,7 @@ public sealed class Simulation
                 var here = Map.Get(u.Pos);
                 if (here != null && here.Terrain.Kind == TerrainKind.Pit) Falls.CheckCell(u, here, null, "");
             }
-            if (u.ExpiresAtTick > 0 && Tick >= u.ExpiresAtTick && u.Alive)
+            if (u.ExpiresAtTick > 0 && Tick >= u.ExpiresAtTick && u.Alive && u.Summon == null)
                 Combat.Kill(u, null, "время призыва истекло");
         }
     }

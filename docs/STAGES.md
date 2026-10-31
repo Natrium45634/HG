@@ -2865,3 +2865,28 @@ Windows-сборка проверена самопроверкой на Windows 
   `game/src/App/Settings.cs`; `docs/schema/*`.
 * **Тесты**: `Part6FriendlyFireTests` (7): T41–T46; UI — `friendly_fire_preview_highlight_confirm`.
 
+## Ч6 · Этап 6.12. Призыв суб-юнитов
+
+* **Сделано** ([§106](DECISIONS_6.md)):
+  * вид объектов «Призывы»: кто, сколько, где, чей, сколько живёт,
+    окончание, гибель призывателя, наследование, лимиты, цепочки, ИИ,
+    управление; ссылка из эффекта навыка и пассива и из действия
+    сценария; прежний призыв без описания не изменился;
+  * расстановка в фиксированном порядке; занятые гексы — отмена,
+    частично, ближайший, ожидание — с возвратом ресурса;
+  * лимиты у призывателя, стороны, сценария, за бой; «заменить
+    старейшего»; глубина цепочек; общий блок сценария «Призывы»;
+  * пресеты ИИ: следовать, охранять, атаковать цель хозяина, ближайшего
+    врага, держать позицию, патруль, к точке, ручное; запасные ходы;
+  * «Приказы владельца важнее» и полное управление; следование за сменой
+    стороны;
+  * исчезновение без событий гибели; места на поле по настройке; счётчик
+    на HUD, строка в панели юнита; раздел редактора с превью гексов;
+    статистика в отчёте; отпечаток боя.
+* **Файлы**: ядро — `src/HexTactics.Core/Content/{SummonChecks,ContentValidator,ContentDatabase,ContentSearch,ContentDependencies}.cs`,
+  `Content/Defs/{SummonDefs,Common,SkillDefs,MapScenarioDefs}.cs`,
+  `Sim/{SummonSystem,AiSummons,AiSystem,SkillSystem,CombatSystem,ScenarioSystem,DeploymentSystem,BattleReport,Simulation,SimDigest,SimEvents,Unit}.cs`;
+  игра — `game/src/Editor/{SummonPanel,EditorScreen}.cs`, `game/src/Battle/BattleHud.cs`;
+  контент — `game/content/{summons,skills,units}.json`; `docs/schema/*`.
+* **Тесты**: `Part6SummonTests` (15, с вариантами — 21): T47–T55; UI — `summon_editor_preview_and_hud`.
+

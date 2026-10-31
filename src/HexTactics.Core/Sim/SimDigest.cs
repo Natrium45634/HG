@@ -61,6 +61,8 @@ public sealed class SimDigest
             // Part 6 (§104): scales and panic — only when there are some, so older fingerprints stay the same.
             .Concat(sim.Scales.Digest().Select(x => "z" + x))
             .Concat(sim.Commands.PanicDigest().Select(x => "p" + x))
+            // Part 6 (§106): summons — only when there are some.
+            .Concat(sim.Summons.Digest().Select(x => "m" + x))
             .Concat(sc.DelayedTriggers.Select(x => "d" + x))
             .Append($"outcome={sim.Outcome}"));
         return new SimDigest { Tick = sim.Tick, Parts = parts };

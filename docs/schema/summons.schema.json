@@ -1,0 +1,442 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/summons.schema.json",
+  "title": "призыв (summons.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "summons"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SummonDef"
+      }
+    }
+  },
+  "$defs": {
+    "SummonDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "afterSummoner": {
+          "type": "string",
+          "enum": [
+            "FollowSummoner",
+            "GuardSummoner",
+            "AttackSummonerTarget",
+            "AttackNearestEnemy",
+            "HoldPosition",
+            "PatrolSimple",
+            "MoveToPoint",
+            "ManualSimple"
+          ],
+          "description": "После призывателя — Если призыватель погиб, а призванный остался или стал независимым"
+        },
+        "aiProfile": {
+          "type": "string",
+          "x-ref": "AiProfile",
+          "description": "Профиль ИИ — Выбор навыков в бою; пусто — профиль юнита"
+        },
+        "allowSubSummon": {
+          "type": "boolean",
+          "description": "Призванные могут призывать"
+        },
+        "behavior": {
+          "type": "string",
+          "enum": [
+            "FollowSummoner",
+            "GuardSummoner",
+            "AttackSummonerTarget",
+            "AttackNearestEnemy",
+            "HoldPosition",
+            "PatrolSimple",
+            "MoveToPoint",
+            "ManualSimple"
+          ],
+          "description": "Поведение"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset",
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant",
+            "ObjectPreset",
+            "Campaign",
+            "RewardSet",
+            "Scale",
+            "Summon"
+          ]
+        },
+        "control": {
+          "type": "string",
+          "enum": [
+            "AutoOnly",
+            "OwnerPriorityOrders",
+            "FullControl"
+          ],
+          "description": "Управление — Призванные бойца игрока"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Количество"
+        },
+        "delay": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60,
+          "description": "Задержка, с — Через сколько появляются после применения"
+        },
+        "deployCost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Цена в очках развёртывания — 0 — только ресурс и перезарядка навыка"
+        },
+        "despawn": {
+          "type": "string",
+          "enum": [
+            "ByRules",
+            "Keep",
+            "Vanish",
+            "Die",
+            "Neutralize",
+            "BecomeIndependent",
+            "TransferControl"
+          ],
+          "description": "По окончании"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "distance": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Дистанция — Следование: держится не дальше"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 3600,
+          "description": "Длительность, с"
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "Summoner",
+            "Away",
+            "Target"
+          ],
+          "description": "Взгляд"
+        },
+        "faction": {
+          "type": "string",
+          "enum": [
+            "Summoner",
+            "Owner",
+            "Fixed",
+            "Neutral"
+          ],
+          "description": "Сторона"
+        },
+        "fallback": {
+          "type": "string",
+          "enum": [
+            "FollowSummoner",
+            "GuardSummoner",
+            "AttackSummonerTarget",
+            "AttackNearestEnemy",
+            "HoldPosition",
+            "PatrolSimple",
+            "MoveToPoint",
+            "ManualSimple"
+          ],
+          "description": "Запасное поведение — Нет цели, путь потерян, ручное управление недоступно"
+        },
+        "fixedFaction": {
+          "type": "string",
+          "x-ref": "Faction",
+          "description": "Фракция"
+        },
+        "followFactionChange": {
+          "type": "boolean",
+          "description": "Следует за сменой фракции — Призыватель перешёл на другую сторону — призванные тоже"
+        },
+        "guardRadius": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Радиус охраны — На кого реагирует вокруг охраняемого"
+        },
+        "inheritStats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SummonInheritDef"
+          },
+          "description": "Наследует характеристики — Только перечисленные — доля значения призывателя"
+        },
+        "inheritTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Наследует теги — Теги призывателя из списка, если они у него есть"
+        },
+        "leash": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Поводок — Охрана, позиция, патруль: дальше не уходит"
+        },
+        "lifetime": {
+          "type": "string",
+          "enum": [
+            "Unlimited",
+            "Duration",
+            "UntilSummonerDeath",
+            "UntilSkillEnd",
+            "UntilTargetDies"
+          ],
+          "description": "Время жизни"
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Глубина цепочки — 1 — призванный не призывает"
+        },
+        "maxPerScenario": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Живых в сценарии — 0 — без лимита"
+        },
+        "maxPerSummoner": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Живых у призывателя — 0 — без лимита"
+        },
+        "maxPerTeam": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500,
+          "description": "Живых у стороны — 0 — без лимита"
+        },
+        "maxTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Всего за бой — 0 — без лимита"
+        },
+        "offsets": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[q, r]"
+          },
+          "description": "Смещения — От призывателя, для взгляда на восток"
+        },
+        "onBlocked": {
+          "type": "string",
+          "enum": [
+            "CancelAll",
+            "SpawnPartial",
+            "SearchNearest",
+            "QueueUntilFree"
+          ],
+          "description": "Место занято"
+        },
+        "onLimit": {
+          "type": "string",
+          "enum": [
+            "Reject",
+            "ReplaceOldest"
+          ],
+          "description": "Лимит достигнут"
+        },
+        "onSummonerDeath": {
+          "type": "string",
+          "enum": [
+            "ByRules",
+            "Keep",
+            "Vanish",
+            "Die",
+            "Neutralize",
+            "BecomeIndependent",
+            "TransferControl"
+          ],
+          "description": "При гибели призывателя"
+        },
+        "patrol": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[q, r]"
+          },
+          "description": "Точки патруля — Смещения от места появления"
+        },
+        "placement": {
+          "type": "string",
+          "enum": [
+            "Adjacent",
+            "Radius",
+            "SelectedHex",
+            "AtTarget",
+            "AroundCaster",
+            "Offsets"
+          ],
+          "description": "Расстановка"
+        },
+        "queueTimeout": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 120,
+          "description": "Ждать не дольше, с"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Радиус"
+        },
+        "refund": {
+          "type": "boolean",
+          "description": "Возвращать ресурс — За тех, кто не появился: доля цены навыка"
+        },
+        "searchRadius": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Радиус поиска"
+        },
+        "terrains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "x-ref": "Terrain"
+          },
+          "description": "Допустимые местности — Пусто — любая проходимая для призванного"
+        },
+        "unit": {
+          "type": "string",
+          "x-ref": "Unit",
+          "description": "Юнит — Шаблон призываемого"
+        },
+        "vanishFiresDeath": {
+          "type": "boolean",
+          "description": "Исчезновение — как гибель — События гибели и добыча при «исчезает»"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "SummonInheritDef": {
+      "type": "object",
+      "properties": {
+        "share": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Доля — 0.25 — четверть значения призывателя прибавляется"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

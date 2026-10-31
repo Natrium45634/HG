@@ -747,7 +747,13 @@ public sealed class SkillSystem
             if (cell == null) continue;
             foreach (var e in stage.Effects.Concat(ac.Mask?.Effects ?? Enumerable.Empty<SkillEffectDef>()))
             {
-                if (e.Type == EffectType.Summon) Summon(e, caster, cell, cause);
+                if (e.Type == EffectType.Summon && e.Summon != "")
+                {
+                    // A described summon (part 6, §106): once, at the hex of the skill — the description places them all.
+                    if (ac.Cell == cast.Anchor && _sim.Content.Get<SummonDef>(e.Summon) is { } sd && (e.Chance >= 1 || _sim.Rng.Chance(e.Chance)))
+                        _sim.Summons.Summon(sd, caster, cast.Anchor, cast.TargetUnitId, cast, cause);
+                }
+                else if (e.Type == EffectType.Summon) Summon(e, caster, cell, cause);
                 else if (e.Type == EffectType.TeleportCaster && ac.Cell == cast.Anchor) Teleport(caster, cell, cause);
             }
         }

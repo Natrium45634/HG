@@ -130,6 +130,7 @@ public sealed class ContentDatabase
         (DefCategory.RewardSet, typeof(RewardSetDef), "reward_sets.json"),
         (DefCategory.Campaign, typeof(CampaignDef), "campaigns.json"),
         (DefCategory.Scale, typeof(ScaleProfileDef), "scales.json"),
+        (DefCategory.Summon, typeof(SummonDef), "summons.json"),
         (DefCategory.MapTemplate, typeof(MapTemplateDef), "map_templates"),
         (DefCategory.Map, typeof(MapDef), "maps"),
         (DefCategory.Scenario, typeof(ScenarioDef), "scenarios"),

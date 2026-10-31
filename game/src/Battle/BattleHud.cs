@@ -393,6 +393,11 @@ public partial class BattleHud : Control
         bar.AddChild(_time);
         _status = Ui.Label("", 14, Ui.TextDim).MinSize(160);
         bar.AddChild(_status);
+        // Part 6 (ТЗ 20.6): the summoned of the player — a compact counter, no panel per creature.
+        SummonCounter = Ui.Label("", 14, Ui.Accent);
+        SummonCounter.Name = "SummonCounter";
+        SummonCounter.Visible = false;
+        bar.AddChild(SummonCounter);
         bar.AddChild(Ui.Button("⤢", () => _bs.FitMap(), "Вписать карту в экран (V)", 38));
         bar.AddChild(Ui.Button("1:1", () => _bs.Board.Rig.ResetStandardZoom(), "Стандартный масштаб (Ctrl+0)", 44));
         bar.AddChild(Ui.Button("Журнал", ToggleLog, "Показать/скрыть журнал (L)"));
@@ -963,6 +968,7 @@ public partial class BattleHud : Control
         _time.Text = Ui.FormatTime(Sim.Time);
         _status.Text = d.Paused ? "ПАУЗА" : $"{d.Speed:0.##}×";
         _status.AddThemeColorOverride("font_color", d.Paused ? Ui.Warn : Ui.TextDim);
+        UpdateSummonCounter();
 
         if (_bannerTime > 0)
         {
@@ -1175,6 +1181,7 @@ public partial class BattleHud : Control
             _resources.AddChild(b);
         }
         AddScaleRow(u);
+        AddSummonRow(u);
 
         Ui.ClearChildren(_statuses);
         foreach (var s in u.Statuses)
@@ -1258,6 +1265,46 @@ public partial class BattleHud : Control
     private static string Age(InfoField f) => f.Stale ? $" (≈{f.StaleSeconds:0} с назад)" : "";
 
     /// <summary>The scale of a unit (part 6, §104): the value within its bounds, the marks of its bands, what it is in and why it moved.</summary>
+    /// <summary>The summoned of the player's side now (top bar): how many, of what, and the pending ones.</summary>
+    public Label SummonCounter { get; private set; } = null!;
+
+    private void UpdateSummonCounter()
+    {
+        var mine = Sim.Summons.Alive.Where(s => Sim.IsPlayerFaction(s.FactionId)).ToList();
+        int pending = Sim.Summons.PendingCount;
+        SummonCounter.Visible = mine.Count > 0 || pending > 0;
+        if (!SummonCounter.Visible) return;
+        SummonCounter.Text = $"Призванные: {mine.Count}" + (pending > 0 ? $" (+{pending} ждут)" : "");
+        SummonCounter.TooltipText = string.Join("\n", mine.GroupBy(s => s.Def.DisplayName).Select(g => $"{g.Key} ×{g.Count()}"));
+    }
+
+    /// <summary>
+    /// The summoned (part 6, §106): for a summoner — a compact counter of its group, the limit and what they do; for a summoned unit —
+    /// whose it is, how long it lives and its behaviour.
+    /// </summary>
+    private void AddSummonRow(Unit u)
+    {
+        var lines = new List<string>();
+        var mine = Sim.Summons.Of(u);
+        if (mine.Count > 0)
+        {
+            var st = mine.Select(s => s.Summon).FirstOrDefault(s => s != null);
+            string limit = st is { Def.MaxPerSummoner: > 0 } ? $"/{st.Def.MaxPerSummoner}" : "";
+            lines.Add($"Призванные: {mine.Count}{limit} — " + string.Join(", ", mine.GroupBy(s => s.Def.DisplayName).Select(g => $"{g.Key} ×{g.Count()}")) +
+                      (st != null ? " · " + EdUtil.EnumLabel(st.Behavior).ToLowerInvariant() : ""));
+        }
+        var who = u.SummonerId >= 0 ? Sim.GetUnit(u.SummonerId) : null;
+        long end = u.Summon?.EndTick ?? u.ExpiresAtTick;
+        string left = end > 0 ? $" · ещё {Math.Max(0, (end - Sim.Tick) * Sim.Dt):0} с" : "";
+        if (u.Summon is { } own)
+            lines.Add((own.Independent ? "Призванный, независимый" : $"Призван: {who?.Name ?? "?"}") + left + " · " + EdUtil.EnumLabel(own.Behavior).ToLowerInvariant());
+        else if (who != null) lines.Add($"Призван: {who.Name}{left}");
+        if (lines.Count == 0) return;
+        var l = Ui.Label(string.Join("\n", lines), 12, Ui.Accent, wrap: true);
+        l.Name = "SummonInfo";
+        _resources.AddChild(l);
+    }
+
     private void AddScaleRow(Unit u)
     {
         if (Sim.Scales.Of(u) is not { } sv) return;
@@ -1337,6 +1384,7 @@ public partial class BattleHud : Control
             _resources.AddChild(Ui.Label("Ресурсы: ? — " + info.ResourcesField.Hint, 12, Ui.TextDim));
         }
         if (info.ResourcesField.Known) AddScaleRow(u);
+        if (info.ResourcesField.Known) AddSummonRow(u);
 
         Ui.ClearChildren(_statuses);
         if (info.StatusesField.Known)

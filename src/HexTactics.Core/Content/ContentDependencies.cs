@@ -145,6 +145,7 @@ public static class ContentDependencies
             DefCategory.Campaign => ("кампании", "кампаниях"),
             DefCategory.RewardSet => ("наборе наград", "наборах наград"),
             DefCategory.Scale => ("шкале", "шкалах"),
+            DefCategory.Summon => ("призыве", "призывах"),
             DefCategory.Faction => ("фракции", "фракциях"),
             DefCategory.AiProfile => ("профиле ИИ", "профилях ИИ"),
             DefCategory.Asset => ("ресурсе", "ресурсах"),

@@ -556,6 +556,8 @@ public sealed class TriggerActionDef : ContentPart
     [Ed("Цель (ID)"), EdShowIf(nameof(Type), TriggerActionType.CompleteObjective, TriggerActionType.FailObjective)] public string Objective { get; set; } = "";
     [Ed("Местность"), EdRef(DefCategory.Terrain), EdShowIf(nameof(Type), TriggerActionType.ChangeTerrain)] public string Terrain { get; set; } = "";
     [Ed("Юнит"), EdRef(DefCategory.Unit), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)] public string Unit { get; set; } = "";
+    [Ed("Призыв", "Описание из «Призывов» (расстановка, лимиты, ИИ); пусто — юнит и количество"), EdRef(DefCategory.Summon), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)]
+    public string Summon { get; set; } = "";
     [Ed("Количество"), EdRange(1, 100), EdShowIf(nameof(Type), TriggerActionType.SummonUnits)] public int Count { get; set; } = 1;
     [Ed("На кого"),
      EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus, TriggerActionType.AddSkill, TriggerActionType.RemoveSkill,
@@ -580,7 +582,7 @@ public sealed class TriggerActionDef : ContentPart
         TriggerActionType.CompleteObjective => $"Выполнить цель «{Objective}»",
         TriggerActionType.FailObjective => $"Провалить цель «{Objective}»",
         TriggerActionType.ChangeTerrain => $"Местность → {Terrain}",
-        TriggerActionType.SummonUnits => $"Призыв {Unit} ×{Count}",
+        TriggerActionType.SummonUnits => Summon != "" ? $"Призыв «{Summon}»" : $"Призыв {Unit} ×{Count}",
         TriggerActionType.ApplyStatus => $"Состояние {Status}",
         TriggerActionType.AddSkill => $"+навык {Skill}",
         TriggerActionType.RemoveSkill => $"−навык {Skill}",
@@ -705,6 +707,9 @@ public sealed class ScenarioDef : Def
     // Part 6, stage 6.7 (§102).
     [Ed("Телеграфы атак", "Предупреждение перед навыком: не меньше N с, область, контур, таймер; удар решает бой (ТЗ ч. 6, 8.5)", Group = "Юниты"), JsonOmitEmpty]
     public List<TelegraphRuleDef> Telegraphs { get; set; } = new();
+    // Part 6, stage 6.12 (§106).
+    [Ed("Призывы", "Общие лимиты призванных, глубина цепочек, места на поле (ТЗ ч. 6, 20.5–20.6)", Group = "Юниты")]
+    public SummonRulesDef? Summons { get; set; }
     // Part 6, stage 6.4 (docs/DECISIONS_6.md §99).
     [Ed("Наборы модификаторов", "Свои наборы сценария — действуют всегда, до наборов варианта", Group = "Режим"), EdRef(DefCategory.ModifierSet), JsonOmitEmpty]
     public List<string> ModifierSets { get; set; } = new();

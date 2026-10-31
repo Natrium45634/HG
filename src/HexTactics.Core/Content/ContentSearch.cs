@@ -286,6 +286,7 @@ public sealed class ContentSearch
         DefCategory.Campaign => "кампания",
         DefCategory.RewardSet => "набор наград",
         DefCategory.Scale => "шкала",
+        DefCategory.Summon => "призыв",
         _ => c.ToString(),
     };
 

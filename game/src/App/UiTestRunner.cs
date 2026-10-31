@@ -96,6 +96,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("campaign_screen_mission_rewards_once", CampaignScreenMissionRewardsOnce));
         _tests.Add(("scale_editor_chart_and_battle_bar", ScaleEditorChartAndBattleBar));
         _tests.Add(("friendly_fire_preview_highlight_confirm", FriendlyFirePreviewHighlightConfirm));
+        _tests.Add(("summon_editor_preview_and_hud", SummonEditorPreviewAndHud));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3591,6 +3592,49 @@ public partial class UiTestRunner : Node
         var fp = Find<Label>(fields).FirstOrDefault(l => l.Name == "FriendlyFirePreview")?.Text ?? "";
         Check(fp.Contains("Правило (поля на гексах)") && fp.Contains("союзник:"), "форма поля: кого заденет — " + fp);
         await Shot("part6_ff_field_editor");
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.12 (ТЗ 20.6; §106): «Призывы» show the hexes of the placement in their order and the summary; in a battle a
+    /// summoner's panel counts its group against the limit, a summoned one names its summoner, and the top bar counts the player's.
+    /// </summary>
+    private async Task SummonEditorPreviewAndHud()
+    {
+        await OpenEditor("summons");
+        var panel = Find<SummonPanel>(GetTree().Root).First();
+        panel.Select("wolf_pack");
+        await Frames(6);
+        Check(panel.Preview != null && panel.Preview.IsVisibleInTree() && panel.Preview.Cells.Count == 6, $"превью: шесть соседних гексов ({panel.Preview?.Cells.Count})");
+        Check(panel.Preview!.Labels.GetValueOrDefault(HexCoord.Zero.Neighbor(HexDirection.E)) == "1", "первым занимается гекс перед призывателем");
+        Check(panel.Summary!.Text.Contains("Волк ×2") && panel.Summary.Text.Contains("у призывателя ≤ 4"), "сводка: кто, сколько, лимит — " + panel.Summary.Text);
+        Check(Find<Label>(panel).Any(l => l.Name == "SummonUsers" && l.Text.Contains("Зов стаи")), "кто призывает по описанию");
+        Check(Find<Label>(Find<VBoxContainer>(panel).First(v => v.Name == "SummonProblems")).Any(l => l.Text.StartsWith("✓")), "«Стая волков» без ошибок");
+        await Shot("part6_summon_editor");
+
+        var bs = await OpenBattle("sandbox");
+        bs.Driver.Paused = true;
+        var sim = bs.Sim;
+        var knight = sim.Units.First(u => u.Def.Id == "knight");
+        var def = sim.Content.Unit("beastmaster")!;
+        var spot = HexCoord.Spiral(knight.Pos, 5).First(c => sim.Map.Get(c) is { AllowsPlacement: true } cell
+            && HexCoord.Ring(c, 1).Count(n => sim.Map.Get(n) is { AllowsPlacement: true } nc && nc.Occupants.Count == 0) >= 4
+            && MovementRules.Check(MoveContext.For(sim, def, "player"), null, cell, false, out _) == StepCheck.Ok);
+        var bm = sim.Spawn(def, "player", spot, HexDirection.E);
+        Check(sim.Enqueue(bm, Command.Skill("call_wolves", null)) == null, "зов стаи не принят");
+        for (int i = 0; i < sim.TicksFor(1.5); i++) sim.Step();
+        var wolves = sim.Summons.Of(bm);
+        Check(wolves.Count == 2, $"призвано {wolves.Count}, а не 2");
+        bs.Board.Rig.FocusOn(bs.Board.UnitPos(bm));
+        bs.Select(bm, byPlayer: false);
+        await Frames(20);
+        var info = Find<Label>(bs.Hud).FirstOrDefault(l => l.Name == "SummonInfo" && l.IsVisibleInTree());
+        Check(info != null && info.Text.Contains("Призванные: 2/4") && info.Text.Contains("Волк ×2"), "панель призывателя: группа и лимит — " + info?.Text);
+        Check(bs.Hud.SummonCounter.Visible && bs.Hud.SummonCounter.Text.StartsWith("Призванные: 2"), "счётчик призванных на верхней панели — " + bs.Hud.SummonCounter.Text);
+        await Shot("part6_summon_hud");
+        bs.Select(wolves[0], byPlayer: false);
+        await Frames(20);
+        info = Find<Label>(bs.Hud).FirstOrDefault(l => l.Name == "SummonInfo" && l.IsVisibleInTree());
+        Check(info != null && info.Text.Contains("Призван: " + bm.Name) && info.Text.Contains(" с"), "панель призванного: хозяин и срок — " + info?.Text);
     }
 
     private async Task PressNamed(Node root, string name)

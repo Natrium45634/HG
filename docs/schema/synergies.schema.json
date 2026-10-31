@@ -222,10 +222,15 @@
           "x-ref": "Status",
           "description": "Состояние"
         },
+        "summon": {
+          "type": "string",
+          "x-ref": "Summon",
+          "description": "Призыв — Описание из «Призывов»: количество, расстановка, время жизни, лимиты, ИИ (ТЗ ч. 6, 20)"
+        },
         "summonUnit": {
           "type": "string",
           "x-ref": "Unit",
-          "description": "Призываемый юнит"
+          "description": "Призываемый юнит — Простой призыв: один юнит на клетку навыка; при заданном описании призыва не нужен"
         },
         "targetsUnits": {
           "type": "boolean"
@@ -368,7 +373,8 @@
             "ObjectPreset",
             "Campaign",
             "RewardSet",
-            "Scale"
+            "Scale",
+            "Summon"
           ]
         },
         "convertTerrain": {

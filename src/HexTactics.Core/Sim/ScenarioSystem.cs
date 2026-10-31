@@ -1092,6 +1092,14 @@ public sealed partial class ScenarioSystem
                         _sim.CellEffects.ChangeTerrain(cell, t, source);
                 break;
             }
+            case TriggerActionType.SummonUnits when a.Summon != "":
+            {
+                // A described summon (part 6, §106): the owner summons, or the scenario at the marker for the faction of the template.
+                var sd = _sim.Content.Get<SummonDef>(a.Summon);
+                var at = (string.IsNullOrEmpty(a.Marker) ? null : _sim.Map.Def.FindMarker(a.Marker))?.C ?? actor?.Pos;
+                if (sd != null && at != null) _sim.Summons.Summon(sd, string.IsNullOrEmpty(a.Marker) ? actor : null, at.Value, -1, null, source, actor?.FactionId ?? "");
+                break;
+            }
             case TriggerActionType.SummonUnits:
             {
                 var def = _sim.Content.Unit(a.Unit);

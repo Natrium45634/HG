@@ -53,6 +53,8 @@ public enum DefCategory
     RewardSet,
     /// <summary>Scales of units: sanity, morale, stability (docs/DECISIONS_6.md §104).</summary>
     Scale,
+    /// <summary>Summons of sub-units: who, where, how long, limits, simple AI (docs/DECISIONS_6.md §106).</summary>
+    Summon,
 }
 
 /// <summary>

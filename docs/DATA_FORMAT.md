@@ -346,7 +346,27 @@ Creation)}` — у навыка, эффекта клетки и объекта �
 `rules.combat` — `teleportFields (DestinationOnly, Traversed)`. Старый
 флаг `combat.friendlyFire` действует, пока явных правил нет.
 
-Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
+Часть 6, этап 6.12 ([§106](DECISIONS_6.md)): `summons.json` — `unit,
+count, delay, deployCost, placement (Adjacent, Radius, SelectedHex,
+AtTarget, AroundCaster, Offsets), radius, offsets[] {q, r}, terrains[],
+facing (Summoner, Away, Target), onBlocked (CancelAll, SpawnPartial,
+SearchNearest, QueueUntilFree), searchRadius, queueTimeout, refund,
+faction (Summoner, Owner, Fixed, Neutral), fixedFaction,
+followFactionChange, inheritStats[] {stat, share}, inheritTags[],
+lifetime (Unlimited, Duration, UntilSummonerDeath, UntilSkillEnd,
+UntilTargetDies), duration, despawn и onSummonerDeath (ByRules, Keep,
+Vanish, Die, Neutralize, BecomeIndependent, TransferControl),
+vanishFiresDeath, maxPerSummoner, maxPerTeam, maxPerScenario, maxTotal,
+onLimit (Reject, ReplaceOldest), allowSubSummon, maxDepth, behavior,
+fallback и afterSummoner (FollowSummoner, GuardSummoner,
+AttackSummonerTarget, AttackNearestEnemy, HoldPosition, PatrolSimple,
+MoveToPoint, ManualSimple), aiProfile, distance, leash, guardRadius,
+patrol[], control (AutoOnly, OwnerPriorityOrders, FullControl)`. У
+эффекта навыка и действия сценария «Призвать» — `summon` (ID описания).
+У сценария — `summons {maxAlive, maxTotal, maxDepth, countTowardsDeploy,
+allowManual}`. Отпечаток боя: `m…` (призванные и ожидающие запросы).
+
+: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и
 переключённые базы и зоны.

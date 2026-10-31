@@ -2820,6 +2820,146 @@
       "aiProfile": "aggressive",
       "mainCategory": "undead",
       "visual": { "shape": "Pawn", "symbol": "с", "scale": 1 }
+    },
+    {
+      "id": "beastmaster",
+      "name": "Зверолов",
+      "description": "Призыватель: «Зов стаи» — два волка охраняют его; «Поднять мертвеца» — скелет на выбранном гексе.",
+      "tags": [
+        "summoner"
+      ],
+      "group": "",
+      "version": 1,
+      "faction": "player",
+      "creatureCategory": "humanoid",
+      "moveCategory": "walk",
+      "layer": "",
+      "stacking": {
+        "canShare": false,
+        "maxPerHex": 3,
+        "shareWith": [],
+        "crowdMoveCost": 0.5,
+        "crowdAccuracyPenalty": 0.05,
+        "layout": "Cluster"
+      },
+      "stats": {
+        "hp_max": 70,
+        "move_speed": 1.4,
+        "ap_max": 12,
+        "ap_regen": 1,
+        "detection_range": 7,
+        "magic_power": 12
+      },
+      "defense": {
+        "modifiers": [],
+        "immune": [],
+        "flatReductions": [],
+        "conversions": [],
+        "absorptions": [],
+        "reflections": [],
+        "critImmune": false
+      },
+      "offense": {
+        "bonuses": [],
+        "conversions": []
+      },
+      "statusResistances": {},
+      "immunities": [],
+      "resources": [
+        {
+          "resource": "mana",
+          "max": 70,
+          "start": 70,
+          "regen": 1.5
+        }
+      ],
+      "basicAttack": "strike",
+      "skills": [
+        "call_wolves",
+        "raise_skeleton",
+        "spark"
+      ],
+      "defenseSkill": "mana_ward",
+      "passives": [
+        "last_ward"
+      ],
+      "origins": [],
+      "startingStatuses": [],
+      "autoAttacks": [],
+      "aiProfile": "aggressive",
+      "role": "Caster",
+      "perception": {
+        "model": "Single",
+        "extraFacings": [
+          3
+        ],
+        "lines": [],
+        "ownNoSectorRule": false,
+        "noticeChance": 1,
+        "surpriseChance": 0,
+        "zone": "None",
+        "zoneSize": 5,
+        "zoneAngle": 120
+      },
+      "info": {
+        "override": false,
+        "values": {
+          "panelEnabled": true,
+          "nameAndType": "AfterSeen",
+          "health": "WhenVisible",
+          "resources": "WhenVisible",
+          "statuses": "WhenVisible",
+          "resistances": "AfterObserved",
+          "skills": "AfterObserved",
+          "facing": "WhenVisible",
+          "intent": "WhenVisible"
+        }
+      },
+      "blocking": {
+        "zone": "AllAdjacent",
+        "categories": [],
+        "layers": [],
+        "abilities": [],
+        "whileMoving": false
+      },
+      "blockable": {
+        "canBeBlocked": true,
+        "requiredAbility": "",
+        "slotCost": 1,
+        "canBypass": false,
+        "whenBlocked": "AttackBlocker"
+      },
+      "boss": {
+        "isBoss": false,
+        "title": "",
+        "phases": []
+      },
+      "spawnWarning": true,
+      "visual": {
+        "shape": "Mage",
+        "color": "",
+        "scale": 1,
+        "symbol": "М",
+        "model": "",
+        "icon": "",
+        "spawnVfx": "",
+        "deathVfx": "",
+        "attackSound": "",
+        "hitSound": "",
+        "deathSound": "",
+        "colorVariants": [],
+        "simplifiedModel": "",
+        "fallbackModel": "",
+        "selectionVfx": "",
+        "hitVfx": ""
+      },
+      "threatCost": 0,
+      "rank": "Normal",
+      "customRank": "",
+      "powerRole": "Auto",
+      "scalingProfile": "",
+      "mainCategory": "",
+      "moveTypes": []
     }
   ]
 }

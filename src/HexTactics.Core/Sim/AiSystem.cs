@@ -11,7 +11,7 @@ namespace HexTactics.Core.Sim;
 /// as the player (movement, AP, skills, statuses). Stores a human-readable explanation of each
 /// decision for the admin view.
 /// </summary>
-public sealed class AiSystem
+public sealed partial class AiSystem
 {
     private readonly Simulation _sim;
     private const double MemorySeconds = 20;
@@ -26,16 +26,32 @@ public sealed class AiSystem
 
     private static readonly AiProfileDef DefaultProfile = new() { Id = "default", Name = "По умолчанию" };
 
+    /// <summary>The AI is giving orders now (an order given otherwise is the player's: §106 «приказы владельца важнее»).</summary>
+    public bool Deciding { get; private set; }
+
     public void Update()
     {
         if (!Enabled) return;
         foreach (var u in _sim.Units)
         {
             if (!u.Alive || !u.AiControlled || u.Flags.Panic) continue; // panic drives the unit itself (§104)
+            if (u.Summon is { PlayerOrder: true } so)
+            {
+                if (u.Queue.Count > 0 || u.Casting != null) continue; // the player's order runs
+                so.PlayerOrder = false;
+            }
             if (_sim.Tick < u.Ai.NextDecisionTick) continue;
             var p = u.AiProfile ?? DefaultProfile;
             u.Ai.NextDecisionTick = _sim.Tick + Math.Max(1, _sim.TicksFor(p.DecisionInterval));
-            Decide(u, p);
+            Deciding = true;
+            try
+            {
+                Decide(u, p);
+            }
+            finally
+            {
+                Deciding = false;
+            }
         }
     }
 
@@ -108,6 +124,9 @@ public sealed class AiSystem
                     return;
             }
         }
+
+        // A summoned unit (part 6, §106): its simple AI — follow, guard, attack the summoner's target, hold, patrol.
+        if (u.Summon is { } summon && DecideSummoned(u, p, summon)) return;
 
         // The target base is gone or the route stays closed: an alternative target (docs/DECISIONS_4.md §59).
         if (u.Ai.Alternative == null && NeedsAlternative(u)) ChooseAlternative(u, p);

@@ -110,7 +110,8 @@
             "ObjectPreset",
             "Campaign",
             "RewardSet",
-            "Scale"
+            "Scale",
+            "Summon"
           ]
         },
         "color": {

@@ -476,16 +476,42 @@ public sealed class CombatSystem
                     }
 
         _sim.Statuses.OnSourceDied(u);
-        if (Rules.Death.SummonsDieWithOwner)
-            foreach (var s in _sim.Units)
-                if (s.Alive && s.SummonerId == u.Id)
-                    Kill(s, null, "призыватель погиб");
+        // The summoned: by their descriptions (part 6, §106), the legacy ones by the rule of the battle.
+        _sim.Summons.OnSummonerDied(u);
 
         if (!string.IsNullOrEmpty(Rules.Death.CorpseCellEffect) && cell != null)
         {
             var ce = _sim.Content.CellEffect(Rules.Death.CorpseCellEffect);
             if (ce != null) _sim.CellEffects.Add(cell, ce, 1, 0, u.Id, 0, 0);
         }
+    }
+
+    /// <summary>
+    /// A summoned unit leaves the field without dying (part 6, §106: «исчезает»): no events of death, no loot, no corpse; the cell,
+    /// the queue and the links are freed as by death, and its own summoned follow their policies.
+    /// </summary>
+    public void Vanish(Unit u, string cause)
+    {
+        if (!u.Alive) return;
+        u.Alive = false;
+        u.DeathCause = DeathCause.Removed;
+        u.DiedAtTick = _sim.Tick;
+        if (u.Casting != null) _sim.Skills.Interrupt(u, InterruptCause.Death, cause);
+        _sim.Commands.ClearQueue(u, cause, CommandStatus.Cancelled);
+        if (u.StepTo.HasValue)
+        {
+            _sim.Map.Get(u.StepTo.Value)?.Reservations.Remove(u);
+            u.StepTo = null;
+            u.StepFrom = null;
+        }
+        _sim.Map.Get(u.Pos)?.Occupants.Remove(u);
+        _sim.Blocking.OnRemoved(u);
+        _sim.Squad.OnRemoved(u, died: false);
+        u.Shields.Clear();
+        _sim.Map.Touch(false);
+        _sim.Vision.MarkDirty(urgent: true);
+        _sim.Statuses.OnSourceDied(u);
+        _sim.Summons.OnSummonerDied(u);
     }
 
     // ------------------------------------------------------------------ generic effect executor
@@ -790,6 +816,10 @@ public sealed class CombatSystem
                     break;
                 case EffectType.Heal:
                     Heal(source, target, Amount(), cause, e.HealMode);
+                    break;
+                // A passive (or a scenario's operations) summons by a description (part 6, §106): around the owner, or at the target.
+                case EffectType.Summon when e.Summon != "" && _sim.Content.Get<SummonDef>(e.Summon) is { } sd:
+                    _sim.Summons.Summon(sd, source, target.Pos, target != source ? target.Id : -1, null, cause);
                     break;
                 default:
                     if (e.TargetsUnits) ApplyUnitEffect(e, source, target, origin, scale, cause);

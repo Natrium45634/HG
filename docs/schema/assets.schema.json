@@ -249,7 +249,8 @@
             "ObjectPreset",
             "Campaign",
             "RewardSet",
-            "Scale"
+            "Scale",
+            "Summon"
           ]
         },
         "clipLengths": {

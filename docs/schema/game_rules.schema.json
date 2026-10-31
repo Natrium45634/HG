@@ -363,7 +363,8 @@
             "ObjectPreset",
             "Campaign",
             "RewardSet",
-            "Scale"
+            "Scale",
+            "Summon"
           ]
         },
         "deployment": {

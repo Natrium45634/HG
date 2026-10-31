@@ -257,6 +257,8 @@ public sealed class Unit
     public AiState Ai { get; } = new();
 
     public int SummonerId { get; set; } = -1;
+    /// <summary>The link to the summon of the library (part 6, §106); null — not summoned or the legacy summon.</summary>
+    public SummonState? Summon { get; set; }
     /// <summary>Route of a wave unit (map route points), and the next point index.</summary>
     public List<HexCoord>? Route { get; set; }
     public int RouteIndex { get; set; }

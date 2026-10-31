@@ -454,8 +454,10 @@ public sealed class SkillEffectDef : ContentPart
     [Ed("Урон препятствию"), EdRange(0, 100000), EdShowIf(nameof(Type), EffectType.DestroyObstacle)]
     public int ObstacleDamage { get; set; } = 1000;
 
-    [Ed("Призываемый юнит"), EdRef(DefCategory.Unit, AllowEmpty = false), EdShowIf(nameof(Type), EffectType.Summon)]
+    [Ed("Призываемый юнит", "Простой призыв: один юнит на клетку навыка; при заданном описании призыва не нужен"), EdRef(DefCategory.Unit), EdShowIf(nameof(Type), EffectType.Summon)]
     public string SummonUnit { get; set; } = "";
+    [Ed("Призыв", "Описание из «Призывов»: количество, расстановка, время жизни, лимиты, ИИ (ТЗ ч. 6, 20)"), EdRef(DefCategory.Summon), EdShowIf(nameof(Type), EffectType.Summon)]
+    public string Summon { get; set; } = "";
 
     [JsonIgnore] public bool TargetsUnits => Type switch
     {
@@ -487,7 +489,7 @@ public sealed class SkillEffectDef : ContentPart
             EffectType.AddCellEffect => $"Эффект клетки {CellEffect}",
             EffectType.RemoveCellEffect => $"Убрать эффект {CellEffect}",
             EffectType.DestroyObstacle => "Разрушить препятствие",
-            EffectType.Summon => $"Призыв {SummonUnit}",
+            EffectType.Summon => Summon != "" ? $"Призыв «{Summon}»" : $"Призыв {SummonUnit}",
             EffectType.TeleportCaster => "Переместить исполнителя",
             EffectType.ModifyStat => $"{Stat} {(StatAdd != 0 ? $"{StatAdd:+0.##;-0.##}" : "")}{(StatMul != 0 ? $" {StatMul:+0%;-0%}" : "")} " + (Duration > 0 ? $"на {Duration:0.#} с" : "до конца боя"),
             EffectType.ModifyAccumulation => $"Накопление {Status} {Amount:+0.#;-0.#}",

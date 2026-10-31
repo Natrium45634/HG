@@ -76,6 +76,10 @@ public static class ContentValidator
         foreach (var sp in db.All<ScaleProfileDef>())
             foreach (var p in ScaleProfiles.Check(db, sp))
                 issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(sp), p.Path, "Шкала: " + p.Message));
+        // Summons (part 6, §106).
+        foreach (var sd in db.All<SummonDef>())
+            foreach (var p in SummonChecks.Check(db, sd))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(sd), p.Path, "Призыв: " + p.Message));
         // Campaigns and their rewards (part 6, §103).
         foreach (var c in db.All<CampaignDef>())
             foreach (var p in Campaigns.Check(db, c))
@@ -192,6 +196,7 @@ public static class ContentValidator
         DefCategory.Campaign => "кампания",
         DefCategory.RewardSet => "набор наград",
         DefCategory.Scale => "шкала",
+        DefCategory.Summon => "призыв",
         _ => c.ToString(),
     };
 
@@ -490,7 +495,9 @@ public static class ContentValidator
                 issues.Add(Err(s, path + ".Area", "Цепь требует наведения на юнита или клетку"));
             foreach (var e in st.Effects.Concat(st.Area.Cells.SelectMany(c => c.Effects)))
             {
-                if (e.Type == EffectType.Summon && db.Unit(e.SummonUnit) == null)
+                if (e.Type == EffectType.Summon && e.Summon != "" && db.Get<SummonDef>(e.Summon) == null)
+                    issues.Add(Err(s, path, $"Нет описания призыва '{e.Summon}'"));
+                else if (e.Type == EffectType.Summon && e.Summon == "" && db.Unit(e.SummonUnit) == null)
                     issues.Add(Err(s, path, $"Призыв несуществующего юнита '{e.SummonUnit}'"));
                 if (e.TargetsUnits && !e.Filter.Allies && !e.Filter.Enemies && !e.Filter.Neutrals && !e.Filter.Self)
                     issues.Add(Warn(s, path, $"Эффект '{e.Describe()}' ни на кого не действует (фильтр пуст)"));
