@@ -366,7 +366,15 @@ patrol[], control (AutoOnly, OwnerPriorityOrders, FullControl)`. У
 У сценария — `summons {maxAlive, maxTotal, maxDepth, countTowardsDeploy,
 allowManual}`. Отпечаток боя: `m…` (призванные и ожидающие запросы).
 
-: реплей с
+Часть 6, этап 6.9 ([§107](DECISIONS_6.md)): у правил режима — `objects,
+modifiers, graphs, scales, summons` (по умолчанию `true`); у
+`gameRulesOverride` сценария — те же поля, необязательные (не заданы —
+из правил режима). Настройки пользователя (`user://settings.json`) —
+`keyBindings {действие: "M" | "Z, Minus" | "Ctrl+0"}`: только
+переназначенные действия боя. У шаблона юнита — `deployment {cost}`
+(разведчик демоуровня — 3).
+
+Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и
 переключённые базы и зоны.

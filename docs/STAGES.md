@@ -2890,3 +2890,36 @@ Windows-сборка проверена самопроверкой на Windows 
   контент — `game/content/{summons,skills,units}.json`; `docs/schema/*`.
 * **Тесты**: `Part6SummonTests` (15, с вариантами — 21): T47–T55; UI — `summon_editor_preview_and_hud`.
 
+## Ч6 · Этап 6.9. Интеграция, демоуровень, итог части 6
+
+* **Сделано** ([§107](DECISIONS_6.md)):
+  * переназначение клавиш боя («Настройки → Клавиши…»): захват клавиши,
+    снятие с другого действия, сброс; подписи на кнопках и справка — по
+    текущим клавишам;
+  * выключатели подсистем в правилах режима и своих значениях сценария:
+    объекты, модификаторы, граф событий, шкалы, призывы (ТЗ 14.1);
+  * проверка контента: код, место и исправление у каждой проблемы,
+    автоисправление ссылок, диапазонов и «по окончании» призыва, панель
+    «Проверка» с подробностями (T31);
+  * демоуровень «Два прохода»: база, два маршрута, ближняя и дальняя
+    зоны, ОР на два вызова, страж/стрелок/разведчик, мост с рычагом и
+    волна по мосту, вожак с двумя фазами, тяжёлый вариант, кампания из
+    двух заданий;
+  * компактная верхняя панель при узком окне и большом масштабе;
+  * T29 (1920×1080, 2560×1440, масштаб 2), T32 (пакет = визуальный).
+* **Файлы**: ядро — `src/HexTactics.Core/Content/{IssueCatalog,GameRules,MissionModifiers}.cs`,
+  `Content/Defs/GameRulesDefs.cs`, `Sim/{ObjectSystem,ScaleSystem,ScenarioSystem,Simulation,SummonSystem}.cs`;
+  игра — `game/src/App/{Hotkeys,HotkeysDialog,Settings,SettingsDialog,UiTestRunner}.cs`,
+  `game/src/Battle/{BattleScreen,BattleHud}.cs`, `game/src/Editor/MiscPanels.cs`;
+  контент — `game/content/scenarios/two_passes.json`, `game/content/{units,modifier_sets,difficulty_variants,campaigns}.json`;
+  генератор — `tests/HexTactics.Tests/DemoLevelGenerator.cs`.
+* **Тесты**: `Part6IntegrationTests` (8); UI — `hotkeys_rebind_in_battle`, `validation_code_place_fix`,
+  `demo_two_passes_hud_resolutions`.
+
+## Итог части 6
+
+Этапы 6.1–6.12 сделаны, T01–T55 закрыты ([§94](DECISIONS_6.md), итог — [§107](DECISIONS_6.md)).
+Тесты ядра — 638 (все проходят), UI-тестов — 70 (части 6 — 14; полный прогон после 6.12 — 67/67, новые тесты 6.9 — отдельно).
+Ограничения: запуск на реальной Windows не проверялся (сборка — CI); клавиши камеры, групп и редакторов
+не переназначаются; автоисправление — только для безопасных видов проблем.
+
