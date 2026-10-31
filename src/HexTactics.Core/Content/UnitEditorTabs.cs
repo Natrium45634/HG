@@ -50,6 +50,7 @@ public static class UnitEditorTabs
         [nameof(UnitDef.Role)] = UnitTab.Ai,
         [nameof(UnitDef.Perception)] = UnitTab.Ai,
         [nameof(UnitDef.Info)] = UnitTab.Ai,
+        [nameof(UnitDef.Scale)] = UnitTab.Ai,
         [nameof(UnitDef.Boss)] = UnitTab.Boss,
         [nameof(Def.Tags)] = UnitTab.Tags,
         [nameof(Def.Group)] = UnitTab.Tags,

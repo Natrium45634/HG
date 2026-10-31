@@ -46,6 +46,7 @@ public static class MissionModifiers
     {
         MissionModOp.Stat => $"stat:{m.Stat.Stat}@{m.Selector}",
         MissionModOp.Status => $"status:{m.Status}@{m.Selector}",
+        MissionModOp.Scale => $"scale@{m.Selector}",
         MissionModOp.Rule => "rule:" + m.Rule,
         MissionModOp.Deployment => "deploy:" + m.DeployField,
         MissionModOp.Squad => "squad:" + m.SquadField,
@@ -78,6 +79,7 @@ public static class MissionModifiers
             {
                 case MissionModOp.Stat:
                 case MissionModOp.Status:
+                case MissionModOp.Scale:
                     copy.AppliedModifiers.Add(ContentJson.Clone(m));
                     break;
                 case MissionModOp.Rule:

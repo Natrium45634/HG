@@ -341,6 +341,9 @@ public enum EffectType
     PlaySound,
     SetFlag,
     ActivateTrigger,
+    // Part 6 (§104).
+    /// <summary>Changes the scale (morale, sanity…) of the target by the amount.</summary>
+    ChangeScale,
 }
 
 public enum FacingMode
@@ -359,7 +362,7 @@ public sealed class SkillEffectDef : ContentPart
     [Ed("На кого действует"),
      EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.RemoveStatus, EffectType.Push,
          EffectType.Pull, EffectType.ChangeFacing, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield, EffectType.RemoveShield,
-         EffectType.ModifyStat, EffectType.ModifyAccumulation, EffectType.SetRoute, EffectType.SetAiProfile)]
+         EffectType.ModifyStat, EffectType.ModifyAccumulation, EffectType.SetRoute, EffectType.SetAiProfile, EffectType.ChangeScale)]
     public TargetFilterDef Filter { get; set; } = TargetFilterDef.EnemiesOnly();
 
     [Ed("Шанс"), EdRange(0, 1)] public double Chance { get; set; } = 1;
@@ -374,7 +377,7 @@ public sealed class SkillEffectDef : ContentPart
 
     [Ed("Величина", "Урон/лечение/очки состояния/изменение ресурса/объём щита; для накопления — изменение очков (стаков), может быть отрицательным"),
      EdShowIf(nameof(Type), EffectType.Damage, EffectType.Heal, EffectType.ApplyStatus, EffectType.ModifyResource, EffectType.ModifyAp, EffectType.Shield,
-         EffectType.ModifyAccumulation)]
+         EffectType.ModifyAccumulation, EffectType.ChangeScale)]
     public double Amount { get; set; } = 10;
 
     [Ed("Масштаб от характеристики", "Величина += характеристика исполнителя × коэффициент"), EdRef(DefCategory.Stat),

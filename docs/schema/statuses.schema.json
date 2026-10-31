@@ -285,6 +285,10 @@
         "mindControl": {
           "type": "boolean",
           "description": "Контроль разума — Юнит временно сражается за источник"
+        },
+        "panic": {
+          "type": "boolean",
+          "description": "Паника — Не слушает приказов и бежит от врагов; очередь приказов отложена и продолжится после"
         }
       },
       "additionalProperties": true
@@ -708,7 +712,8 @@
             "PlayVfx",
             "PlaySound",
             "SetFlag",
-            "ActivateTrigger"
+            "ActivateTrigger",
+            "ChangeScale"
           ],
           "description": "Действие"
         }
@@ -826,7 +831,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "color": {

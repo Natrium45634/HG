@@ -115,7 +115,8 @@
             "Rule",
             "Deployment",
             "Squad",
-            "Wave"
+            "Wave",
+            "Scale"
           ],
           "description": "Что меняет"
         },
@@ -308,7 +309,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "displayName": {

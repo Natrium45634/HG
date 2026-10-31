@@ -1510,7 +1510,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "displayName": {

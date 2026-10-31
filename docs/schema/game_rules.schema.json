@@ -242,7 +242,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "deployment": {

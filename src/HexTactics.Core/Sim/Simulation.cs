@@ -97,6 +97,8 @@ public sealed class Simulation
         Deployment = new DeploymentSystem(this);
         Mission = new MissionModifierSystem(this);
         Interactive = new ObjectSystem(this);
+        Scales = new ScaleSystem(this);
+        Scenario.PhaseEntered += Scales.OnBossPhase;
         Structures = new StructureSystem(this);
         Routes = new RouteNavigator(this);
         Categories = new CategoryCache(Content);
@@ -167,6 +169,8 @@ public sealed class Simulation
     public MissionModifierSystem Mission { get; }
     /// <summary>The states, interactions and signals of the objects of the scenario (part 6, §100).</summary>
     public ObjectSystem Interactive { get; }
+    /// <summary>Scales of units: sanity, morale… (part 6, §104).</summary>
+    public ScaleSystem Scales { get; }
     /// <summary>Structures of the scenario: bases and towers with health (docs/DECISIONS_4.md §56).</summary>
     public StructureSystem Structures { get; }
     public Planner Planner { get; }
@@ -585,6 +589,9 @@ public sealed class Simulation
         t = p.Begin();
         Reactions.Process();
         p.End("Реакции", t);
+        t = p.Begin();
+        Scales.Update();
+        p.End("Шкалы", t);
         t = p.Begin();
         Vision.Update();
         Knowledge.Update();

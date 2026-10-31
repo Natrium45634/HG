@@ -74,7 +74,7 @@ public sealed class BlockingSystem
     public bool CanBlock(Unit b)
     {
         if (!b.Alive || Limit(b) <= 0) return false;
-        if (b.Flags.CannotBlock || b.Flags.Fear || b.Flags.MindControl) return false;
+        if (b.Flags.CannotBlock || b.Flags.Fear || b.Flags.MindControl || b.Flags.Panic) return false;
         if (b.Flags.BlocksActions && !b.Def.Blocking.WhileStunned) return false;
         if (b.StepTo.HasValue && !b.Def.Blocking.WhileMoving) return false;
         return true;

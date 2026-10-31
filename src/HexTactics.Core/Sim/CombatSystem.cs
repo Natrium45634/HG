@@ -622,6 +622,9 @@ public sealed class CombatSystem
                     _sim.Emit(SimEventType.ResourceChanged, LogLevel.Normal, $"{target.Name}: ОД {target.Ap - before:+0.#;-0.#} — {cause}", source?.Id ?? -1, target.Id);
                 break;
             }
+            case EffectType.ChangeScale:
+                _sim.Scales.Change(target, e.Amount * scale, cause, source);
+                break;
         }
     }
 

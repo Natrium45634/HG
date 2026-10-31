@@ -310,6 +310,8 @@ public static class PowerModel
             report.Power = Math.Max(0, k * (sum + manual));
             report.Lines.Add(new PowerLine("total", "Итог", report.Power, ""));
             report.Level = report.Power <= 0 ? 0 : _p.ScaleFor(report.Role, def.Rank).LevelOf(report.Power);
+            // Part 6 (ТЗ 18.7, §104): the scale is no second formula of the level — its contribution at the expected value is told.
+            report.Notes.AddRange(ScaleProfiles.PowerNotes(_db, def));
             return report;
         }
 

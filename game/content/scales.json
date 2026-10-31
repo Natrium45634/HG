@@ -1,0 +1,374 @@
+{
+  "formatVersion": 5,
+  "kind": "scales",
+  "items": [
+    {
+      "id": "morale",
+      "name": "Боевой дух",
+      "description": "Падает от гибели союзников и ран, растёт от побед; низкий — дрожь и паника, высокий — стойкость.",
+      "tags": [],
+      "group": "Шкалы",
+      "version": 1,
+      "short": "ДУХ",
+      "color": "#e0b040",
+      "min": -200,
+      "max": 200,
+      "mode": "Clamp",
+      "hardMin": -400,
+      "hardMax": 400,
+      "softCurve": [
+        {
+          "x": 0,
+          "y": 1
+        },
+        {
+          "x": 1,
+          "y": 0.1
+        }
+      ],
+      "start": 0,
+      "base": 0,
+      "spawnValue": 0,
+      "recoverTarget": 0,
+      "recovery": 1,
+      "immuneTags": [
+        "fearless"
+      ],
+      "rules": [
+        {
+          "name": "гибель союзника",
+          "enabled": true,
+          "event": "AllyDied",
+          "amount": -25,
+          "percent": false,
+          "radius": 5,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "гибель лидера",
+          "enabled": true,
+          "event": "LeaderDied",
+          "amount": -60,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "гибель врага",
+          "enabled": true,
+          "event": "EnemyDied",
+          "amount": 8,
+          "percent": false,
+          "radius": 5,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "убил цель",
+          "enabled": true,
+          "event": "Killed",
+          "amount": 15,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "ранен",
+          "enabled": true,
+          "event": "DamageTaken",
+          "amount": -2,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0.5,
+          "priority": 0,
+          "maxPerEvent": 6,
+          "stack": true
+        },
+        {
+          "name": "вылечен",
+          "enabled": true,
+          "event": "Healed",
+          "amount": 3,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "волна отбита",
+          "enabled": true,
+          "event": "WaveEnded",
+          "amount": 20,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "лидер рядом",
+          "enabled": true,
+          "event": "Near",
+          "amount": 2,
+          "percent": false,
+          "radius": 2,
+          "filter": "leader",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "фаза босса",
+          "enabled": true,
+          "event": "BossPhase",
+          "amount": -15,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        }
+      ],
+      "bands": [
+        {
+          "name": "паника",
+          "enabled": true,
+          "from": -200,
+          "to": -120,
+          "hysteresis": 10,
+          "status": "panic",
+          "chance": 0.6,
+          "recheck": 4,
+          "duration": 6,
+          "cooldown": 8
+        },
+        {
+          "name": "дрогнул",
+          "enabled": true,
+          "from": -120,
+          "to": -50,
+          "hysteresis": 10,
+          "status": "shaken",
+          "chance": 1,
+          "recheck": 0,
+          "duration": 0,
+          "cooldown": 5
+        },
+        {
+          "name": "стойкость",
+          "enabled": true,
+          "from": 120,
+          "to": 200,
+          "hysteresis": 10,
+          "status": "steadfast",
+          "chance": 1,
+          "recheck": 0,
+          "duration": 0,
+          "cooldown": 5
+        }
+      ],
+      "curves": [
+        {
+          "name": "меткость",
+          "enabled": true,
+          "stat": "accuracy",
+          "op": "Add",
+          "points": [
+            {
+              "x": -200,
+              "y": -0.15
+            },
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 200,
+              "y": 0.1
+            }
+          ]
+        },
+        {
+          "name": "сила",
+          "enabled": true,
+          "stat": "power",
+          "op": "Multiply",
+          "points": [
+            {
+              "x": -200,
+              "y": -0.1
+            },
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 200,
+              "y": 0.1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "madness",
+      "name": "Безумие",
+      "description": "Санити: падает от страха и гибели союзников; низкое — исступление (урон выше), а не только штраф.",
+      "tags": [],
+      "group": "Шкалы",
+      "version": 1,
+      "short": "SAN",
+      "color": "#b07cff",
+      "min": -200,
+      "max": 200,
+      "mode": "SoftCap",
+      "hardMin": -300,
+      "hardMax": 300,
+      "softCurve": [
+        {
+          "x": 0,
+          "y": 1
+        },
+        {
+          "x": 1,
+          "y": 0.1
+        }
+      ],
+      "start": 0,
+      "base": 0,
+      "spawnValue": 0,
+      "recoverTarget": 0,
+      "recovery": 0.5,
+      "immuneTags": [],
+      "rules": [
+        {
+          "name": "гибель союзника",
+          "enabled": true,
+          "event": "AllyDied",
+          "amount": -20,
+          "percent": false,
+          "radius": 6,
+          "filter": "",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "страх",
+          "enabled": true,
+          "event": "StatusReceived",
+          "amount": -30,
+          "percent": false,
+          "radius": 0,
+          "filter": "fear",
+          "once": false,
+          "interval": 1,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        },
+        {
+          "name": "тьма",
+          "enabled": true,
+          "event": "Timer",
+          "amount": -1,
+          "percent": false,
+          "radius": 0,
+          "filter": "",
+          "once": false,
+          "interval": 5,
+          "cooldown": 0,
+          "priority": 0,
+          "maxPerEvent": 0,
+          "stack": true
+        }
+      ],
+      "bands": [
+        {
+          "name": "исступление",
+          "enabled": true,
+          "from": -300,
+          "to": -100,
+          "hysteresis": 10,
+          "status": "frenzy",
+          "chance": 1,
+          "recheck": 0,
+          "duration": 0,
+          "cooldown": 5
+        }
+      ],
+      "curves": [
+        {
+          "name": "сила безумия",
+          "enabled": true,
+          "stat": "power",
+          "op": "Multiply",
+          "points": [
+            {
+              "x": -300,
+              "y": 0.4
+            },
+            {
+              "x": -200,
+              "y": 0.3
+            },
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 200,
+              "y": -0.05
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

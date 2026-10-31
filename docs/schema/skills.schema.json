@@ -816,7 +816,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "color": {
@@ -1331,7 +1332,8 @@
             "PlayVfx",
             "PlaySound",
             "SetFlag",
-            "ActivateTrigger"
+            "ActivateTrigger",
+            "ChangeScale"
           ],
           "description": "Действие"
         }
@@ -1773,7 +1775,8 @@
             "Category",
             "Layer",
             "Distance",
-            "Environment"
+            "Environment",
+            "Scale"
           ],
           "description": "Условие"
         },

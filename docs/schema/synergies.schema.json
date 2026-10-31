@@ -267,7 +267,8 @@
             "PlayVfx",
             "PlaySound",
             "SetFlag",
-            "ActivateTrigger"
+            "ActivateTrigger",
+            "ChangeScale"
           ],
           "description": "Действие"
         }
@@ -366,7 +367,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "convertTerrain": {

@@ -108,6 +108,8 @@ public enum UnitConditionType
     [Ed("Слой")] Layer,
     [Ed("Расстояние до цели")] Distance,
     [Ed("Переменная сценария")] Environment,
+    // Part 6 (§104).
+    [Ed("Значение шкалы", "Боевой дух, санити…")] Scale,
 }
 
 public enum ConditionSubject
@@ -140,14 +142,14 @@ public sealed class UnitConditionDef : ContentPart
     [Ed("Вложенные условия"), EdShowIf(nameof(Type), UnitConditionType.All, UnitConditionType.Any, UnitConditionType.Not)]
     public List<UnitConditionDef> Children { get; set; } = new();
     [Ed("О ком"), EdShowIf(nameof(Type), UnitConditionType.HasStatus, UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.OnTerrain,
-         UnitConditionType.UnitType, UnitConditionType.BossPhase, UnitConditionType.Category, UnitConditionType.Layer)]
+         UnitConditionType.UnitType, UnitConditionType.BossPhase, UnitConditionType.Category, UnitConditionType.Layer, UnitConditionType.Scale)]
     public ConditionSubject Subject { get; set; } = ConditionSubject.Target;
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), UnitConditionType.HasStatus)] public string Status { get; set; } = "";
     [Ed("Ресурс", "Пусто — очки действия"), EdRef(DefCategory.Resource), EdShowIf(nameof(Type), UnitConditionType.Resource)] public string Resource { get; set; } = "";
-    [Ed("Сравнение"), EdShowIf(nameof(Type), UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.UnitsInArea, UnitConditionType.BossPhase, UnitConditionType.Distance)]
+    [Ed("Сравнение"), EdShowIf(nameof(Type), UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.UnitsInArea, UnitConditionType.BossPhase, UnitConditionType.Distance, UnitConditionType.Scale)]
     public CompareMode Compare { get; set; } = CompareMode.AtLeast;
     [Ed("Значение", "Доля здоровья 0..1; ресурс; для состояния — минимум очков/стаков (0 — любое); фаза босса — номер с 1"),
-     EdShowIf(nameof(Type), UnitConditionType.HasStatus, UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.BossPhase)]
+     EdShowIf(nameof(Type), UnitConditionType.HasStatus, UnitConditionType.HpFraction, UnitConditionType.Resource, UnitConditionType.BossPhase, UnitConditionType.Scale)]
     public double Value { get; set; } = 0.5;
     [Ed("Поверхности", "ID местности или эффекта клетки; «kind:Water» — вид местности"), EdShowIf(nameof(Type), UnitConditionType.OnTerrain)]
     public List<string> Terrains { get; set; } = new();
@@ -188,6 +190,7 @@ public sealed class UnitConditionDef : ContentPart
             UnitConditionType.HasStatus => $"{who}: состояние «{Status}»" + (Value > 0 ? $" ≥ {Value:0.#}" : ""),
             UnitConditionType.HpFraction => $"{who}: здоровье {cmp} {Value:P0}",
             UnitConditionType.Resource => $"{who}: {(string.IsNullOrEmpty(Resource) ? "ОД" : Resource)} {cmp} {Value:0.#}",
+            UnitConditionType.Scale => $"{who}: шкала {cmp} {Value:0.#}",
             UnitConditionType.OnTerrain => $"{who} на поверхности: {string.Join(", ", Terrains)}",
             UnitConditionType.UnitType => $"{who} — {string.Join(", ", Types)}",
             UnitConditionType.UnitsInArea => $"{(Side == UnitSideFilter.Enemies ? "противников" : Side == UnitSideFilter.Allies ? "союзников" : "юнитов")} в радиусе {Radius} {cmp} {Count}",

@@ -504,6 +504,8 @@ public enum TriggerActionType
     [Ed("Запустить триггер через N с")] DelayedTrigger,
     [Ed("Если — то триггер, иначе — триггер", "Условие проверяется один раз")] IfElse,
     [Ed("Снять флаг события")] ClearFlag,
+    // Part 6, stage 6.10 (§104).
+    [Ed("Изменить шкалу", "Боевой дух, санити… выбранных юнитов на величину")] ChangeScale,
 }
 
 public enum ActionTarget
@@ -558,11 +560,11 @@ public sealed class TriggerActionDef : ContentPart
     [Ed("На кого"),
      EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus, TriggerActionType.AddSkill, TriggerActionType.RemoveSkill,
          TriggerActionType.SetAutoAttackSkill, TriggerActionType.SetAiProfile, TriggerActionType.HealPercent, TriggerActionType.Effects, TriggerActionType.SetRoute,
-         TriggerActionType.SetBossPhase, TriggerActionType.SetTarget)]
+         TriggerActionType.SetBossPhase, TriggerActionType.SetTarget, TriggerActionType.ChangeScale)]
     public ActionTarget Target { get; set; } = ActionTarget.Self;
     [Ed("Метка юнита"), EdShowIf(nameof(Target), ActionTarget.UnitTag)] public string UnitTag { get; set; } = "";
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.RemoveStatus)] public string Status { get; set; } = "";
-    [Ed("Величина", "Очки/стаки состояния, % лечения"), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.HealPercent)] public double Amount { get; set; } = 1;
+    [Ed("Величина", "Очки/стаки состояния, % лечения, изменение шкалы"), EdShowIf(nameof(Type), TriggerActionType.ApplyStatus, TriggerActionType.HealPercent, TriggerActionType.ChangeScale)] public double Amount { get; set; } = 1;
     [Ed("Навык"), EdRef(DefCategory.Skill), EdShowIf(nameof(Type), TriggerActionType.AddSkill, TriggerActionType.RemoveSkill, TriggerActionType.SetAutoAttackSkill)]
     public string Skill { get; set; } = "";
     [Ed("Автоатака (индекс)"), EdRange(0, 20), EdShowIf(nameof(Type), TriggerActionType.SetAutoAttackSkill)] public int AutoAttack { get; set; }
@@ -595,6 +597,7 @@ public sealed class TriggerActionDef : ContentPart
         TriggerActionType.DestroyObstacle => "Разрушить препятствия" + (string.IsNullOrEmpty(Marker) ? "" : $" в «{Marker}»"),
         TriggerActionType.ActivateTrigger => $"Триггер «{Text}»",
         TriggerActionType.SetBossPhase => $"Фаза босса {Phase}",
+        TriggerActionType.ChangeScale => $"Шкала {Amount:+0.##;-0.##}",
         TriggerActionType.PlayVfx => $"Визуальный эффект {Text}",
         TriggerActionType.PlaySound => $"Звук {Text}",
         TriggerActionType.ActivateBase => $"Включить базу «{Object}»",

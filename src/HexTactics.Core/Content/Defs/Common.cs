@@ -51,6 +51,8 @@ public enum DefCategory
     Campaign,
     /// <summary>Sets of rewards of missions (docs/DECISIONS_6.md §103).</summary>
     RewardSet,
+    /// <summary>Scales of units: sanity, morale, stability (docs/DECISIONS_6.md §104).</summary>
+    Scale,
 }
 
 /// <summary>
@@ -159,10 +161,12 @@ public sealed class ControlFlagsDef : ContentPart
     // Part 6 (docs/DECISIONS_6.md §98): blocking through statuses and passives.
     [Ed("Неудержим", "Не блокируется (стены и ямы — по-прежнему препятствие)")] public bool IgnoresBlocking { get; set; }
     [Ed("Не может блокировать", "Снимает связи блока этого юнита")] public bool CannotBlock { get; set; }
+    // Part 6, stage 6.10 (§104).
+    [Ed("Паника", "Не слушает приказов и бежит от врагов; очередь приказов отложена и продолжится после"), JsonOmitEmpty] public bool Panic { get; set; }
 
     [JsonIgnore]
     public bool Any => BlocksHealing || BlocksMovement || BlocksActions || BlocksSkills || BlocksAttacks || BlocksTurning
-                       || BlocksApRegen || Blind || Invisible || Fear || MindControl || InterruptsCast || IgnoresBlocking || CannotBlock;
+                       || BlocksApRegen || Blind || Invisible || Fear || MindControl || InterruptsCast || IgnoresBlocking || CannotBlock || Panic;
 
     public void OrWith(ControlFlagsDef o)
     {
@@ -180,13 +184,14 @@ public sealed class ControlFlagsDef : ContentPart
         BlocksHealing |= o.BlocksHealing;
         IgnoresBlocking |= o.IgnoresBlocking;
         CannotBlock |= o.CannotBlock;
+        Panic |= o.Panic;
     }
 
     public void Clear()
     {
         BlocksMovement = BlocksActions = BlocksSkills = BlocksAttacks = BlocksTurning = false;
         BlocksApRegen = Blind = Invisible = Fear = MindControl = InterruptsCast = BlocksHealing = false;
-        IgnoresBlocking = CannotBlock = false;
+        IgnoresBlocking = CannotBlock = Panic = false;
     }
 }
 

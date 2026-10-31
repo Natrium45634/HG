@@ -322,6 +322,19 @@ nodes {attempts, victories, best, last, variants}, flags, currency, medals,
 unlockedScenarios, unlockedUnits, ledger[] {key, node, entry, text},
 processed[], pending[]`.
 
+Часть 6, этап 6.10 ([§104](DECISIONS_6.md)): `scales.json` — `short,
+color, min, max, mode (Clamp, SoftCap, Overflow), hardMin, hardMax,
+softCurve[] {x, y}, start, base, spawnValue, recoverTarget, recovery,
+immuneTags[], rules[] {name, enabled, event, amount, percent, radius,
+filter, condition, once, interval, cooldown, priority, maxPerEvent,
+stack}, bands[] {name, enabled, from, to, hysteresis, status, chance,
+recheck, duration, cooldown}, curves[] {name, enabled, stat, op (Add,
+Multiply, Override), points[] {x, y}}`. У шаблона юнита — `scale
+{profile, mode (Active, Immune), ownStart, start}`; у флагов контроля —
+`panic`; операция навыка `ChangeScale`, действие сценария `ChangeScale`
+(`amount`), модификатор миссии `Scale` (`delta`), условие юнита `Scale`
+(`compare`, `value`). Отпечаток боя: `z…` (шкалы), `p…` (паника).
+
 Сохранённый бой — `user://saves/<сценарий>_<время>.hexsave`: реплей с
 контентом и `endTick/endHash` на момент сохранения. Отпечаток состояния
 теперь включает срабатывания триггеров, пройденные фазы босса и

@@ -94,6 +94,7 @@ public partial class UiTestRunner : Node
         _tests.Add(("graph_editor_debug_breakpoint", GraphEditorDebugBreakpoint));
         _tests.Add(("boss_phases_tab_run_and_telegraph", BossPhasesTabRunTelegraph));
         _tests.Add(("campaign_screen_mission_rewards_once", CampaignScreenMissionRewardsOnce));
+        _tests.Add(("scale_editor_chart_and_battle_bar", ScaleEditorChartAndBattleBar));
         // Last: it publishes into the sandbox user pack (Main runs UI tests on a fresh copy of user data).
         _tests.Add(("editor_library_publish_versions", EditorLibraryPublish));
         _tests.Add(("editor_package_export_import", EditorPackageExportImport));
@@ -3468,6 +3469,48 @@ public partial class UiTestRunner : Node
         rp.Select("rw_pass_siege");
         await Frames(6);
         Check(Find<Label>(Find<VBoxContainer>(rp).First(v => v.Name == "RewardPreview")).Any(l => l.Text.Contains("одна на выбор") && l.Text.Contains("«трофей»")), "предпросмотр наград: политика выдачи");
+    }
+
+    /// <summary>
+    /// Part 6, stage 6.10 (ТЗ 18; §104): «Шкалы» — the chart with the bands and curves and the forecast of a chosen value; in a
+    /// battle the scale of a unit is a bar with its bounds, the band it is in and the last cause of change.
+    /// </summary>
+    private async Task ScaleEditorChartAndBattleBar()
+    {
+        await OpenEditor("scales");
+        var panel = Find<ScalePanel>(GetTree().Root).First();
+        panel.Select("morale");
+        await Frames(6);
+        Check(panel.Chart != null && panel.Chart.IsVisibleInTree(), "график шкалы");
+        Check(Find<Label>(Find<VBoxContainer>(panel).First(v => v.Name == "ScaleProblems")).Any(l => l.Text.StartsWith("✓")), "«Боевой дух» без ошибок");
+        panel.ForecastSlider!.Value = -150;
+        await Frames(2);
+        Check(panel.ForecastLabel!.Text.Contains("паника") && panel.ForecastLabel.Text.Contains("Точность"), "прогноз: диапазон и модификаторы — " + panel.ForecastLabel.Text);
+        await Shot("part6_scale_editor");
+
+        var pub = Main.Instance.Content.Published;
+        var knightDef = pub.Unit("knight")!;
+        var keep = knightDef.Scale;
+        knightDef.Scale = new ScaleUseDef { Profile = "morale" };
+        try
+        {
+            var bs = await OpenBattle("free_skirmish");
+            var knight = bs.Sim.Units.First(u => u.Def.Id == "knight");
+            bs.Driver.Paused = true;
+            bs.Sim.Scales.Change(knight, -90, "тест: ужасная весть", null);
+            bs.Sim.Step();
+            bs.Select(knight, byPlayer: false);
+            await Frames(20);
+            // The panel rebuilds its rows every refresh: a row is found by what it says, not by its node name.
+            var bar = Find<UI.Bar>(bs.Hud).FirstOrDefault(b => b.IsVisibleInTree() && b.Caption.StartsWith("ДУХ"));
+            Check(bar != null && bar.Caption.StartsWith("ДУХ -90") && bar.Caption.Contains("дрогнул"), $"полоса шкалы: значение и диапазон — {bar?.Caption} (шкала {bs.Sim.Scales.Of(knight)?.Value}, полос {Find<UI.Bar>(bs.Hud).Count()}, выбран {bs.Selected?.Name})");
+            Check(Find<Label>(bs.Hud).Any(l => l.IsVisibleInTree() && l.Text.Contains("ужасная весть")), "причина изменения под полосой");
+            await Shot("part6_scale_battle");
+        }
+        finally
+        {
+            knightDef.Scale = keep;
+        }
     }
 
     private async Task PressNamed(Node root, string name)

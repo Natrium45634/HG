@@ -2356,6 +2356,321 @@
       "showBar": true,
       "vfx": "",
       "iconAsset": ""
+    },
+    {
+      "id": "panic",
+      "name": "Паника",
+      "description": "Не слушает приказов и бежит от врагов; приказы отложены и продолжатся после.",
+      "tags": [],
+      "group": "Шкалы",
+      "version": 1,
+      "kind": "Timed",
+      "negative": true,
+      "duration": 6,
+      "lasts": "Timed",
+      "whileStatus": "",
+      "whileCellEffect": "",
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [
+            {
+              "stat": "accuracy",
+              "add": -0.15,
+              "mul": 0
+            }
+          ],
+          "flags": {
+            "blocksMovement": false,
+            "blocksHealing": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false,
+            "panic": true
+          },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "passives": [],
+          "offense": {
+            "bonuses": [],
+            "conversions": []
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "element": "",
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#d04040",
+      "icon": "‼",
+      "showBar": true,
+      "vfx": "",
+      "iconAsset": ""
+    },
+    {
+      "id": "shaken",
+      "name": "Дрогнул",
+      "description": "Боевой дух низок: меткость ниже.",
+      "tags": [],
+      "group": "Шкалы",
+      "version": 1,
+      "kind": "Timed",
+      "negative": true,
+      "duration": 0,
+      "lasts": "UntilBattleEnd",
+      "whileStatus": "",
+      "whileCellEffect": "",
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [
+            {
+              "stat": "accuracy",
+              "add": -0.1,
+              "mul": 0
+            }
+          ],
+          "flags": {
+            "blocksMovement": false,
+            "blocksHealing": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "passives": [],
+          "offense": {
+            "bonuses": [],
+            "conversions": []
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "element": "",
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#c08040",
+      "icon": "↓",
+      "showBar": true,
+      "vfx": "",
+      "iconAsset": ""
+    },
+    {
+      "id": "steadfast",
+      "name": "Стойкость",
+      "description": "Боевой дух высок: меткость и устойчивость к прерыванию выше.",
+      "tags": [],
+      "group": "Шкалы",
+      "version": 1,
+      "kind": "Timed",
+      "negative": false,
+      "duration": 0,
+      "lasts": "UntilBattleEnd",
+      "whileStatus": "",
+      "whileCellEffect": "",
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [
+            {
+              "stat": "accuracy",
+              "add": 0.1,
+              "mul": 0
+            },
+            {
+              "stat": "interrupt_resist",
+              "add": 0.3,
+              "mul": 0
+            }
+          ],
+          "flags": {
+            "blocksMovement": false,
+            "blocksHealing": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "passives": [],
+          "offense": {
+            "bonuses": [],
+            "conversions": []
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "element": "",
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#60b060",
+      "icon": "↑",
+      "showBar": true,
+      "vfx": "",
+      "iconAsset": ""
+    },
+    {
+      "id": "frenzy",
+      "name": "Исступление",
+      "description": "Безумие придаёт силы: урон выше, меткость ниже.",
+      "tags": [],
+      "group": "Шкалы",
+      "version": 1,
+      "kind": "Timed",
+      "negative": false,
+      "duration": 0,
+      "lasts": "UntilBattleEnd",
+      "whileStatus": "",
+      "whileCellEffect": "",
+      "reapply": "Refresh",
+      "maxStacks": 1,
+      "maxDuration": 30,
+      "tickCount": 0,
+      "power": "Current",
+      "tickOnApply": false,
+      "removeOn": [],
+      "maxPoints": 100,
+      "decayPerSecond": 2,
+      "levels": [
+        {
+          "name": "",
+          "threshold": 1,
+          "statMods": [
+            {
+              "stat": "power",
+              "add": 0,
+              "mul": 0.3
+            },
+            {
+              "stat": "accuracy",
+              "add": -0.05,
+              "mul": 0
+            }
+          ],
+          "flags": {
+            "blocksMovement": false,
+            "blocksHealing": false,
+            "blocksActions": false,
+            "blocksSkills": false,
+            "blocksAttacks": false,
+            "blocksTurning": false,
+            "blocksApRegen": false,
+            "blind": false,
+            "invisible": false,
+            "fear": false,
+            "mindControl": false,
+            "interruptsCast": false
+          },
+          "defense": {
+            "modifiers": [],
+            "immune": [],
+            "flatReductions": [],
+            "conversions": [],
+            "absorptions": [],
+            "reflections": [],
+            "critImmune": false
+          },
+          "passives": [],
+          "offense": {
+            "bonuses": [],
+            "conversions": []
+          },
+          "tickInterval": 1,
+          "onTick": [],
+          "onEnter": []
+        }
+      ],
+      "element": "",
+      "immuneCreatureCategories": [],
+      "cancels": [],
+      "blockedBy": [],
+      "color": "#b04090",
+      "icon": "✶",
+      "showBar": true,
+      "vfx": "",
+      "iconAsset": ""
     }
   ]
 }

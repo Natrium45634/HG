@@ -75,6 +75,9 @@ public sealed class MissionModifierSystem
             case MissionModOp.Status when _sim.Content.Status(m.Status) is { } sd:
                 _sim.Statuses.Apply(u, sd, m.StatusPoints, 0, -1, force: true);
                 break;
+            case MissionModOp.Scale:
+                _sim.Scales.Change(u, m.Delta, $"модификатор миссии «{m.Title}»", null);
+                break;
         }
     }
 

@@ -215,6 +215,8 @@ public sealed class UnitDef : Def
     [Ed("Блокирование (как цель)", Group = "Блокирование")] public BlockableDef Blockable { get; set; } = new();
 
     [Ed("Босс", "Фазы, смена навыков, особые условия", Group = "Босс")] public BossDef Boss { get; set; } = new();
+    // Part 6, stage 6.10 (§104).
+    [Ed("Шкала", "Боевой дух, санити…: профиль библиотеки «Шкалы»; пусто — у юнита нет шкалы (расчёта нет)")] public ScaleUseDef? Scale { get; set; }
     [Ed("Развёртывание", "Цена вызова за очки развёртывания, перерыв, зоны, направление (часть 6); пусто — по правилам режима", Group = "Развёртывание")]
     public UnitDeploymentDef? Deployment { get; set; }
     [Ed("Маркер предупреждения", "Показывать линию пути перед появлением этого типа", Group = "Вид")] public bool SpawnWarning { get; set; } = true;

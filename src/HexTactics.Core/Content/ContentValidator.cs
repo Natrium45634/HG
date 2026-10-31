@@ -72,6 +72,10 @@ public static class ContentValidator
             issues.Add(new ContentIssue(IssueSeverity.Warning, "Ресурсы", "Size", $"Ресурсы пакета занимают {totalMb:0} МБ — больше {db.Rules.Assets.WarnTotalMb:0} МБ"));
         foreach (var m in db.All<MapDef>()) CheckMap(db, m, issues);
         foreach (var s in db.All<ScenarioDef>()) CheckScenario(db, s, issues);
+        // Scales (part 6, §104).
+        foreach (var sp in db.All<ScaleProfileDef>())
+            foreach (var p in ScaleProfiles.Check(db, sp))
+                issues.Add(new ContentIssue(p.Error ? IssueSeverity.Error : IssueSeverity.Warning, Src(sp), p.Path, "Шкала: " + p.Message));
         // Campaigns and their rewards (part 6, §103).
         foreach (var c in db.All<CampaignDef>())
             foreach (var p in Campaigns.Check(db, c))
@@ -187,6 +191,7 @@ public static class ContentValidator
         DefCategory.ObjectPreset => "пресет объекта",
         DefCategory.Campaign => "кампания",
         DefCategory.RewardSet => "набор наград",
+        DefCategory.Scale => "шкала",
         _ => c.ToString(),
     };
 

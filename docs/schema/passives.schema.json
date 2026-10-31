@@ -635,7 +635,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "chainReaction": {
@@ -1233,7 +1234,8 @@
             "PlayVfx",
             "PlaySound",
             "SetFlag",
-            "ActivateTrigger"
+            "ActivateTrigger",
+            "ChangeScale"
           ],
           "description": "Действие"
         }
@@ -1412,7 +1414,8 @@
             "Category",
             "Layer",
             "Distance",
-            "Environment"
+            "Environment",
+            "Scale"
           ],
           "description": "Условие"
         },

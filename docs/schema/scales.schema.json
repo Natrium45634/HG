@@ -1,0 +1,729 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hextactics/scales.schema.json",
+  "title": "шкала (scales.json)",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "items"
+  ],
+  "properties": {
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Версия формата; старые версии мигрируются при загрузке"
+    },
+    "kind": {
+      "const": "scales"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ScaleProfileDef"
+      }
+    }
+  },
+  "$defs": {
+    "ConditionDef": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Категории врагов — Для подсчёта убитых: категории существ или tag:тег; пусто — все"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConditionDef"
+          },
+          "description": "Вложенные условия"
+        },
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Количество — Убитые/волны/прорывы; дальность для «в дальности»; номер фазы босса; число разрушений и комбинаций"
+        },
+        "flag": {
+          "type": "string",
+          "description": "Флаг"
+        },
+        "fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Доля здоровья"
+        },
+        "marker": {
+          "type": "string",
+          "description": "Метка карты — Для разрушения и комбинаций — пусто: где угодно"
+        },
+        "objectId": {
+          "type": "string",
+          "description": "Объект (ID)"
+        },
+        "objectState": {
+          "type": "string",
+          "description": "Состояние (ID)"
+        },
+        "objective": {
+          "type": "string",
+          "description": "Цель (ID)"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс"
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 36000,
+          "description": "Время, с"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Player",
+            "Enemy",
+            "Any"
+          ],
+          "description": "Сторона"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "synergy": {
+          "type": "string",
+          "x-ref": "Synergy",
+          "description": "Синергия"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "AllEnemiesDead",
+            "AllPlayerUnitsDead",
+            "SurviveTime",
+            "ReachMarker",
+            "UnitDead",
+            "UnitAlive",
+            "KillCount",
+            "TimeElapsed",
+            "WaveSpawned",
+            "All",
+            "Any",
+            "Not",
+            "InOrder",
+            "UnitInArea",
+            "WaveCleared",
+            "WavesCleared",
+            "ObjectiveCompleted",
+            "ObjectiveFailed",
+            "FlagSet",
+            "HpBelow",
+            "EnemiesLeaked",
+            "Always",
+            "TargetInRange",
+            "EnemySpotted",
+            "UnitLeftArea",
+            "ResourceReached",
+            "HasStatus",
+            "FlagTimer",
+            "ObstacleDestroyed",
+            "BossPhase",
+            "SynergyOccurred",
+            "Environment",
+            "ObjectInState"
+          ],
+          "description": "Условие"
+        },
+        "unitTag": {
+          "type": "string",
+          "description": "Метка юнита — Пусто — сам владелец (босс, носитель состояния, юнит с пассивкой или правилом ИИ)"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение — Ресурс; для состояния — минимум очков/стаков (0 — любое)"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Переменная"
+        },
+        "variableValue": {
+          "type": "string",
+          "description": "Значение — Равно ли значение переменной этому"
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Волна (индекс)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ScaleBandDef": {
+      "type": "object",
+      "properties": {
+        "chance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Шанс — Проверка ГСЧ боя при входе (1 — всегда)"
+        },
+        "cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перезарядка, с — После конца состояния — не раньше"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Длительность, с — 0 — пока в диапазоне"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Включён"
+        },
+        "from": {
+          "type": "number",
+          "description": "От"
+        },
+        "hysteresis": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Гистерезис — Выход — только когда значение ушло за диапазон на столько"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "recheck": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перепроверка, с — Не вышло или состояние кончилось — новая попытка через N с, пока в диапазоне; 0 — только после выхода"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние — Обычное состояние: паника, ярость, оцепенение…"
+        },
+        "to": {
+          "type": "number",
+          "description": "До"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ScaleCurveDef": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Включена"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "Add",
+            "Multiply",
+            "Override"
+          ],
+          "description": "Как"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScaleCurvePointDef"
+          },
+          "description": "Точки — Ломаная по значениям шкалы; за крайними точками — значение крайней"
+        },
+        "stat": {
+          "type": "string",
+          "x-ref": "Stat",
+          "description": "Характеристика"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ScaleCurvePointDef": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "Значение шкалы"
+        },
+        "y": {
+          "type": "number",
+          "description": "Результат"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ScaleProfileDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID — Уникальный идентификатор (латиница, цифры, _)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название"
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги — Теги для правил, навыков и синергий"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Синонимы для поиска — Другие названия, по которым объект находится в поиске и в быстром вводе (например «святой, holy» у «Света»)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Категория в библиотеке — Группа для поиска и фильтров библиотеки (например «Боссы»)"
+        },
+        "version": {
+          "type": "integer",
+          "description": "Версия — Увеличивается автоматически при публикации изменений"
+        },
+        "incomplete": {
+          "type": "boolean",
+          "description": "Неполный (черновик) — Объект сохранён или импортирован без всех зависимостей: он виден в библиотеке, но сценарии с ним не запускаются"
+        },
+        "bands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScaleBandDef"
+          },
+          "description": "Диапазоны → состояния"
+        },
+        "base": {
+          "type": "number",
+          "description": "Базовое значение — Отметка «норма» на шкале"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Terrain",
+            "Stat",
+            "Resource",
+            "DamageType",
+            "Faction",
+            "Unit",
+            "Skill",
+            "Passive",
+            "CellEffect",
+            "Synergy",
+            "Status",
+            "AiProfile",
+            "Map",
+            "Scenario",
+            "MoveCategory",
+            "MapTemplate",
+            "Layer",
+            "Element",
+            "RulesPreset",
+            "Asset",
+            "Vfx",
+            "Formation",
+            "Origin",
+            "GroupPreset",
+            "ScalingProfile",
+            "GameRules",
+            "SquadPreset",
+            "ZonePreset",
+            "ModifierSet",
+            "DifficultyVariant",
+            "ObjectPreset",
+            "Campaign",
+            "RewardSet",
+            "Scale"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?)?$",
+          "description": "Цвет"
+        },
+        "curves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScaleCurveDef"
+          },
+          "description": "Кривые → характеристики"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "hardMax": {
+          "type": "number",
+          "description": "Жёсткий максимум — SoftCap и Overflow: выше нельзя"
+        },
+        "hardMin": {
+          "type": "number",
+          "description": "Жёсткий минимум — SoftCap и Overflow: ниже нельзя"
+        },
+        "highest": {
+          "type": "number"
+        },
+        "immuneTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Не получают изменений — Теги юнитов с иммунитетом: значение видно, события его не меняют"
+        },
+        "lowest": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number",
+          "description": "Максимум"
+        },
+        "min": {
+          "type": "number",
+          "description": "Минимум"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "Clamp",
+            "SoftCap",
+            "Overflow"
+          ],
+          "description": "Режим границ"
+        },
+        "recoverTarget": {
+          "type": "number",
+          "description": "Цель восстановления"
+        },
+        "recovery": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Восстановление в секунду — К цели, в игровом времени; 0 — без естественного восстановления"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScaleRuleDef"
+          },
+          "description": "Правила изменения"
+        },
+        "short": {
+          "type": "string",
+          "description": "Короткое имя — На шкале юнита: SAN, ДУХ…"
+        },
+        "softCurve": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScaleCurvePointDef"
+          },
+          "description": "Прирост за мягкой границей — Доля прироста (Y) по тому, как далеко за границей (X: 0 — у границы, 1 — у жёсткого предела)"
+        },
+        "spawnValue": {
+          "type": "number",
+          "description": "Значение при появлении — Призванные и появившиеся в бою"
+        },
+        "start": {
+          "type": "number",
+          "description": "Начальное значение"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": true
+    },
+    "ScaleRuleDef": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "Изменение — Знак — вверх или вниз"
+        },
+        "condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnitConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие — Условие владельца шкалы; пусто — всегда"
+        },
+        "cooldown": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Перезарядка, с — Не чаще раза в N с"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Включено"
+        },
+        "event": {
+          "type": "string",
+          "enum": [
+            "DamageDealt",
+            "DamageTaken",
+            "Hit",
+            "Missed",
+            "Crit",
+            "AllyDied",
+            "EnemyDied",
+            "LeaderDied",
+            "BaseLost",
+            "Healed",
+            "Killed",
+            "WaveEnded",
+            "SkillUsed",
+            "StatusReceived",
+            "Near",
+            "Timer",
+            "BossPhase",
+            "Script"
+          ],
+          "description": "Событие"
+        },
+        "filter": {
+          "type": "string",
+          "description": "Фильтр — Тег, категория или шаблон другого юнита (для «рядом» — и фракция); ID навыка или состояния"
+        },
+        "interval": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "Каждые, с — Для «каждые N с» и «рядом»"
+        },
+        "maxPerEvent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "description": "Предел за событие — Наибольшее изменение по модулю; 0 — без предела"
+        },
+        "name": {
+          "type": "string",
+          "description": "Название — Источник в журнале"
+        },
+        "once": {
+          "type": "boolean",
+          "description": "Один раз за бой"
+        },
+        "percent": {
+          "type": "boolean",
+          "description": "В % диапазона — Изменение — доля от (макс. − мин.)"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "Приоритет — В один тик сначала больший"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Радиус, гексов — Гибель, «рядом»; 0 — где угодно"
+        },
+        "stack": {
+          "type": "boolean",
+          "description": "Складывать в тике — Несколько событий одного тика складываются; иначе — одно"
+        }
+      },
+      "additionalProperties": true
+    },
+    "UnitConditionDef": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Категории и теги — ID категории (с предками), «tag:тег», категория существа или ID шаблона"
+        },
+        "centre": {
+          "type": "string",
+          "enum": [
+            "Anchor",
+            "Self",
+            "Target"
+          ],
+          "description": "Центр области"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnitConditionDef"
+          },
+          "description": "Вложенные условия"
+        },
+        "compare": {
+          "type": "string",
+          "enum": [
+            "AtLeast",
+            "AtMost"
+          ],
+          "description": "Сравнение"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Количество"
+        },
+        "isLogic": {
+          "type": "boolean"
+        },
+        "layer": {
+          "type": "string",
+          "description": "Слой — ID слоя (ground, air, underground…)"
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
+          "description": "Радиус — Для «расстояние до цели» — гексов"
+        },
+        "resource": {
+          "type": "string",
+          "x-ref": "Resource",
+          "description": "Ресурс — Пусто — очки действия"
+        },
+        "scenarioCondition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConditionDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Условие сценария — Без метки — для самого владельца"
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600,
+          "description": "В течение, с"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "Enemies",
+            "Allies",
+            "Any"
+          ],
+          "description": "Кто"
+        },
+        "skill": {
+          "type": "string",
+          "x-ref": "Skill",
+          "description": "Навык"
+        },
+        "status": {
+          "type": "string",
+          "x-ref": "Status",
+          "description": "Состояние"
+        },
+        "subject": {
+          "type": "string",
+          "enum": [
+            "Self",
+            "Target"
+          ],
+          "description": "О ком"
+        },
+        "terrains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Поверхности — ID местности или эффекта клетки; «kind:Water» — вид местности"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "All",
+            "Any",
+            "Not",
+            "TargetAlive",
+            "PreviousHit",
+            "PreviousEffect",
+            "HasStatus",
+            "HpFraction",
+            "Resource",
+            "OnTerrain",
+            "UnitType",
+            "UnitsInArea",
+            "AfterSkill",
+            "BossPhase",
+            "Scenario",
+            "Category",
+            "Layer",
+            "Distance",
+            "Environment",
+            "Scale"
+          ],
+          "description": "Условие"
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Типы — Категория существа, ID юнита, «tag:тег» или «role:роль»"
+        },
+        "value": {
+          "type": "number",
+          "description": "Значение — Доля здоровья 0..1; ресурс; для состояния — минимум очков/стаков (0 — любое); фаза босса — номер с 1"
+        },
+        "variable": {
+          "type": "string",
+          "description": "Переменная"
+        },
+        "variableValue": {
+          "type": "string",
+          "description": "Значение переменной"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

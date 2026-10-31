@@ -1083,6 +1083,33 @@
       },
       "additionalProperties": true
     },
+    "ScaleUseDef": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "Active",
+            "Immune"
+          ],
+          "description": "Режим"
+        },
+        "ownStart": {
+          "type": "boolean",
+          "description": "Своё начальное значение"
+        },
+        "profile": {
+          "type": "string",
+          "x-ref": "Scale",
+          "description": "Шкала"
+        },
+        "start": {
+          "type": "number",
+          "description": "Начальное значение"
+        }
+      },
+      "additionalProperties": true
+    },
     "ShieldSpecDef": {
       "type": "object",
       "properties": {
@@ -1365,7 +1392,8 @@
             "PlayVfx",
             "PlaySound",
             "SetFlag",
-            "ActivateTrigger"
+            "ActivateTrigger",
+            "ChangeScale"
           ],
           "description": "Действие"
         }
@@ -1467,7 +1495,7 @@
         },
         "amount": {
           "type": "number",
-          "description": "Величина — Очки/стаки состояния, % лечения"
+          "description": "Величина — Очки/стаки состояния, % лечения, изменение шкалы"
         },
         "autoAttack": {
           "type": "integer",
@@ -1643,7 +1671,8 @@
             "SwitchObjectState",
             "DelayedTrigger",
             "IfElse",
-            "ClearFlag"
+            "ClearFlag",
+            "ChangeScale"
           ],
           "description": "Действие"
         },
@@ -1808,7 +1837,8 @@
             "Category",
             "Layer",
             "Distance",
-            "Environment"
+            "Environment",
+            "Scale"
           ],
           "description": "Условие"
         },
@@ -1950,7 +1980,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "creatureCategory": {
@@ -2090,6 +2121,17 @@
             "Tank"
           ],
           "description": "Роль в группе — Формации и групповая атака: ближний бой, дальний бой, маг, поддержка, танк; авто — по обычной атаке"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScaleUseDef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Шкала — Боевой дух, санити…: профиль библиотеки «Шкалы»; пусто — у юнита нет шкалы (расчёта нет)"
         },
         "scalingProfile": {
           "type": "string",

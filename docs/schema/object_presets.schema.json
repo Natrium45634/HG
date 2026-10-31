@@ -484,7 +484,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "displayName": {
@@ -1016,7 +1017,8 @@
             "PlayVfx",
             "PlaySound",
             "SetFlag",
-            "ActivateTrigger"
+            "ActivateTrigger",
+            "ChangeScale"
           ],
           "description": "Действие"
         }
@@ -1206,7 +1208,7 @@
         },
         "amount": {
           "type": "number",
-          "description": "Величина — Очки/стаки состояния, % лечения"
+          "description": "Величина — Очки/стаки состояния, % лечения, изменение шкалы"
         },
         "autoAttack": {
           "type": "integer",
@@ -1382,7 +1384,8 @@
             "SwitchObjectState",
             "DelayedTrigger",
             "IfElse",
-            "ClearFlag"
+            "ClearFlag",
+            "ChangeScale"
           ],
           "description": "Действие"
         },

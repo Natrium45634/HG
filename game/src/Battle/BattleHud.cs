@@ -1174,6 +1174,7 @@ public partial class BattleHud : Control
                 $"{r.Def.DisplayName} {r.Current:0.#}/{r.Max:0}" + (debt ? $" — долг (минимум {r.Def.MinValue:0})" : "") + (r.Regen != 0 ? $" (+{r.Regen:0.#}/с)" : ""));
             _resources.AddChild(b);
         }
+        AddScaleRow(u);
 
         Ui.ClearChildren(_statuses);
         foreach (var s in u.Statuses)
@@ -1256,6 +1257,30 @@ public partial class BattleHud : Control
 
     private static string Age(InfoField f) => f.Stale ? $" (≈{f.StaleSeconds:0} с назад)" : "";
 
+    /// <summary>The scale of a unit (part 6, §104): the value within its bounds, the marks of its bands, what it is in and why it moved.</summary>
+    private void AddScaleRow(Unit u)
+    {
+        if (Sim.Scales.Of(u) is not { } sv) return;
+        var p = sv.Profile;
+        double lo = p.Lowest, hi = p.Highest;
+        var inBands = p.Bands.Where(b => b.Enabled && sv.Value >= b.From && sv.Value <= b.To).Select(b => b.Name != "" ? b.Name : b.Status).ToList();
+        var bar = new Bar
+        {
+            Name = "ScaleBar", FillColor = Ui.Parse(p.Color, Ui.Accent), ShowThresholds = true,
+            Thresholds = p.Bands.Where(b => b.Enabled).SelectMany(b => new[] { b.From - lo, b.To - lo }).Concat(new[] { p.Base - lo }).ToArray(),
+            TooltipText = $"{p.DisplayName}: {sv.Value:0.#} из [{lo:0.#}; {hi:0.#}]" + (sv.Mode == ScaleUseMode.Immune ? " — иммунитет" : "") +
+                          (sv.Recent.Count > 0 ? "\nПричины: " + string.Join("; ", sv.Recent.AsEnumerable().Reverse().Select(r => $"{r.Delta:+0.#;-0.#} {r.Source}")) : ""),
+        }.MinSize(300, 14);
+        bar.Set(sv.Value - lo, hi - lo, $"{p.Short} {sv.Value:0}" + (inBands.Count > 0 ? " · " + string.Join(", ", inBands) : "") + (sv.Mode == ScaleUseMode.Immune ? " · иммунитет" : ""));
+        _resources.AddChild(bar);
+        if (sv.Recent.Count > 0 && Sim.Tick - sv.Recent[^1].Tick < Sim.TicksFor(5))
+        {
+            var why = Ui.Label($"{sv.Recent[^1].Delta:+0.#;-0.#} — {sv.Recent[^1].Source}", 11, Ui.TextDim);
+            why.Name = "ScaleWhy";
+            _resources.AddChild(why);
+        }
+    }
+
     /// <summary>
     /// Enemy information panel (docs/DECISIONS_2.md §24): only what the player side has seen or observed,
     /// by the disclosure rules; unknown categories show how to learn them.
@@ -1311,6 +1336,7 @@ public partial class BattleHud : Control
         {
             _resources.AddChild(Ui.Label("Ресурсы: ? — " + info.ResourcesField.Hint, 12, Ui.TextDim));
         }
+        if (info.ResourcesField.Known) AddScaleRow(u);
 
         Ui.ClearChildren(_statuses);
         if (info.StatusesField.Known)

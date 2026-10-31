@@ -12,6 +12,8 @@ public enum MissionModOp
     [Ed("Развёртывание", "Очки, лимит на поле, начисление")] Deployment,
     [Ed("Отряд", "Размер, запрещённые и разрешённые теги")] Squad,
     [Ed("Волна", "Число врагов, дополнительная группа, задержка")] Wave,
+    // Part 6, stage 6.10 (§104).
+    [Ed("Шкала юнитов", "Сдвиг боевого духа, санити… при появлении")] Scale,
 }
 
 public enum ModRuleField
@@ -78,11 +80,11 @@ public sealed class MissionModifierDef : ContentPart
     [Ed("Описание")] public string Description { get; set; } = "";
     [Ed("Что меняет")] public MissionModOp Op { get; set; } = MissionModOp.Stat;
 
-    [Ed("Кого", "Юниты, на которых действует"), EdShowIf(nameof(Op), MissionModOp.Stat, MissionModOp.Status)] public MissionSelectorDef Selector { get; set; } = new();
+    [Ed("Кого", "Юниты, на которых действует"), EdShowIf(nameof(Op), MissionModOp.Stat, MissionModOp.Status, MissionModOp.Scale)] public MissionSelectorDef Selector { get; set; } = new();
     [Ed("Характеристика"), EdShowIf(nameof(Op), MissionModOp.Stat)] public StatModDef Stat { get; set; } = new();
     [Ed("Состояние"), EdRef(DefCategory.Status), EdShowIf(nameof(Op), MissionModOp.Status)] public string Status { get; set; } = "";
     [Ed("Очки состояния"), EdRange(0, 1000), EdShowIf(nameof(Op), MissionModOp.Status)] public double StatusPoints { get; set; } = 1;
-    [Ed("С секунды боя", "0 — с начала"), EdRange(0, 36000), EdShowIf(nameof(Op), MissionModOp.Stat, MissionModOp.Status)] public double ActiveFrom { get; set; }
+    [Ed("С секунды боя", "0 — с начала"), EdRange(0, 36000), EdShowIf(nameof(Op), MissionModOp.Stat, MissionModOp.Status, MissionModOp.Scale)] public double ActiveFrom { get; set; }
     [Ed("До секунды боя", "0 — до конца"), EdRange(0, 36000), EdShowIf(nameof(Op), MissionModOp.Stat, MissionModOp.Status)] public double ActiveUntil { get; set; }
 
     [Ed("Правило"), EdShowIf(nameof(Op), MissionModOp.Rule)] public ModRuleField Rule { get; set; }
@@ -90,7 +92,7 @@ public sealed class MissionModifierDef : ContentPart
 
     [Ed("Поле развёртывания"), EdShowIf(nameof(Op), MissionModOp.Deployment)] public ModDeployField DeployField { get; set; }
     [Ed("Поле отряда"), EdShowIf(nameof(Op), MissionModOp.Squad)] public ModSquadField SquadField { get; set; }
-    [Ed("Изменение", "Прибавка (−2 — на два меньше)"), EdShowIf(nameof(Op), MissionModOp.Deployment, MissionModOp.Squad)] public double Delta { get; set; }
+    [Ed("Изменение", "Прибавка (−2 — на два меньше)"), EdShowIf(nameof(Op), MissionModOp.Deployment, MissionModOp.Squad, MissionModOp.Scale)] public double Delta { get; set; }
     [Ed("Теги", "Для «Запретить / Разрешить только»"), EdShowIf(nameof(Op), MissionModOp.Squad)] public List<string> Tags { get; set; } = new();
 
     [Ed("Номер волны", "С 1"), EdRange(1, 1000), EdShowIf(nameof(Op), MissionModOp.Wave)] public int WaveIndex { get; set; } = 1;

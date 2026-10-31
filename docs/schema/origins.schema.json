@@ -352,7 +352,8 @@
             "DifficultyVariant",
             "ObjectPreset",
             "Campaign",
-            "RewardSet"
+            "RewardSet",
+            "Scale"
           ]
         },
         "color": {
@@ -549,7 +550,8 @@
             "Category",
             "Layer",
             "Distance",
-            "Environment"
+            "Environment",
+            "Scale"
           ],
           "description": "Условие"
         },

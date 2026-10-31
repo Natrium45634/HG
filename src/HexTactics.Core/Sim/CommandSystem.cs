@@ -46,6 +46,16 @@ public sealed class CommandSystem
         if (!u.Alive) return "юнит погиб";
         var err = ValidateTemplate(u, c);
         if (err != null) return err;
+        // Panic is stronger than orders (ТЗ ч. 6, 18.5): a new order waits with the queue set aside.
+        if (_held.TryGetValue(u.Id, out var held))
+        {
+            if (replaceQueue) held.Clear();
+            c.Id = _sim.NextCommandId();
+            c.Status = CommandStatus.Pending;
+            held.Insert(insertIndex < 0 ? held.Count : Math.Clamp(insertIndex, 0, held.Count), c);
+            _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name} в панике: приказ выполнится после неё", u.Id);
+            return null;
+        }
         if (replaceQueue) ClearQueue(u, "заменено новой командой", CommandStatus.Cancelled);
         // Where the target was seen when the order was given (policy «last known position»).
         if (_sim.GetUnit(c.TargetUnitId) is { Alive: true } seen && _sim.Vision.CanFactionSee(u.FactionId, seen)) c.LastKnownTarget = seen.Pos;
@@ -198,6 +208,117 @@ public sealed class CommandSystem
         return n;
     }
 
+    // ------------------------------------------------------------------ panic (part 6, §104)
+
+    private readonly Dictionary<int, List<Command>> _held = new();
+    private readonly Dictionary<int, long> _fleeNext = new();
+    private readonly HashSet<int> _cowering = new();
+
+    /// <summary>Is the queue of a unit set aside by panic.</summary>
+    public bool IsHeld(Unit u) => _held.ContainsKey(u.Id);
+
+    /// <summary>The orders set aside by panic (they go on after it).</summary>
+    public IReadOnlyList<Command> HeldOf(Unit u) => _held.TryGetValue(u.Id, out var l) ? l : Array.Empty<Command>();
+
+    /// <summary>
+    /// Panic (ТЗ ч. 6, 18.5): the queue is set aside — the active order stopped (with its refund) and pending again — and the unit
+    /// flees in the empty queue; when the panic ends, the flight is cancelled and the queue goes on. A cast in progress ends first
+    /// (no critical animation is cut) unless the status interrupts casts. Hard control (stun) is stronger: it keeps the unit still.
+    /// </summary>
+    private void UpdatePanic()
+    {
+        var units = _sim.Units;
+        for (int i = 0; i < units.Count; i++)
+        {
+            var u = units[i];
+            if (!u.Alive)
+            {
+                _held.Remove(u.Id);
+                continue;
+            }
+            bool panic = u.Flags.Panic;
+            if (!panic)
+            {
+                if (_held.ContainsKey(u.Id)) RestoreQueue(u, "паника прошла");
+                continue;
+            }
+            if (!_held.ContainsKey(u.Id))
+            {
+                if (u.Casting != null && !u.Casting.Released && !u.Flags.InterruptsCast) continue;
+                HoldQueue(u, "паника");
+            }
+            if (u.Queue.Count > 0 || u.StepTo.HasValue || u.Flags.BlocksMovement || u.Flags.BlocksActions) continue;
+            if (_fleeNext.TryGetValue(u.Id, out var next) && _sim.Tick < next) continue;
+            _fleeNext[u.Id] = _sim.Tick + _sim.TicksFor(1);
+            var enemies = units.Where(e => e.Alive && _sim.IsHostile(u, e) && _sim.Vision.CanFactionSee(u.FactionId, e)).ToList();
+            var to = enemies.Count == 0 ? (HexCoord?)null : FleeCell(u, enemies);
+            if (to == null)
+            {
+                if (_cowering.Add(u.Id))
+                    _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name} в панике: бежать некуда — замирает на месте", u.Id);
+                continue;
+            }
+            _cowering.Remove(u.Id);
+            var c = Command.Move(to.Value);
+            c.Id = _sim.NextCommandId();
+            c.Status = CommandStatus.Pending;
+            u.Queue.Add(c);
+            RecomputeEstimates(u);
+            _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name} в панике бежит в {to.Value}", u.Id, cell: to.Value);
+        }
+    }
+
+    private HexCoord? FleeCell(Unit u, List<Unit> enemies)
+    {
+        var reach = _sim.Pathfinder.Flood(_sim, u, u.Pos, 6, new PathOptions { MaxExpanded = 1500 });
+        HexCoord best = u.Pos;
+        double bestScore = enemies.Min(e => HexCoord.Distance(u.Pos, e.Pos));
+        foreach (var kv in reach.OrderBy(k => k.Key.Q).ThenBy(k => k.Key.R))
+        {
+            double minD = enemies.Min(e => HexCoord.Distance(kv.Key, e.Pos));
+            double score = minD - kv.Value * 0.1 - (_sim.Map.Get(kv.Key)?.IsHazard == true ? 2 : 0);
+            if (score > bestScore + 0.5)
+            {
+                bestScore = score;
+                best = kv.Key;
+            }
+        }
+        return best == u.Pos ? null : best;
+    }
+
+    private void HoldQueue(Unit u, string reason)
+    {
+        var list = u.Queue.Items.ToList();
+        var cur = u.Queue.Current;
+        if (cur != null && cur.Status != CommandStatus.Pending) CleanupActive(u, cur, refundCast: true);
+        foreach (var c in list)
+        {
+            ReleaseDestination(u, c);
+            c.Status = CommandStatus.Pending;
+            c.StatusText = "";
+        }
+        u.Queue.Clear();
+        _held[u.Id] = list;
+        _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name}: {reason} — приказы отложены ({list.Count})", u.Id);
+    }
+
+    private void RestoreQueue(Unit u, string reason)
+    {
+        if (!_held.Remove(u.Id, out var list)) return;
+        _fleeNext.Remove(u.Id);
+        _cowering.Remove(u.Id);
+        ClearQueue(u, reason, CommandStatus.Cancelled); // the flight
+        foreach (var c in list) u.Queue.Add(c);
+        RecomputeEstimates(u);
+        _sim.Emit(SimEventType.Info, LogLevel.Normal, $"{u.Name}: {reason} — приказы продолжаются ({list.Count})", u.Id);
+    }
+
+    /// <summary>The state of panic for the fingerprint of the battle.</summary>
+    public IEnumerable<string> PanicDigest() =>
+        _held.OrderBy(k => k.Key).Select(k => $"h{k.Key}:{string.Join(",", k.Value.Select(c => c.Id))}")
+            .Concat(_fleeNext.OrderBy(k => k.Key).Select(k => $"f{k.Key}:{k.Value}"))
+            .Concat(_cowering.OrderBy(x => x).Select(x => $"c{x}"));
+
     private void CleanupActive(Unit u, Command c, bool refundCast)
     {
         switch (c.Type)
@@ -307,6 +428,7 @@ public sealed class CommandSystem
 
     public void Update()
     {
+        UpdatePanic();
         BreakWaitCycles();
         var units = _sim.Units;
         for (int i = 0; i < units.Count; i++)

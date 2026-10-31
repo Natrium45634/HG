@@ -2818,3 +2818,25 @@ Windows-сборка проверена самопроверкой на Windows 
   `game/src/Battle/{BattleScreen,BattleHud}.cs`; контент — `game/content/{campaigns,reward_sets}.json`; `docs/schema/*`.
 * **Тесты**: `Part6CampaignTests` (6): T26, T27; UI — `campaign_screen_mission_rewards_once`.
 
+## Ч6 · Этап 6.10. Шкалы (санити, боевой дух)
+
+* **Сделано** ([§104](DECISIONS_6.md)):
+  * вид объектов «Шкалы»: границы и режимы Clamp / SoftCap / Overflow,
+    начальное, базовое, при появлении, восстановление;
+  * правила изменения по событиям боя с фильтрами, условием, однократностью,
+    интервалом, перезарядкой, приоритетом, пределом; событие — один раз;
+  * диапазоны → обычные состояния (шанс, перепроверка, гистерезис,
+    перезарядка); кривые → обычные модификаторы (прибавка, множитель, замена);
+  * флаг «Паника»: очередь отложена и продолжается после, бегство, «некуда
+    бежать — замирает», таблица приоритетов;
+  * иммунитет, операция навыка, действие сценария, модификатор миссии,
+    условие юнита; вклад в оценку силы и недостижимые диапазоны;
+  * полоса шкалы в бою, журнал SAN_CHANGED / THRESHOLD / STATE; раздел
+    «Шкалы» с графиком и прогнозом.
+* **Файлы**: ядро — `src/HexTactics.Core/Content/{ScaleProfiles,PowerModel,ContentValidator,MissionModifiers,OperationCatalog,UnitEditorTabs…}.cs`,
+  `Content/Defs/{ScaleDefs,Common,UnitDefs,SkillDefs,SkillSeriesDefs,MapScenarioDefs,ModifierDefs}.cs`,
+  `Sim/{ScaleSystem,CommandSystem,AiSystem,BlockingSystem,CombatSystem,ScenarioSystem,UnitConditions,MissionModifierSystem,Simulation,SimDigest,SimEvents}.cs`;
+  игра — `game/src/Editor/{ScalePanel,EditorScreen}.cs`, `game/src/Battle/BattleHud.cs`;
+  контент — `game/content/{scales,statuses}.json`; `docs/schema/*`.
+* **Тесты**: `Part6ScaleTests` (9): T33–T40; UI — `scale_editor_chart_and_battle_bar`.
+

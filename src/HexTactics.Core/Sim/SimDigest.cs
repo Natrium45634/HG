@@ -58,6 +58,9 @@ public sealed class SimDigest
             .Concat(sc.BossCurrentPhases.Select(b => "B" + b))
             .Concat(sc.SwitchedObjects.Select(x => "a" + x))
             .Concat(sim.Interactive.Digest().Select(x => "x" + x))
+            // Part 6 (§104): scales and panic — only when there are some, so older fingerprints stay the same.
+            .Concat(sim.Scales.Digest().Select(x => "z" + x))
+            .Concat(sim.Commands.PanicDigest().Select(x => "p" + x))
             .Concat(sc.DelayedTriggers.Select(x => "d" + x))
             .Append($"outcome={sim.Outcome}"));
         return new SimDigest { Tick = sim.Tick, Parts = parts };

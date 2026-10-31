@@ -31,7 +31,7 @@ public sealed class AiSystem
         if (!Enabled) return;
         foreach (var u in _sim.Units)
         {
-            if (!u.Alive || !u.AiControlled) continue;
+            if (!u.Alive || !u.AiControlled || u.Flags.Panic) continue; // panic drives the unit itself (§104)
             if (_sim.Tick < u.Ai.NextDecisionTick) continue;
             var p = u.AiProfile ?? DefaultProfile;
             u.Ai.NextDecisionTick = _sim.Tick + Math.Max(1, _sim.TicksFor(p.DecisionInterval));

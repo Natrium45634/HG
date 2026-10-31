@@ -68,6 +68,8 @@ public sealed class UnitConditions
             }
             case UnitConditionType.HpFraction:
                 return who != null && Compare(who.HpFraction, c.Compare, c.Value);
+            case UnitConditionType.Scale:
+                return who != null && _sim.Scales.Of(who) is { } sv && Compare(sv.Value, c.Compare, c.Value);
             case UnitConditionType.Resource:
             {
                 if (who == null) return false;

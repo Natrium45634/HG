@@ -1175,6 +1175,9 @@ public sealed partial class ScenarioSystem
             case TriggerActionType.SetBossPhase:
                 foreach (var u in Targets(a, actor)) ForcePhase(u, a.Phase - 1, source);
                 break;
+            case TriggerActionType.ChangeScale:
+                foreach (var u in Targets(a, actor)) _sim.Scales.Change(u, a.Amount, source, actor);
+                break;
             case TriggerActionType.PlayVfx:
             case TriggerActionType.PlaySound:
             {
@@ -1754,6 +1757,7 @@ public sealed partial class ScenarioSystem
         _bossCurrent[u.Id] = index;
         _bossEntries[u.Id] = _bossEntries.GetValueOrDefault(u.Id) + 1;
         string src = $"фаза «{ph.Name}» ({u.Name})";
+        PhaseEntered?.Invoke(u, index);
         _sim.Emit(SimEventType.Message, LogLevel.Normal, string.IsNullOrEmpty(ph.Message) ? $"{u.Name}: фаза «{ph.Name}»" : ph.Message, u.Id);
         _sim.Emit(SimEventType.Info, LogLevel.Detail, $"{u.Name}: переход в фазу «{ph.Name}» — {why}", u.Id);
         if (ph.ResetCooldowns && u.CooldownUntil.Count > 0)
@@ -1789,6 +1793,9 @@ public sealed partial class ScenarioSystem
                 return t;
         return null;
     }
+
+    /// <summary>A boss entered a phase (the scales listen: «босс сменил фазу»).</summary>
+    public event Action<Unit, int>? PhaseEntered;
 
     /// <summary>The phase a boss is in (an index of its list; −1 — before the first).</summary>
     public int CurrentPhase(Unit u) => _bossCurrent.TryGetValue(u.Id, out var i) ? i : -1;

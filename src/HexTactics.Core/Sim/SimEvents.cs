@@ -96,6 +96,13 @@ public enum SimEventType
     PreparationDone,
     /// <summary>A unit passed a checkpoint node of its route: DamageType = node ID, Text names the route.</summary>
     CheckpointReached,
+    // Part 6, stage 6.10 (§104).
+    /// <summary>SAN_CHANGED: the scale of the target changed; Value = delta, Source = who caused it.</summary>
+    ScaleChanged,
+    /// <summary>SAN_THRESHOLD_ENTERED / EXITED: a band of the scale; Value = the value.</summary>
+    ScaleThreshold,
+    /// <summary>SAN_STATE_APPLIED / REMOVED: the status of a band; DamageType = status ID.</summary>
+    ScaleState,
 }
 
 public enum LogLevel
